@@ -2,7 +2,7 @@
 
 # 🧩 skills
 
-**Reusable [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) agent skills — install one with `npx skills add`, symlink the whole bundle for live development, or ship your own in the prescribed kirchDev house style**
+**Agent skills by Titus Kirch — installable via [skills.sh](https://skills.sh) in [Claude Code](https://docs.claude.com/en/docs/claude-code/overview), Cursor, Windsurf and friends**
 
 [![skills.sh](https://skills.sh/b/TitusKirch/skills)](https://skills.sh/TitusKirch/skills)
 [![Tests](https://img.shields.io/github/actions/workflow/status/TitusKirch/skills/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/TitusKirch/skills/actions/workflows/ci.yml)

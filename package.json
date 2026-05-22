@@ -2,7 +2,7 @@
   "$schema": "https://www.schemastore.org/package.json",
   "name": "@tituskirch/skills",
   "version": "0.1.0",
-  "description": "Reusable Claude Code agent skills by Titus Kirch.",
+  "description": "Agent skills by Titus Kirch — installable via skills.sh in Claude Code, Cursor, Windsurf and friends.",
   "homepage": "https://github.com/TitusKirch/skills#readme",
   "bugs": {
     "url": "https://github.com/TitusKirch/skills/issues"
