@@ -10,10 +10,20 @@ Keep the section order; keep the section emojis (see ../REFERENCE.md).
 
 **{{one-line tagline — bold, em-dashes welcome, no trailing period unless it's a full sentence}}**
 
-<!-- BADGES: keep for public packages, delete for internal/infra repos. -->
+<!--
+BADGES: keep for public packages, delete for internal/infra repos.
+Colors are FIXED — see ../REFERENCE.md#badge-color-palette:
+  primary  4f46e5  — version + downloads
+  neutral  8993be  — runtime/dep version (PHP/Node)
+  success  10b981  — license
+  laravel  ff2d20  — Laravel-only badges
+No color override on the CI/Tests badge.
+-->
 
 [![Latest Version](https://img.shields.io/{{registry}}/v/{{slug}}.svg?style=flat-square&color=4f46e5)]({{registry-url}})
+[![Downloads](https://img.shields.io/{{registry}}/{{downloads-path}}/{{slug}}.svg?style=flat-square&color=4f46e5)]({{registry-url}})
 [![Tests](https://img.shields.io/github/actions/workflow/status/{{owner}}/{{repo}}/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/{{owner}}/{{repo}}/actions/workflows/ci.yml)
+[![Runtime](https://img.shields.io/{{registry}}/dependency-v/{{slug}}/{{runtime}}?style=flat-square&color=8993be)]({{registry-url}})
 [![License: MIT](https://img.shields.io/{{registry}}/l/{{slug}}.svg?style=flat-square&color=10b981)](LICENSE)
 
 </div>

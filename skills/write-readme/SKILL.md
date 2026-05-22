@@ -42,8 +42,30 @@ description: Generates project READMEs in the kirchDev house style — centered 
 1. **Gather** — name, tagline, hero emoji, hook snippet, public-or-internal, list of needed domain sections.
 2. **Draft** — fill `templates/README.template.md`; pick domain-section emojis from [REFERENCE.md](REFERENCE.md).
 3. **Review** — present the draft, confirm which optional sections to keep, then write the file.
+4. **Gap report** — see below.
+
+## Gap report (mandatory final step)
+
+After writing the README, end the turn with a short report listing anything that wasn't covered by [REFERENCE.md](REFERENCE.md):
+
+- **Sections without a prescribed emoji** — any H2 you had to invent an emoji for because it isn't in the section catalogue.
+- **Badges without a palette color** — any badge purpose that didn't fit `primary` / `neutral` / `success` / `laravel` / `php` / `node` / `warning`.
+- **Hero-emoji gaps** — if you fell back to 📦 because no project-type matched.
+
+Format:
+
+```text
+Gap report — improvements for write-readme:
+- Section "{name}" — no catalogue entry; used {emoji} as ad-hoc choice.
+- Badge "{purpose}" — no palette token; used color={hex}.
+- Hero type "{description}" — no catalogue entry; used {emoji}.
+```
+
+If everything was covered, say so: `Gap report: no gaps — every section and badge matched the catalogue.`
+
+**Only report; do not edit REFERENCE.md or this skill yourself.** The user decides whether to fold the gaps back in.
 
 ## Reference
 
-- Section emoji catalogue, badge templates, full reference example: see [REFERENCE.md](REFERENCE.md).
+- Section emoji catalogue, badge templates and color palette: see [REFERENCE.md](REFERENCE.md).
 - Skeleton to copy: [templates/README.template.md](templates/README.template.md).

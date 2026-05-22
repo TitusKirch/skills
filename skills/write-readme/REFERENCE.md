@@ -64,7 +64,30 @@ Each bullet starts with an emoji that reflects the feature's nature — these ar
 
 ## Badges
 
-Use shields.io with `style=flat-square`. Standard set for **published Composer packages**:
+Use shields.io with `style=flat-square`. **Never invent new colors** — pick from the palette below so every kirchDev README shares the same visual fingerprint. If a badge purpose isn't covered here, add it to this table in the same PR.
+
+### Badge color palette
+
+| Token     |   Hex    | Swatch | Use for                                                                                         |
+| :-------- | :------: | :----: | :---------------------------------------------------------------------------------------------- |
+| `primary` | `4f46e5` |   🟣   | Identity badges — package version, total downloads, GitHub release. One badge type per repo.    |
+| `neutral` | `8993be` |   ⚪   | Runtime / dependency version badges (PHP, Node, Python, Go) — anything language-agnostic.       |
+| `success` | `10b981` |   🟢   | License badge. Also: "tests passing", coverage ≥ threshold, status badges with green semantics. |
+| `laravel` | `ff2d20` |   🔴   | Laravel-specific dependency badges only. Do not reuse for generic "error/critical."             |
+| `php`     | `777bb4` |   🟦   | PHP-branded badges (rare — `neutral` is preferred unless the badge is explicitly PHP-themed).   |
+| `node`    | `5fa04e` |   🟩   | Node-branded badges (rare — `neutral` is preferred).                                            |
+| `warning` | `f59e0b` |   🟠   | Reserved for "alpha / unstable / experimental" status badges. Use sparingly.                    |
+
+Rules:
+
+- **No `color=` query param ⇒ shields' default blue.** Always pass one of the tokens above.
+- **CI / Tests badge has no color override** — it reflects build status (green/red) on its own.
+- **License is always `success` (`10b981`).**
+- **Version + downloads share `primary` (`4f46e5`)** — they're a logical pair.
+
+### Standard sets
+
+**Published Composer packages:**
 
 ```markdown
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/{vendor}/{pkg}.svg?style=flat-square&color=4f46e5)](https://packagist.org/packages/{vendor}/{pkg})
@@ -74,11 +97,23 @@ Use shields.io with `style=flat-square`. Standard set for **published Composer p
 [![License: MIT](https://img.shields.io/packagist/l/{vendor}/{pkg}.svg?style=flat-square&color=10b981)](LICENSE)
 ```
 
-For **npm packages**, swap Packagist for `npm/v`, `npm/dm`, and adjust accordingly.
+**Published npm packages:**
 
-For **internal infrastructure repos**, omit badges entirely.
+```markdown
+[![npm Version](https://img.shields.io/npm/v/{pkg}.svg?style=flat-square&color=4f46e5)](https://www.npmjs.com/package/{pkg})
+[![Downloads](https://img.shields.io/npm/dm/{pkg}.svg?style=flat-square&color=4f46e5)](https://www.npmjs.com/package/{pkg})
+[![Tests](https://img.shields.io/github/actions/workflow/status/{owner}/{repo}/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/{owner}/{repo}/actions/workflows/ci.yml)
+[![Node Version](https://img.shields.io/node/v/{pkg}.svg?style=flat-square&color=8993be)](https://www.npmjs.com/package/{pkg})
+[![License: MIT](https://img.shields.io/npm/l/{pkg}.svg?style=flat-square&color=10b981)](LICENSE)
+```
 
-Brand colors used in the existing READMEs: `4f46e5` (primary), `8993be` (neutral), `10b981` (license), `ff2d20` (Laravel).
+**Laravel-specific framework badge** (add alongside the standard PHP set when the package is Laravel-only):
+
+```markdown
+[![Laravel Version](https://img.shields.io/packagist/dependency-v/{vendor}/{pkg}/illuminate%2Fsupport?style=flat-square&label=laravel&color=ff2d20)](https://packagist.org/packages/{vendor}/{pkg})
+```
+
+**Internal infrastructure / private repos:** omit badges entirely.
 
 ## Hook block — patterns
 
