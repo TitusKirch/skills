@@ -1,0 +1,49 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Repository purpose
+
+This repo publishes reusable [Claude Code agent skills](https://docs.claude.com/en/docs/claude-code/skills). Each subfolder under `skills/` is a self-contained skill consisting of a `SKILL.md` (YAML frontmatter + body) plus optional bundled assets. The repo itself ships no runtime code — only the skill definitions and the tooling that keeps them lint/format-clean.
+
+## Common commands
+
+| Command          | Purpose                                                                |
+| :--------------- | :--------------------------------------------------------------------- |
+| `pnpm install`   | Install devDeps and wire husky hooks (`prepare` script runs husky).    |
+| `pnpm lint`      | `oxlint . --deny-warnings` — fails on any warning.                     |
+| `pnpm format`    | `oxfmt --check .` — does not write.                                    |
+| `pnpm check`     | Lint + format check (mirrors CI).                                      |
+| `pnpm check:fix` | `pnpm lint:fix && pnpm format:fix` — apply both fixers.                |
+| `pnpm taze`      | List dependency drift. `pnpm taze:w` writes updates to `package.json`. |
+
+There is no test suite — skills are documentation, validated by lint/format only.
+
+## Tooling layout (non-obvious bits)
+
+- **pnpm is mandatory** — `package-manager-strict=true` in `.npmrc` and `packageManager` pin in `package.json`. npm/yarn will be rejected.
+- **`.npmrc` sets `minimumReleaseAge=4320`** (3 days). Packages published within the last 3 days will not install. `pnpm taze` respects this too — if a newer version exists but is too recent, taze will report "up to date." Bump pinned versions (`oxfmt`, `oxlint`) manually if needed.
+- **oxfmt is the formatter for everything**, including markdown, JSON, and YAML — `lint-staged.config.js` routes `*.md`, `*.{json,jsonc,yml,yaml}` through `oxfmt`, and only `*.{js,ts,mjs,cjs}` through oxlint + oxfmt. The primary use case is markdown (skill bodies); JS is incidental.
+- **`oxlint` and `oxfmt` are pinned to exact versions** (no `^`). Taze's default mode skips them; use `pnpm exec taze latest -w` or edit by hand.
+- **Husky hooks** (`.husky/pre-commit`, `.husky/commit-msg`) run lint-staged and commitlint. Don't `--no-verify` unless explicitly asked.
+- **Conventional Commits are enforced** by commitlint (`@commitlint/config-conventional`). Scope by skill name when changing a single skill: `feat(example-skill): ...`.
+
+## Releases
+
+[release-please](https://github.com/googleapis/release-please) runs on push to `main` (`.github/workflows/release-please.yml`) and opens/updates a release PR based on Conventional Commits. Configured as a single `release-type: node` package at the repo root with `bump-minor-pre-major: true` — pre-1.0 breaking changes bump the minor. The workflow also cleans up merged `release-please--*` branches after release.
+
+## Adding a new skill
+
+1. Copy `skills/example-skill/` to `skills/<new-skill>/`.
+2. Update `SKILL.md` frontmatter: `name` (kebab-case, matches folder), `description` (one-line, action-oriented — this is what Claude reads to decide invocation), optional `allowed-tools`.
+3. Add a row to the skills table in the root `README.md`.
+4. Commit as `feat(<new-skill>): add skill`.
+
+See `skills/README.md` for the frontmatter contract and folder layout.
+
+## CI
+
+- `.github/workflows/ci.yml` — runs `pnpm lint` and `pnpm format` on PRs to `main`. Skips drafts.
+- `.github/workflows/codeql.yml` — only fires on changes to `**/*.{js,ts,mjs,cjs}` or `.github/workflows/**`. Won't run on pure markdown PRs.
+- `.github/workflows/release-please.yml` — see "Releases" above.
+- `.github/dependabot.yml` — weekly npm bumps, monthly github-actions bumps, both grouped minor+patch.
