@@ -83,7 +83,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full workflow.
 
 ## 💡 Inspiration
 
-The local `pnpm skills:link` / `:list` / `:unlink` scripts are modelled on [mattpocock/skills](https://github.com/mattpocock/skills) — a great reference for keeping a personal skills bundle activatable without a marketplace.
+The local `pnpm skills:link` / `:list` / `:unlink` scripts are modelled on [mattpocock/skills](https://github.com/mattpocock/skills).
 
 ## 🤝 Contributing
 
