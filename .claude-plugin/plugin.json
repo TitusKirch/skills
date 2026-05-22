@@ -1,0 +1,13 @@
+{
+  "name": "tituskirch-skills",
+  "description": "Reusable Claude Code agent skills by Titus Kirch / IT-Dienstleistungen Titus Kirch.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Titus Kirch",
+    "email": "titus.kirch@kirch.dev",
+    "url": "https://github.com/TitusKirch"
+  },
+  "homepage": "https://github.com/TitusKirch/skills",
+  "license": "MIT",
+  "skills": ["./skills/write-readme"]
+}
