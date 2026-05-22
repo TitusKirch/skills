@@ -20,7 +20,7 @@ Each subfolder under [`skills/`](skills/) is a self-contained skill — a `SKILL
 
 ## Installation
 
-### Option A — `skills.sh` CLI (recommended)
+### Option A — `skills.sh` CLI (recommended for users)
 
 The [`skills.sh`](https://skills.sh) CLI fetches skills directly from this repo and wires them into your AI agent:
 
@@ -28,17 +28,22 @@ The [`skills.sh`](https://skills.sh) CLI fetches skills directly from this repo 
 npx skills add TitusKirch/skills
 ```
 
-This installs every skill in the bundle. To opt out of the CLI's anonymous install-count telemetry, set `DISABLE_TELEMETRY=1`.
+To opt out of the CLI's anonymous install-count telemetry, set `DISABLE_TELEMETRY=1`.
 
-### Option B — Claude Code plugin manifest
+### Option B — symlink locally (recommended for development on this repo)
 
-This repo ships a [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json), so cloning it into Claude Code's plugin directory activates the registered skills:
+Clone the repo, then symlink every `skills/<name>/` into `~/.claude/skills/`:
 
 ```bash
-git clone https://github.com/TitusKirch/skills.git ~/.claude/plugins/tituskirch-skills
+git clone https://github.com/TitusKirch/skills.git
+cd skills
+pnpm install
+pnpm skills:link        # symlinks every skill into ~/.claude/skills/
+pnpm skills:list        # lists every SKILL.md in the repo
+pnpm skills:unlink      # removes the symlinks again
 ```
 
-Restart Claude Code; the skills become discoverable.
+Restart Claude Code (or run `/reload-plugins`); the skills become discoverable. Because they're symlinks, edits to the working copy are picked up live.
 
 ### Option C — install a single skill by hand
 

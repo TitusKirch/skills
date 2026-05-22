@@ -23,6 +23,9 @@
     "check:fix": "pnpm lint:fix && pnpm format:fix",
     "taze": "taze",
     "taze:w": "taze -w",
+    "skills:list": "bash scripts/list-skills.sh",
+    "skills:link": "bash scripts/link-skills.sh",
+    "skills:unlink": "bash scripts/unlink-skills.sh",
     "prepare": "husky"
   },
   "devDependencies": {
