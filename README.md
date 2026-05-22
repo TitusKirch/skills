@@ -17,19 +17,29 @@ Each subfolder under [`skills/`](skills/) is a self-contained skill — a `SKILL
 
 ## Installation
 
-### Option A — use the whole bundle as a plugin
+### Option A — `skills.sh` CLI (recommended)
 
-This repo ships a [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) manifest, so cloning it into a Claude-Code-aware project activates every registered skill at once.
+The [`skills.sh`](https://skills.sh) CLI fetches skills directly from this repo and wires them into your AI agent:
+
+```bash
+npx skills add TitusKirch/skills
+```
+
+This installs every skill in the bundle. To opt out of the CLI's anonymous install-count telemetry, set `DISABLE_TELEMETRY=1`.
+
+### Option B — Claude Code plugin manifest
+
+This repo ships a [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json), so cloning it into Claude Code's plugin directory activates the registered skills:
 
 ```bash
 git clone https://github.com/TitusKirch/skills.git ~/.claude/plugins/tituskirch-skills
 ```
 
-Restart Claude Code; all skills listed in the manifest become discoverable.
+Restart Claude Code; the skills become discoverable.
 
-### Option B — install a single skill
+### Option C — install a single skill by hand
 
-Drop one skill folder into:
+Copy one skill folder into:
 
 - **User scope** — `~/.claude/skills/<skill-name>/` (available in every project).
 - **Project scope** — `.claude/skills/<skill-name>/` (committed with the project).
