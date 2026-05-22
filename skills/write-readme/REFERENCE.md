@@ -113,6 +113,14 @@ Rules:
 [![Laravel Version](https://img.shields.io/packagist/dependency-v/{vendor}/{pkg}/illuminate%2Fsupport?style=flat-square&label=laravel&color=ff2d20)](https://packagist.org/packages/{vendor}/{pkg})
 ```
 
+**Claude Code skills repos** (add at the top of the hero block, separate from the regular badge row):
+
+```markdown
+[![skills.sh](https://skills.sh/b/{owner}/{repo})](https://skills.sh/{owner}/{repo})
+```
+
+The `skills.sh` badge is **self-styled** by the registry — do not pass `style=` or `color=`. It renders the live install count from the [skills.sh](https://skills.sh) leaderboard and links to the repo's detail page.
+
 **Internal infrastructure / private repos:** omit badges entirely.
 
 ## Hook block — patterns

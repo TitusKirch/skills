@@ -1,5 +1,8 @@
 # skills
 
+[![skills.sh](https://skills.sh/b/TitusKirch/skills)](https://skills.sh/TitusKirch/skills)
+[![License: MIT](https://img.shields.io/github/license/TitusKirch/skills?style=flat-square&color=10b981)](LICENSE)
+
 Reusable [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) agent skills by [Titus Kirch](https://github.com/TitusKirch).
 
 Each subfolder under [`skills/`](skills/) is a self-contained skill — a `SKILL.md` with YAML frontmatter that Claude Code can discover and invoke on demand.
