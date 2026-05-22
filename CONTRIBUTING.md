@@ -35,7 +35,7 @@ pnpm install   # wires husky hooks
 3. If the skill bundles resources (templates, scripts), keep them inside the same folder.
 4. Add an entry to the root [`README.md`](README.md) skills index.
 
-See [`skills/README.md`](skills/README.md) for the directory layout and [`skills/example-skill/SKILL.md`](skills/example-skill/SKILL.md) as a starting template.
+See [`skills/README.md`](skills/README.md) for the directory layout. Use an existing skill (e.g. [`skills/write-readme/`](skills/write-readme/)) as a structural reference.
 
 ## Running the suite
 

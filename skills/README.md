@@ -44,7 +44,7 @@ Instructions for Claude when this skill is invoked. Be specific about:
 
 ## Adding a new skill
 
-1. Copy [`example-skill/`](example-skill/) to a new folder.
+1. Create `<skill-name>/SKILL.md` (use an existing skill as a structural reference).
 2. Fill in the frontmatter and body.
-3. Add a row to the root [`README.md`](../README.md) skills table.
+3. Add a row to the root [`README.md`](../README.md) skills table and the `skills` array in [`.claude-plugin/plugin.json`](../.claude-plugin/plugin.json).
 4. Commit with `feat(<skill-name>): add skill`.

@@ -11,10 +11,9 @@ Each subfolder under [`skills/`](skills/) is a self-contained skill — a `SKILL
 
 <!-- prettier-ignore-start -->
 
-| Skill                                                       | Description                                                              |
-| :---------------------------------------------------------- | :----------------------------------------------------------------------- |
-| [`write-readme`](skills/write-readme/SKILL.md)              | Generates project READMEs in the kirchDev house style.                   |
-| [`example-skill`](skills/example-skill/SKILL.md)            | Placeholder template for new skills.                                     |
+| Skill                                          | Description                                            |
+| :--------------------------------------------- | :----------------------------------------------------- |
+| [`write-readme`](skills/write-readme/SKILL.md) | Generates project READMEs in the kirchDev house style. |
 
 <!-- prettier-ignore-end -->
 

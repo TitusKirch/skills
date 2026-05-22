@@ -26,7 +26,7 @@ There is no test suite — skills are documentation, validated by lint/format on
 - **oxfmt is the formatter for everything**, including markdown, JSON, and YAML — `lint-staged.config.js` routes `*.md`, `*.{json,jsonc,yml,yaml}` through `oxfmt`, and only `*.{js,ts,mjs,cjs}` through oxlint + oxfmt. The primary use case is markdown (skill bodies); JS is incidental.
 - **`oxlint` and `oxfmt` are pinned to exact versions** (no `^`). Taze's default mode skips them; use `pnpm exec taze latest -w` or edit by hand.
 - **Husky hooks** (`.husky/pre-commit`, `.husky/commit-msg`) run lint-staged and commitlint. Don't `--no-verify` unless explicitly asked.
-- **Conventional Commits are enforced** by commitlint (`@commitlint/config-conventional`). Scope by skill name when changing a single skill: `feat(example-skill): ...`.
+- **Conventional Commits are enforced** by commitlint (`@commitlint/config-conventional`). Scope by skill name when changing a single skill: `feat(write-readme): ...`.
 
 ## Releases
 
@@ -34,9 +34,9 @@ There is no test suite — skills are documentation, validated by lint/format on
 
 ## Adding a new skill
 
-1. Copy `skills/example-skill/` to `skills/<new-skill>/`.
+1. Create `skills/<new-skill>/SKILL.md` (use the `write-a-skill` skill or copy an existing skill as a starting point).
 2. Update `SKILL.md` frontmatter: `name` (kebab-case, matches folder), `description` (one-line, action-oriented — this is what Claude reads to decide invocation), optional `allowed-tools`.
-3. Add a row to the skills table in the root `README.md`.
+3. Add a row to the skills table in the root `README.md` and the `skills` array in `.claude-plugin/plugin.json`.
 4. Commit as `feat(<new-skill>): add skill`.
 
 See `skills/README.md` for the frontmatter contract and folder layout.
