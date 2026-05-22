@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["unicorn", "oxc"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "no-unused-vars": "warn",
+    "unicorn/no-empty-file": "off"
+  },
+  "ignorePatterns": ["**/node_modules/**", "pnpm-lock.yaml"],
+  "env": {
+    "builtin": true
+  }
+}
