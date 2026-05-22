@@ -1,37 +1,48 @@
-# skills
+<div align="center">
+
+# 🧩 skills
+
+**Reusable [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) agent skills — install one with `npx skills add`, symlink the whole bundle for live development, or ship your own in the prescribed kirchDev house style**
 
 [![skills.sh](https://skills.sh/b/TitusKirch/skills)](https://skills.sh/TitusKirch/skills)
+[![Tests](https://img.shields.io/github/actions/workflow/status/TitusKirch/skills/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/TitusKirch/skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/TitusKirch/skills?style=flat-square&color=10b981)](LICENSE)
 
-Reusable [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) agent skills by [Titus Kirch](https://github.com/TitusKirch).
+</div>
 
-Each subfolder under [`skills/`](skills/) is a self-contained skill — a `SKILL.md` with YAML frontmatter that Claude Code can discover and invoke on demand.
-
-## Available skills
-
-<!-- prettier-ignore-start -->
-
-| Skill                                          | Description                                            |
-| :--------------------------------------------- | :----------------------------------------------------- |
-| [`write-readme`](skills/write-readme/SKILL.md) | Generates project READMEs in the kirchDev house style. |
-
-<!-- prettier-ignore-end -->
-
-## Installation
-
-### Option A — `skills.sh` CLI (recommended for users)
-
-The [`skills.sh`](https://skills.sh) CLI fetches skills directly from this repo and wires them into your AI agent:
+---
 
 ```bash
 npx skills add TitusKirch/skills
 ```
 
-To opt out of the CLI's anonymous install-count telemetry, set `DISABLE_TELEMETRY=1`.
+That's it. Every skill in this bundle is now discoverable inside Claude Code — no manifest editing, no symlink dance.
 
-### Option B — symlink locally (recommended for development on this repo)
+## ✨ Features
 
-Clone the repo, then symlink every `skills/<name>/` into `~/.claude/skills/`:
+- **🧩 Self-contained skills** — each folder under `skills/` ships a `SKILL.md` (YAML frontmatter + body) plus optional templates, references and scripts. No runtime code.
+- **🛡️ Lint-clean by construction** — `oxlint` + `oxfmt` (markdown-first) gated by husky + commitlint + lint-staged. CI runs the same checks.
+- **🔁 Three install paths** — `skills.sh` CLI for users, `pnpm skills:link` for live local dev, hand-copy for one-off picks.
+- **📋 House-style enforced** — the [`write-readme`](skills/write-readme/SKILL.md) skill prescribes the README layout, section emojis and badge palette so every kirchDev repo looks the same.
+- **🚀 Release-please ready** — Conventional Commits drive automated versioning + CHANGELOG via release-please on `main`.
+
+## 🧩 Available skills
+
+| Skill                                          | Description                                            |
+| :--------------------------------------------- | :----------------------------------------------------- |
+| [`write-readme`](skills/write-readme/SKILL.md) | Generates project READMEs in the kirchDev house style. |
+
+## 📦 Installation
+
+### Option A — `skills.sh` CLI (recommended for users)
+
+```bash
+npx skills add TitusKirch/skills
+```
+
+Set `DISABLE_TELEMETRY=1` to opt out of the CLI's anonymous install-count telemetry.
+
+### Option B — symlink locally (recommended when developing on this repo)
 
 ```bash
 git clone https://github.com/TitusKirch/skills.git
@@ -39,28 +50,54 @@ cd skills
 pnpm install
 pnpm skills:link        # symlinks every skill into ~/.claude/skills/
 pnpm skills:list        # lists every SKILL.md in the repo
-pnpm skills:unlink      # removes the symlinks again
+pnpm skills:unlink      # removes only the symlinks pointing back into this repo
 ```
 
-Restart Claude Code (or run `/reload-plugins`); the skills become discoverable. Because they're symlinks, edits to the working copy are picked up live.
+Restart Claude Code (or run `/reload-plugins`). Because the skills live as symlinks, edits in the working copy are picked up live.
 
 ### Option C — install a single skill by hand
 
 Copy one skill folder into:
 
 - **User scope** — `~/.claude/skills/<skill-name>/` (available in every project).
-- **Project scope** — `.claude/skills/<skill-name>/` (committed with the project).
+- **Project scope** — `.claude/skills/<skill-name>/` (committed alongside the consuming project).
 
-## Development
+## 🚀 Quick start
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Quick start:
+Once installed, invoke a skill by name or trigger phrase. The `write-readme` skill, for example, activates on prompts like:
 
-```bash
-pnpm install
-pnpm check       # lint + format
-pnpm check:fix   # auto-fix
+```text
+/write-readme draft a README for my new Laravel package
 ```
 
-## License
+Claude Code picks the right skill based on the `description:` field in each `SKILL.md` — write that field tight and the agent will route correctly.
 
-[MIT](LICENSE) © IT-Dienstleistungen Titus Kirch.
+## ➕ Adding a new skill
+
+1. Create `skills/<skill-name>/SKILL.md` with the frontmatter contract documented in [`skills/README.md`](skills/README.md).
+2. Add the skill to the table above and to the `skills` array in [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json).
+3. Run `pnpm skills:link && pnpm check`.
+4. Commit as `feat(<skill-name>): add skill`.
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full workflow.
+
+## 💡 Inspiration
+
+The local `pnpm skills:link` / `:list` / `:unlink` scripts are modelled on [mattpocock/skills](https://github.com/mattpocock/skills) — a great reference for keeping a personal skills bundle activatable without a marketplace.
+
+## 🤝 Contributing
+
+PRs welcome. Conventional Commits required (enforced via commitlint). Husky runs `oxlint` + `oxfmt` on `git commit` — primarily on markdown, since that's what skills are made of.
+
+> [!TIP]
+> Run `pnpm check:fix` before pushing — CI will catch what husky missed.
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`SECURITY.md`](SECURITY.md).
+
+## 🛣️ Versioning
+
+[Semantic Versioning](https://semver.org/) via [release-please](https://github.com/googleapis/release-please) — see [CHANGELOG.md](CHANGELOG.md).
+
+## 📄 License
+
+[MIT](LICENSE) © [Titus Kirch](https://github.com/TitusKirch/) / [IT-Dienstleistungen Titus Kirch](https://kirch.dev)
