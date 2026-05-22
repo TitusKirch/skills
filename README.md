@@ -13,7 +13,10 @@
 ---
 
 ```bash
-npx skills add TitusKirch/skills
+npx skills add TitusKirch/skills        # npm
+pnpm dlx skills add TitusKirch/skills   # pnpm
+yarn dlx skills add TitusKirch/skills   # yarn
+bunx skills add TitusKirch/skills       # bun
 ```
 
 That's it. Every skill in this bundle is now discoverable inside Claude Code — no manifest editing, no symlink dance.
@@ -37,7 +40,10 @@ That's it. Every skill in this bundle is now discoverable inside Claude Code —
 ### Option A — `skills.sh` CLI (recommended for users)
 
 ```bash
-npx skills add TitusKirch/skills
+npx skills add TitusKirch/skills        # npm
+pnpm dlx skills add TitusKirch/skills   # pnpm
+yarn dlx skills add TitusKirch/skills   # yarn
+bunx skills add TitusKirch/skills       # bun
 ```
 
 Set `DISABLE_TELEMETRY=1` to opt out of the CLI's anonymous install-count telemetry.
