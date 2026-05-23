@@ -8,6 +8,7 @@
 |  🏗️   | Infrastructure / IaC                 |
 |  📚   | Documentation / knowledge bases      |
 |  🧰   | Developer tooling / CLIs             |
+|  🖥️   | TUI / terminal apps                  |
 |  🧩   | Skills / plugins / extensions        |
 |  ⚡   | Performance / runtime libraries      |
 |  🤖   | Agents / automation                  |
@@ -61,6 +62,11 @@ Each bullet starts with an emoji that reflects the feature's nature — these ar
 | Auth / GitHub App   | 🤖              |
 | CI / plan-on-PR     | 📋              |
 | Apply / deploy      | 🚀              |
+| Save / persistence  | 💾              |
+| Warning / guard     | ⚠️              |
+| Mouse / input       | 🖱️              |
+| Navigation / panes  | 🧭              |
+| Toggle / enable     | ☑️              |
 
 ## Badges
 
@@ -107,6 +113,15 @@ Rules:
 [![License: MIT](https://img.shields.io/npm/l/{pkg}.svg?style=flat-square&color=10b981)](LICENSE)
 ```
 
+> [!NOTE]
+> **Bun-only / non-`npx`-compatible packages:** skip the npm badge set entirely. The version and downloads badges imply `npx {pkg}` works — showing them on a package that only runs under `bunx` (or requires a global install) is semantically wrong, even if the numbers are correct.
+
+**Bun engine badge** (use in place of the Node version badge for Bun-only packages — shields has no dynamic `engines.bun` lookup, so the version is static and must be bumped manually in the README when `package.json#engines.bun` changes):
+
+```markdown
+[![Bun Version](https://img.shields.io/badge/bun-{minVersion}%2B-8993be?style=flat-square)](https://bun.sh)
+```
+
 **Laravel-specific framework badge** (add alongside the standard PHP set when the package is Laravel-only):
 
 ```markdown
@@ -142,6 +157,13 @@ The hook is the first thing after the hero. Pick the format that best fits the p
   ```
 
 - **CLI** → a single command + expected output line.
+
+- **CLI with multiple invocation forms** (e.g. `bunx` / `npx` / global) → a bash block with one command per line and an inline comment naming the form:
+
+  ```bash
+  bunx {pkg}              # one-off, no install
+  bun add -g {pkg} && {pkg}  # global install
+  ```
 
 Always follow the hook with **one** plain sentence summarising the value (no list, no second snippet). Example:
 
