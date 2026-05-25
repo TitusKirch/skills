@@ -31,7 +31,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          app-id: '3831936'
+          client-id: 'Iv23li3hNqtsZ8fDlwqH'
           private-key: ${{ env.KIRCHDEV_RELEASE_APP_PEM }}
 
       - id: release
