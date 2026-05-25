@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/TitusKirch/skills/compare/v0.2.0...v0.3.0) (2026-05-25)
+
+
+### Features
+
+* **ci:** run release-please under the kirchDev Release App ([9fc9ff3](https://github.com/TitusKirch/skills/commit/9fc9ff3339bc4aa47989082cd51d34dbc8adb1b2))
+* **ci:** run release-please under the kirchDev Release App ([#6](https://github.com/TitusKirch/skills/issues/6)) ([3ab039c](https://github.com/TitusKirch/skills/commit/3ab039cfc8a697f41865ecc2502f47ae926d9f29))
+
 ## [0.2.0](https://github.com/TitusKirch/skills/compare/skills-v0.1.0...skills-v0.2.0) (2026-05-23)
 
 
