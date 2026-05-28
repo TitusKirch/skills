@@ -31,10 +31,11 @@ That's it. Every skill in this bundle is now discoverable inside Claude Code —
 
 ## 🧩 Available skills
 
-| Skill                                          | Description                                                           |
-| :--------------------------------------------- | :-------------------------------------------------------------------- |
-| [`vhs-demo`](skills/vhs-demo/SKILL.md)         | Creates & maintains a reproducible terminal-demo GIF from a VHS tape. |
-| [`write-readme`](skills/write-readme/SKILL.md) | Generates project READMEs in the kirchDev house style.                |
+| Skill                                              | Description                                                           |
+| :------------------------------------------------- | :-------------------------------------------------------------------- |
+| [`compact-readme`](skills/compact-readme/SKILL.md) | Slims down an existing overstuffed README without losing information. |
+| [`vhs-demo`](skills/vhs-demo/SKILL.md)             | Creates & maintains a reproducible terminal-demo GIF from a VHS tape. |
+| [`write-readme`](skills/write-readme/SKILL.md)     | Generates project READMEs in the kirchDev house style.                |
 
 ## 📦 Installation
 
