@@ -3,6 +3,17 @@
   "name": "@tituskirch/skills",
   "version": "0.3.0",
   "description": "Agent skills by Titus Kirch — installable via skills.sh in Claude Code, Cursor, Windsurf and friends.",
+  "keywords": [
+    "agent-skills",
+    "ai-agents",
+    "claude-code",
+    "cursor",
+    "kirchdev",
+    "llm",
+    "prompt-engineering",
+    "skills",
+    "windsurf"
+  ],
   "homepage": "https://github.com/TitusKirch/skills#readme",
   "bugs": {
     "url": "https://github.com/TitusKirch/skills/issues"
