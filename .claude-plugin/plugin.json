@@ -9,5 +9,9 @@
   },
   "homepage": "https://github.com/TitusKirch/skills",
   "license": "MIT",
-  "skills": ["./skills/write-readme"]
+  "skills": [
+    "./skills/compact-readme",
+    "./skills/vhs-demo",
+    "./skills/write-readme"
+  ]
 }
