@@ -5,7 +5,6 @@
 
 ### Features
 
-* **ci:** run release-please under the kirchDev Release App ([9fc9ff3](https://github.com/TitusKirch/skills/commit/9fc9ff3339bc4aa47989082cd51d34dbc8adb1b2))
 * **ci:** run release-please under the kirchDev Release App ([#6](https://github.com/TitusKirch/skills/issues/6)) ([3ab039c](https://github.com/TitusKirch/skills/commit/3ab039cfc8a697f41865ecc2502f47ae926d9f29))
 
 ## [0.2.0](https://github.com/TitusKirch/skills/compare/skills-v0.1.0...skills-v0.2.0) (2026-05-23)
@@ -19,6 +18,5 @@
 * scaffold skills directory with example-skill template ([73d71b7](https://github.com/TitusKirch/skills/commit/73d71b721541fc4479d70e3821155734cbf99c70))
 * **write-readme:** add Bun engine badge template ([3947ec9](https://github.com/TitusKirch/skills/commit/3947ec97ea3c32c45eea3cb0c22c1bffcaa73180))
 * **write-readme:** add skill for generating kirchDev-style READMEs ([07f34d0](https://github.com/TitusKirch/skills/commit/07f34d0e20657113ed9034db0e533b24fc12cc41))
-* **write-readme:** expand REFERENCE catalogue ([331d8be](https://github.com/TitusKirch/skills/commit/331d8be18269800e895a39f5c2ba08295d3ffede))
 * **write-readme:** expand REFERENCE catalogue ([#4](https://github.com/TitusKirch/skills/issues/4)) ([aac814e](https://github.com/TitusKirch/skills/commit/aac814e62c50ef3b9da69c2eaaf8f2ea83734bcc))
 * **write-readme:** fix badge color palette and require gap report ([0580373](https://github.com/TitusKirch/skills/commit/0580373932a2bb5ebd053f459aee4503f949fbf4))
