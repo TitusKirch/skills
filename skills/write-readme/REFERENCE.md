@@ -5,6 +5,7 @@
 | Emoji | Project type                         |
 | :---: | :----------------------------------- |
 |  🛡️   | Security / authz / policy libraries  |
+|  📱   | Device / session management          |
 |  🏗️   | Infrastructure / IaC                 |
 |  📚   | Documentation / knowledge bases      |
 |  🧰   | Developer tooling / CLIs             |
@@ -28,6 +29,9 @@ These are the **prescribed** emojis for recurring sections. Use the same emoji f
 | Configuration                              |  ⚙️   | Use when there's a non-trivial config table.       |
 | Testing                                    |  🧪   | Library-grade test suites.                         |
 | Multi-tenant / Org / Workspace scoping     |  🏢   | Anything tenant-aware.                             |
+| Sessions / device management               |  📱   | Listing, naming, revoking sessions/devices.        |
+| Events / listeners / broadcasting          |  📡   | Emitted events, listeners, broadcast channels.     |
+| Overridable contracts / extension points   |  🧩   | Swappable interfaces, custom implementations.      |
 | Decision trace / Observability / Debugging |  🔍   | Inspection, tracing, debug surfaces.               |
 | Cascade / Cleanup / Lifecycle              |  🧹   | Delete semantics, GC, retention.                   |
 | Migration (from / to)                      |  🔁   | Migrating from another package, or workflow loops. |
