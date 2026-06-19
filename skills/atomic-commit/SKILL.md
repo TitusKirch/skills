@@ -1,0 +1,58 @@
+---
+name: atomic-commit
+description: Commits the current session's working-tree changes as a series of atomic Conventional Commits. Auto-detects the repo's own conventions from git history and config — whether scopes are used, which commit types and scopes are allowed, the commitlint rules, and the message language — then groups related changes into logically atomic commits (splitting a file at hunk level when it mixes concerns) and writes a Conventional Commit message per group. Always presents the full plan first and commits only after confirmation; switches to plan-only (no commit) when asked. Use when the user wants to commit session or feature work, mentions conventional or atomic commits, splitting changes into multiple commits, or says things like "how would you commit this", "just show me the plan", "don't commit yet", "nicht committen".
+allowed-tools:
+  - Bash
+  - Read
+  - Grep
+  - Glob
+---
+
+# atomic-commit
+
+Turn the uncommitted work from a session into a clean series of **atomic Conventional Commits**. The skill reads the repo's own conventions, splits the changes into the smallest sensible commits, and either commits them after your confirmation — or, when you ask it not to, just shows exactly what would go where.
+
+## Workflow
+
+### 1. Detect conventions (read the repo — never assume)
+
+- **Scopes on/off** — sample `git log --pretty='%s' -n 80` and count subjects matching `type(scope):` vs `type:`. Majority wins; ties or thin history fall back to config.
+- **Types & scopes in use** — collect the types and scope words already present and prefer them.
+- **commitlint** — look for `commitlint.config.*`, `.commitlintrc*`, or a `commitlint` key in `package.json`. If found, treat its rules (`type-enum`, `scope-enum`, `header-max-length`, `subject-case`) as hard constraints.
+- **Language** — match the language of existing subjects; default to English.
+
+Exact detection recipes: [REFERENCE.md](REFERENCE.md#detecting-conventions).
+
+### 2. Survey the changes
+
+- `git status --porcelain` + `git diff` (unstaged) + `git diff --staged` + list untracked files.
+- Read the diffs so you understand _what_ changed, not just _which files_. Fold anything already staged into the plan.
+
+### 3. Plan atomic commits
+
+- **One logical change per commit.** Split feature vs. fix vs. refactor vs. docs vs. tooling/config vs. tests. If you'd join two changes with the word "and", they are probably two commits.
+- **Order by dependency** — deps/config/scaffolding first, then the core change, then tests, then docs/chores. Each commit should ideally leave the tree building.
+- **Hunk-level when needed** — if one file mixes concerns, assign individual hunks to different commits ([REFERENCE.md](REFERENCE.md#hunk-level-staging)).
+- Pick `type(scope): subject` per group from the detected conventions. Subject = imperative, lowercase, no trailing period, within the max length. Add a body only when the _why_ isn't obvious.
+
+### 4. Present the plan (always, before any commit)
+
+Show the detected conventions, then a numbered commit plan: each commit's message and the files/hunks it includes, plus a one-line rationale. Flag any leftover/unassigned changes. Format in [REFERENCE.md](REFERENCE.md#plan-output).
+
+### 5. Commit — or stop
+
+- **Plan-only triggers** ("nicht committen", "nur den plan", "wie würdest du das committen", "don't commit", "dry run", "just show me"): **stop after the plan** and print the exact `git` commands the user could run. Do **not** run `git commit`.
+- **Otherwise**: ask for confirmation, then execute group by group — stage exactly that group's files/hunks, commit, verify with `git diff --cached --stat` before and `git log -1` after. Reset staging between groups so commits stay atomic.
+
+## Guardrails
+
+- **Never `--no-verify`.** Let husky/commitlint hooks run; if a hook rejects a commit, surface the error and stop.
+- **Commit only — never push, amend, or rebase** unless explicitly asked.
+- **Don't commit secrets.** Scan staged content for `.env`, keys, tokens; warn and exclude.
+- **Respect the branch.** If on `main`/`master` and the repo works on feature branches, confirm (or offer to branch) before committing.
+- **Keep commits atomic _and_ buildable** — don't split a symbol from its only call site if that breaks the build; note the trade-off when unavoidable.
+- **Verify each step.** After every commit, confirm it landed and the remaining tree matches the plan.
+
+## Reference
+
+Convention-detection recipes, hunk-staging mechanics, the type catalogue, commitlint-aware rules, and worked examples: [REFERENCE.md](REFERENCE.md).
