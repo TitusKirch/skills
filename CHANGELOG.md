@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.0](https://github.com/TitusKirch/skills/compare/v0.3.0...v0.4.0) (2026-06-19)
+
+
+### Features
+
+* add package.json keywords ([96a4ca0](https://github.com/TitusKirch/skills/commit/96a4ca0c7316f48c36ac36bc1e64b7325b256561))
+* add package.json keywords ([#10](https://github.com/TitusKirch/skills/issues/10)) ([ccf1e7b](https://github.com/TitusKirch/skills/commit/ccf1e7b159abad5716158e0beb38163d8dced761))
+* **atomic-commit:** add skill ([40042a5](https://github.com/TitusKirch/skills/commit/40042a55eb3ddd84a55c1fd01e62f5afce4e1fed))
+* **compact-readme:** add skill ([256d5ba](https://github.com/TitusKirch/skills/commit/256d5bab02698cd4d8c068458bd13c24d022bebd))
+* **vhs-demo:** add skill ([2390a67](https://github.com/TitusKirch/skills/commit/2390a67e4614ecc389d3c0b52acfba7f9e627f61))
+
+
+### Bug Fixes
+
+* **dependabot:** match managed area:* label names ([4663d34](https://github.com/TitusKirch/skills/commit/4663d34025e54e5e330092bcbd2d64e7a9cd4f79))
+
 ## [0.3.0](https://github.com/TitusKirch/skills/compare/v0.2.0...v0.3.0) (2026-05-25)
 
 
