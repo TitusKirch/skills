@@ -35,7 +35,7 @@ From the phrasing: **create** (default for a new description), **update** (an is
 
 - **Title** — short, clear, scannable: the essence in a few words (aim ≤ ~60 chars), **not** a full sentence with trailing clauses or parentheticals; that detail belongs in the body. Apply the title style (`issue.title.convention`, default **plain**).
 - **Body** — drafted from the free-text description **plus the session context** (what was just discussed/done), in the configured language (`issue.language`, falling back to the root `language`).
-- **Labels / state / team** — pick **from the cached catalog**, contextually for this issue, not from static defaults. **Never auto-apply the built-in denylist `stack:*`, `autorelease:*`, `dependencies`** (stack tags / release-please / dependabot), plus anything in `issue.labels.exclude`, which **extends** it — matching is glob (`*` wildcard). Linear needs a `team`: resolve `issue.linear.team` (a human name/key) to its id via the cache.
+- **Labels / state / team** — pick **from the cached catalog**, contextually for this issue, not from static defaults. **Skip any label matching `issue.labels.exclude`** (glob patterns, `*` wildcard) — there is no built-in denylist; what to exclude is entirely the repo's config. Linear needs a `team`: resolve `issue.linear.team` (a human name/key) to its id via the cache.
 
 ### 5. Bulk & sub-issues
 
