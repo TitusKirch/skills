@@ -91,13 +91,20 @@ Triggered when the config is missing/incomplete or the user runs `/issue setup`.
 
 ### Sub-issues
 
-GitHub's sub-issues are a REST feature, not yet first-class in `gh`. Create the children as normal issues, then link each via the API:
+GitHub's sub-issues are a REST feature, not first-class in `gh` yet — create the children as normal issues, then link each via `gh api`. `sub_issue_id` is the child's **database id** (integer), **not** its issue number: fetch it with `gh api repos/{owner}/{repo}/issues/{n} --jq .id`, and pass it typed with `-F` (not `-f`, which sends a string).
 
 ```bash
-gh api -X POST repos/{owner}/{repo}/issues/{parent}/sub_issues -f sub_issue_id=<child_issue_id>
+# add a child to a parent
+gh api --method POST repos/{owner}/{repo}/issues/{parent}/sub_issues -F sub_issue_id=<child_db_id>
+
+# list a parent's sub-issues
+gh api repos/{owner}/{repo}/issues/{parent}/sub_issues
+
+# remove one (note the singular path segment: sub_issue)
+gh api --method DELETE repos/{owner}/{repo}/issues/{parent}/sub_issue -F sub_issue_id=<child_db_id>
 ```
 
-`<child_issue_id>` is the issue's **node/database id** (from `gh api repos/{owner}/{repo}/issues/{n} --jq .id`), not its number. Verify the endpoint against the current GitHub REST docs at build/run time — it is comparatively new.
+Add `-F replace_parent=true` to reparent a child that already has a parent. Reprioritize with `PATCH .../issues/{parent}/sub_issues/priority` (`sub_issue_id` + `after_id`/`before_id`).
 
 ## Backend — Linear (MCP)
 
