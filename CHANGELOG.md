@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.6.0](https://github.com/TitusKirch/skills/compare/v0.5.1...v0.6.0) (2026-06-21)
+
+
+### Features
+
+* **atomic-commit:** reference the issue when in issue context ([49d7eee](https://github.com/TitusKirch/skills/commit/49d7eeef5f82aae237c83dba228ef8c660e8c4a7))
+* **issue:** ship a built-in label denylist ([a4325a8](https://github.com/TitusKirch/skills/commit/a4325a8186a3d61e000835a82e88b673ef4d4ab7))
+* **issue:** support a label exclude list ([bec0dff](https://github.com/TitusKirch/skills/commit/bec0dffff5843fc093b134ae9f9eff3d47b8a9f2))
+* **pull-request:** close linked issues with keywords ([5d1084a](https://github.com/TitusKirch/skills/commit/5d1084a4aa681108c44ecd3669ac7c8770613ba7))
+
+
+### Bug Fixes
+
+* **issue:** drive label exclusions from config only ([15bac96](https://github.com/TitusKirch/skills/commit/15bac9663515651d7293e6951bc76c7abf0c5446))
+* **issue:** keep field metadata out of the issue body ([a842112](https://github.com/TitusKirch/skills/commit/a8421122b17dbb0e0999577255024b85cfd859b9))
+* **issue:** keep issue titles short and scannable ([1b85a86](https://github.com/TitusKirch/skills/commit/1b85a86a9ffba0e011ab2646f06ad9f16c5b085f))
+
 ## [0.5.1](https://github.com/TitusKirch/skills/compare/v0.5.0...v0.5.1) (2026-06-21)
 
 
