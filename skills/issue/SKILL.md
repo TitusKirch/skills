@@ -33,7 +33,8 @@ From the phrasing: **create** (default for a new description), **update** (an is
 
 ### 4. Draft the content
 
-- **Title + body** from the free-text description **plus the session context** (what was just discussed/done). Apply the language rules (`issue.language`, falling back to the root `language`) and the title style (`issue.title.convention`, default **plain**).
+- **Title** — short, clear, scannable: the essence in a few words (aim ≤ ~60 chars), **not** a full sentence with trailing clauses or parentheticals; that detail belongs in the body. Apply the title style (`issue.title.convention`, default **plain**).
+- **Body** — drafted from the free-text description **plus the session context** (what was just discussed/done), in the configured language (`issue.language`, falling back to the root `language`).
 - **Labels / state / team** — pick **from the cached catalog**, contextually for this issue, not from static defaults. Linear needs a `team`: resolve `issue.linear.team` (a human name/key) to its id via the cache.
 
 ### 5. Bulk & sub-issues
