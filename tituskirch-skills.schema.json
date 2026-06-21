@@ -14,6 +14,18 @@
       "$ref": "#/$defs/language",
       "description": "Shared default message/title/body language for all skills. Overridable per skill section."
     },
+    "commit": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "atomic-commit settings.",
+      "properties": {
+        "language": {
+          "type": "string",
+          "enum": ["en", "de", "match"],
+          "description": "Overrides the root language for commit messages."
+        }
+      }
+    },
     "pr": {
       "type": "object",
       "additionalProperties": false,

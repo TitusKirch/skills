@@ -109,18 +109,19 @@ If subjects are consistently in another language, match it. Otherwise write Engl
 
 Keys this skill reads:
 
-| Key               | Effect                                                                 |
-| :---------------- | :--------------------------------------------------------------------- |
-| `language` (root) | message language — `en`, `de`, or `match`; overrides history detection |
+| Key               | Effect                                                                           |
+| :---------------- | :------------------------------------------------------------------------------- |
+| `commit.language` | commit-message language — `en`, `de`, or `match`; overrides the root + detection |
+| `language` (root) | shared default language; used when `commit.language` is unset                    |
 
 ```bash
 config="$(git rev-parse --show-toplevel)/.tituskirch-skills.json"
 if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
-  lang=$(jq -er '.language // empty' "$config" 2>/dev/null) || lang=
+  lang=$(jq -er '.commit.language // .language // empty' "$config" 2>/dev/null) || lang=
 fi
 ```
 
-`language` is a shared root key (the same value also drives `gh-pull-request`); other keys live under skill sections (`pr.*`, `issue.*`) and are documented in those skills. Full schema: the repo-root `tituskirch-skills.schema.json`.
+`language` is a shared root key (it also drives `gh-pull-request` and `issue`); `commit.language` overrides it for commit messages, mirroring `pr.language` / `issue.language`. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
 ## Release-gated repos
 

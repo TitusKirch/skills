@@ -19,12 +19,12 @@ Turn the uncommitted work from a session into a clean series of **atomic Convent
 
 Conventions are **repo-wide, not branch-specific**, and change rarely — so cache them per-repo instead of re-detecting every run. The cache is **shared across TitusKirch skills** (e.g. `gh-pull-request` reads the same convention for its PR title) at `$(git rev-parse --git-common-dir)/tituskirch-skills/conventions`. Before sampling, check for a fresh cache there: **reuse it when it is younger than 3 days _and_ the commitlint config is unchanged** (hash match). Re-detect with the recipes below — and rewrite the cache — when it is missing, older than 3 days, the config hash differs, or the user asks to refresh ("neu prüfen", "refresh", "--refresh"). Cache mechanics, the shared namespace, and the one-time migration from the old `atomic-commit-cache`: [REFERENCE.md](REFERENCE.md#convention-cache).
 
-A committed, optional config can override detection: if `$(git rev-parse --show-toplevel)/.tituskirch-skills.json` exists and sets `language`, it wins (read with `jq`; missing file or missing `jq` → ignore and warn once, fall back to detection). Resolution per setting: **config → detected/native → built-in default**. Keys this skill reads: [REFERENCE.md](REFERENCE.md#config).
+A committed, optional config can override detection: if `$(git rev-parse --show-toplevel)/.tituskirch-skills.json` exists and sets `commit.language` (or the shared root `language`), it wins (read with `jq`; missing file or missing `jq` → ignore and warn once, fall back to detection). Resolution per setting: **config → detected/native → built-in default**. Keys this skill reads: [REFERENCE.md](REFERENCE.md#config).
 
 - **Scopes on/off** — sample `git log --pretty='%s' -n 80` and count subjects matching `type(scope):` vs `type:`. Majority wins; ties or thin history fall back to config.
 - **Types & scopes in use** — collect the types and scope words already present and prefer them.
 - **commitlint** — look for `commitlint.config.*`, `.commitlintrc*`, or a `commitlint` key in `package.json`. If found, treat its rules (`type-enum`, `scope-enum`, `header-max-length`, `subject-case`, `body-max-line-length`) as hard constraints.
-- **Language** — `.tituskirch-skills.json` `language` if set, else match the language of existing subjects; default to English.
+- **Language** — `.tituskirch-skills.json` `commit.language` (then root `language`) if set, else match the language of existing subjects; default to English.
 
 Exact detection recipes: [REFERENCE.md](REFERENCE.md#detecting-conventions).
 
