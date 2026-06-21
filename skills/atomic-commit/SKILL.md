@@ -39,6 +39,7 @@ Exact detection recipes: [REFERENCE.md](REFERENCE.md#detecting-conventions).
 - **Order by dependency** — deps/config/scaffolding first, then the core change, then tests, then docs/chores. Each commit should ideally leave the tree building.
 - **Hunk-level when needed** — if one file mixes concerns, assign individual hunks to different commits ([REFERENCE.md](REFERENCE.md#hunk-level-staging)).
 - Pick `type(scope): subject` per group from the detected conventions. Subject = imperative, lowercase, no trailing period, within the max length. Add a body only when the _why_ isn't obvious; when you do, **hard-wrap every body line** to the repo's `body-max-line-length` (100 by default under config-conventional, unless disabled) — one long line is the most common `commit-msg` hook rejection.
+- **Release-relevant changes must be `feat`/`fix`.** If the repo uses release-please (`release-please-config.json`, `.release-please-manifest.json`, or a release-please workflow), **only `feat:`/`fix:` cut a release** — `refactor`/`chore`/`perf`/`ci`/… ship nothing on their own. So anything that should reach the next release must be typed `feat`/`fix`; never label a change that alters behavior or deployed state `refactor` just because the diff looks like a restructure (in IaC a rename can mean destroy+recreate). A genuinely effect-free refactor stays `refactor`. Details: [REFERENCE.md](REFERENCE.md#release-gated-repos).
 
 ### 4. Present the plan (always, before any commit)
 

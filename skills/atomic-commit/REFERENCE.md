@@ -122,6 +122,16 @@ fi
 
 `language` is a shared root key (the same value also drives `gh-pull-request`); other keys live under skill sections (`pr.*`, `issue.*`) and are documented in those skills. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
+## Release-gated repos
+
+Some repos ship only on a release, and **release-please cuts a release only for `feat:` (minor) and `fix:` (patch)** — `refactor`/`chore`/`perf`/`ci`/`docs`/`style`/`test`/`build` produce no version bump and no release. release-please's mapping is fixed; `changelog-sections` only changes changelog display, `versioning` only the bump size — the commit type is the only lever.
+
+So when a repo uses release-please (detect via `release-please-config.json`, `.release-please-manifest.json`, or a workflow that runs `googleapis/release-please-action`):
+
+- **Type by effect, not by how the diff looks.** A change that alters behavior or deployed/rendered state must be `feat`/`fix` so it actually ships — even if it reads like a restructure. This bites hardest in IaC/config (Terraform/OpenTofu, Helm, k8s YAML), where renaming or reordering can change the applied result (a rename can mean destroy + recreate), but it applies to ordinary code too.
+- **A genuinely effect-free refactor stays `refactor`.** The rule corrects mislabels (effectful change typed as `refactor`), it does not devalue real refactors — they ride along with the next release harmlessly.
+- This is advisory: surface it in the plan and offer to re-type, never block. There is **no config switch** — the rule keys purely off release-please being present.
+
 ## Type catalogue (Conventional Commits)
 
 | type     | use for                                                 |
