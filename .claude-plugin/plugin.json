@@ -15,6 +15,7 @@
     "./skills/issue",
     "./skills/pull-request",
     "./skills/vhs-demo",
+    "./skills/write-docs",
     "./skills/write-readme"
   ]
 }

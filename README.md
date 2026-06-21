@@ -41,6 +41,7 @@ That's it. Every skill in this bundle is now discoverable inside Claude Code —
 | [`issue`](skills/issue/SKILL.md)                   | Creates/updates/searches issues across GitHub (gh) or Linear (MCP), backend chosen by config. |
 | [`pull-request`](skills/pull-request/SKILL.md)     | Opens a pull request from the current branch via gh; backend chosen by config (github in v1). |
 | [`vhs-demo`](skills/vhs-demo/SKILL.md)             | Creates & maintains a reproducible terminal-demo GIF from a VHS tape.                         |
+| [`write-docs`](skills/write-docs/SKILL.md)         | Scaffolds, extends and reconciles a project's docs/ tree in the TitusKirch docs format.       |
 | [`write-readme`](skills/write-readme/SKILL.md)     | Generates project READMEs in the kirchDev house style.                                        |
 
 <!-- skills:end -->
