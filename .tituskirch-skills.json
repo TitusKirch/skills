@@ -1,8 +1,11 @@
 {
   "$schema": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
+  "language": "en",
+  "pr": {
+    "base": "dev"
+  },
   "issue": {
     "backend": "github",
-    "language": "en",
     "title": { "convention": "plain" }
   }
 }
