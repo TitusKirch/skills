@@ -136,6 +136,8 @@ issue plan
 Run: gh issue create --title "Login fails on expired session" --label bug,area:auth --body-file <tmp>
 ```
 
+**Fields, not prose** — labels, milestone, project, assignee and state live in the plan header and are applied via flags / MCP params; never write them into the body, and omit any that are unset (no `No milestone` / `Labels: none` lines).
+
 For bulk, list each drafted issue (and parent/child links) under one plan. For plan-only mode, follow the plan with the exact command(s) / MCP call(s) and stop.
 
 ## Worked examples
