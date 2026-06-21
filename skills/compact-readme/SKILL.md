@@ -1,7 +1,7 @@
 ---
 name: compact-readme
 summary: Slims down an existing overstuffed README without losing information.
-description: Compacts an existing, overstuffed README so the landing view leads to the install/run command in ~30 seconds, without losing any information — long feature walls and option tables move into <details> blocks, install+quickstart merge, and duplicated taglines/runtime-notes are deduped. Preserves the kirchDev house style (centered hero, emoji tagline, section emojis, Versioning/License closers). The complement to write-readme: write-readme scaffolds a new README from scratch; compact-readme slims down one that already exists. Use when a README is too long/dense/repetitive and the user wants it tightened, condensed, decluttered, or made scannable. Do not use to create a new README.
+description: Compacts an existing, overstuffed README so the landing view leads to the install/run command in ~30 seconds, without losing any information — long feature walls and option tables move into <details> blocks, install+quickstart merge, and duplicated taglines/runtime-notes are deduped. Preserves the kirchDev house style (centered hero, emoji tagline, section emojis, Versioning/License closers). The complement to write-readme — write-readme scaffolds a new README from scratch; compact-readme slims down one that already exists. Use when a README is too long/dense/repetitive and the user wants it tightened, condensed, decluttered, or made scannable. Do not use to create a new README.
 allowed-tools:
   - Read
   - Write
