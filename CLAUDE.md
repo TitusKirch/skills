@@ -34,12 +34,11 @@ There is no test suite — skills are documentation, validated by lint/format on
 
 ## Adding a new skill
 
-1. Create `skills/<new-skill>/SKILL.md` (use the `write-a-skill` skill or copy an existing skill as a starting point).
-2. Update `SKILL.md` frontmatter: `name` (kebab-case, matches folder), `description` (one-line, action-oriented — this is what Claude reads to decide invocation), optional `allowed-tools`.
-3. Add a row to the skills table in the root `README.md` and the `skills` array in `.claude-plugin/plugin.json`.
-4. Commit as `feat(<new-skill>): add skill`.
+1. Create `skills/<new-skill>/SKILL.md` (use the `write-a-skill` skill or copy an existing skill as a starting point). Frontmatter: `name` (kebab-case, matches folder), `summary` (short line for the root README table), `description` (one-line, action-oriented — this is what Claude reads to decide invocation), optional `allowed-tools`.
+2. Run `pnpm skills:sync` to regenerate the root `README.md` skills table and `.claude-plugin/plugin.json` from the frontmatter — never hand-edit them (CI runs `pnpm skills:check`).
+3. Commit as `feat(<new-skill>): add skill`.
 
-See `skills/README.md` for the frontmatter contract and folder layout.
+Full workflow in [`CONTRIBUTING.md`](CONTRIBUTING.md); frontmatter contract and layout in `skills/README.md`.
 
 ## CI
 

@@ -46,7 +46,4 @@ Instructions for Claude when this skill is invoked. Be specific about:
 
 ## Adding a new skill
 
-1. Create `<skill-name>/SKILL.md` (use an existing skill as a structural reference).
-2. Fill in the frontmatter and body.
-3. Add a row to the root [`README.md`](../README.md) skills table and the `skills` array in [`.claude-plugin/plugin.json`](../.claude-plugin/plugin.json).
-4. Commit with `feat(<skill-name>): add skill`.
+Create `<skill-name>/SKILL.md` per the frontmatter contract above (use an existing skill as a structural reference), then run `pnpm skills:sync` to regenerate the root [`README.md`](../README.md) skills table and the `skills` array in [`.claude-plugin/plugin.json`](../.claude-plugin/plugin.json) — never hand-edit them. Full workflow: [`CONTRIBUTING.md`](../CONTRIBUTING.md).

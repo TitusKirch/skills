@@ -30,12 +30,11 @@ pnpm install   # wires husky hooks
 
 ## Adding a new skill
 
-1. Create a folder under `skills/<skill-name>/`.
-2. Add a `SKILL.md` with YAML frontmatter (`name`, `description`, optional `allowed-tools`) followed by the skill body.
-3. If the skill bundles resources (templates, scripts), keep them inside the same folder.
-4. Add an entry to the root [`README.md`](README.md) skills index.
-
-See [`skills/README.md`](skills/README.md) for the directory layout. Use an existing skill (e.g. [`skills/write-readme/`](skills/write-readme/)) as a structural reference.
+1. Create `skills/<skill-name>/SKILL.md` — YAML frontmatter (`name`, `summary`, `description`, optional `allowed-tools`) followed by the skill body. See [`skills/README.md`](skills/README.md) for the frontmatter contract and layout; use an existing skill (e.g. [`skills/write-readme/`](skills/write-readme/)) as a reference.
+2. Keep any bundled resources (templates, scripts) inside the same folder.
+3. Run `pnpm skills:sync` — it regenerates the root [`README.md`](README.md) skills table and [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) from your frontmatter. **Don't hand-edit either** (CI runs `pnpm skills:check`).
+4. Run `pnpm skills:link` to try it locally, then `pnpm check` before pushing.
+5. Commit as `feat(<skill-name>): add skill`.
 
 ## Running the suite
 
