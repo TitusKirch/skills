@@ -8,16 +8,18 @@ Run these against the actual repo before planning — the goal is to commit the 
 
 ### Convention cache
 
-Conventions change rarely and are identical on every branch, so persist them per-repo instead of re-detecting every run.
+Conventions change rarely and are identical on every branch, so persist them per-repo instead of re-detecting every run. This file is **shared with other TitusKirch skills** (`gh-pull-request` reads the same convention for its PR title); it holds only the genuinely shared convention block, so either skill can rewrite it in the same schema — last writer wins, no coordination needed.
 
-- **Location** — `$(git rev-parse --git-common-dir)/atomic-commit-cache`. The _common_ git dir is shared by every branch and linked worktree, lives outside the working tree, and is never tracked — so the cache survives branch switches and can't be committed by accident.
+- **Location** — `$(git rev-parse --git-common-dir)/tituskirch-skills/conventions`. The owner-namespaced directory (`tituskirch-skills/`, matching the plugin name) lives in the _common_ git dir — shared by every branch and linked worktree, outside the working tree, never tracked — so the cache survives branch switches and can't be committed by accident. Create the directory before writing (`mkdir -p`).
+- **Migration** — the old flat `$(git rev-parse --git-common-dir)/atomic-commit-cache` is obsolete. Don't read it; just re-detect once into the new path. Optionally `rm -f` the old file when writing the new one.
 - **Validity (hybrid: TTL + config hash)** — reuse the cache only when **both** hold: it is younger than 3 days (259200 s) **and** the commitlint-config hash still matches. Re-detect and rewrite when it is missing, older than 3 days, the hash differs, or the user asks to refresh ("neu prüfen", "refresh", "--refresh").
 - **Transparency** — when reusing, label it in the plan header, e.g. `Conventions (cached, 2d ago): …`, so staleness stays visible and the user can force a refresh.
 
 Read and validate:
 
 ```bash
-cache="$(git rev-parse --git-common-dir)/atomic-commit-cache"
+cache="$(git rev-parse --git-common-dir)/tituskirch-skills/conventions"
+mkdir -p "$(dirname "$cache")"
 now=$(date +%s)
 
 # commitlint-config hash: dedicated config file if present, else the package.json
@@ -51,9 +53,12 @@ scope_count=47/50
 types=feat fix docs chore ci
 scope_vocab=write-readme atomic-commit ci dependabot changelog
 language=en
+header_max_length=72
 commitlint=@commitlint/config-conventional
 EOF
 ```
+
+`header_max_length` is the resolved commitlint `header-max-length` (72 under config-conventional unless overridden); it lets `gh-pull-request` reuse the same limit for PR titles without re-reading commitlint.
 
 ### Scope usage
 
@@ -97,6 +102,25 @@ git log --pretty='%s' -n 30
 If subjects are consistently in another language, match it. Otherwise write English (the Conventional Commits norm).
 
 > Worked detection example — this very repo: `commitlint.config.js` extends `@commitlint/config-conventional`; history shows `feat(write-readme):`, `ci(dependabot):`, `docs(changelog):` → scopes **on**, scope vocabulary = skill names + areas (`ci`, `dependabot`, `changelog`), language **English**.
+
+## Config
+
+`.tituskirch-skills.json` at the repo root (`$(git rev-parse --show-toplevel)`) is an optional, committed config shared across TitusKirch skills. Absent → behave exactly as before. Read with `jq`; if the file or `jq` is missing, ignore it (warn once) and fall back to detection. Resolution per setting: **config → detected/native → built-in default**.
+
+Keys this skill reads:
+
+| Key               | Effect                                                                 |
+| :---------------- | :--------------------------------------------------------------------- |
+| `language` (root) | message language — `en`, `de`, or `match`; overrides history detection |
+
+```bash
+config="$(git rev-parse --show-toplevel)/.tituskirch-skills.json"
+if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
+  lang=$(jq -er '.language // empty' "$config" 2>/dev/null) || lang=
+fi
+```
+
+`language` is a shared root key (the same value also drives `gh-pull-request`); other keys live under skill sections (`pr.*`, `issue.*`) and are documented in those skills. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
 ## Type catalogue (Conventional Commits)
 
