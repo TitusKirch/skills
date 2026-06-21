@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/TitusKirch/skills/compare/v0.5.0...v0.5.1) (2026-06-21)
+
+
+### Bug Fixes
+
+* **skills:** drop colon-space from descriptions so skills.sh parses them ([894bb57](https://github.com/TitusKirch/skills/commit/894bb5700736a0cfb11e683ffa816c6e0a1b3495))
+
 ## [0.5.0](https://github.com/TitusKirch/skills/compare/v0.4.0...v0.5.0) (2026-06-21)
 
 
