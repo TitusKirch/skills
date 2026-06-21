@@ -21,7 +21,7 @@ Conventions are **repo-wide, not branch-specific**, and change rarely — so cac
 
 - **Scopes on/off** — sample `git log --pretty='%s' -n 80` and count subjects matching `type(scope):` vs `type:`. Majority wins; ties or thin history fall back to config.
 - **Types & scopes in use** — collect the types and scope words already present and prefer them.
-- **commitlint** — look for `commitlint.config.*`, `.commitlintrc*`, or a `commitlint` key in `package.json`. If found, treat its rules (`type-enum`, `scope-enum`, `header-max-length`, `subject-case`) as hard constraints.
+- **commitlint** — look for `commitlint.config.*`, `.commitlintrc*`, or a `commitlint` key in `package.json`. If found, treat its rules (`type-enum`, `scope-enum`, `header-max-length`, `subject-case`, `body-max-line-length`) as hard constraints.
 - **Language** — match the language of existing subjects; default to English.
 
 Exact detection recipes: [REFERENCE.md](REFERENCE.md#detecting-conventions).
@@ -36,7 +36,7 @@ Exact detection recipes: [REFERENCE.md](REFERENCE.md#detecting-conventions).
 - **One logical change per commit.** Split feature vs. fix vs. refactor vs. docs vs. tooling/config vs. tests. If you'd join two changes with the word "and", they are probably two commits.
 - **Order by dependency** — deps/config/scaffolding first, then the core change, then tests, then docs/chores. Each commit should ideally leave the tree building.
 - **Hunk-level when needed** — if one file mixes concerns, assign individual hunks to different commits ([REFERENCE.md](REFERENCE.md#hunk-level-staging)).
-- Pick `type(scope): subject` per group from the detected conventions. Subject = imperative, lowercase, no trailing period, within the max length. Add a body only when the _why_ isn't obvious.
+- Pick `type(scope): subject` per group from the detected conventions. Subject = imperative, lowercase, no trailing period, within the max length. Add a body only when the _why_ isn't obvious; when you do, **hard-wrap every body line** to the repo's `body-max-line-length` (100 by default under config-conventional, unless disabled) — one long line is the most common `commit-msg` hook rejection.
 
 ### 4. Present the plan (always, before any commit)
 

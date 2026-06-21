@@ -84,7 +84,9 @@ Reuse an existing scope when the change touches the same area. For a new area, i
 
 ### commitlint config
 
-Look in priority order: `commitlint.config.{js,cjs,mjs,ts}` → `.commitlintrc` / `.commitlintrc.{json,yaml,yml,js,cjs}` → a `"commitlint"` key in `package.json`. When it extends `@commitlint/config-conventional`, apply these defaults unless overridden: standard type list (below), non-empty subject, header ≤ 72 chars, lowercase type & scope, no trailing period. Honor any explicit `type-enum`, `scope-enum`, `header-max-length`, or `subject-case` override as a **hard constraint** — a commit that violates it will be rejected by the hook.
+Look in priority order: `commitlint.config.{js,cjs,mjs,ts}` → `.commitlintrc` / `.commitlintrc.{json,yaml,yml,js,cjs}` → a `"commitlint"` key in `package.json`. When it extends `@commitlint/config-conventional`, apply these defaults unless overridden: standard type list (below), non-empty subject, header ≤ 72 chars, **body lines ≤ 100 chars** (`body-max-line-length`), lowercase type & scope, no trailing period. Honor any explicit `type-enum`, `scope-enum`, `header-max-length`, `body-max-line-length`, or `subject-case` override as a **hard constraint** — a commit that violates it will be rejected by the hook.
+
+Write multi-line bodies with real line breaks (e.g. `git commit -m "subject" -m $'line one\nline two'`) and wrap each line to the body limit. A body written as one long paragraph is the most common hook rejection — `body-max-line-length` counts every line, including the body you pass via a single `-m`.
 
 ### Language
 
