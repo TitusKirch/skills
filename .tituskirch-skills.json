@@ -6,6 +6,7 @@
   },
   "issue": {
     "backend": "github",
-    "title": { "convention": "plain" }
+    "title": { "convention": "plain" },
+    "labels": { "exclude": ["stack:*", "autorelease:*", "dependencies"] }
   }
 }
