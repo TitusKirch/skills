@@ -109,10 +109,10 @@ If subjects are consistently in another language, match it. Otherwise write Engl
 
 Keys this skill reads:
 
-| Key               | Effect                                                                           |
-| :---------------- | :------------------------------------------------------------------------------- |
-| `commit.language` | commit-message language — `en`, `de`, or `match`; overrides the root + detection |
-| `language` (root) | shared default language; used when `commit.language` is unset                    |
+| Key               | Effect                                                                                           |
+| :---------------- | :----------------------------------------------------------------------------------------------- |
+| `commit.language` | commit-message language — any code/name (e.g. `en`, `de`) or `match`; overrides root + detection |
+| `language` (root) | shared default language; used when `commit.language` is unset                                    |
 
 ```bash
 config="$(git rev-parse --show-toplevel)/.tituskirch-skills.json"

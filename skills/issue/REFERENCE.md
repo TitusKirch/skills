@@ -27,7 +27,7 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two backends (GitHub
 | Key                                            | Effect                                                                                                    |
 | :--------------------------------------------- | :-------------------------------------------------------------------------------------------------------- |
 | `issue.backend`                                | `github` or `linear` — the active backend (set by setup, never guessed silently)                          |
-| `issue.language`                               | title/body language — scalar (`en`/`de`/`match`) or `{ title, body }`; falls back to the root `language`  |
+| `issue.language`                               | title/body language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language` |
 | `issue.title.convention`                       | `plain` (default — most trackers) or `conventional` (`type: subject`)                                     |
 | `issue.linear.team`                            | **required to create on Linear** — a human name/key (e.g. `"ENG"`); resolved to the team id via the cache |
 | `issue.linear.{project,priority,defaultState}` | optional Linear defaults (`priority`: none/low/medium/high/urgent)                                        |
@@ -73,7 +73,7 @@ Triggered when the config is missing/incomplete or the user runs `/issue setup`.
    - GitHub remote present (`gh repo view` succeeds) → ask "GitHub or Linear?", **default GitHub**.
    - No GitHub remote → ask "which backend?", **no default**.
    - Write the answer to `issue.backend`; from then on the config wins and the skill never re-guesses.
-2. **Language rules** — title and body (`en` / `de` / `match`).
+2. **Language rules** — title and body (any language, or `match`).
 3. **Title convention** — `plain` (default) or `conventional`.
 4. **Backend defaults (only what's needed):**
    - **Linear** — check the MCP is authenticated **first** (if not, send the user to authenticate, then continue). List teams from the catalog and have the user **pick `team`** (the one required field). `project`/`priority`/`defaultState` stay optional config keys — not asked here.

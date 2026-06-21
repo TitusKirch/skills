@@ -21,8 +21,7 @@
       "properties": {
         "language": {
           "type": "string",
-          "enum": ["en", "de", "match"],
-          "description": "Overrides the root language for commit messages."
+          "description": "Overrides the root language for commit messages (a language code/name, or \"match\")."
         }
       }
     },
@@ -121,17 +120,15 @@
   },
   "$defs": {
     "language": {
+      "description": "A language code or name (e.g. \"en\", \"de\", \"fr\", \"pt-BR\"), or \"match\" to mirror the repo/source language. A scalar applies to both title and body; the object form sets them separately.",
       "oneOf": [
-        {
-          "type": "string",
-          "enum": ["en", "de", "match"]
-        },
+        { "type": "string" },
         {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "title": { "type": "string", "enum": ["en", "de", "match"] },
-            "body": { "type": "string", "enum": ["en", "de", "match"] }
+            "title": { "type": "string" },
+            "body": { "type": "string" }
           }
         }
       ]

@@ -67,7 +67,7 @@ Keys this skill reads:
 
 | Key                   | Effect                                                                                       |
 | :-------------------- | :------------------------------------------------------------------------------------------- |
-| `language` (root)     | title/body language — `en`, `de`, `match`; shared with `atomic-commit`                       |
+| `language` (root)     | title/body language — any code/name or `match`; shared with `atomic-commit`                  |
 | `pr.base`             | PR base branch — overrides `defaultBranchRef.name` (e.g. a `feature → dev` flow)             |
 | `pr.title.convention` | `conventional` (default) or `plain`                                                          |
 | `pr.backend`          | platform — v1 only `github` (no-op now; the slot exists for a later platform-neutral rename) |
