@@ -13,6 +13,7 @@
     "./skills/atomic-commit",
     "./skills/compact-readme",
     "./skills/gh-pull-request",
+    "./skills/issue",
     "./skills/vhs-demo",
     "./skills/write-readme"
   ]
