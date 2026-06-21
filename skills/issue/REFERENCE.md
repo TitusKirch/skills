@@ -32,6 +32,7 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two backends (GitHub
 | `issue.linear.team`                            | **required to create on Linear** — a human name/key (e.g. `"ENG"`); resolved to the team id via the cache |
 | `issue.linear.{project,priority,defaultState}` | optional Linear defaults (`priority`: none/low/medium/high/urgent)                                        |
 | `issue.github.template`                        | optional default issue template                                                                           |
+| `issue.labels.exclude`                         | glob patterns (e.g. `stack:*`, `autorelease:*`) for catalog labels the agent must never auto-apply        |
 
 `language` is a shared root key; `issue.*` is this skill's section (`commit.*`/`pr.*` belong to the other skills). Full schema: the repo-root `tituskirch-skills.schema.json`.
 
