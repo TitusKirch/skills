@@ -46,7 +46,8 @@ Show the detected conventions, then a numbered commit plan: each commit's messag
 
 ## Guardrails
 
-- **Never `--no-verify`.** Let husky/commitlint hooks run; if a hook rejects a commit, surface the error and stop.
+- **Never `--no-verify` or `--no-gpg-sign`.** Let husky/commitlint hooks run; respect the repo's `commit.gpgsign` setting so signed repos stay signed. If a hook rejects a commit, surface the error and stop.
+- **Don't assume signing is broken.** A failing `git commit` is almost always a hook (commitlint message format), not signing — read the actual error. `git log --show-signature` printing `N` / "allowedSignersFile" locally is not a failure: the commit is still signed — confirm with native git via `git cat-file -p <sha>` (look for a `gpgsig` header) or `git verify-commit <sha>` (SSH signatures need `gpg.ssh.allowedSignersFile` configured to verify). GitHub's server-side "verified" badge has no native-git equivalent — for that, fall back to `gh api repos/<owner>/<repo>/commits/<sha> --jq .commit.verification`.
 - **Commit only — never push, amend, or rebase** unless explicitly asked.
 - **Don't commit secrets.** Scan staged content for `.env`, keys, tokens; warn and exclude.
 - **Respect the branch.** If on `main`/`master` and the repo works on feature branches, confirm (or offer to branch) before committing.
