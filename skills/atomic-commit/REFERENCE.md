@@ -6,6 +6,55 @@ Detailed mechanics for the [SKILL.md](SKILL.md) workflow.
 
 Run these against the actual repo before planning — the goal is to commit the way this repo already commits.
 
+### Convention cache
+
+Conventions change rarely and are identical on every branch, so persist them per-repo instead of re-detecting every run.
+
+- **Location** — `$(git rev-parse --git-common-dir)/atomic-commit-cache`. The _common_ git dir is shared by every branch and linked worktree, lives outside the working tree, and is never tracked — so the cache survives branch switches and can't be committed by accident.
+- **Validity (hybrid: TTL + config hash)** — reuse the cache only when **both** hold: it is younger than 3 days (259200 s) **and** the commitlint-config hash still matches. Re-detect and rewrite when it is missing, older than 3 days, the hash differs, or the user asks to refresh ("neu prüfen", "refresh", "--refresh").
+- **Transparency** — when reusing, label it in the plan header, e.g. `Conventions (cached, 2d ago): …`, so staleness stays visible and the user can force a refresh.
+
+Read and validate:
+
+```bash
+cache="$(git rev-parse --git-common-dir)/atomic-commit-cache"
+now=$(date +%s)
+
+# commitlint-config hash: dedicated config file if present, else the package.json
+# commitlint key (conservative — any package.json edit re-detects), else "none".
+cfg=$(ls commitlint.config.* .commitlintrc* 2>/dev/null | head -1)
+if [ -n "$cfg" ]; then
+  hash=$(cksum "$cfg" | cut -d' ' -f1)
+elif grep -q '"commitlint"' package.json 2>/dev/null; then
+  hash=$(cksum package.json | cut -d' ' -f1)
+else
+  hash=none
+fi
+
+if [ -f "$cache" ]; then
+  detected_at=$(grep '^detected_at=' "$cache" | cut -d= -f2)
+  cached_hash=$(grep '^commitlint_hash=' "$cache" | cut -d= -f2)
+  if [ $(( now - detected_at )) -lt 259200 ] && [ "$hash" = "$cached_hash" ]; then
+    echo "cache hit"   # reuse the stored conventions, skip the recipes below
+  fi
+fi
+```
+
+Write after a fresh detection (simple `key=value` lines — read back with `grep '^key=' "$cache" | cut -d= -f2-`, no `jq` needed):
+
+```bash
+cat > "$cache" <<EOF
+detected_at=$now
+commitlint_hash=$hash
+scopes=yes
+scope_count=47/50
+types=feat fix docs chore ci
+scope_vocab=write-readme atomic-commit ci dependabot changelog
+language=en
+commitlint=@commitlint/config-conventional
+EOF
+```
+
 ### Scope usage
 
 ```bash
@@ -112,7 +161,7 @@ Fragile: the answer sequence must match hunk order and prompts (`y/n/s/e/q`). Pr
 Present this before committing:
 
 ```text
-Conventions: scopes = yes (47/50) · types = feat fix docs chore ci · lang = en · commitlint = @commitlint/config-conventional
+Conventions (cached, 2d ago): scopes = yes (47/50) · types = feat fix docs chore ci · lang = en · commitlint = @commitlint/config-conventional
 
 Proposed commits:
 1. feat(auth): add password-based login endpoint

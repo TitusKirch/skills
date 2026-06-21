@@ -16,6 +16,8 @@ Turn the uncommitted work from a session into a clean series of **atomic Convent
 
 ### 1. Detect conventions (read the repo — never assume)
 
+Conventions are **repo-wide, not branch-specific**, and change rarely — so cache them per-repo instead of re-detecting every run. Before sampling, check for a fresh cache at `$(git rev-parse --git-common-dir)/atomic-commit-cache`: **reuse it when it is younger than 3 days _and_ the commitlint config is unchanged** (hash match). Re-detect with the recipes below — and rewrite the cache — when it is missing, older than 3 days, the config hash differs, or the user asks to refresh ("neu prüfen", "refresh", "--refresh"). Cache mechanics: [REFERENCE.md](REFERENCE.md#convention-cache).
+
 - **Scopes on/off** — sample `git log --pretty='%s' -n 80` and count subjects matching `type(scope):` vs `type:`. Majority wins; ties or thin history fall back to config.
 - **Types & scopes in use** — collect the types and scope words already present and prefer them.
 - **commitlint** — look for `commitlint.config.*`, `.commitlintrc*`, or a `commitlint` key in `package.json`. If found, treat its rules (`type-enum`, `scope-enum`, `header-max-length`, `subject-case`) as hard constraints.
