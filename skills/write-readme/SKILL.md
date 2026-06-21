@@ -1,5 +1,6 @@
 ---
 name: write-readme
+summary: Generates project READMEs in the kirchDev house style.
 description: Generates project READMEs in the kirchDev house style — centered hero header with emoji + bold tagline, a one-liner code-snippet hook, feature bullets with prescribed section emojis, and standardized closing sections (Versioning, License). Use when the user asks to write, draft, scaffold, or regenerate a README.md for a kirchDev / IT-Dienstleistungen Titus Kirch repository, or when starting a new repo that needs its top-level README. Do not use for editing arbitrary unrelated READMEs.
 ---
 

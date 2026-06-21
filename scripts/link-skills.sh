@@ -7,6 +7,9 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="$HOME/.claude/skills"
 
+# shellcheck source=scripts/skills-lib.sh
+. "$REPO/scripts/skills-lib.sh"
+
 # If ~/.claude/skills is itself a symlink that points back into this repo,
 # we'd end up writing the per-skill symlinks into the repo's own skills/ tree.
 # Detect and bail out instead of polluting the working copy.
@@ -23,9 +26,9 @@ fi
 
 mkdir -p "$DEST"
 
-find "$REPO/skills" -name SKILL.md -not -path '*/node_modules/*' -print0 |
-  while IFS= read -r -d '' skill_md; do
-    src="$(dirname "$skill_md")"
+skills_md_paths "$REPO" |
+  while IFS= read -r skill_md; do
+    src="$(dirname "$REPO/$skill_md")"
     name="$(basename "$src")"
     target="$DEST/$name"
 

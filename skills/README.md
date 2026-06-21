@@ -15,6 +15,7 @@ skills/
 ```markdown
 ---
 name: skill-name
+summary: Short one-liner shown in the root README skills table.
 description: One-line summary used by Claude to decide when to invoke this skill.
 allowed-tools:
   - Read
@@ -34,6 +35,7 @@ Instructions for Claude when this skill is invoked. Be specific about:
 ### Field notes
 
 - **`name`** — kebab-case, matches the folder name. Used as the invocation slug.
+- **`summary`** _(optional)_ — short one-liner for the root README skills table; falls back to the first clause of `description`. The README table and `.claude-plugin/plugin.json` are generated from the skill folders via `pnpm skills:sync` (CI runs `pnpm skills:check`), so neither is hand-edited.
 - **`description`** — kept tight; the better the description, the more reliably Claude picks the right skill.
 - **`allowed-tools`** _(optional)_ — restrict the skill to a subset of tools. Omit to inherit the caller's toolset.
 
