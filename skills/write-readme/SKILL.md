@@ -36,7 +36,7 @@ description: Generates project READMEs in the kirchDev house style — centered 
 - **Feature bullets**: `- **{emoji} Title** — sentence.` Emojis act as scannable column-1 indicators.
 - **Tables**: left-aligned (`| :--- |`).
 - **Callouts**: use `> [!TIP]`, `> [!IMPORTANT]`, `> [!NOTE]` — never plain blockquotes.
-- **License footer** must end with: `[MIT](LICENSE) © [Titus Kirch](https://github.com/TitusKirch/) / [IT-Dienstleistungen Titus Kirch](https://kirch.dev)`.
+- **License footer** — copy the closing footer verbatim from [`templates/README.template.md`](templates/README.template.md), the single source for the Versioning/License blocks and the `© …` author line. Never retype the author/license string by hand.
 
 ## Workflow
 
