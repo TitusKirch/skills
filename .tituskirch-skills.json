@@ -8,5 +8,8 @@
     "backend": "github",
     "title": { "convention": "plain" },
     "labels": { "exclude": ["stack:*", "autorelease:*", "dependencies"] }
+  },
+  "docs": {
+    "preset": "ai-tool"
   }
 }
