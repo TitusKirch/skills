@@ -64,7 +64,8 @@ function discoverSkills() {
       return {
         dir,
         name: fm.name ?? dir,
-        summary: fm.summary ?? deriveSummary(fm.description ?? '')
+        summary: fm.summary ?? deriveSummary(fm.description ?? ''),
+        frontmatter: { summary: fm.summary, description: fm.description }
       };
     })
     .filter((skill) => skill !== null);
@@ -125,6 +126,30 @@ function syncPlugin(skills, check) {
   return drift;
 }
 
+// skills.sh parses real YAML: an unquoted `summary`/`description` must not contain
+// ": " (colon+space) or " #" (space+hash), or its parser drops the whole skill — and
+// our loose frontmatter regex above would not otherwise catch it.
+function lintFrontmatter(skills) {
+  const problems = [];
+  for (const skill of skills) {
+    for (const field of ['summary', 'description']) {
+      const value = skill.frontmatter[field];
+      if (!value || /^['"]/.test(value.trim())) continue;
+      if (value.includes(': ')) {
+        problems.push(
+          `${skill.dir}: \`${field}\` contains ": " (colon+space) — use " — " instead, else skills.sh drops the skill`
+        );
+      }
+      if (value.includes(' #')) {
+        problems.push(
+          `${skill.dir}: \`${field}\` contains " #" (space+hash) — YAML reads it as a comment`
+        );
+      }
+    }
+  }
+  return problems;
+}
+
 const mode = process.argv[2] ?? '--write';
 
 if (mode === '--paths') {
@@ -134,6 +159,15 @@ if (mode === '--paths') {
 } else if (mode === '--check' || mode === '--write') {
   const check = mode === '--check';
   const skills = discoverSkills();
+
+  const problems = lintFrontmatter(skills);
+  if (problems.length) {
+    process.stderr.write(
+      `skill frontmatter invalid:\n${problems.map((p) => `  - ${p}`).join('\n')}\n`
+    );
+    process.exit(1);
+  }
+
   const stale = [];
   if (syncReadme(skills, check)) stale.push('README.md table');
   if (syncPlugin(skills, check)) stale.push('plugin.json skills array');
