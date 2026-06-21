@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
+  "title": "TitusKirch skills config",
+  "description": "Optional, committed config shared by the TitusKirch skills (atomic-commit, gh-pull-request, issue). Place at the repo root as .tituskirch-skills.json. Absent → skills behave on detection/native defaults only. Resolution per setting: config → native → built-in default.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional pointer to this schema for editor validation."
+    },
+    "language": {
+      "$ref": "#/$defs/language",
+      "description": "Shared default message/title/body language for all skills. Overridable per skill section."
+    },
+    "pr": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "gh-pull-request settings.",
+      "properties": {
+        "backend": {
+          "type": "string",
+          "enum": ["github"],
+          "description": "Platform. v1 supports only github; the slot exists for a later platform-neutral rename."
+        },
+        "base": {
+          "type": "string",
+          "description": "PR base branch. Overrides the GitHub default branch (e.g. a feature → dev flow)."
+        },
+        "title": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "convention": {
+              "type": "string",
+              "enum": ["conventional", "plain"],
+              "description": "PR title style. Default: conventional."
+            }
+          }
+        },
+        "language": {
+          "$ref": "#/$defs/language",
+          "description": "Overrides the root language for PR title/body."
+        }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "issue skill settings.",
+      "properties": {
+        "backend": {
+          "type": "string",
+          "enum": ["github", "linear"],
+          "description": "Active issue backend. Set by the guided setup; never guessed silently."
+        },
+        "language": {
+          "$ref": "#/$defs/language",
+          "description": "Overrides the root language for issue title/body."
+        },
+        "title": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "convention": {
+              "type": "string",
+              "enum": ["conventional", "plain"],
+              "description": "Issue title style. Default: plain (most trackers)."
+            }
+          }
+        },
+        "linear": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Linear defaults (used when backend = linear).",
+          "properties": {
+            "team": {
+              "type": "string",
+              "description": "Required to create on Linear. Human name/key (e.g. \"ENG\"); resolved to the team id via the catalog cache."
+            },
+            "project": {
+              "type": ["string", "null"],
+              "description": "Default project."
+            },
+            "priority": {
+              "enum": ["none", "low", "medium", "high", "urgent", null],
+              "description": "Default priority."
+            },
+            "defaultState": {
+              "type": ["string", "null"],
+              "description": "Default workflow state on create."
+            }
+          }
+        },
+        "github": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "GitHub issue defaults (used when backend = github).",
+          "properties": {
+            "template": {
+              "type": ["string", "null"],
+              "description": "Default issue template path under .github/ISSUE_TEMPLATE/."
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "language": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["en", "de", "match"]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "title": { "type": "string", "enum": ["en", "de", "match"] },
+            "body": { "type": "string", "enum": ["en", "de", "match"] }
+          }
+        }
+      ]
+    }
+  }
+}
