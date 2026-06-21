@@ -36,7 +36,7 @@ Detection recipes and the shared cache: [REFERENCE.md](REFERENCE.md#detecting-co
 ### 3. Build the PR
 
 - **Title (umbrella, Conventional)** — one commit → its subject; multiple → a single summarising `type(scope): subject` over the whole branch (dominant type wins; shared scope or none; mark breaking with `!`), within the header limit. Heuristics: [REFERENCE.md](REFERENCE.md#title-derivation-umbrella).
-- **Body** — fill the detected template: **Summary** (what + why, from the commits and diff), tick the matching **Type of change**, carry the **Checklist** (pre-tick only what you verified, e.g. `pnpm check` if run), **Related issues** (`Closes #N`). Pass it via `--body-file` so multi-line markdown survives the shell.
+- **Body** — fill the detected template: **Summary** (what + why, from the commits and diff), tick the matching **Type of change**, carry the **Checklist** (pre-tick only what you verified, e.g. `pnpm check` if run). **Closing keywords last:** end the body with one `Closes #N` per issue the branch resolves (gathered from commit `Refs/Closes #N` footers, the branch name, and the session) — each issue needs its own keyword; use `Refs #N` for issues it relates to but doesn't close. Pass it via `--body-file` so multi-line markdown survives the shell.
 
 ### 4. Present the plan (always, before creating)
 
