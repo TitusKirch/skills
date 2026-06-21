@@ -12,8 +12,8 @@
   "skills": [
     "./skills/atomic-commit",
     "./skills/compact-readme",
-    "./skills/gh-pull-request",
     "./skills/issue",
+    "./skills/pull-request",
     "./skills/vhs-demo",
     "./skills/write-readme"
   ]

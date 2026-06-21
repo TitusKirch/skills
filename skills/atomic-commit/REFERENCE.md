@@ -8,7 +8,7 @@ Run these against the actual repo before planning — the goal is to commit the 
 
 ### Convention cache
 
-Conventions change rarely and are identical on every branch, so persist them per-repo instead of re-detecting every run. This file is **shared with other TitusKirch skills** (`gh-pull-request` reads the same convention for its PR title); it holds only the genuinely shared convention block, so either skill can rewrite it in the same schema — last writer wins, no coordination needed.
+Conventions change rarely and are identical on every branch, so persist them per-repo instead of re-detecting every run. This file is **shared with other TitusKirch skills** (`pull-request` reads the same convention for its PR title); it holds only the genuinely shared convention block, so either skill can rewrite it in the same schema — last writer wins, no coordination needed.
 
 - **Location** — `$(git rev-parse --git-common-dir)/tituskirch-skills/conventions`. The owner-namespaced directory (`tituskirch-skills/`, matching the plugin name) lives in the _common_ git dir — shared by every branch and linked worktree, outside the working tree, never tracked — so the cache survives branch switches and can't be committed by accident. Create the directory before writing (`mkdir -p`).
 - **Migration** — the old flat `$(git rev-parse --git-common-dir)/atomic-commit-cache` is obsolete. Don't read it; just re-detect once into the new path. Optionally `rm -f` the old file when writing the new one.
@@ -58,7 +58,7 @@ commitlint=@commitlint/config-conventional
 EOF
 ```
 
-`header_max_length` is the resolved commitlint `header-max-length` (72 under config-conventional unless overridden); it lets `gh-pull-request` reuse the same limit for PR titles without re-reading commitlint.
+`header_max_length` is the resolved commitlint `header-max-length` (72 under config-conventional unless overridden); it lets `pull-request` reuse the same limit for PR titles without re-reading commitlint.
 
 ### Scope usage
 
@@ -121,7 +121,7 @@ if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
 fi
 ```
 
-`language` is a shared root key (it also drives `gh-pull-request` and `issue`); `commit.language` overrides it for commit messages, mirroring `pr.language` / `issue.language`. Full schema: the repo-root `tituskirch-skills.schema.json`.
+`language` is a shared root key (it also drives `pull-request` and `issue`); `commit.language` overrides it for commit messages, mirroring `pr.language` / `issue.language`. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
 ## Release-gated repos
 

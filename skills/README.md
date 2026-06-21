@@ -60,7 +60,7 @@ Some skills read an optional, committed `.tituskirch-skills.json` at the **consu
 Resolution per setting: **config → native/detected → built-in default** — absent config means today's behavior. The only shared root key is `language`; everything else lives under a skill section (`pr.*`, `issue.*`). Each skill documents only the keys it reads, in its own `REFERENCE.md`:
 
 - [`atomic-commit`](atomic-commit/REFERENCE.md#config) — `language`, `commit.language`
-- [`gh-pull-request`](gh-pull-request/REFERENCE.md#config) — `language`, `pr.*`
+- [`pull-request`](pull-request/REFERENCE.md#config) — `language`, `pr.*`
 - [`issue`](issue/REFERENCE.md#config) — `language`, `issue.*`
 
 Auto-detected data (commit conventions, issue catalogs) is cached separately under `tituskirch-skills/` in the git common dir — never committed, TTL-disposable.

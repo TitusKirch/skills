@@ -1,6 +1,6 @@
-# gh-pull-request — Reference
+# pull-request — Reference
 
-Mechanics for the [SKILL.md](SKILL.md) workflow. Everything goes through the GitHub CLI (`gh`) against the `origin` remote — this skill is GitHub-only by design.
+Mechanics for the [SKILL.md](SKILL.md) workflow. The backend is chosen by `pr.backend`; v1 implements the **GitHub backend**, which goes through the GitHub CLI (`gh`) against the `origin` remote. Other forges (e.g. GitLab merge requests) would dock as additional backends — none implemented yet.
 
 ## Detecting conventions
 
@@ -12,7 +12,7 @@ gh repo view --json nameWithOwner,defaultBranchRef \
 git branch --show-current        # head
 ```
 
-If `gh repo view` errors, the repo has no GitHub remote or `gh` is not authenticated → **stop**; the skill is GitHub-only. Default the PR base to `defaultBranchRef.name`; never hardcode `main`/`dev`. Confirm `base ← head` in the plan and let the user override (`--base <other>`).
+If `gh repo view` errors, the repo has no GitHub remote or `gh` is not authenticated → **stop** (GitHub is the only backend in v1). Default the PR base to `defaultBranchRef.name`; never hardcode `main`/`dev`. Confirm `base ← head` in the plan and let the user override (`--base <other>`).
 
 ### PR template
 
@@ -45,7 +45,7 @@ fi
 - A commitlint config (or a Conventional-Commits history) means the PR title is Conventional too — many repos lint it with actions like `amannn/action-semantic-pull-request`, and templates often say so outright. Honor the cached `header_max_length`.
 - `pr.title.convention: plain` in `.tituskirch-skills.json` overrides this to a non-Conventional title.
 
-`base` and `template` are **not** cached: `gh repo view … defaultBranchRef` already runs every time (the GitHub-only check), and the template is a local glob — both are cheap to read fresh.
+`base` and `template` are **not** cached: `gh repo view … defaultBranchRef` already runs every time (the backend availability check), and the template is a local glob — both are cheap to read fresh.
 
 ### Existing PR (and who owns it)
 
@@ -65,12 +65,12 @@ gh pr list --head "$(git branch --show-current)" --state open \
 
 Keys this skill reads:
 
-| Key                   | Effect                                                                                       |
-| :-------------------- | :------------------------------------------------------------------------------------------- |
-| `language` (root)     | title/body language — any code/name or `match`; shared with `atomic-commit`                  |
-| `pr.base`             | PR base branch — overrides `defaultBranchRef.name` (e.g. a `feature → dev` flow)             |
-| `pr.title.convention` | `conventional` (default) or `plain`                                                          |
-| `pr.backend`          | platform — v1 only `github` (no-op now; the slot exists for a later platform-neutral rename) |
+| Key                   | Effect                                                                                  |
+| :-------------------- | :-------------------------------------------------------------------------------------- |
+| `language` (root)     | title/body language — any code/name or `match`; shared with `atomic-commit`             |
+| `pr.base`             | PR base branch — overrides `defaultBranchRef.name` (e.g. a `feature → dev` flow)        |
+| `pr.title.convention` | `conventional` (default) or `plain`                                                     |
+| `pr.backend`          | platform — v1 implements only `github`; the slot is here so other forges can dock later |
 
 ```bash
 config="$(git rev-parse --show-toplevel)/.tituskirch-skills.json"

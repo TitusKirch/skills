@@ -87,7 +87,7 @@ Triggered when the config is missing/incomplete or the user runs `/issue setup`.
 - **Update** — `gh issue edit <n> [--title …] [--body-file …] [--add-label …] [--milestone …]`; close with `gh issue close <n>`.
 - **Search/list** — `gh issue list --search <q> --state <s>` or `gh search issues <q>`.
 - **Catalogs** — `gh label list --json name,description,color`; milestones/projects via `gh api` / `gh project list`.
-- **Issue templates** — detect `.github/ISSUE_TEMPLATE/*.md` **and** `*.yml` (forms); fill them like `gh-pull-request` fills PR templates.
+- **Issue templates** — detect `.github/ISSUE_TEMPLATE/*.md` **and** `*.yml` (forms); fill them like `pull-request` fills PR templates.
 
 ### Sub-issues
 
@@ -106,7 +106,7 @@ The Linear MCP server's registered name varies per setup (`mcp__claude_ai_Linear
 - **Auth/availability** — confirm the Linear MCP tools are present and authenticated. If not authenticated, call the server's `authenticate` tool / point the user to it, then continue.
 - **Tools (generic names)** — `list_teams`, `list_projects`, `list_issue_labels`, `list_issue_statuses`, `create_issue`, `update_issue`, search/`list_issues`.
 - **Team is required** to create — resolve `issue.linear.team` (name/key) to its id via the cached `teams`.
-- **No repo templates** — unlike GitHub, Linear has no in-repo issue templates (`issue.github.template` is GitHub-only). Linear's templates live server-side per team; if the MCP exposes them, offer one, otherwise **draft a clean default body** from the description + session context (the same fallback `gh-pull-request` uses for a missing PR template).
+- **No repo templates** — unlike GitHub, Linear has no in-repo issue templates (`issue.github.template` is GitHub-only). Linear's templates live server-side per team; if the MCP exposes them, offer one, otherwise **draft a clean default body** from the description + session context (the same fallback `pull-request` uses for a missing PR template).
 - **Sub-issues** — set `parentId` on the child create call. Catalogs (teams/projects/labels/states) → cache.
 
 > **`allowed-tools` note.** This skill declares `Bash, Read, Grep, Glob` only — no MCP entry. `allowed-tools` accepts exact names only (no wildcards) and does **not** restrict which tools are callable; it only pre-approves the listed ones. The Linear MCP tools therefore remain fully callable, governed by the user's permission settings (they may prompt). Because the server name varies, it cannot be listed reliably anyway — omitting it is correct.
