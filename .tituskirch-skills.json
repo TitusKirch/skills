@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
+  "language": "en",
+  "pr": {
+    "base": "dev"
+  },
+  "issue": {
+    "backend": "github",
+    "title": { "convention": "plain" },
+    "labels": { "exclude": ["stack:*", "autorelease:*", "dependencies"] }
+  },
+  "docs": {
+    "preset": "ai-tool"
+  }
+}

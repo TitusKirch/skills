@@ -104,6 +104,18 @@
             }
           }
         },
+        "labels": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Label handling.",
+          "properties": {
+            "exclude": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Glob patterns (e.g. \"stack:*\", \"autorelease:*\") for catalog labels the agent must never auto-apply."
+            }
+          }
+        },
         "github": {
           "type": "object",
           "additionalProperties": false,

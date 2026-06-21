@@ -98,7 +98,7 @@ fi
 - **Summary** — what changed and why, from `git log <base>..HEAD` bodies + `git diff --stat <base>...HEAD`. Plain prose, no filler.
 - **Type of change** — tick the box matching the umbrella type (feat → new skill/feature, fix → bug fix, docs → documentation, breaking → breaking change, chore → internal).
 - **Checklist** — pre-tick only what you actually verified (e.g. `pnpm check` was run); leave the rest for the human.
-- **Related issues** — `Closes #N` / `Refs #N` from commit messages or the branch name.
+- **Closing keywords (at the end)** — gather every issue the branch resolves (commit `Refs/Closes #N` footers, the branch name, the session) and put them **last in the body**, one per line: `Closes #1` / `Closes #2` … Each issue needs its own `Closes` keyword — GitHub does not parse `Closes #1, #2`. Use `Refs #N` for issues it relates to but doesn't close. Note: GitHub auto-closes only when the PR merges into the **default branch**; for a `feature → dev` PR the link is recorded but the close happens once it reaches the default branch.
 - Write the body to a temp file and pass `--body-file <file>` so multi-line markdown survives the shell.
 
 ## Plan output

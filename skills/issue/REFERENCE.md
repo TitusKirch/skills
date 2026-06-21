@@ -24,14 +24,15 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two backends (GitHub
 }
 ```
 
-| Key                                            | Effect                                                                                                    |
-| :--------------------------------------------- | :-------------------------------------------------------------------------------------------------------- |
-| `issue.backend`                                | `github` or `linear` — the active backend (set by setup, never guessed silently)                          |
-| `issue.language`                               | title/body language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language` |
-| `issue.title.convention`                       | `plain` (default — most trackers) or `conventional` (`type: subject`)                                     |
-| `issue.linear.team`                            | **required to create on Linear** — a human name/key (e.g. `"ENG"`); resolved to the team id via the cache |
-| `issue.linear.{project,priority,defaultState}` | optional Linear defaults (`priority`: none/low/medium/high/urgent)                                        |
-| `issue.github.template`                        | optional default issue template                                                                           |
+| Key                                            | Effect                                                                                                        |
+| :--------------------------------------------- | :------------------------------------------------------------------------------------------------------------ |
+| `issue.backend`                                | `github` or `linear` — the active backend (set by setup, never guessed silently)                              |
+| `issue.language`                               | title/body language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`     |
+| `issue.title.convention`                       | `plain` (default — most trackers) or `conventional` (`type: subject`)                                         |
+| `issue.linear.team`                            | **required to create on Linear** — a human name/key (e.g. `"ENG"`); resolved to the team id via the cache     |
+| `issue.linear.{project,priority,defaultState}` | optional Linear defaults (`priority`: none/low/medium/high/urgent)                                            |
+| `issue.github.template`                        | optional default issue template                                                                               |
+| `issue.labels.exclude`                         | glob patterns (e.g. `stack:*`, `autorelease:*`, `dependencies`) for catalog labels the agent must never apply |
 
 `language` is a shared root key; `issue.*` is this skill's section (`commit.*`/`pr.*` belong to the other skills). Full schema: the repo-root `tituskirch-skills.schema.json`.
 
@@ -63,7 +64,7 @@ Enumerable backend data, fetched once and reused so the agent can pick labels/st
 }
 ```
 
-Purpose: **read the catalog and choose contextually** — labels are deliberately not pinned in the config.
+Purpose: **read the catalog and choose contextually** — labels are deliberately not pinned in the config; the agent only skips whatever `issue.labels.exclude` lists.
 
 ## Setup flow (first run / `/issue setup`)
 
