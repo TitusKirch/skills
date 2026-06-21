@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
   "title": "TitusKirch skills config",
-  "description": "Optional, committed config shared by the TitusKirch skills (atomic-commit, pull-request, issue). Place at the repo root as .tituskirch-skills.json. Absent → skills behave on detection/native defaults only. Resolution per setting: config → native → built-in default.",
+  "description": "Optional, committed config shared by the TitusKirch skills (atomic-commit, pull-request, issue, write-docs). Place at the repo root as .tituskirch-skills.json. Absent → skills behave on detection/native defaults only. Resolution per setting: config → native → built-in default.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -114,6 +114,22 @@
               "description": "Default issue template path under .github/ISSUE_TEMPLATE/."
             }
           }
+        }
+      }
+    },
+    "docs": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "write-docs settings.",
+      "properties": {
+        "preset": {
+          "type": "string",
+          "enum": ["library", "cli", "app", "infra", "ai-tool"],
+          "description": "Project type — selects which sections beyond the core (getting-started, reference) to scaffold. Falls back to repo detection, then asks."
+        },
+        "language": {
+          "$ref": "#/$defs/language",
+          "description": "Overrides the root language for generated docs."
         }
       }
     }

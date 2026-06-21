@@ -62,6 +62,7 @@ Resolution per setting: **config → native/detected → built-in default** — 
 - [`atomic-commit`](atomic-commit/REFERENCE.md#config) — `language`, `commit.language`
 - [`pull-request`](pull-request/REFERENCE.md#config) — `language`, `pr.*`
 - [`issue`](issue/REFERENCE.md#config) — `language`, `issue.*`
+- [`write-docs`](write-docs/REFERENCE.md#config) — `language`, `docs.*`
 
 Auto-detected data (commit conventions, issue catalogs) is cached separately under `tituskirch-skills/` in the git common dir — never committed, TTL-disposable.
 
