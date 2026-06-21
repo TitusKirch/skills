@@ -18,9 +18,34 @@ If `gh repo view` errors, the repo has no GitHub remote or `gh` is not authentic
 
 Look in priority order: `.github/pull_request_template.md` → `.github/PULL_REQUEST_TEMPLATE.md` → `.github/PULL_REQUEST_TEMPLATE/*.md` (several → pick by name or ask) → `PULL_REQUEST_TEMPLATE.md` / `docs/PULL_REQUEST_TEMPLATE.md` → repo root. Use it verbatim as the body skeleton: fill its sections, keep its checklists and comments-as-prompts. No template → fall back to `## Summary`, `## Changes`, `## Related issues`.
 
-### Title convention
+### Title convention (shared convention cache)
 
-Reuse the `atomic-commit` detection: a commitlint config (or a Conventional-Commits history) means the PR title is Conventional too — many repos lint it with actions like `amannn/action-semantic-pull-request`, and templates often say so outright. Honor `header-max-length` if commitlint sets it.
+The commit convention **is** the PR-title convention, so reuse the cache that `atomic-commit` already writes — don't re-detect if it's fresh. It lives at `$(git rev-parse --git-common-dir)/tituskirch-skills/conventions` and holds only the shared convention block:
+
+```bash
+cache="$(git rev-parse --git-common-dir)/tituskirch-skills/conventions"
+now=$(date +%s)
+cfg=$(ls commitlint.config.* .commitlintrc* 2>/dev/null | head -1)
+if [ -n "$cfg" ]; then hash=$(cksum "$cfg" | cut -d' ' -f1)
+elif grep -q '"commitlint"' package.json 2>/dev/null; then hash=$(cksum package.json | cut -d' ' -f1)
+else hash=none; fi
+
+if [ -f "$cache" ]; then
+  detected_at=$(grep '^detected_at=' "$cache" | cut -d= -f2)
+  cached_hash=$(grep '^commitlint_hash=' "$cache" | cut -d= -f2)
+  if [ $(( now - detected_at )) -lt 259200 ] && [ "$hash" = "$cached_hash" ]; then
+    is_conventional=$(grep '^types=' "$cache" >/dev/null && echo yes)   # cache hit
+    header_max=$(grep '^header_max_length=' "$cache" | cut -d= -f2-)
+  fi
+fi
+```
+
+- **Cache hit** → use `types`/`scopes`/`language`/`header_max_length` for the title; skip detection.
+- **Miss/stale** → detect (commitlint config + history, exactly as `atomic-commit` does) and **write the same block** back (`detected_at`, `commitlint_hash`, `scopes`, `types`, `scope_vocab`, `language`, `header_max_length`), so the next run of either skill reuses it. Create the dir first (`mkdir -p`).
+- A commitlint config (or a Conventional-Commits history) means the PR title is Conventional too — many repos lint it with actions like `amannn/action-semantic-pull-request`, and templates often say so outright. Honor the cached `header_max_length`.
+- `pr.title.convention: plain` in `.tituskirch-skills.json` overrides this to a non-Conventional title.
+
+`base` and `template` are **not** cached: `gh repo view … defaultBranchRef` already runs every time (the GitHub-only check), and the template is a local glob — both are cheap to read fresh.
 
 ### Existing PR (and who owns it)
 
@@ -33,6 +58,30 @@ gh pr list --head "$(git branch --show-current)" --state open \
 - No result → **create**.
 - `author.login == $me` → offer to **update its body only**.
 - `author.login != $me` (a teammate, or a `*[bot]` / automation such as a `dev → main` rollup) → **leave it untouched**; report number + author and stop.
+
+## Config
+
+`.tituskirch-skills.json` at the repo root (`$(git rev-parse --show-toplevel)`) is an optional, committed config shared across TitusKirch skills. Absent → behave exactly as before. Read with `jq`; if the file or `jq` is missing, ignore it (warn once) and fall back to native detection. Resolution per setting: **config → native → built-in default**.
+
+Keys this skill reads:
+
+| Key                   | Effect                                                                                       |
+| :-------------------- | :------------------------------------------------------------------------------------------- |
+| `language` (root)     | title/body language — `en`, `de`, `match`; shared with `atomic-commit`                       |
+| `pr.base`             | PR base branch — overrides `defaultBranchRef.name` (e.g. a `feature → dev` flow)             |
+| `pr.title.convention` | `conventional` (default) or `plain`                                                          |
+| `pr.backend`          | platform — v1 only `github` (no-op now; the slot exists for a later platform-neutral rename) |
+
+```bash
+config="$(git rev-parse --show-toplevel)/.tituskirch-skills.json"
+if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
+  base=$(jq -er '.pr.base // empty' "$config" 2>/dev/null) || base=
+  title_conv=$(jq -er '.pr.title.convention // empty' "$config" 2>/dev/null) || title_conv=
+  lang=$(jq -er '.pr.language // .language // empty' "$config" 2>/dev/null) || lang=
+fi
+```
+
+`language` is a shared root key; `pr.*` are this skill's section. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
 ## Title derivation (umbrella)
 

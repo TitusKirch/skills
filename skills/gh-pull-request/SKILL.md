@@ -18,12 +18,13 @@ Turn the current branch into a GitHub pull request that follows the repo's own c
 ### 1. Detect conventions (read the repo — never assume)
 
 - **GitHub-only** — confirm the repo is on GitHub: `gh repo view --json nameWithOwner,defaultBranchRef`. If it fails (no GitHub remote, or `gh` not authenticated), **stop** and say the skill is GitHub-only.
-- **Base ← head** — base defaults to `defaultBranchRef.name`; head = current branch (`git branch --show-current`). Never hardcode `main`/`dev`; show `base ← head` in the plan and let the user override.
+- **Base ← head** — base = `pr.base` from `.tituskirch-skills.json` if set, else `defaultBranchRef.name`; head = current branch (`git branch --show-current`). Never hardcode `main`/`dev`; show `base ← head` in the plan and let the user override.
 - **PR template** — find `.github/pull_request_template.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/PULL_REQUEST_TEMPLATE/*.md`, or a root/`docs/` variant. Use it verbatim as the body skeleton and fill its sections; if none, fall back to Summary / Changes / Related issues.
-- **Title convention** — Conventional Commits when the repo uses them (same detection as the `atomic-commit` skill: commitlint config + history). Honor `header-max-length` if set — PR titles are commonly linted too.
+- **Title convention** — Conventional Commits when the repo uses them. Read it from the **shared convention cache** (`$(git rev-parse --git-common-dir)/tituskirch-skills/conventions`, written by `atomic-commit` or by this skill — same detection, memoized); if the cache is missing/stale, detect it (commitlint config + history) and write the block yourself. Honor the cached `header_max_length` for the title — PR titles are commonly linted too. `pr.title.convention: plain` in `.tituskirch-skills.json` forces a non-Conventional title.
 - **Existing PR** — `gh pr list --head <branch> --state open` and check its author (step 5).
+- **Config** — `.tituskirch-skills.json` at the repo root (optional, committed) can set `pr.base`, `pr.title.convention`, and the shared `language`; `pr.backend` exists but v1 supports only `github`. Read with `jq` (missing file/`jq` → ignore, warn once). Keys: [REFERENCE.md](REFERENCE.md#config).
 
-Detection recipes: [REFERENCE.md](REFERENCE.md#detecting-conventions).
+Detection recipes and the shared cache: [REFERENCE.md](REFERENCE.md#detecting-conventions).
 
 ### 2. Gather the branch's content
 
