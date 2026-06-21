@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.5.0](https://github.com/TitusKirch/skills/compare/v0.4.0...v0.5.0) (2026-06-21)
+
+
+### Features
+
+* **atomic-commit:** cache detected conventions per repo ([bead906](https://github.com/TitusKirch/skills/commit/bead906c59085d30d70eb7ec06f4f983328224ad))
+* **atomic-commit:** move convention cache to shared namespace ([9bffdd0](https://github.com/TitusKirch/skills/commit/9bffdd087543732a45d76a840922e4092d0822b8))
+* **atomic-commit:** require feat/fix for release-relevant changes ([c223b4c](https://github.com/TitusKirch/skills/commit/c223b4c60b0bd7bf9bb958e3837df1501f8fc435))
+* **atomic-commit:** support a commit.language config override ([2e3556f](https://github.com/TitusKirch/skills/commit/2e3556fc145cb9b39d555d3d6a4fcbcaa280d4a6))
+* **gh-pull-request:** add skill ([03e88f7](https://github.com/TitusKirch/skills/commit/03e88f735a0b0f687ecbd8ee902df6a363d403b3))
+* **gh-pull-request:** reuse the shared convention cache ([84fed49](https://github.com/TitusKirch/skills/commit/84fed4910d0e1bf9a1c82b17464969078f040f6a))
+* **issue:** add skill ([753384e](https://github.com/TitusKirch/skills/commit/753384e0c3b7d6dfcae4803cc17183c40ad1a9e3))
+* **pull-request:** rename gh-pull-request and read pr.backend ([635a1c4](https://github.com/TitusKirch/skills/commit/635a1c4afd0038a7af822007d87e9b12cd7cfb6d))
+* **skills:** add docs config section to the shared schema ([40468b8](https://github.com/TitusKirch/skills/commit/40468b85539156a858b94ccb2c39c63e895b520a))
+* **skills:** add shared .tituskirch-skills.json config schema ([b1b5d0e](https://github.com/TitusKirch/skills/commit/b1b5d0e1b3a49e982092c95686a67eb5be3912d8))
+* **skills:** generate registry from SKILL.md frontmatter ([911e626](https://github.com/TitusKirch/skills/commit/911e626bde63249cc4e0deda5e2931e2065911f6))
+* **write-docs:** add skill ([65343aa](https://github.com/TitusKirch/skills/commit/65343aa63ed7cbafe0ce7b39582891ea823ff040))
+
+
+### Bug Fixes
+
+* **atomic-commit:** forbid AI/agent attribution in commit messages ([ca3d432](https://github.com/TitusKirch/skills/commit/ca3d432638cd4a7f2cabbd99727a2e7291149755))
+* **atomic-commit:** refine commit-signing guardrails ([2385e77](https://github.com/TitusKirch/skills/commit/2385e77d2df6ed8bc688a4bd03ed713b33a6f78a))
+* **atomic-commit:** respect commitlint body-max-line-length ([0954631](https://github.com/TitusKirch/skills/commit/0954631719b964cffd337d4529eb92eaf717dd9c))
+* **issue:** handle Linear's lack of repo issue templates ([252228c](https://github.com/TitusKirch/skills/commit/252228ce3882e5e0284edb3e7c701db684844077))
+* **issue:** pin the verified GitHub sub-issues API ([d26d977](https://github.com/TitusKirch/skills/commit/d26d977d9df6e2b8671a7a5f19e45a8d43bc6f7c))
+* **skills:** accept any language value, not just en/de ([b270276](https://github.com/TitusKirch/skills/commit/b27027661aa48a961258ea4c1cb2040227030a97))
+
 ## [0.4.0](https://github.com/TitusKirch/skills/compare/v0.3.0...v0.4.0) (2026-06-19)
 
 
