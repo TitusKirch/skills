@@ -39,3 +39,6 @@ jobs:
 
       - name: Format check
         run: pnpm format
+
+      - name: Skills registry in sync
+        run: pnpm skills:check

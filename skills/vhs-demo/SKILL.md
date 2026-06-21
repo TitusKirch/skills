@@ -1,5 +1,6 @@
 ---
 name: vhs-demo
+summary: Creates & maintains a reproducible terminal-demo GIF from a VHS tape.
 description: Creates and maintains a scripted, reproducible terminal-demo GIF for a CLI repo using a Charm VHS tape rendered headless via Docker. The `.tape` is the source of truth committed to git; the GIF is regenerated from it and never hand-edited. Use when the user wants to add, record, regenerate or tweak a terminal demo GIF for a kirchDev CLI repo (citty/Bun tools like envprism, forgemap), or asks about VHS tapes, demo.gif, or README terminal previews. Do not use for editing or optimising arbitrary existing GIFs.
 allowed-tools:
   - Read

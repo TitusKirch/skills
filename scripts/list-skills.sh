@@ -5,5 +5,7 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 
-cd "$REPO"
-find skills -name SKILL.md -not -path '*/node_modules/*' | sort
+# shellcheck source=scripts/skills-lib.sh
+. "$REPO/scripts/skills-lib.sh"
+
+skills_md_paths "$REPO"

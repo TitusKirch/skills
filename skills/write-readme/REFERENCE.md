@@ -175,15 +175,7 @@ Always follow the hook with **one** plain sentence summarising the value (no lis
 
 ## Closing footer (mandatory)
 
-```markdown
-## 🛣️ Versioning
-
-[Semantic Versioning](https://semver.org/) via [release-please](https://github.com/googleapis/release-please) — see [CHANGELOG.md](CHANGELOG.md).
-
-## 📄 License
-
-[MIT](LICENSE) © [Titus Kirch](https://github.com/TitusKirch/) / [IT-Dienstleistungen Titus Kirch](https://kirch.dev)
-```
+The `## 🛣️ Versioning` and `## 📄 License` blocks are fixed and live verbatim at the end of [`templates/README.template.md`](templates/README.template.md) — the single source for their wording and the `[MIT](LICENSE) © …` author line. Copy them from there; never retype the author/license line by hand.
 
 ## Anti-patterns
 

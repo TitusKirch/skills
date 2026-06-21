@@ -1,0 +1,20 @@
+{
+  "groupings": [
+    {
+      "title": "Git & GitHub workflow",
+      "description": "Commit, PR and issue automation that reads each repo's own conventions.",
+      "skills": ["atomic-commit", "pull-request", "issue"]
+    },
+    {
+      "title": "Docs & READMEs",
+      "description": "Generate and maintain project documentation in the house style.",
+      "skills": ["write-readme", "compact-readme", "write-docs"]
+    },
+    {
+      "title": "Demos",
+      "description": "Reproducible terminal-demo GIFs for CLI repos.",
+      "skills": ["vhs-demo"]
+    }
+  ],
+  "notGrouped": "bottom"
+}

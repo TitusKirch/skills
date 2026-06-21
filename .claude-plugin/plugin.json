@@ -12,7 +12,10 @@
   "skills": [
     "./skills/atomic-commit",
     "./skills/compact-readme",
+    "./skills/issue",
+    "./skills/pull-request",
     "./skills/vhs-demo",
+    "./skills/write-docs",
     "./skills/write-readme"
   ]
 }
