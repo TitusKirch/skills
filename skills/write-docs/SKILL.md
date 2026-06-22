@@ -1,7 +1,7 @@
 ---
 name: write-docs
 summary: Scaffolds, extends and reconciles a project's docs/ tree in the TitusKirch docs format.
-description: Scaffolds, extends, and reconciles a project's `docs/` tree in the TitusKirch docs format — one opinionated, stack-agnostic documentation convention shared across all repos. Detects state and routes the job — when `docs/` is missing it scaffolds the canonical structure for the project's preset (library/app/cli/infra/ai-tool); when it exists it routes a feature to the right section and page type (guide, how-to, concept/architecture, reference); when asked to update/align/migrate it reconciles existing pages to the current convention (numbering, index pages, frontmatter) without ever rewriting prose. Always previews a plan and writes only after confirmation. Use when the user wants to write, add, scaffold, or update documentation, set up a docs/ tree, document a feature, or says things like "write the docs", "add a docs page", "document this", "reconcile the docs", "Doku schreiben", "docs aktualisieren".
+description: Scaffolds, extends, and reconciles a project's `docs/` tree in the TitusKirch docs format — one opinionated, stack-agnostic documentation convention shared across all repos. Detects state and routes the job — when `docs/` is missing it scaffolds the canonical structure for the project's preset (library/app/cli/infra/ai-tool); when it exists it routes a feature to the right section and page type (guide, how-to, concept/architecture, reference); when asked to update/align/migrate it reconciles existing pages to the current convention (numbering, index pages, frontmatter) without ever rewriting prose. Always previews a plan and writes only after confirmation. Use when the user wants to write, add, scaffold, or update documentation, set up a docs/ tree, document a feature, or says things like "write the docs", "add a docs page", "document this", "reconcile the docs", "Doku schreiben", "docs aktualisieren". Also trigger proactively, without an explicit request, once a feature has cleared every review and reached final approval — merged or signed off, the work settled — not the moment implementation finishes, to document the shipped result.
 allowed-tools:
   - Read
   - Write
@@ -24,6 +24,8 @@ The TitusKirch **docs format** — one opinionated, stack-agnostic convention fo
 | "update / align / migrate / reconcile docs" | **reconcile** |
 
 Optional verb shortcuts: `/write-docs init`, `/write-docs add <topic>`, `/write-docs reconcile`. Otherwise infer from state and the request. **Always: plan → confirm → apply.**
+
+**Proactive trigger** — don't wait to be asked. Once a feature has passed all its reviews and reached final approval (signed off or merged), engage this skill yourself and run the **route/add** job for that feature. Trigger on _final approval_, not on _implementation finished_ — code still facing review is too early, and a feature that gets reworked shouldn't be documented twice. The write still follows plan → confirm → apply.
 
 ## Routing matrix — what you changed → page type → section
 
