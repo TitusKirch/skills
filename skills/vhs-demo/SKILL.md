@@ -1,7 +1,7 @@
 ---
 name: vhs-demo
 summary: Creates & maintains a reproducible terminal-demo GIF from a VHS tape.
-description: Creates and maintains a scripted, reproducible terminal-demo GIF for a CLI repo using a Charm VHS tape rendered headless via Docker. The `.tape` is the source of truth committed to git; the GIF is regenerated from it and never hand-edited. Use when the user wants to add, record, regenerate or tweak a terminal demo GIF for a kirchDev CLI repo (citty/Bun tools like envprism, forgemap), or asks about VHS tapes, demo.gif, or README terminal previews. Do not use for editing or optimising arbitrary existing GIFs.
+description: Creates and maintains a scripted, reproducible terminal-demo GIF for a CLI repo from a Charm VHS tape rendered headless via Docker — the .tape is the committed source of truth, the GIF a regenerated artifact. Use when the user wants to add, record, regenerate or tweak a terminal demo GIF for a kirchDev CLI repo (citty/Bun tools like envprism, forgemap), or asks about VHS tapes, demo.gif, or README terminal previews. Do not use for editing or optimising arbitrary existing GIFs.
 allowed-tools:
   - Read
   - Write
@@ -108,13 +108,13 @@ Reference the GIF with a plain image tag near the top of the README (after the h
 
 For multiple demos, embed each under the relevant section with its descriptive name. If the README is being (re)written, the [`write-readme`](../write-readme/SKILL.md) skill owns layout — this skill only owns the asset and its reference.
 
-## Workflow summary
+## Steady-state loop (after the first run)
 
-1. **Once / on Dockerfile change** — `docker build -f .github/assets/vhs.Dockerfile -t <repo>-vhs .`
-2. **On every demo change** — `pnpm build` → `docker run --rm -v "$PWD:/vhs" <repo>-vhs .github/assets/<name>.tape`
-3. **Verify** — dimensions, duration ≈ sleep-sum, file size, optional frame sampling.
-4. **README** — confirm/set the `.github/assets/<name>.gif` reference.
-5. **Commit** — tape + Dockerfile + regenerated GIF together; the tape is the source of truth.
+Quick start covers the first run; afterwards only the cadence differs:
+
+- **Image** — rebuild only when the Dockerfile changes.
+- **Every demo change** — `pnpm build` → re-render → [verify](#verification).
+- **Commit** the tape, Dockerfile, and regenerated GIF together — the tape is the source of truth.
 
 ## Reference
 
