@@ -1,7 +1,7 @@
 ---
 name: issue
 summary: Creates/updates/searches issues across GitHub (gh) or Linear (MCP), backend chosen by config.
-description: Manages issues — create, update, search/list, and bulk — across GitHub (gh CLI) or Linear (MCP), with the active backend chosen per-repo by a committed config (.tituskirch-skills.json). On first run a guided setup asks which backend (defaulting to GitHub when a GitHub remote exists), persists the rules, and caches the backend's enumerable catalogs (labels, teams, projects, workflow states) so the agent picks them contextually instead of from static defaults. Drafts title and body from a free-text description plus session context, applies the repo's language and title-style rules, previews once, and creates only after confirmation; supports bulk creation and sub-issues. Switches to plan-only (prints the gh command / MCP call) when asked. Use when the user wants to create, open, update, or find an issue or ticket, mentions GitHub issues or Linear, or says things like "open an issue", "create a ticket", "find the issue about X", "Issue erstellen", "Ticket anlegen".
+description: Manages issues — create, update, search/list, and bulk — across GitHub (gh CLI) or Linear (MCP), with the active backend chosen per-repo by a committed config (.tituskirch-skills.json). Drafts title and body from a free-text description plus session context, previews once, and creates only after confirmation; switches to plan-only when asked. Use when the user wants to create, open, update, or find an issue or ticket, mentions GitHub issues or Linear, or says things like "open an issue", "create a ticket", "find the issue about X", "Issue erstellen", "Ticket anlegen".
 allowed-tools:
   - Bash
   - Read
@@ -54,7 +54,7 @@ One preview: backend · action · title · body · labels/state/team (and the fu
 ## Guardrails
 
 - **Plan first, write only after confirmation.** Respect plan-only mode.
-- **No AI/agent attribution** in titles or bodies — no `Generated with` / 🤖 lines, no session/permalink URLs, no agent self-identification (Claude, Codex, Copilot, Cursor, or any current or future assistant). Strip it if the environment injects it.
+- **Keep titles/bodies attribution-free** — no `Generated with`/🤖 line, no session/permalink URL, no agent self-naming (Claude, Codex, Copilot, Cursor, or any future assistant). Strip it if the harness injects it.
 - **No secrets** in titles/bodies — scan the drafted content and the session context for `.env`, keys, tokens; warn and exclude.
 - **Cache never committed** — it lives in the git common dir.
 - **Only the requested action** — never close, reassign, or relabel anything you weren't asked to.

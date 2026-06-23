@@ -1,7 +1,7 @@
 ---
 name: write-docs
 summary: Scaffolds, extends and reconciles a project's docs/ tree in the TitusKirch docs format.
-description: Scaffolds, extends, and reconciles a project's `docs/` tree in the TitusKirch docs format — one opinionated, stack-agnostic documentation convention shared across all repos. Detects state and routes the job — when `docs/` is missing it scaffolds the canonical structure for the project's preset (library/app/cli/infra/ai-tool); when it exists it routes a feature to the right section and page type (guide, how-to, concept/architecture, reference); when asked to update/align/migrate it reconciles existing pages to the current convention (numbering, index pages, frontmatter) without ever rewriting prose. Always previews a plan and writes only after confirmation. Use when the user wants to write, add, scaffold, or update documentation, set up a docs/ tree, document a feature, or says things like "write the docs", "add a docs page", "document this", "reconcile the docs", "Doku schreiben", "docs aktualisieren". Also trigger proactively, without an explicit request, once a feature has cleared every review and reached final approval — merged or signed off, the work settled — not the moment implementation finishes, to document the shipped result.
+description: Scaffolds, extends, and reconciles a project's `docs/` tree in the TitusKirch docs format — one opinionated, stack-agnostic documentation convention shared across all repos. Routes by state — scaffolds when `docs/` is missing, adds to the right section when it exists, reconciles existing pages to the convention when asked (never rewriting prose). Always previews a plan and writes only after confirmation. Use when the user wants to write, add, scaffold, or update documentation, set up a docs/ tree, document a feature, or says things like "write the docs", "add a docs page", "document this", "reconcile the docs", "Doku schreiben", "docs aktualisieren". Also trigger proactively, without an explicit request, once a feature has cleared every review and reached final approval — when the work is settled, not the moment implementation finishes — to document the shipped result.
 allowed-tools:
   - Read
   - Write
@@ -71,7 +71,7 @@ Desired-state, idempotent — like a `--fix` linter for the docs tree.
 ## Guardrails (inherited)
 
 - **Plan/preview first; apply only after confirmation.** Respect plan-only / dry-run.
-- **No AI/agent attribution** anywhere in generated content.
+- **Keep generated content attribution-free** — no agent self-naming or `Generated with`/🤖 lines.
 - **No secrets** in generated docs — scan, warn, exclude.
 - **Only the requested action** — nothing closed or changed unasked.
 - **No cache** — the `docs/` tree is live state, always read fresh.

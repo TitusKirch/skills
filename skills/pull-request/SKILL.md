@@ -1,7 +1,7 @@
 ---
 name: pull-request
 summary: Opens a pull request from the current branch via gh; backend chosen by config (github in v1).
-description: Creates a pull request from the current branch in the repo's own conventions — auto-detects the PR template, the Conventional-Commits title style, the default base branch, and any existing PR, then builds one umbrella Conventional title and a body filled from the repo's pull-request template (summary from the branch's commits and diff, type-of-change ticked, linked issues). The backend is chosen per-repo by config (pr.backend); v1 implements GitHub via the gh CLI, structured so other forges (e.g. GitLab merge requests) can dock later. Always presents the full plan first and creates only after confirmation; switches to plan-only (prints the command) when asked. If an open PR opened by the current user already exists for the branch, it updates that PR's body instead of duplicating; PRs opened by anyone else or by automation are never touched. Use when the user wants to open, create, or raise a pull request or merge request, mentions a PR/MR or a conventional PR, or says things like "open a PR", "create a pull request", "PR for this branch", "PR erstellen", "mach einen PR".
+description: Creates a pull request from the current branch in the repo's own conventions — an umbrella Conventional-Commits title and a body filled from the repo's PR template. Backend chosen per-repo by config (pr.backend); v1 is GitHub via the gh CLI. Presents the full plan first and creates only after confirmation; plan-only when asked. Updates your own existing PR instead of duplicating, and never touches PRs opened by others or automation. Use when the user wants to open, create, or raise a pull request or merge request, mentions a PR/MR or a conventional PR, or says things like "open a PR", "create a pull request", "PR for this branch", "PR erstellen", "mach einen PR".
 allowed-tools:
   - Bash
   - Read
@@ -52,7 +52,7 @@ Show: title · `base ← head` · ready/draft · existing-PR status · the rende
 ## Guardrails
 
 - **GitHub backend (v1).** `pr.backend` selects the forge, but only `github` is implemented. No GitHub remote / `gh` unavailable → stop; never fall back to raw `git` PR plumbing. Any other `pr.backend` value isn't supported yet — say so and stop.
-- **No AI/agent attribution** in the title or body — no `Generated with` / 🤖 lines, no session or permalink URLs, no agent self-identification (Claude, Codex, Copilot, Cursor, or any current or future assistant). Strip it if the environment injects it.
+- **Keep the title/body attribution-free** — no `Generated with`/🤖 line, no session/permalink URL, no agent self-naming (Claude, Codex, Copilot, Cursor, or any future assistant). Strip it if the harness injects it.
 - **Only ever touch your own PR.** Never edit a PR opened by another user or by automation, and never open a duplicate of one that already exists.
 - **Never force-push; never merge** unless explicitly asked. Push the head branch only after confirmation.
 - **No secrets in the body.** Scan the summary and diff for `.env`, keys, tokens; warn and exclude.
