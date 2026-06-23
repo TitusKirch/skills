@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/TitusKirch/skills/compare/v0.6.0...v0.7.0) (2026-06-23)
+
+
+### Features
+
+* **write-docs:** trigger proactively on final feature approval ([adabefe](https://github.com/TitusKirch/skills/commit/adabefe2380198b8debd6b1535d07f8cf1643394))
+
+
+### Bug Fixes
+
+* **write-readme:** declare allowed-tools ([c1fdf29](https://github.com/TitusKirch/skills/commit/c1fdf29420d629014c270f01bf5fadeb94748171))
+
 ## [0.6.0](https://github.com/TitusKirch/skills/compare/v0.5.1...v0.6.0) (2026-06-21)
 
 
