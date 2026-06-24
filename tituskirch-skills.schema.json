@@ -130,20 +130,25 @@
       }
     },
     "docs": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "write-docs settings.",
-      "properties": {
-        "preset": {
-          "type": "string",
-          "enum": ["library", "cli", "app", "infra", "ai-tool"],
-          "description": "Project type — selects which sections beyond the core (getting-started, reference) to scaffold. Falls back to repo detection, then asks."
+      "description": "write-docs settings, or false to opt the repo out of docs entirely.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "preset": {
+              "type": "string",
+              "enum": ["library", "cli", "app", "infra", "ai-tool"],
+              "description": "Project type — selects which sections beyond the core (getting-started, reference) to scaffold. Falls back to repo detection, then asks."
+            },
+            "language": {
+              "$ref": "#/$defs/language",
+              "description": "Overrides the root language for generated docs."
+            }
+          }
         },
-        "language": {
-          "$ref": "#/$defs/language",
-          "description": "Overrides the root language for generated docs."
-        }
-      }
+        { "const": false }
+      ]
     },
     "work": {
       "type": "object",
