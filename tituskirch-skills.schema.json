@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
   "title": "TitusKirch skills config",
-  "description": "Optional, committed config shared by the TitusKirch skills (atomic-commit, pull-request, issue, write-docs). Place at the repo root as .tituskirch-skills.json. Absent → skills behave on detection/native defaults only. Resolution per setting: config → native → built-in default.",
+  "description": "Optional, committed config shared by the TitusKirch skills (atomic-commit, pull-request, issue, work-issue, write-docs). Place at the repo root as .tituskirch-skills.json. Absent → skills behave on detection/native defaults only. Resolution per setting: config → native → built-in default.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -144,9 +144,76 @@
           "description": "Overrides the root language for generated docs."
         }
       }
+    },
+    "work": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "work-issue / work-issues settings.",
+      "properties": {
+        "backend": {
+          "type": "string",
+          "enum": ["github", "linear"],
+          "description": "Active backend for working issues. Falls back to issue.backend."
+        },
+        "cap": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Max issues a single drain works (mandatory bound). Default: 10."
+        },
+        "branch": {
+          "type": "string",
+          "description": "Where work lands: \"worktree\" (own branch + PR per issue) or \"branch:<name>\" (all issues on one shared branch, e.g. \"branch:dev\"). Default: worktree."
+        },
+        "parallel": {
+          "type": "boolean",
+          "description": "Run workers concurrently in isolated git worktrees instead of sequentially. Independent of branch. Default: false."
+        },
+        "verify": {
+          "type": ["string", "null"],
+          "description": "Check command run before opening the PR (tests/lint/build). null → detect from the repo."
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Lifecycle label names. Each is a label string, or false to disable that mechanic.",
+          "properties": {
+            "ready": { "$ref": "#/$defs/labelOrOff" },
+            "working": { "$ref": "#/$defs/labelOrOff" },
+            "review": { "$ref": "#/$defs/labelOrOff" },
+            "done": { "$ref": "#/$defs/labelOrOff" },
+            "blocked": { "$ref": "#/$defs/labelOrOff" },
+            "repo": { "$ref": "#/$defs/labelOrOff" }
+          }
+        },
+        "priorityLabels": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "GitHub priority labels, highest first (e.g. [\"urgent\", \"high\", \"medium\", \"low\"]). Linear uses its native priority field and ignores these."
+        },
+        "linear": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Linear options (used when backend = linear).",
+          "properties": {
+            "team": {
+              "type": "string",
+              "description": "Team name/key/id, resolved via the catalog cache. Falls back to issue.linear.team."
+            },
+            "statuses": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Workflow states that count as startable (e.g. [\"Todo\", \"In Progress\"])."
+            }
+          }
+        }
+      }
     }
   },
   "$defs": {
+    "labelOrOff": {
+      "description": "A label name, or false to switch the mechanic off.",
+      "oneOf": [{ "type": "string" }, { "const": false }]
+    },
     "language": {
       "description": "A language code or name (e.g. \"en\", \"de\", \"fr\", \"pt-BR\"), or \"match\" to mirror the repo/source language. A scalar applies to both title and body; the object form sets them separately.",
       "oneOf": [
