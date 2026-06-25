@@ -21,8 +21,9 @@ There is no test suite — skills are documentation, validated by lint/format on
 
 ## Tooling layout (non-obvious bits)
 
-- **pnpm is mandatory** — `package-manager-strict=true` in `.npmrc` and `packageManager` pin in `package.json`. npm/yarn will be rejected.
-- **`.npmrc` sets `minimumReleaseAge=4320`** (3 days). Packages published within the last 3 days will not install. `pnpm taze` respects this too — if a newer version exists but is too recent, taze will report "up to date." Bump pinned versions (`oxfmt`, `oxlint`) manually if needed.
+- **pnpm is mandatory** — `packageManagerStrict: true` in `pnpm-workspace.yaml` and the `packageManager` pin in `package.json`. npm/yarn will be rejected.
+- **`pnpm-workspace.yaml` holds all pnpm settings** — pnpm 10+ reads only auth/registry from `.npmrc`; every other setting (the gate, linker, strictness) must live in `pnpm-workspace.yaml` or it is silently ignored. There is no `.npmrc`.
+- **`pnpm-workspace.yaml` sets `minimumReleaseAge: 4320`** (3 days). Packages published within the last 3 days will not install. `pnpm taze` respects this too — if a newer version exists but is too recent, taze will report "up to date." Bump pinned versions (`oxfmt`, `oxlint`) manually if needed.
 - **oxfmt is the formatter for everything**, including markdown, JSON, and YAML — `lint-staged.config.js` routes `*.md`, `*.{json,jsonc,yml,yaml}` through `oxfmt`, and only `*.{js,ts,mjs,cjs}` through oxlint + oxfmt. The primary use case is markdown (skill bodies); JS is incidental.
 - **`oxlint` and `oxfmt` are pinned to exact versions** (no `^`). Taze's default mode skips them; use `pnpm exec taze latest -w` or edit by hand.
 - **Husky hooks** (`.husky/pre-commit`, `.husky/commit-msg`) run lint-staged and commitlint. Don't `--no-verify` unless explicitly asked.
