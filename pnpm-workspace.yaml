@@ -7,9 +7,6 @@ autoInstallPeers: true
 # Require packages to be at least 4320 minutes (3 days) old before install.
 minimumReleaseAge: 4320
 
-# Prevent dependency downgrades according to the configured trust policy.
-trustPolicy: no-downgrade
-
 # Enforce package manager checks for project consistency.
 packageManagerStrict: true
 
