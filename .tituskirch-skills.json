@@ -1,6 +1,26 @@
 {
   "$schema": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
   "language": "en",
+  "commit": {
+    "scopeVocab": [
+      "atomic-commit",
+      "compact-readme",
+      "issue",
+      "pull-request",
+      "skills-config",
+      "vhs-demo",
+      "work-issue",
+      "work-queue",
+      "write-docs",
+      "write-readme",
+      "skills",
+      "deps",
+      "deps-dev",
+      "dependabot",
+      "changelog",
+      "ci"
+    ]
+  },
   "pr": {
     "base": "dev"
   },
