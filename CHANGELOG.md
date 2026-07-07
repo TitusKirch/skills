@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.0](https://github.com/TitusKirch/skills/compare/v0.8.0...v0.9.0) (2026-07-07)
+
+
+### Features
+
+* **skills:** allow disabling issue and pr via config false ([8e19c93](https://github.com/TitusKirch/skills/commit/8e19c93af49195b9da1f77b45fb0e7f214e8ef8a))
+* **tituskirch-skills-config:** gate backend selection and harden schema loading ([500a0ff](https://github.com/TitusKirch/skills/commit/500a0fff35150447acaecd0e123321da88ab4787))
+
 ## [0.8.0](https://github.com/TitusKirch/skills/compare/v0.7.0...v0.8.0) (2026-07-07)
 
 
