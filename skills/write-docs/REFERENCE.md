@@ -36,7 +36,11 @@ The recognized sections. The slug is the directory name (after its numeric prefi
 | `conventions`     | Project-specific rules and patterns.                        |      |
 | `contributing`    | How to develop and contribute.                              |      |
 
-**Core** sections are always scaffolded. A section not in this catalogue is allowed but triggers a **gap report** (see SKILL.md) — pick a sensible slug and add it here in the same change so the next repo stays consistent.
+**Core** sections are always scaffolded. The catalogue is organized by **documentation type** (intent) — every slug answers _what kind of page_, never _what subject_. A section not in this catalogue is allowed but triggers a **gap report** (see SKILL.md): only fold in a genuinely missing **type**. A **subject** section (`plugins`, `themes`, `integrations`, `billing`) is a category error — route its content through the type it fits (see the routing matrix), and nest it if it needs grouping (see below), rather than minting a top-level slug.
+
+## Nesting & subject grouping
+
+Sections hold pages, but a page slot can be a **subject folder** when one topic spans several pages — the `reference` section nests (`reference/rest-api/v1/…`). Group by subject **inside** a type section, never as a new top-level slug: an external integration's how-it-works belongs at `concepts/integrations/wordpress.md`, not `plugins/wordpress.md`. Keeping the top level type-only is what keeps the tree the same shape across every repo.
 
 ## Presets
 
@@ -135,6 +139,7 @@ This skill keeps **no cache** — unlike the commit/PR/issue skills, its only in
 
 - ❌ Order in frontmatter instead of the filename prefix.
 - ❌ A `type:` (or `icon:`/`nav:`) frontmatter field — the contract is `title` + `description` only.
+- ❌ A subject-matter top-level section (`plugins/`, `themes/`, `integrations/`) instead of routing content into a type section (nested if needed).
 - ❌ A second page on a topic that already has one — edit in place.
 - ❌ A how-to without a closing checklist.
 - ❌ Restating upstream/framework behavior instead of linking it.
