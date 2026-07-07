@@ -13,6 +13,8 @@ allowed-tools:
 
 Create, update, and search issues without caring which tracker the repo uses. One skill, two backends — **GitHub** (via `gh`) or **Linear** (via its MCP server) — picked per-repo by a small committed config. The skill drafts the issue from your free-text description plus the session context, shows it once, and writes it only after you confirm — or just prints the command when you ask for a plan.
 
+**Opted out?** If the repo config sets `issue` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the issue skill is turned off in `.tituskirch-skills.json`. An _absent_ `issue` block is **not** disabled (it falls back to detection/defaults). Check `jq -e '.issue == false'` before any action — and before indexing `.issue.backend`.
+
 ## Workflow
 
 ### 1. Load config & cache (guided setup on first run)
