@@ -39,116 +39,126 @@
       }
     },
     "pr": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "pull-request settings.",
-      "properties": {
-        "backend": {
-          "type": "string",
-          "enum": ["github"],
-          "description": "Platform. v1 supports only github; the slot exists for a later platform-neutral rename."
-        },
-        "base": {
-          "type": "string",
-          "description": "PR base branch. Overrides the GitHub default branch (e.g. a feature → dev flow)."
-        },
-        "title": {
+      "description": "pull-request settings, or false to disable the pull-request skill for the repo.",
+      "oneOf": [
+        {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "convention": {
+            "backend": {
               "type": "string",
-              "enum": ["conventional", "plain"],
-              "description": "PR title style. Default: conventional."
+              "enum": ["github"],
+              "description": "Platform. v1 supports only github; the slot exists for a later platform-neutral rename."
+            },
+            "base": {
+              "type": "string",
+              "description": "PR base branch. Overrides the GitHub default branch (e.g. a feature → dev flow)."
+            },
+            "title": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "convention": {
+                  "type": "string",
+                  "enum": ["conventional", "plain"],
+                  "description": "PR title style. Default: conventional."
+                }
+              }
+            },
+            "language": {
+              "$ref": "#/$defs/language",
+              "description": "Overrides the root language for PR title/body."
+            },
+            "instructions": {
+              "$ref": "#/$defs/instructions",
+              "description": "Free-text guidance for the PR title/body. Additive preference only — never overrides the template, detection, or the skill's guardrails."
             }
           }
         },
-        "language": {
-          "$ref": "#/$defs/language",
-          "description": "Overrides the root language for PR title/body."
-        },
-        "instructions": {
-          "$ref": "#/$defs/instructions",
-          "description": "Free-text guidance for the PR title/body. Additive preference only — never overrides the template, detection, or the skill's guardrails."
-        }
-      }
+        { "const": false }
+      ]
     },
     "issue": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "issue skill settings.",
-      "properties": {
-        "backend": {
-          "type": "string",
-          "enum": ["github", "linear"],
-          "description": "Active issue backend. Set by the guided setup; never guessed silently."
-        },
-        "language": {
-          "$ref": "#/$defs/language",
-          "description": "Overrides the root language for issue title/body."
-        },
-        "title": {
+      "description": "issue skill settings, or false to disable the issue skill for the repo.",
+      "oneOf": [
+        {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "convention": {
+            "backend": {
               "type": "string",
-              "enum": ["conventional", "plain"],
-              "description": "Issue title style. Default: plain (most trackers)."
-            }
-          }
-        },
-        "linear": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "Linear defaults (used when backend = linear).",
-          "properties": {
-            "team": {
-              "type": "string",
-              "description": "Required to create on Linear. Human name/key (e.g. \"ENG\"); resolved to the team id via the catalog cache."
+              "enum": ["github", "linear"],
+              "description": "Active issue backend. Set by the guided setup; never guessed silently."
             },
-            "project": {
-              "type": ["string", "null"],
-              "description": "Default project."
+            "language": {
+              "$ref": "#/$defs/language",
+              "description": "Overrides the root language for issue title/body."
             },
-            "priority": {
-              "enum": ["none", "low", "medium", "high", "urgent", null],
-              "description": "Default priority."
+            "title": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "convention": {
+                  "type": "string",
+                  "enum": ["conventional", "plain"],
+                  "description": "Issue title style. Default: plain (most trackers)."
+                }
+              }
             },
-            "defaultState": {
-              "type": ["string", "null"],
-              "description": "Default workflow state on create."
+            "linear": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Linear defaults (used when backend = linear).",
+              "properties": {
+                "team": {
+                  "type": "string",
+                  "description": "Required to create on Linear. Human name/key (e.g. \"ENG\"); resolved to the team id via the catalog cache."
+                },
+                "project": {
+                  "type": ["string", "null"],
+                  "description": "Default project."
+                },
+                "priority": {
+                  "enum": ["none", "low", "medium", "high", "urgent", null],
+                  "description": "Default priority."
+                },
+                "defaultState": {
+                  "type": ["string", "null"],
+                  "description": "Default workflow state on create."
+                }
+              }
+            },
+            "labels": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Label handling.",
+              "properties": {
+                "exclude": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Glob patterns (e.g. \"stack:*\", \"autorelease:*\") for catalog labels the agent must never auto-apply."
+                }
+              }
+            },
+            "github": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "GitHub issue defaults (used when backend = github).",
+              "properties": {
+                "template": {
+                  "type": ["string", "null"],
+                  "description": "Default issue template path under .github/ISSUE_TEMPLATE/."
+                }
+              }
+            },
+            "instructions": {
+              "$ref": "#/$defs/instructions",
+              "description": "Free-text guidance for the issue title/body. Additive preference only — never overrides the backend rules, template, or the skill's guardrails."
             }
           }
         },
-        "labels": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "Label handling.",
-          "properties": {
-            "exclude": {
-              "type": "array",
-              "items": { "type": "string" },
-              "description": "Glob patterns (e.g. \"stack:*\", \"autorelease:*\") for catalog labels the agent must never auto-apply."
-            }
-          }
-        },
-        "github": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "GitHub issue defaults (used when backend = github).",
-          "properties": {
-            "template": {
-              "type": ["string", "null"],
-              "description": "Default issue template path under .github/ISSUE_TEMPLATE/."
-            }
-          }
-        },
-        "instructions": {
-          "$ref": "#/$defs/instructions",
-          "description": "Free-text guidance for the issue title/body. Additive preference only — never overrides the backend rules, template, or the skill's guardrails."
-        }
-      }
+        { "const": false }
+      ]
     },
     "docs": {
       "description": "write-docs settings, or false to opt the repo out of docs entirely.",

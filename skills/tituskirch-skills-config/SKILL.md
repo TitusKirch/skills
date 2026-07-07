@@ -1,7 +1,7 @@
 ---
 name: tituskirch-skills-config
 summary: Sets up, reconciles, and drift-checks .tituskirch-skills.json, the shared config the other TitusKirch skills read.
-description: Creates, reconciles, and drift-checks `.tituskirch-skills.json` — the committed, repo-root config the other TitusKirch skills (atomic-commit, pull-request, issue, work-issue, work-queue, write-docs) read to pick backends, languages, and conventions per repo. Routes by state — guided setup when the config is missing or a section is incomplete, desired-state reconcile against the schema when it exists, and a report-only drift check that flags config gone stale against the repo — a renamed skill or scope, a moved branch, a deleted label or template. Detects repo signals (GitHub remote, integration branch, commitlint, project type) to propose defaults, previews a plan, and writes only after confirmation. Also fires proactively after a skill, scope, branch, or label is renamed or removed in the session, to catch the config drifting. Use when the user wants to set up, configure, onboard, fix, or drift-check the TitusKirch skills config, mentions `.tituskirch-skills.json`, or says things like "configure the skills", "set up the config", "onboard this repo", "check the config", "keep the config in sync", "skills config einrichten", "config reparieren".
+description: Creates, reconciles, and drift-checks `.tituskirch-skills.json` — the committed, repo-root config the other TitusKirch skills (atomic-commit, pull-request, issue, work-issue, work-queue, write-docs) read to pick backends, languages, and conventions per repo. Routes by state — guided setup when the config is missing or a section is incomplete, desired-state reconcile against the schema when it exists, and a report-only drift check that flags config gone stale against the repo — a renamed skill or scope, a moved branch, a deleted label or template. Detects repo signals (remote host, gh/Linear availability, integration branch, commitlint, project type) to propose defaults, gates backend choices to what actually works, previews a plan, and writes only after confirmation. Also fires proactively after a skill, scope, branch, or label is renamed or removed in the session, to catch the config drifting. Use when the user wants to set up, configure, onboard, fix, or drift-check the TitusKirch skills config, mentions `.tituskirch-skills.json`, or says things like "configure the skills", "set up the config", "onboard this repo", "check the config", "keep the config in sync", "skills config einrichten", "config reparieren".
 allowed-tools:
   - Read
   - Write
@@ -12,7 +12,7 @@ allowed-tools:
 
 # tituskirch-skills-config
 
-`.tituskirch-skills.json` at the repo root is the optional, committed config the other TitusKirch skills read — each setting resolved per repo as **config → native → built-in default**. This skill owns the file's **lifecycle**: create it, grow it, reconcile it. It does **not** own the schema. Every key, type, enum, and default lives once in [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json) — the **single source of truth**. Read it to validate and enumerate keys; never restate it here or copy defaults into a repo's config.
+`.tituskirch-skills.json` at the repo root is the optional, committed config the other TitusKirch skills read — each setting resolved per repo as **config → native → built-in default**. This skill owns the file's **lifecycle**: create it, grow it, reconcile it. It does **not** own the schema. Every key, type, enum, and default lives once in [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json) — the **single source of truth**. Read it to validate and enumerate keys; never restate it here or copy defaults into a repo's config. **Fetch it raw** (`curl` via Bash) — WebFetch only summarizes and drops the exact enums. **Staleness guard** — the `main` URL can be CDN-cached or predate the installed skill, so if the fetched schema lacks a section this skill documents (`commit` / `pr` / `issue` / `docs` / `work`), your copy is stale; re-fetch cache-busted before telling the user a key or section is unsupported.
 
 ## Jobs — pick by state + intent
 
@@ -29,18 +29,28 @@ Verb shortcuts: `/tituskirch-skills-config setup`, `/tituskirch-skills-config re
 
 ## Resolution order — keep the config minimal
 
-`config → native → built-in default` means an absent key or section is **defaults, not off**. So write **only** the essentials and the choices the user actually makes; never write a key set to its own default — it is a no-op that only invites drift. The one genuine off-switch is `docs: false` (opt a repo out of docs entirely), distinct from an absent `docs` block.
+`config → native → built-in default` means an absent key or section is **defaults, not off**. So write **only** the essentials and the choices the user actually makes; never write a key set to its own default — it is a no-op that only invites drift. `docs`, `issue`, and `pr` each accept an explicit `false` to **disable** that skill for the repo — distinct from an absent block, which just falls back to defaults. Use `false` when a skill can't or shouldn't run here (e.g. no working backend); omit when it's simply unconfigured.
 
 ## Setup — config missing, or a section incomplete
 
-Walk the sections; per section, propose from detection, ask only the **essentials**, and leave everything else an editable key. **Never guess a backend — always ask.**
+Walk the sections; per section, propose from detection, ask only the **essentials**, and leave everything else an editable key.
+
+**Backend selection is capability-gated** — always ask, never auto-select (not even when only one option works). Offer only backends whose tooling actually works here; show the rest with the reason they're out:
+
+- **`github`** — viable only if the remote host is GitHub (`git remote get-url`) **and** `gh auth status` covers that host. gh signed in to github.com while the remote is GitLab / Gitea / Bitbucket → not viable.
+- **`linear`** — viable only if the Linear MCP answers (`whoami` / list teams).
+- **`none`** — always offered. Either omit the section (unconfigured — runs only when explicitly invoked) or write `false` to **disable** the skill outright (it refuses even when invoked). Prefer `false` when the repo has no working backend, so an accidental call stops cleanly.
+
+A repo with no working backend (e.g. self-hosted GitLab) just lands on `none` — no special-casing. `pr` is `github`-only in the schema, so it is github, `false`, or omit; when the remote isn't GitHub, name it as a known gap.
 
 - **root `language`** — existing config / repo language → ask → default `en`.
 - **`commit`** — usually omit the whole block; `scopes` defaults to `auto`. Add `scopeVocab` / `instructions` only on an explicit preference.
-- **`pr`** — `backend` is `github` (only value today). Propose `base` when the repo integrates onto a non-default branch (e.g. a `dev` branch exists). `title.convention` is `conventional` when commitlint or a Conventional-Commits history is present, else ask.
-- **`issue`** — **always ask the backend** (GitHub remote present → offer `github` as the default; none → no default). For Linear, confirm the MCP is authenticated **first**, then list teams and pick `linear.team` (the one required field). Set the languages, `title.convention` (`plain` default), and `labels.exclude` for catalog labels the agent must never auto-apply.
+- **`pr`** — github-or-omit (above). Propose `base` when the repo integrates onto a non-default branch (e.g. a `dev` branch exists). `title.convention` is `conventional` when commitlint or a Conventional-Commits history is present, else ask.
+- **`issue`** — pick the backend (above). For Linear, list teams and pick `linear.team` (the one required field). Set the languages, `title.convention` (`plain` default), and `labels.exclude` for catalog labels the agent must never auto-apply.
 - **`docs`** — `preset` from project type (cli / library / app / infra / ai-tool), or `false` to opt out; language inherits root.
-- **`work`** — only when the repo runs the queue. `backend` / `linear.team` fall back to `issue.*`; set `cap` (default 10), `branch` (`worktree` default), and the lifecycle `labels`.
+- **`work`** — only when the repo runs the queue. Pick the backend (above); it and `linear.team` fall back to `issue.*`. Set `cap` (default 10), `branch` (`worktree` default), and the lifecycle `labels`.
+
+**Fast-path** — most repos reduce to one real decision (commit auto-detects from commitlint, languages default to `en`, backends resolve to a single viable option or `none`). After detection, name only what is actually non-default and ask those — don't walk every section aloud when just `docs.preset` is open.
 
 Write the file with a leading `$schema` key pointing at the canonical raw URL so editors validate it. Plan → confirm → write.
 
@@ -59,7 +69,7 @@ Desired-state, idempotent — a `--fix` linter for the config. **check** is the 
 
 - **Plan → confirm → write.** Respect plan-only / dry-run.
 - **The schema is the single source of truth** — read it to validate and enumerate; never duplicate it into a repo's config or into this skill.
-- **Backend is never guessed** — the `issue` / `work` backend is always asked.
+- **Backend is never guessed or auto-selected** — always asked, with the offered options gated to what actually works here (see Setup).
 - **Minimal config** — resolution order means defaults need not be written.
 - **Valid before writing** — the result must be valid JSON and validate against the schema. Only ever touch `.tituskirch-skills.json`.
 - **Commit via [`atomic-commit`](../atomic-commit/SKILL.md)**, not from here.
