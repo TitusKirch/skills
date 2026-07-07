@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/TitusKirch/skills/compare/v0.9.0...v0.10.0) (2026-07-07)
+
+
+### Features
+
+* **write-docs:** rule out subject-matter sections in the docs catalogue ([aeadce6](https://github.com/TitusKirch/skills/commit/aeadce6f53e9aa21f0e743158644b71522afa8cf))
+
 ## [0.9.0](https://github.com/TitusKirch/skills/compare/v0.8.0...v0.9.0) (2026-07-07)
 
 
