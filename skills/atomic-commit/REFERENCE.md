@@ -109,19 +109,27 @@ If subjects are consistently in another language, match it. Otherwise write Engl
 
 Keys this skill reads:
 
-| Key               | Effect                                                                                           |
-| :---------------- | :----------------------------------------------------------------------------------------------- |
-| `commit.language` | commit-message language — any code/name (e.g. `en`, `de`) or `match`; overrides root + detection |
-| `language` (root) | shared default language; used when `commit.language` is unset                                    |
+| Key                   | Effect                                                                                           |
+| :-------------------- | :----------------------------------------------------------------------------------------------- |
+| `commit.language`     | commit-message language — any code/name (e.g. `en`, `de`) or `match`; overrides root + detection |
+| `language` (root)     | shared default language; used when `commit.language` is unset                                    |
+| `commit.scopes`       | force scope usage — `true` (always) / `false` (never) / `"auto"` (detect, the default)           |
+| `commit.scopeVocab`   | preferred scope vocabulary (`string[]`), unioned with the detected scope words                   |
+| `commit.instructions` | free-text wording guidance for the message (subject/body)                                        |
 
 ```bash
 config="$(git rev-parse --show-toplevel)/.tituskirch-skills.json"
 if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
   lang=$(jq -er '.commit.language // .language // empty' "$config" 2>/dev/null) || lang=
+  scopes=$(jq -er '.commit.scopes // empty' "$config" 2>/dev/null) || scopes=          # true|false|auto
+  scope_vocab_cfg=$(jq -er '(.commit.scopeVocab // []) | join(" ")' "$config" 2>/dev/null) || scope_vocab_cfg=
+  instructions=$(jq -er '.commit.instructions // empty' "$config" 2>/dev/null) || instructions=
 fi
 ```
 
-`language` is a shared root key (it also drives `pull-request` and `issue`); `commit.language` overrides it for commit messages, mirroring `pr.language` / `issue.language`. Full schema: the repo-root `tituskirch-skills.schema.json`.
+**commitlint stays on top.** `commit.scopes` / `commit.scopeVocab` are _soft_ preferences that only fill a detection gap (thin history, an intended-but-unused vocabulary). They never override a commitlint rule the `commit-msg` hook enforces: if `scope-enum` exists, drop any `commit.scopeVocab` entry not in it; if `scope-empty` forbids/requires scopes, it beats `commit.scopes`. Format rules the hook owns — `header-max-length`, `body-max-line-length`, `subject-case` — have **no** config key on purpose: duplicating them here would create a second source of truth that can diverge from the hook. Set those in commitlint. `commit.instructions` is likewise additive — it shapes wording, never the guardrails.
+
+`language` is a shared root key (it also drives `pull-request` and `issue`); `commit.language` overrides it for commit messages, mirroring `pr.language` / `issue.language`. `commit.instructions` mirrors `pr.instructions` / `issue.instructions`. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
 ## Release-gated repos
 

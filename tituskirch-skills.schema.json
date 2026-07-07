@@ -22,6 +22,19 @@
         "language": {
           "type": "string",
           "description": "Overrides the root language for commit messages (a language code/name, or \"match\")."
+        },
+        "scopes": {
+          "enum": [true, false, "auto"],
+          "description": "Force Conventional-Commit scope usage: true = always, false = never, \"auto\" = detect from history/commitlint. Default: \"auto\". A commitlint scope-enum / scope-empty rule still wins (hard constraint)."
+        },
+        "scopeVocab": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Preferred scope vocabulary, unioned with scopes detected from the git log; filtered against a commitlint scope-enum when one exists. Use when the intended scopes (e.g. monorepo packages or not-yet-committed areas) aren't all in the history yet."
+        },
+        "instructions": {
+          "$ref": "#/$defs/instructions",
+          "description": "Free-text guidance for commit messages. Additive preference only — never overrides commitlint, detection, or the skill's guardrails."
         }
       }
     },
@@ -53,6 +66,10 @@
         "language": {
           "$ref": "#/$defs/language",
           "description": "Overrides the root language for PR title/body."
+        },
+        "instructions": {
+          "$ref": "#/$defs/instructions",
+          "description": "Free-text guidance for the PR title/body. Additive preference only — never overrides the template, detection, or the skill's guardrails."
         }
       }
     },
@@ -126,6 +143,10 @@
               "description": "Default issue template path under .github/ISSUE_TEMPLATE/."
             }
           }
+        },
+        "instructions": {
+          "$ref": "#/$defs/instructions",
+          "description": "Free-text guidance for the issue title/body. Additive preference only — never overrides the backend rules, template, or the skill's guardrails."
         }
       }
     },
@@ -215,6 +236,10 @@
     }
   },
   "$defs": {
+    "instructions": {
+      "type": "string",
+      "description": "Free-text, repo-wide guidance appended to a skill's prompt (committed, so it applies for every agent). Additive preference only: it steers wording and emphasis but never overrides hard constraints — commitlint rules, schema values, backend rules, templates, or the skill's built-in guardrails."
+    },
     "labelOrOff": {
       "description": "A label name, or false to switch the mechanic off.",
       "oneOf": [{ "type": "string" }, { "const": false }]
