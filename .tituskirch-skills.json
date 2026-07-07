@@ -7,7 +7,7 @@
       "compact-readme",
       "issue",
       "pull-request",
-      "skills-config",
+      "tituskirch-skills-config",
       "vhs-demo",
       "work-issue",
       "work-queue",
@@ -31,5 +31,22 @@
   },
   "docs": {
     "preset": "ai-tool"
+  },
+  "work": {
+    "branch": "branch:dev",
+    "verify": "pnpm check",
+    "labels": {
+      "ready": "ai: ready",
+      "working": "ai: working",
+      "review": "ai: review",
+      "done": "ai: done",
+      "blocked": "ai: blocked"
+    },
+    "priorityLabels": [
+      "priority: urgent",
+      "priority: high",
+      "priority: medium",
+      "priority: low"
+    ]
   }
 }
