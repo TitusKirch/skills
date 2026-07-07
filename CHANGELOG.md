@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.8.0](https://github.com/TitusKirch/skills/compare/v0.7.0...v0.8.0) (2026-07-07)
+
+
+### Features
+
+* **atomic-commit:** flag stale commit.scopeVocab in the plan ([fc34a8b](https://github.com/TitusKirch/skills/commit/fc34a8b1d3279518abd401f06e14cb232f61308f))
+* **atomic-commit:** never type a release-relevant change as refactor ([cddae4f](https://github.com/TitusKirch/skills/commit/cddae4fd41de6c4523f0cfc0fcb1e2d2a4761afa))
+* **issue:** pin the repo-scope label on linear create ([209cbe5](https://github.com/TitusKirch/skills/commit/209cbe5154643b3a8dddd10e921705b8c65ef1aa))
+* **skills:** add commit scope overrides and per-skill instructions ([228d33c](https://github.com/TitusKirch/skills/commit/228d33c6e9cb208d5b62ea426c7af334d9c1e4c8))
+* **skills:** add work-issue and work-queue skills ([c078c5d](https://github.com/TitusKirch/skills/commit/c078c5d784588a80ed9470cf197c5fb9d2337cdf))
+* **tituskirch-skills-config:** add skill ([ad63981](https://github.com/TitusKirch/skills/commit/ad63981425b5c2a2ca74f0bc669ce6d5179460ec))
+* **write-docs:** allow disabling docs via config ([cd345cb](https://github.com/TitusKirch/skills/commit/cd345cb90fe2219a28513f7c3e82dd6523aca0ea))
+
+
+### Bug Fixes
+
+* align dependabot labels to the stack: convention ([e30f0fd](https://github.com/TitusKirch/skills/commit/e30f0fd37986c2afe73712ed09d79eaf8fbb66e7))
+* **work-queue:** correct stale skill name in config schema ([a07d489](https://github.com/TitusKirch/skills/commit/a07d489d94f2b586df33ddf7a87aaf9a60aebfa8))
+
 ## [0.7.0](https://github.com/TitusKirch/skills/compare/v0.6.0...v0.7.0) (2026-06-23)
 
 
