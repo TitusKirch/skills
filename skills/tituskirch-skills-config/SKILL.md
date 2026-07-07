@@ -1,0 +1,70 @@
+---
+name: tituskirch-skills-config
+summary: Sets up, reconciles, and drift-checks .tituskirch-skills.json, the shared config the other TitusKirch skills read.
+description: Creates, reconciles, and drift-checks `.tituskirch-skills.json` — the committed, repo-root config the other TitusKirch skills (atomic-commit, pull-request, issue, work-issue, work-queue, write-docs) read to pick backends, languages, and conventions per repo. Routes by state — guided setup when the config is missing or a section is incomplete, desired-state reconcile against the schema when it exists, and a report-only drift check that flags config gone stale against the repo — a renamed skill or scope, a moved branch, a deleted label or template. Detects repo signals (GitHub remote, integration branch, commitlint, project type) to propose defaults, previews a plan, and writes only after confirmation. Also fires proactively after a skill, scope, branch, or label is renamed or removed in the session, to catch the config drifting. Use when the user wants to set up, configure, onboard, fix, or drift-check the TitusKirch skills config, mentions `.tituskirch-skills.json`, or says things like "configure the skills", "set up the config", "onboard this repo", "check the config", "keep the config in sync", "skills config einrichten", "config reparieren".
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - WebFetch
+---
+
+# tituskirch-skills-config
+
+`.tituskirch-skills.json` at the repo root is the optional, committed config the other TitusKirch skills read — each setting resolved per repo as **config → native → built-in default**. This skill owns the file's **lifecycle**: create it, grow it, reconcile it. It does **not** own the schema. Every key, type, enum, and default lives once in [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json) — the **single source of truth**. Read it to validate and enumerate keys; never restate it here or copy defaults into a repo's config.
+
+## Jobs — pick by state + intent
+
+| State / intent                                                      | Job                      |
+| :------------------------------------------------------------------ | :----------------------- |
+| No `.tituskirch-skills.json`                                        | **setup**                |
+| Config exists, a section absent/incomplete + "add X"                | **setup** (that section) |
+| "validate / align / fix / reconcile the config"                     | **reconcile**            |
+| "does the config still match the repo?" — after a rename/add/remove | **check** (report-only)  |
+
+Verb shortcuts: `/tituskirch-skills-config setup`, `/tituskirch-skills-config reconcile`, `/tituskirch-skills-config check`. Otherwise infer from state and the request. **Always: plan → confirm → write.**
+
+**Proactive drift check** — some keys point at repo reality (a branch, a template path, a label or team, the skill / package folders behind `commit.scopeVocab`) and go stale silently when the repo changes. When you add, rename, or remove a skill or package, retarget the integration branch, or change a template or lifecycle label in the same session, run **check** yourself and offer to reconcile — don't wait to be asked. Trigger on the structural change, not on ordinary edits.
+
+## Resolution order — keep the config minimal
+
+`config → native → built-in default` means an absent key or section is **defaults, not off**. So write **only** the essentials and the choices the user actually makes; never write a key set to its own default — it is a no-op that only invites drift. The one genuine off-switch is `docs: false` (opt a repo out of docs entirely), distinct from an absent `docs` block.
+
+## Setup — config missing, or a section incomplete
+
+Walk the sections; per section, propose from detection, ask only the **essentials**, and leave everything else an editable key. **Never guess a backend — always ask.**
+
+- **root `language`** — existing config / repo language → ask → default `en`.
+- **`commit`** — usually omit the whole block; `scopes` defaults to `auto`. Add `scopeVocab` / `instructions` only on an explicit preference.
+- **`pr`** — `backend` is `github` (only value today). Propose `base` when the repo integrates onto a non-default branch (e.g. a `dev` branch exists). `title.convention` is `conventional` when commitlint or a Conventional-Commits history is present, else ask.
+- **`issue`** — **always ask the backend** (GitHub remote present → offer `github` as the default; none → no default). For Linear, confirm the MCP is authenticated **first**, then list teams and pick `linear.team` (the one required field). Set the languages, `title.convention` (`plain` default), and `labels.exclude` for catalog labels the agent must never auto-apply.
+- **`docs`** — `preset` from project type (cli / library / app / infra / ai-tool), or `false` to opt out; language inherits root.
+- **`work`** — only when the repo runs the queue. `backend` / `linear.team` fall back to `issue.*`; set `cap` (default 10), `branch` (`worktree` default), and the lifecycle `labels`.
+
+Write the file with a leading `$schema` key pointing at the canonical raw URL so editors validate it. Plan → confirm → write.
+
+## Reconcile & check — config exists
+
+Desired-state, idempotent — a `--fix` linter for the config. **check** is the same job in report-only mode — it runs steps 1–2 and reports the drift, but never writes.
+
+1. Read the config fresh **and** the schema (local `tituskirch-skills.schema.json`, else fetch the canonical URL).
+2. Diff against the schema **and the repo**, then group the plan:
+   - **Auto-fix (mechanical)** — unknown or removed keys, a value off the schema's enum with one unambiguous correction, a `commit.scopeVocab` missing a current skill / package scope, a missing `$schema` pointer, key ordering.
+   - **Prompt (value-needing)** — a required value that is absent (`issue.backend` `linear` with no `linear.team`), or a setting the repo can no longer satisfy (a `pr.base`, template, label, team, or `scopeVocab` folder that does not exist).
+   - **Report only** — a key written to its own default (suggest dropping it — resolution order makes it a no-op); never auto-remove one that documents deliberate intent.
+3. Show the **plan + diff**; on confirm, write **only** config keys. **check** stops here — it never writes.
+
+## Guardrails
+
+- **Plan → confirm → write.** Respect plan-only / dry-run.
+- **The schema is the single source of truth** — read it to validate and enumerate; never duplicate it into a repo's config or into this skill.
+- **Backend is never guessed** — the `issue` / `work` backend is always asked.
+- **Minimal config** — resolution order means defaults need not be written.
+- **Valid before writing** — the result must be valid JSON and validate against the schema. Only ever touch `.tituskirch-skills.json`.
+- **Commit via [`atomic-commit`](../atomic-commit/SKILL.md)**, not from here.
+
+## Reference
+
+- Every key, type, enum, and default: [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json) — the single source of truth.
+- Per-section setup detail and backend recipes stay with each owning skill: [`issue`](../issue/REFERENCE.md), [`pull-request`](../pull-request/REFERENCE.md), [`work-issue`](../work-issue/REFERENCE.md), [`write-docs`](../write-docs/REFERENCE.md).
