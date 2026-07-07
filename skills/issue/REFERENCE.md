@@ -29,18 +29,20 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two backends (GitHub
 | `issue.backend`                                | `github` or `linear` — the active backend (set by setup, never guessed silently)                              |
 | `issue.language`                               | title/body language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`     |
 | `issue.title.convention`                       | `plain` (default — most trackers) or `conventional` (`type: subject`)                                         |
+| `issue.instructions`                           | free-text wording guidance for the title/body — additive, never overrides backend rules or guardrails         |
 | `issue.linear.team`                            | **required to create on Linear** — a human name/key (e.g. `"ENG"`); resolved to the team id via the cache     |
 | `issue.linear.{project,priority,defaultState}` | optional Linear defaults (`priority`: none/low/medium/high/urgent)                                            |
 | `issue.github.template`                        | optional default issue template                                                                               |
 | `issue.labels.exclude`                         | glob patterns (e.g. `stack:*`, `autorelease:*`, `dependencies`) for catalog labels the agent must never apply |
 
-`language` is a shared root key; `issue.*` is this skill's section (`commit.*`/`pr.*` belong to the other skills). Full schema: the repo-root `tituskirch-skills.schema.json`.
+`language` is a shared root key; `issue.*` is this skill's section (`commit.*`/`pr.*` belong to the other skills). `issue.instructions` mirrors `commit.instructions` / `pr.instructions` — additive wording guidance that never overrides the backend rules, template, or guardrails. On Linear it also reads the cross-skill key `work.labels.repo` to pin a repo-scope tag on create. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
 ```bash
 config="$(git rev-parse --show-toplevel)/.tituskirch-skills.json"
 if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
   backend=$(jq -er '.issue.backend // empty' "$config" 2>/dev/null) || backend=
   team=$(jq -er '.issue.linear.team // empty' "$config" 2>/dev/null) || team=
+  instructions=$(jq -er '.issue.instructions // empty' "$config" 2>/dev/null) || instructions=
 fi
 ```
 
@@ -114,6 +116,7 @@ The Linear MCP server's registered name varies per setup (`mcp__claude_ai_Linear
 - **Auth/availability** — confirm the Linear MCP tools are present and authenticated. If not authenticated, call the server's `authenticate` tool / point the user to it, then continue.
 - **Tools (generic names)** — `list_teams`, `list_projects`, `list_issue_labels`, `list_issue_statuses`, `create_issue`, `update_issue`, search/`list_issues`.
 - **Team is required** to create — resolve `issue.linear.team` (name/key) to its id via the cached `teams`.
+- **Repo-scope label** — when `work.labels.repo` is a string, apply it on **every** create (alongside the contextual labels) so [`work-queue`](../work-queue/SKILL.md) can scope this repo's issues on a shared Linear team; GitHub needs none (repo-local).
 - **No repo templates** — unlike GitHub, Linear has no in-repo issue templates (`issue.github.template` is GitHub-only). Linear's templates live server-side per team; if the MCP exposes them, offer one, otherwise **draft a clean default body** from the description + session context (the same fallback `pull-request` uses for a missing PR template).
 - **Sub-issues** — set `parentId` on the child create call. Catalogs (teams/projects/labels/states) → cache.
 

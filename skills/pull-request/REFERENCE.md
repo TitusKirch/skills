@@ -70,6 +70,7 @@ Keys this skill reads:
 | `language` (root)     | title/body language — any code/name or `match`; shared with `atomic-commit`             |
 | `pr.base`             | PR base branch — overrides `defaultBranchRef.name` (e.g. a `feature → dev` flow)        |
 | `pr.title.convention` | `conventional` (default) or `plain`                                                     |
+| `pr.instructions`     | free-text wording guidance for the PR title/body — additive, never overrides guardrails |
 | `pr.backend`          | platform — v1 implements only `github`; the slot is here so other forges can dock later |
 
 ```bash
@@ -78,10 +79,11 @@ if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
   base=$(jq -er '.pr.base // empty' "$config" 2>/dev/null) || base=
   title_conv=$(jq -er '.pr.title.convention // empty' "$config" 2>/dev/null) || title_conv=
   lang=$(jq -er '.pr.language // .language // empty' "$config" 2>/dev/null) || lang=
+  instructions=$(jq -er '.pr.instructions // empty' "$config" 2>/dev/null) || instructions=
 fi
 ```
 
-`language` is a shared root key; `pr.*` are this skill's section. Full schema: the repo-root `tituskirch-skills.schema.json`.
+`language` is a shared root key; `pr.*` are this skill's section. `pr.instructions` mirrors `commit.instructions` / `issue.instructions` — additive wording guidance that never overrides the template, detection, or guardrails. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
 ## Title derivation (umbrella)
 

@@ -109,19 +109,27 @@ If subjects are consistently in another language, match it. Otherwise write Engl
 
 Keys this skill reads:
 
-| Key               | Effect                                                                                           |
-| :---------------- | :----------------------------------------------------------------------------------------------- |
-| `commit.language` | commit-message language — any code/name (e.g. `en`, `de`) or `match`; overrides root + detection |
-| `language` (root) | shared default language; used when `commit.language` is unset                                    |
+| Key                   | Effect                                                                                           |
+| :-------------------- | :----------------------------------------------------------------------------------------------- |
+| `commit.language`     | commit-message language — any code/name (e.g. `en`, `de`) or `match`; overrides root + detection |
+| `language` (root)     | shared default language; used when `commit.language` is unset                                    |
+| `commit.scopes`       | force scope usage — `true` (always) / `false` (never) / `"auto"` (detect, the default)           |
+| `commit.scopeVocab`   | preferred scope vocabulary (`string[]`), unioned with the detected scope words                   |
+| `commit.instructions` | free-text wording guidance for the message (subject/body)                                        |
 
 ```bash
 config="$(git rev-parse --show-toplevel)/.tituskirch-skills.json"
 if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
   lang=$(jq -er '.commit.language // .language // empty' "$config" 2>/dev/null) || lang=
+  scopes=$(jq -er '.commit.scopes // empty' "$config" 2>/dev/null) || scopes=          # true|false|auto
+  scope_vocab_cfg=$(jq -er '(.commit.scopeVocab // []) | join(" ")' "$config" 2>/dev/null) || scope_vocab_cfg=
+  instructions=$(jq -er '.commit.instructions // empty' "$config" 2>/dev/null) || instructions=
 fi
 ```
 
-`language` is a shared root key (it also drives `pull-request` and `issue`); `commit.language` overrides it for commit messages, mirroring `pr.language` / `issue.language`. Full schema: the repo-root `tituskirch-skills.schema.json`.
+**commitlint stays on top.** `commit.scopes` / `commit.scopeVocab` are _soft_ preferences that only fill a detection gap (thin history, an intended-but-unused vocabulary). They never override a commitlint rule the `commit-msg` hook enforces: if `scope-enum` exists, drop any `commit.scopeVocab` entry not in it; if `scope-empty` forbids/requires scopes, it beats `commit.scopes`. Format rules the hook owns — `header-max-length`, `body-max-line-length`, `subject-case` — have **no** config key on purpose: duplicating them here would create a second source of truth that can diverge from the hook. Set those in commitlint. `commit.instructions` is likewise additive — it shapes wording, never the guardrails.
+
+`language` is a shared root key (it also drives `pull-request` and `issue`); `commit.language` overrides it for commit messages, mirroring `pr.language` / `issue.language`. `commit.instructions` mirrors `pr.instructions` / `issue.instructions`. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
 ## Release-gated repos
 
@@ -129,9 +137,11 @@ Some repos ship only on a release, and **release-please cuts a release only for 
 
 So when a repo uses release-please (detect via `release-please-config.json`, `.release-please-manifest.json`, or a workflow that runs `googleapis/release-please-action`):
 
+- **When in doubt, `feat`/`fix` — never `refactor`.** The error is asymmetric: a change mis-typed `refactor` is silently dropped from the release and the changelog, while an over-typed `feat`/`fix` only adds a changelog line. Bias hard toward `feat`/`fix` whenever a change _could_ plausibly matter to a consumer.
 - **Type by effect, not by how the diff looks.** A change that alters behavior or deployed/rendered state must be `feat`/`fix` so it actually ships — even if it reads like a restructure. This bites hardest in IaC/config (Terraform/OpenTofu, Helm, k8s YAML), where renaming or reordering can change the applied result (a rename can mean destroy + recreate), but it applies to ordinary code too.
-- **A genuinely effect-free refactor stays `refactor`.** The rule corrects mislabels (effectful change typed as `refactor`), it does not devalue real refactors — they ride along with the next release harmlessly.
-- This is advisory: surface it in the plan and offer to re-type, never block. There is **no config switch** — the rule keys purely off release-please being present.
+- **When the changed files _are_ the shipped product, improving them is `feat`/`fix`.** In a skills, library, template, or docs-as-product repo the content _is_ the release — clarifying a description, tightening guardrails, deduping a body, or adjusting an API are user-facing improvements that belong in the changelog. Typing them `refactor` ships the work invisibly, which is the mistake this rule exists to prevent.
+- **`refactor` is the narrow exception, not the default.** Reserve it for changes you are certain are effect-free and invisible to consumers (internal restructure of non-shipped code); even then, when unsure, prefer `feat`/`fix`.
+- Advisory, not blocking: surface the type choice in the plan and offer to re-type. There is **no config switch** — the rule keys purely off release-please being present.
 
 ## Type catalogue (Conventional Commits)
 

@@ -1,6 +1,26 @@
 {
   "$schema": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
   "language": "en",
+  "commit": {
+    "scopeVocab": [
+      "atomic-commit",
+      "compact-readme",
+      "issue",
+      "pull-request",
+      "tituskirch-skills-config",
+      "vhs-demo",
+      "work-issue",
+      "work-queue",
+      "write-docs",
+      "write-readme",
+      "skills",
+      "deps",
+      "deps-dev",
+      "dependabot",
+      "changelog",
+      "ci"
+    ]
+  },
   "pr": {
     "base": "dev"
   },
@@ -11,5 +31,22 @@
   },
   "docs": {
     "preset": "ai-tool"
+  },
+  "work": {
+    "branch": "branch:dev",
+    "verify": "pnpm check",
+    "labels": {
+      "ready": "ai: ready",
+      "working": "ai: working",
+      "review": "ai: review",
+      "done": "ai: done",
+      "blocked": "ai: blocked"
+    },
+    "priorityLabels": [
+      "priority: urgent",
+      "priority: high",
+      "priority: medium",
+      "priority: low"
+    ]
   }
 }

@@ -118,11 +118,12 @@ Read the whole tree fresh every run — it is live state and is **never cached**
 | `docs.preset`   | `library` / `cli` / `app` / `infra` / `ai-tool` — which sections to scaffold; falls back to repo detection, then asks                                |
 | `docs.language` | docs language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`, then the existing docs/repo language, then `en` |
 
-`language` is a shared root key; `docs.*` is this skill's section (`commit.*`/`pr.*`/`issue.*` belong to the other skills). `match` mirrors the repo/source language. Full schema: the repo-root [`tituskirch-skills.schema.json`](../../tituskirch-skills.schema.json).
+`language` is a shared root key; `docs.*` is this skill's section (`commit.*`/`pr.*`/`issue.*` belong to the other skills). `match` mirrors the repo/source language. Set `docs` to `false` (instead of an object) to opt the repo out entirely — the skill then **stops with a "disabled" notice** instead of falling back; an _absent_ block still falls back to defaults/detection. Full schema: the repo-root [`tituskirch-skills.schema.json`](../../tituskirch-skills.schema.json).
 
 ```bash
 config="$(git rev-parse --show-toplevel)/.tituskirch-skills.json"
 if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
+  disabled=$(jq -er 'if .docs == false then 1 else empty end' "$config" 2>/dev/null) || disabled=
   preset=$(jq -er '.docs.preset // empty' "$config" 2>/dev/null) || preset=
   lang=$(jq -er '.docs.language // .language // empty' "$config" 2>/dev/null) || lang=
 fi

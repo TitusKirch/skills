@@ -14,7 +14,10 @@
     "./skills/compact-readme",
     "./skills/issue",
     "./skills/pull-request",
+    "./skills/tituskirch-skills-config",
     "./skills/vhs-demo",
+    "./skills/work-issue",
+    "./skills/work-queue",
     "./skills/write-docs",
     "./skills/write-readme"
   ]
