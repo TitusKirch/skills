@@ -85,4 +85,4 @@ Desired-state, idempotent — like a `--fix` linter for the docs tree.
 
 ## Gap report (final step)
 
-If you used a section, page type, or preset not in [REFERENCE.md](REFERENCE.md), end the turn with a short note (`Gap report: section "{x}" — no catalogue entry; added ad hoc.`). Only report; don't edit REFERENCE.md yourself — the user folds gaps back in. If everything matched: `Gap report: no gaps.`
+If you used a section, page type, or preset not in [REFERENCE.md](REFERENCE.md), end the turn with a short note (`Gap report: section "{x}" — no catalogue entry; added ad hoc.`). Only report; don't edit REFERENCE.md yourself — the user folds gaps back in. A new _slug_ is a real gap only when it names a missing **type**; a **subject** section (`plugins`, `themes`, `integrations`) is not — route its content into the type sections (nested if it needs grouping) and report that instead. If everything matched: `Gap report: no gaps.`
