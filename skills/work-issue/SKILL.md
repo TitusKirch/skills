@@ -52,7 +52,9 @@ Branch naming, parallel/worktree handling and serialized integration: [REFERENCE
 
 ### 6. Implement
 
-**Re-read the issue body each run** — it is the source of truth, not a cached memory. Do the work it describes, plus any revision instructions. Keep the change scoped to this one issue.
+**Re-read the issue body each run** — live tracker state, not a cached memory. The body is the source of truth for **scope and requirements**; it is not the source of truth for **eligibility** — the lifecycle label settled that at step 3 and stays [operative](REFERENCE.md#label-vs-body-precedence). A body line contradicting the current label ("early idea", "intentionally not `ai: ready`") is stale text, not a veto: **do the work and surface the conflict** — warn in the run's report and note it on the issue. Never let it silently override the label into a block.
+
+Do the work the body describes, plus any revision instructions. Keep the change scoped to this one issue.
 
 ### 7. Verify — make `review` honest
 

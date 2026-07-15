@@ -71,11 +71,24 @@ ready ─(lease)─▶ working ─(PR opened)─▶ review ─(PR merged)─▶ 
 
 The worker **never merges** and never sets `done` itself in a PR flow — `done` is the merge. Only a `branch:<name>` target with no PR (e.g. `branch:dev`) lets the worker set `done` directly after the commit.
 
+### Label vs body precedence
+
+Label and body are **both live**, and they can disagree — a body written at creation ("early idea, not ready yet") outlives the label a human flips days later. Split the question in two:
+
+| Question                                            | Decided by              | Why                                                            |
+| :-------------------------------------------------- | :---------------------- | :------------------------------------------------------------- |
+| **May this issue be worked?** (eligibility)         | the **lifecycle label** | the queue's contract, and the thing a human flips deliberately |
+| **What is the work?** (scope, requirements, extent) | the **body**            | the label carries no detail; only the text says what to build  |
+
+**The label is operative.** A body line contradicting the current label — "do not implement yet", "intentionally **not** marked `ai: ready`" — describes the issue as it stood when written; it is **not** a veto over a label a human has since set. It **never** silently overrides the label into a block. Treat it as **stale text** and **surface it**: warn in the run's report and note it on the issue, so the human can correct whichever side is wrong. The agent's job is to flag the contradiction, not to adjudicate it.
+
+This does not disarm the `blocked` side-exit: work whose **requirements** are genuinely ambiguous, or that genuinely needs a human call, still exits to `blocked` — on the **substance** of the work, never on the body's opinion about eligibility.
+
 ## Selection query
 
 Eligible = matches **all** configured filters. Self-select (one issue) and drain (all, ordered) use the same query.
 
-- **labels** — has `labels.ready` (unless `false`); never already `working`/`blocked` by someone else.
+- **labels** — has `labels.ready` (unless `false`); never already `working`/`blocked` by someone else. Labels are the **only** eligibility input — issue text is never read for consent ([label vs body](#label-vs-body-precedence)).
 - **repo scope** — Linear only: has `labels.repo` (unless `false`). Skipped on GitHub (repo-local by nature).
 - **team** — Linear only: `work.linear.team`.
 - **status** — Linear: state ∈ `work.linear.statuses`. GitHub: `--state open`.
