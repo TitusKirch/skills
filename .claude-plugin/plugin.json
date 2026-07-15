@@ -12,6 +12,7 @@
   "skills": [
     "./skills/atomic-commit",
     "./skills/compact-readme",
+    "./skills/handoff",
     "./skills/issue",
     "./skills/merge-deps",
     "./skills/pull-request",
