@@ -43,7 +43,7 @@ That's it. Every skill in this bundle is now discoverable inside Claude Code —
 | [`release`](skills/release/SKILL.md)                                   | Drives the release-please flow to a shipped release — promotes the integration branch, then merges the release PR. |
 | [`tituskirch-skills-config`](skills/tituskirch-skills-config/SKILL.md) | Sets up, reconciles, and drift-checks .tituskirch-skills.json, the shared config the other TitusKirch skills read. |
 | [`vhs-demo`](skills/vhs-demo/SKILL.md)                                 | Creates & maintains a reproducible terminal-demo GIF from a VHS tape.                                              |
-| [`work-issue`](skills/work-issue/SKILL.md)                             | Works one tracked issue to a reviewable PR across GitHub or Linear — claim, implement, verify, open PR.            |
+| [`work-issue`](skills/work-issue/SKILL.md)                             | Works one tracked issue to a reviewable PR across GitHub or Linear — claim, implement, verify, open PR, sign off.  |
 | [`work-queue`](skills/work-queue/SKILL.md)                             | Drains the ready issue queue — selects, prioritises and works each issue to a PR, sequentially or in parallel.     |
 | [`write-docs`](skills/write-docs/SKILL.md)                             | Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format.          |
 | [`write-readme`](skills/write-readme/SKILL.md)                         | Generates project READMEs in the kirchDev house style.                                                             |

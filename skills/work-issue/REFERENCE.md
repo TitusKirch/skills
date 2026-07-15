@@ -76,20 +76,71 @@ Reuses the [`issue`](../issue/REFERENCE.md#catalog-cache) cache verbatim — `$(
 ## Lifecycle state machine
 
 ```text
-ready ─(lease)─▶ working ─(PR opened)─▶ review ─(PR merged)─▶ done
-                   │                                            ▲
-                   └──(branch:<name> + no PR, e.g. dev: commit)─┘
+ready ─(lease)─▶ working ─(PR opened)─▶ review ─(human signs off)─▶ done
+                  ▲   │                   │                          ▲
+                  └───┼────(feedback)─────┘                          │
+                      └──(branch:<name> + no PR, e.g. dev: commit)───┘
    blocked ◀── side-exit (spec ambiguous · checks red · needs a human)
 ```
 
-| Transition         | Who                                                                             |
-| :----------------- | :------------------------------------------------------------------------------ |
-| `ready → working`  | the worker, **before** any work (the lease)                                     |
-| `working → review` | the worker, when the PR is opened                                               |
-| `review → done`    | the **PR merge** — native tracker integration; the worker reconciles stragglers |
-| `* → blocked`      | the worker, when it cannot honestly reach `review`                              |
+| Transition         | Who                                                                                                       |
+| :----------------- | :-------------------------------------------------------------------------------------------------------- |
+| `ready → working`  | the worker, **before** any work (the lease)                                                               |
+| `working → review` | the worker, when the PR is opened                                                                         |
+| `review → working` | the worker, on revision feedback — re-opened for another pass                                             |
+| `review → done`    | the **human's sign-off**, applied by the worker; or a [reconcile](#reconcile) that observes the PR merged |
+| `working → done`   | the worker, straight after the commit — **`branch:<name>` with no PR only**                               |
+| `* → blocked`      | the worker, when it cannot honestly reach `review`                                                        |
 
-The worker **never merges** and never sets `done` itself in a PR flow — `done` is the merge. Only a `branch:<name>` target with no PR (e.g. `branch:dev`) lets the worker set `done` directly after the commit.
+### Terminal `done`
+
+**`done` is the human's sign-off, not the merge.** The worker still never merges — but it does set `done`, on the human's word.
+
+Native tracker automation is **not** the terminal signal. GitHub's `Closes #<n>` and Linear's GitHub integration both fire only on a merge into the **default** branch, so a repo whose `pr.base` is an integration branch (e.g. `dev`) never reaches `done` through them — the terminal state was unreachable for exactly the repos that need an integration branch. Waiting for that automation is what broke it, so the lifecycle no longer waits for it.
+
+So `review` is a **real waiting state**: the worker sets it and stops. The human answers in the **same session** that ran the skill — that is the actual working mode, and it is why no external trigger is needed: the skill is still running when the verdict arrives.
+
+- **"looks good"** → the worker sets `done`. That is the sign-off.
+- **feedback** → back to `working`, apply it, re-push, back to `review`. Repeat as often as it takes.
+
+The worker never sets `done` **unasked** — the old rule survives only in that sense.
+
+**Consequence, accepted:** `done` no longer means "merged" — it means **accepted by the human**. Under `worktree` (a PR per issue) the PR may still be open when the issue reads `done`. This is a deliberate redefinition: the queue's business is the work; shipping is the rollup merge's business.
+
+**No PR → no `review` stop.** A `branch:<name>` target with no PR (e.g. `branch:dev`) still goes straight to `done` after the commit. There is no artifact to review, and no merge for the [reconcile](#reconcile) to observe — so parking it in `review` would strand it exactly the way this rule exists to prevent. The batch confirmation is the sign-off, and the code review happens on the rollup PR.
+
+### Reconcile
+
+The safety net for a session that ended before the human looked. It is the **first step of every [`work-queue`](../work-queue/SKILL.md) drain**, before the queue is built — drains run anyway, so it needs no trigger of its own. (This is what the old "reconciled on a later run" promise never had: nothing re-runs `work-issue` on a finished issue, precisely because it is finished.)
+
+For each issue sitting in `review`, find its PR and read the PR's state:
+
+| PR state             | Action                                                                             |
+| :------------------- | :--------------------------------------------------------------------------------- |
+| **merged**           | set `done` — the sign-off is implicit in the merge                                 |
+| **open**             | leave it in `review` — still waiting; this is the normal outcome                   |
+| **closed, unmerged** | set `blocked` + comment — a human closed it without merging and only they know why |
+| **no PR**            | leave it — nothing to observe; it waits on a human, not on a merge                 |
+
+A closed-unmerged PR is a deliberate human act whose _intent_ the drain cannot read — rework, supersede, or abandon are all live readings. That is the [`blocked` side-exit](#lifecycle-state-machine)'s exact purpose ("needs a human call"), and routing it there keeps `review` from silently becoming the new permanent parking spot.
+
+Reconcile moves **labels only**, never branches, and is **idempotent** — nothing to close out is the normal result, not an error. It never sets `done` on an unmerged PR: that is the human's word, and the drain is not the human.
+
+```bash
+# GitHub — the PRs that reference this issue with a closing keyword, merged or not
+gh api graphql -f query='
+  query($owner:String!,$repo:String!,$n:Int!){
+    repository(owner:$owner,name:$repo){
+      issue(number:$n){
+        closedByPullRequestsReferences(first:10, includeClosedPrs:true){
+          nodes{ number state merged baseRefName }
+        }
+      }
+    }
+  }' -F owner=<owner> -F repo=<repo> -F n=<n>
+```
+
+**Linear** — the GitHub integration links the PR as an **attachment** on the issue; read it via `get_issue` for the PR url, then ask GitHub for the state (`gh pr view <url> --json state,merged`). Whether a PR merged is GitHub's fact, never Linear's.
 
 ### Label vs body precedence
 
@@ -203,7 +254,8 @@ A dependency cycle (A → B → A) has no valid order and is a **tracker-data er
 - **Lifecycle** — labels are flat (`ai: ready` …); flip with `gh issue edit <n> --add-label <x> --remove-label <y>`, assign with `--add-assignee`.
 - **Dependencies** — `blockedBy` / `parent`, GraphQL-only (see [dependency ordering](#dependency-ordering)).
 - **Eligible** — `gh issue list --state open --label …`. Priority via `work.priorityLabels`.
-- **PR link** — `Closes #<n>` in the PR body auto-closes the issue on merge → terminal `done` (label set by a repo automation / reconciled).
+- **PR link** — `Closes #<n>` in the PR body links the PR to the issue, and auto-closes it on merge **into the default branch only**. With a non-default `pr.base` (e.g. `dev`) that merge fires neither, so the keyword is **traceability, not the route to [`done`](#terminal-done)**.
+- **Reconcile** — find an issue's PRs with `closedByPullRequestsReferences` (see [reconcile](#reconcile)).
 - **Label sync** — if the repo mirrors labels to Linear, that is the **integration's** job; the agent writes only the GitHub side. Never double-write.
 
 ## Backend — Linear (MCP)
@@ -213,8 +265,8 @@ Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — disco
 - **Lifecycle** — `update_issue` to set the lifecycle label + assignee, plus that step's `work.linear.states` state when one is mapped — **one atomic call**, so label and state never drift. Step unmapped, or no `states` at all → write the label + assignee and **leave the state alone**. Never invent a state name: the map is the only source, and `statuses` is an eligibility filter, not a mapping.
 - **Eligible** — `list_issues` by team + `labels.ready` + `labels.repo` + `work.linear.statuses`; order by native priority.
 - **Dependencies** — `list_issues` returns no relations; fan out `get_issue(includeRelations: true)` (see [dependency ordering](#dependency-ordering)).
-- **Which steps write a state** — the worker writes `states.working` on the lease and `states.review` when the PR opens. `states.done` is normally **Linear's** to set (the integration, on merge); the worker writes it only on a `branch:<name>` target with no PR. `states.ready` is never written — it records where a human parks a startable issue, and is the anchor `statuses` should contain. The `blocked` side-exit has no state: it is carried by `labels.blocked`.
-- **PR lives on GitHub** — even for a Linear-tracked repo, the code PR is a GitHub PR. The branch name / PR carries the **Linear key** (`ENG-123`) so Linear's GitHub integration links it and moves it to Done on merge → terminal `done`.
+- **Which steps write a state** — the worker writes `states.working` on the lease and `states.review` when the PR opens. `states.done` is the **worker's** to set, on the human's [sign-off](#terminal-done), on a [reconcile](#reconcile) that observes the merge, or straight after the commit on a `branch:<name>` target with no PR. Linear's integration may also move the issue on a default-branch merge — a bonus, never the signal waited on. `states.ready` is never written — it records where a human parks a startable issue, and is the anchor `statuses` should contain. The `blocked` side-exit has no state: it is carried by `labels.blocked`.
+- **PR lives on GitHub** — even for a Linear-tracked repo, the code PR is a GitHub PR. The branch name / PR carries the **Linear key** (`ENG-123`) so Linear's GitHub integration **links** it. That link is traceability: on a non-default `pr.base` the integration never moves the issue at all, so [`done`](#terminal-done) comes from the sign-off or the reconcile — never from waiting on Linear.
 - **Team is required**; resolve `work.linear.team` to its id via the cache. `states` is optional — resolve each mapped name to its id via the cache; a name that matches **no** state in the team is a config error → report it, do not fall back to a guess.
 
 ### Repo scope
