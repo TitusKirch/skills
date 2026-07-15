@@ -13,6 +13,7 @@
     "./skills/atomic-commit",
     "./skills/compact-readme",
     "./skills/issue",
+    "./skills/merge-deps",
     "./skills/pull-request",
     "./skills/release",
     "./skills/tituskirch-skills-config",
