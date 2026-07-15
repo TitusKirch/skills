@@ -17,6 +17,7 @@
     "./skills/pull-request",
     "./skills/release",
     "./skills/tituskirch-skills-config",
+    "./skills/update-deps",
     "./skills/vhs-demo",
     "./skills/work-issue",
     "./skills/work-queue",
