@@ -19,11 +19,11 @@ Shared mechanics for [`work-issue`](SKILL.md) (the unit) and [`work-queue`](../w
     "parallel": false,
     "verify": null,
     "labels": {
-      "ready": "ai:ready",
-      "working": "ai:working",
-      "review": "ai:review",
-      "done": "ai:done",
-      "blocked": "ai:blocked",
+      "ready": "ai: ready",
+      "working": "ai: working",
+      "review": "ai: review",
+      "done": "ai: done",
+      "blocked": "ai: blocked",
       "repo": false
     },
     "priorityLabels": ["urgent", "high", "medium", "low"],
@@ -167,7 +167,7 @@ A dependency cycle (A → B → A) has no valid order and is a **tracker-data er
 
 ## Backend — GitHub (`gh`)
 
-- **Lifecycle** — labels are flat (`ai:ready` …); flip with `gh issue edit <n> --add-label <x> --remove-label <y>`, assign with `--add-assignee`.
+- **Lifecycle** — labels are flat (`ai: ready` …); flip with `gh issue edit <n> --add-label <x> --remove-label <y>`, assign with `--add-assignee`.
 - **Dependencies** — `blockedBy` / `parent`, GraphQL-only (see [dependency ordering](#dependency-ordering)).
 - **Eligible** — `gh issue list --state open --label …`. Priority via `work.priorityLabels`.
 - **PR link** — `Closes #<n>` in the PR body auto-closes the issue on merge → terminal `done` (label set by a repo automation / reconciled).
@@ -185,7 +185,7 @@ Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — disco
 
 ### Repo scope
 
-Linear puts every repo's issues in one team, so the team alone cannot say "this issue is this repo." `work.labels.repo` (a stable label, e.g. `repo:envprism`) is the discriminator — the **single source of truth** for repo identity in Linear, and the cross-repo race-breaker. It is read here to **filter** and (when the [`issue`](../issue/SKILL.md) skill applies it on create) to **tag** — projects are unsuitable because they are completable. No `labels.repo` configured on Linear → the drain **refuses** rather than reach into another repo's issues.
+Linear puts every repo's issues in one team, so the team alone cannot say "this issue is this repo." `work.labels.repo` (a stable label, e.g. `repo: TitusKirch/envprism`) is the discriminator — the **single source of truth** for repo identity in Linear, and the cross-repo race-breaker. It is read here to **filter** and (when the [`issue`](../issue/SKILL.md) skill applies it on create) to **tag** — projects are unsuitable because they are completable. No `labels.repo` configured on Linear → the drain **refuses** rather than reach into another repo's issues.
 
 ## Setup
 
