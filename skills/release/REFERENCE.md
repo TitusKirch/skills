@@ -21,20 +21,20 @@ Mechanics for the [`release`](SKILL.md) skill. **GitHub (`gh`) is the only backe
 | Key               | Effect                                                                                                        |
 | :---------------- | :------------------------------------------------------------------------------------------------------------ |
 | `release.backend` | Forge. v1 supports only `github`; the slot exists for a later platform-neutral rename (mirrors `pr.backend`). |
-| `release.promote` | `"auto"` / `"create"` / `false` — see [Promotion modes](#promotion-modes). Default: `"auto"`.                 |
+| `release.promote` | `false` / `"auto"` / `"create"` — see [Promotion modes](#promotion-modes). Default: `false`.                  |
 | `release.base`    | Release branch, where releases are cut. Default: the repo's default branch.                                   |
 | `release.head`    | Integration branch, what gets promoted. Default: `pr.base`, else the repo's default branch.                   |
 | `release.timeout` | Seconds to bound **each** wait (release PR appearing, checks finishing). Default: 600.                        |
 
 Also reads `pr.base` (the `head` fallback) and the shared root `language` (report wording).
 
-**Minimal config wins.** Every key has a working default: a repo that integrates onto `pr.base`, releases from its default branch, and already has automation opening the rollup PR needs **no `release` block at all**. Write only what deviates.
+**Minimal config wins — except for promotion.** Branches and timeout have working defaults, so a repo that integrates onto `pr.base` and releases from its default branch writes neither. `promote` is the deliberate exception: it defaults to `false`, so **a repo that wants `head` → `base` promoted must say so**. Merging onto the release branch is opt-in, never inherited from a default.
 
 ## Promotion modes
 
 `release.promote` answers one question — **who opens the `head` → `base` PR?** — and nothing else. All three modes share the [skip rule](SKILL.md#2-promote-head--base-config-gated): `head` not ahead of `base` → nothing to promote.
 
-### `"auto"` (default)
+### `"auto"`
 
 Automation opens the rollup PR; the skill **finds** it. It undrafts and merges it, and **never creates one** — that is the whole point of the mode. No PR found → report it (with the mode, the branches, and `"create"` as the fix) and stop.
 
@@ -53,9 +53,9 @@ No such automation, so the skill may open the PR itself — delegating to [`pull
 
 Produce the same PR the automation would: a `chore: merge <head> into <base>` rollup title and a body that states the merge-commit requirement. Ready, not draft — there is no automation to hand off to, so there is nothing to wait for.
 
-### `false`
+### `false` (default)
 
-Release-only. Never touch `head` → `base`; go straight to waiting for the release PR. For repos where promotion is a human's call, or where `base` is the only branch.
+Release-only. Never touch `head` → `base`; go straight to waiting for the release PR. For repos where promotion is a human's call, where `base` is the only branch — and for every repo that has not opted in, because this is the default.
 
 ## gh recipes
 
@@ -112,7 +112,7 @@ The issue that specified this skill left its defaults open. What was settled, an
 
 - **Name `release`** — the noun matches its siblings (`issue`, `pull-request`) and the `release.*` config section. `release-please` would bake the tool into the name, which is exactly what must stay swappable.
 - **Release tool is detected, not configured** — `release-please-config.json` and the workflow already say which tool the repo uses; a `release.tool` key would only let the config contradict the repo. If changesets ever arrives, it arrives as detection plus a branch in the workflow, not a config break.
-- **`promote` defaults to `"auto"`** — it is the mode that _cannot_ open a PR, so it is the conservative default. The "it would report every time" worry needs a repo that has an integration branch **but** no automation; with no integration branch, `head` defaults to `pr.base` → the default branch → `head == base` → the skip rule fires and the mode never comes up.
+- **`promote` defaults to `false`** — promotion is opt-in. `"auto"` was the first answer, on the grounds that it is the mode that _cannot_ open a PR; that argument measures the wrong risk. The consequential act is **merging onto the release branch**, and `"auto"` does that — not creating a PR. `false` is the only mode that touches nothing, so it is what a repo gets until it says otherwise. The cost is real and accepted: every repo wanting the ordinary `head` → `base` flow now writes a `release` block. Rejected alternative: default `"auto"` and rely on the skip rule (`head == base` → nothing to promote) to protect repos without an integration branch. It does protect them, but it makes the blast radius a function of repo layout rather than of an explicit choice.
 - **`backend` key, `github`-only enum** — mirrors `pr.backend` exactly: the slot exists now so a second forge is a value, not a schema break.
 - **Opposite, fixed merge strategies** — merge commit for the promotion so release-please can see the individual commits; squash for the release PR per release-please's own convention. Both are mechanical, so neither is a config key.
 - **`"create"` delegates to `pull-request`** — same reason `work-issue` does: one skill owns PR creation. It also inherits that skill's refusal to touch automation's PRs, which is precisely the `"auto"` guard.

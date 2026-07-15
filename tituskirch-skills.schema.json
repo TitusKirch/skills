@@ -91,8 +91,8 @@
               "description": "Forge. v1 supports only github; the slot exists for a later platform-neutral rename (mirrors pr.backend)."
             },
             "promote": {
-              "enum": ["auto", "create", false],
-              "description": "Who opens the head → base promotion PR. \"auto\" = automation already opens it, so the skill only finds, undrafts and merges it and never creates one. \"create\" = no such automation, the skill may open it (the only PR it ever opens, in any mode). false = release-only, never touch head → base. Default: \"auto\"."
+              "enum": [false, "auto", "create"],
+              "description": "Who opens the head → base promotion PR. false = release-only, never touch head → base; promotion is opt-in and this is the default. \"auto\" = automation already opens it, so the skill only finds, undrafts and merges it and never creates one. \"create\" = no such automation, the skill may open it (the only PR it ever opens, in any mode). Default: false."
             },
             "base": {
               "type": "string",

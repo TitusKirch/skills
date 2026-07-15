@@ -30,11 +30,11 @@ Drive the repo's **release-please** flow to a shipped release — get the integr
 
 Otherwise, by `release.promote` ([detail](REFERENCE.md#promotion-modes)):
 
-| Mode                 | The promotion PR                                                                                                                                                                            |
-| :------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `"auto"` _(default)_ | Automation already opens it, so **never create one**. Find the open `base ← head` PR, take it out of draft, merge it. None found → **report and stop**, naming `"create"` as the fix.       |
-| `"create"`           | No such automation — the skill may open the PR itself, via [`pull-request`](../pull-request/SKILL.md) with base `base` and head `head`. **The only PR this skill ever opens, in any mode.** |
-| `false`              | Release-only — never touch `head` → `base`. Skip to step 3.                                                                                                                                 |
+| Mode                | The promotion PR                                                                                                                                                                            |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `false` _(default)_ | Release-only — never touch `head` → `base`. Skip to step 3. Promotion is **opt-in**: a repo says so in its config or this skill leaves `base` alone.                                        |
+| `"auto"`            | Automation already opens it, so **never create one**. Find the open `base ← head` PR, take it out of draft, merge it. None found → **report and stop**, naming `"create"` as the fix.       |
+| `"create"`          | No such automation — the skill may open the PR itself, via [`pull-request`](../pull-request/SKILL.md) with base `base` and head `head`. **The only PR this skill ever opens, in any mode.** |
 
 - **Undrafting is what starts CI.** Where the repo's checks skip drafts (`if: github.event.pull_request.draft == false` + a `ready_for_review` trigger), the draft rollup PR has run **nothing**. Undraft first (`gh pr ready <n>`), _then_ wait for the checks that undrafting triggers — never read a draft's empty check list as "green".
 - **Checks green, then merge with a merge commit** — `gh pr merge <n> --merge`, never `--squash`. The individual `feat:`/`fix:` commits must stay visible or release-please cannot compute the bump. Fixed, not a preference.
