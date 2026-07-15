@@ -25,6 +25,9 @@
   "pr": {
     "base": "dev"
   },
+  "release": {
+    "promote": "auto"
+  },
   "issue": {
     "backend": "github",
     "title": { "convention": "plain" },
