@@ -5,6 +5,7 @@
     "scopeVocab": [
       "atomic-commit",
       "compact-readme",
+      "handoff",
       "issue",
       "merge-deps",
       "pull-request",
