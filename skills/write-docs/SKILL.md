@@ -1,7 +1,7 @@
 ---
 name: write-docs
-summary: Scaffolds, extends and reconciles a project's docs/ tree in the TitusKirch docs format.
-description: Scaffolds, extends, and reconciles a project's `docs/` tree in the TitusKirch docs format — one opinionated, stack-agnostic documentation convention shared across all repos. Routes by state — scaffolds when `docs/` is missing, adds to the right section when it exists, reconciles existing pages to the convention when asked (never rewriting prose). Always previews a plan and writes only after confirmation. Use when the user wants to write, add, scaffold, or update documentation, set up a docs/ tree, document a feature, or says things like "write the docs", "add a docs page", "document this", "reconcile the docs", "Doku schreiben", "docs aktualisieren". Also trigger proactively, without an explicit request, once a feature has cleared every review and reached final approval — when the work is settled, not the moment implementation finishes — to document the shipped result.
+summary: Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format.
+description: Scaffolds, extends, and reconciles a project's `docs/` tree in the TitusKirch docs format — one opinionated, stack-agnostic documentation convention shared across all repos, including the ADR format (append-only architecture decision records in their own `docs/99.adr/` section). Routes by state — scaffolds when `docs/` is missing, adds to the right section when it exists, reconciles existing pages to the convention when asked (never rewriting prose). Always previews a plan and writes only after confirmation. Use when the user wants to write, add, scaffold, or update documentation, set up a docs/ tree, document a feature, record or supersede an architecture decision, or says things like "write the docs", "add a docs page", "document this", "reconcile the docs", "write an ADR", "record this decision", "Doku schreiben", "docs aktualisieren". Also trigger proactively, without an explicit request, once a feature has cleared every review and reached final approval — when the work is settled, not the moment implementation finishes — to document the shipped result.
 allowed-tools:
   - Read
   - Write
@@ -40,8 +40,11 @@ Optional verb shortcuts: `/write-docs init`, `/write-docs add <topic>`, `/write-
 | Setup / install / first-run change             | (update existing)         | `getting-started` |
 | A run / deploy / maintain procedure            | how-to or concept         | `operations`      |
 | A project-specific rule or pattern             | concept                   | `conventions`     |
+| An architectural decision + its reasoning      | ADR (own schema)          | `adr`             |
 
 A real feature usually spans several types: how-it-works (`concepts`) + usage (`guides`) + lookup values (`reference`). **Lead with how-it-works and how-to-use; push every lookup value to `reference` and link to it.** Page type is implied by section + template — it is **not** a frontmatter field. Catalogue, core sections and presets: [REFERENCE.md](REFERENCE.md).
+
+**ADRs are the standing exception.** They live in `docs/99.adr/` (fixed prefix, flat), are named `NNNN-title.md` for a permanent decision id, carry `status` + `date` on top of the house frontmatter, and are **append-only** — a reversed decision writes a new ADR and marks the old one `superseded`, never edits it. A concept page explains how a thing works _today_; an ADR records why it was chosen, _then_. Full contract: [REFERENCE.md](REFERENCE.md#architecture-decision-records).
 
 ## Scaffold — `docs/` is missing
 
@@ -56,7 +59,7 @@ A real feature usually spans several types: how-it-works (`concepts`) + usage (`
 2. New page → next free `N.kebab.md` in the section, frontmatter `title` + `description`, body from the matching template, then link it from that section's `index.md`.
 3. **How-tos end with a checklist.** Add a `> [!NOTE]` **Status** callout (see [REFERENCE.md#status-marker](REFERENCE.md#status-marker)) if the feature isn't shipped yet.
 4. **Delta principle** — don't restate what an authoritative upstream source (framework docs, a library's README, a standard) already documents; link it, and document the project-specific delta + the glue. A strong guideline, not a hard block.
-5. **Updating** an existing topic — the one-topic-per-page rule means there's usually exactly one page; `grep docs/` for the term, edit it **in place**, never open a second page on the same topic, and update affected reference tables + cross-links.
+5. **Updating** an existing topic — the one-topic-per-page rule means there's usually exactly one page; `grep docs/` for the term, edit it **in place**, never open a second page on the same topic, and update affected reference tables + cross-links. **Never for an ADR** — a changed decision is a new ADR that supersedes the old one, and the ADR section's `index.md` decision log gets the row in the same change.
 6. Verify every fact against current code before writing.
 
 ## Reconcile — align existing docs to the convention
@@ -70,6 +73,8 @@ Desired-state, idempotent — like a `--fix` linter for the docs tree.
    - **Report only** — a how-to without a checklist, a page that fits no section, suspected upstream duplication, any secret detected. Never auto-edited.
 3. Show the **plan + diff**; on confirm apply **only structure + frontmatter**. **Never rewrite prose. Only touch files inside `docs/`.**
 
+`99.adr/` is **exempt** — links and the decision log only. An ADR id is permanent, so never renumber one, never rename it to the dot-schema, never close a gap in the sequence ([REFERENCE.md](REFERENCE.md#reconcile-rules)).
+
 ## Guardrails (inherited)
 
 - **Plan/preview first; apply only after confirmation.** Respect plan-only / dry-run.
@@ -80,7 +85,7 @@ Desired-state, idempotent — like a `--fix` linter for the docs tree.
 
 ## Reference
 
-- Section catalogue, core, presets, frontmatter contract, page types, status marker, reconcile rules, config keys: [REFERENCE.md](REFERENCE.md).
+- Section catalogue, core, presets, frontmatter contract, page types, status marker, ADR contract, reconcile rules, config keys: [REFERENCE.md](REFERENCE.md).
 - Page skeletons to copy: [`templates/`](templates/).
 
 ## Gap report (final step)
