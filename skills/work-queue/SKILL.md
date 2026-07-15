@@ -41,7 +41,7 @@ Each worker returns `review`, `blocked`, or an error:
 
 ### 4. Report & release
 
-Release the lock. Summarise each issue and its outcome (PR url / blocked reason / skipped), including issues **deferred** to a later run and any **dependency cycle** a human needs to untangle.
+Release the lock. Summarise each issue and its outcome (PR url / blocked reason / skipped), including issues **deferred** to a later run, any **dependency cycle** a human needs to untangle, and any **label/body conflict** a worker flagged ([precedence](../work-issue/REFERENCE.md#label-vs-body-precedence)) — the drain runs unattended, so a warning it swallows never reaches anyone.
 
 ## Guardrails
 
