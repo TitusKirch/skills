@@ -21,6 +21,7 @@ Split because the unit has **independent value** (`/work-issue 42`) and a fresh 
 - **Lease before work** — flip `ready → working` + assign _before_ implementing. The race-breaker for two consumers grabbing one issue.
 - **One PR per issue by default** (`branch: worktree`) — independent, reviewable, revertable; revisions stay isolated. The branch base is always the clean `pr.base`.
 - **Branch strategy is two independent knobs** — `branch` (`worktree` | `branch:<name>`) × `parallel` (bool). Worktrees are the _mechanism_ of `parallel`, not a mode; a shared `branch:<name>` + `parallel` is made safe by **serialized integration** (so `branch:dev` + `parallel` works).
+- **Dependencies are an _ordering_ problem on a shared branch, a _branching_ problem in worktrees.** Under `branch:<name>` the branch accumulates, so working prerequisites first is the entire mechanism — topological order, priority as tiebreak, cap applied after. Under `worktree` nothing accumulates, so the `ready` gate still governs there. Cheap where it is cheap; still deferred where it is not.
 - **Terminal is `review`; the human merges.** The skill never merges; `done` is the PR merge (native tracker integration + reconcile). Only a `branch:<name>`-with-no-PR target lets the worker set `done` directly.
 - **Verify before the PR** so `review` is honest; red-and-unfixable → `blocked`. `blocked` continues the drain — only a skill error stops it.
 - **Feedback is a conversational argument, not a mechanism** — `work-issue 42, change X`. You are in the loop typing it, so there is no trust filter, no thread-resolution ledger, no auto-detect. (Code review still happens on the GitHub PR; CI / chat are equally valid revision channels.)
@@ -29,7 +30,7 @@ Split because the unit has **independent value** (`/work-issue 42`) and a fresh 
 
 ## Deferred (v2)
 
-- **Stacked branches for dependent issues** — fights the stateless model and cascades through revisions; v1 leans on the `ready` gate instead.
+- **Stacked branches for dependent issues (`worktree` mode)** — branch-off-parent, PR base retargeting and a revision cascade fight the stateless model; `worktree` leans on the `ready` gate instead. Only the `branch:<name>` half is implemented ([dependency ordering](REFERENCE.md#dependency-ordering)) — accumulation makes it pure ordering, with none of that machinery.
 - **`branch` extensions** — `dev`/named-branch grammar is designed in (`branch:<name>`); richer targets later.
 - **Structured PR-feedback ingestion** (thread resolution, author trust, auto-detect) — only if conversational feedback proves insufficient.
 
