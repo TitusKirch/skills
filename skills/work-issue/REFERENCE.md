@@ -27,7 +27,16 @@ Shared mechanics for [`work-issue`](SKILL.md) (the unit) and [`work-queue`](../w
       "repo": false
     },
     "priorityLabels": ["urgent", "high", "medium", "low"],
-    "linear": { "team": "Engineering", "statuses": ["Todo", "In Progress"] }
+    "linear": {
+      "team": "Engineering",
+      "statuses": ["Todo", "In Progress"],
+      "states": {
+        "ready": "Todo",
+        "working": "In Progress",
+        "review": "In Review",
+        "done": "Done"
+      }
+    }
   }
 }
 ```
@@ -44,8 +53,19 @@ Shared mechanics for [`work-issue`](SKILL.md) (the unit) and [`work-queue`](../w
 | `work.priorityLabels`  | GitHub priority labels, highest first; Linear ignores these (native priority field)                                 |
 | `work.linear.team`     | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                  |
 | `work.linear.statuses` | Linear workflow states that count as startable                                                                      |
+| `work.linear.states`   | lifecycle step → Linear workflow state name; **no default** — see below                                             |
 
 **`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.review: false` → the PR's existence is the signal; `labels.blocked: false` → comment only / Linear state; `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
+
+**`linear.states` needs no `false` — absent already means off.** Every `labels.*` key has a **default** (`ai: ready` …), so absent means "use the default" and `false` is the only way to say "off". `linear.states` has **no default**: Linear state names are per-team (`In Progress` / `Doing` / `Started` …) and nothing in the skill can derive them. So the mapping is off unless the repo writes it, and each step is independent:
+
+| Config                       | Behaviour                                                                         |
+| :--------------------------- | :-------------------------------------------------------------------------------- |
+| `states` omitted             | no state writes at all — the **lifecycle label alone** carries the issue          |
+| a step omitted from `states` | that transition writes the label only and **leaves the workflow state untouched** |
+| a step mapped                | the state is written **with** the label, in the same `update_issue` call          |
+
+Leaving the state untouched is a defined outcome, not a degraded one — the label is [operative for eligibility](#label-vs-body-precedence), so the lifecycle is correct either way; the repo just forgoes the Linear board reflecting it. **Guessing a state name is never correct**, with or without a mapping.
 
 Reads `pr.base` (branch base) and the shared root `language` from the same file. Schema: the repo-root `tituskirch-skills.schema.json`.
 
@@ -190,11 +210,12 @@ A dependency cycle (A → B → A) has no valid order and is a **tracker-data er
 
 Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — discover the tools at runtime, do not hardcode.
 
-- **Lifecycle** — `update_issue` to set the lifecycle label + assignee; the configured workflow state.
+- **Lifecycle** — `update_issue` to set the lifecycle label + assignee, plus that step's `work.linear.states` state when one is mapped — **one atomic call**, so label and state never drift. Step unmapped, or no `states` at all → write the label + assignee and **leave the state alone**. Never invent a state name: the map is the only source, and `statuses` is an eligibility filter, not a mapping.
 - **Eligible** — `list_issues` by team + `labels.ready` + `labels.repo` + `work.linear.statuses`; order by native priority.
 - **Dependencies** — `list_issues` returns no relations; fan out `get_issue(includeRelations: true)` (see [dependency ordering](#dependency-ordering)).
+- **Which steps write a state** — the worker writes `states.working` on the lease and `states.review` when the PR opens. `states.done` is normally **Linear's** to set (the integration, on merge); the worker writes it only on a `branch:<name>` target with no PR. `states.ready` is never written — it records where a human parks a startable issue, and is the anchor `statuses` should contain. The `blocked` side-exit has no state: it is carried by `labels.blocked`.
 - **PR lives on GitHub** — even for a Linear-tracked repo, the code PR is a GitHub PR. The branch name / PR carries the **Linear key** (`ENG-123`) so Linear's GitHub integration links it and moves it to Done on merge → terminal `done`.
-- **Team is required**; resolve `work.linear.team` to its id via the cache.
+- **Team is required**; resolve `work.linear.team` to its id via the cache. `states` is optional — resolve each mapped name to its id via the cache; a name that matches **no** state in the team is a config error → report it, do not fall back to a guess.
 
 ### Repo scope
 

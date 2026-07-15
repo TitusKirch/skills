@@ -273,6 +273,29 @@
               "type": "array",
               "items": { "type": "string" },
               "description": "Workflow states that count as startable (e.g. [\"Todo\", \"In Progress\"])."
+            },
+            "states": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Lifecycle step to Linear workflow state name, written alongside the lifecycle label. State names are per-team and cannot be derived, so there is no default: an unmapped step leaves the workflow state untouched, and omitting the key drives the lifecycle by label alone. Never guess a state name.",
+              "properties": {
+                "ready": {
+                  "type": "string",
+                  "description": "State a human parks a startable issue in; the anchor for statuses. Read as documentation, never written by the worker."
+                },
+                "working": {
+                  "type": "string",
+                  "description": "Set on the lease (ready to working), e.g. \"In Progress\"."
+                },
+                "review": {
+                  "type": "string",
+                  "description": "Set when the PR is opened, e.g. \"In Review\"."
+                },
+                "done": {
+                  "type": "string",
+                  "description": "Terminal state, e.g. \"Done\". Normally set by Linear's GitHub integration on merge; written by the worker only on a branch target with no PR."
+                }
+              }
             }
           }
         }
