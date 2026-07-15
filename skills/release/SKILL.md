@@ -20,7 +20,7 @@ Drive the repo's **release-please** flow to a shipped release — get the integr
 ### 1. Detect (read the repo — never assume)
 
 - **Backend** — from `release.backend` (v1: only `github` is implemented; any other value → say it's not supported yet and stop). Confirm the repo is reachable: `gh repo view --json nameWithOwner,defaultBranchRef`. If it fails (no GitHub remote, or `gh` not authenticated), **stop**.
-- **Release tool** — release-please is **detected, not configured**: `release-please-config.json` + `.release-please-manifest.json`, plus a workflow running `googleapis/release-please-action` on the release branch. Not found → stop and say so. This skill drives release-please; it does not invent a release process.
+- **Release tool** — the tool is **detected, not configured**. v1 recognises exactly one: release-please (`release-please-config.json` + `.release-please-manifest.json`, plus a workflow running `googleapis/release-please-action` on the release branch). None recognised → stop and report that **no supported release tool was detected**, naming what v1 supports. This skill drives a release tool; it does not invent a release process.
 - **Branches** — `head` = `release.head`, else `pr.base`, else the default branch; `base` = `release.base`, else the repo default branch. Never hardcode `dev`/`main`. `git fetch` first, then show `base ← head` in the plan.
 - **Config** — `.tituskirch-skills.json` at the repo root (optional, committed). Keys: [REFERENCE.md](REFERENCE.md#config).
 
