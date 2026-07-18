@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.11.0](https://github.com/TitusKirch/skills/compare/v0.10.0...v0.11.0) (2026-07-18)
+
+
+### Features
+
+* **atomic-commit:** reuse convention cache on hash match regardless of age ([222c45f](https://github.com/TitusKirch/skills/commit/222c45f2475cd9e4c9a6be615d4836592c0bf91c)), closes [#53](https://github.com/TitusKirch/skills/issues/53)
+* **handoff:** add skill ([ac4007b](https://github.com/TitusKirch/skills/commit/ac4007b72d36eb252bc9da75364c9d8408c27b19)), closes [#44](https://github.com/TitusKirch/skills/issues/44)
+* **merge-deps:** add skill ([2a0ae35](https://github.com/TitusKirch/skills/commit/2a0ae3577bd60435fb2833300f707eafa02300db)), closes [#47](https://github.com/TitusKirch/skills/issues/47)
+* **release:** add skill ([e26d5a5](https://github.com/TitusKirch/skills/commit/e26d5a5994ba8512c6d34a5214a8c70fc033693b)), closes [#46](https://github.com/TitusKirch/skills/issues/46)
+* **release:** make branch promotion opt-in ([c584361](https://github.com/TitusKirch/skills/commit/c58436124b5dbb9e42a18d16aa133964154fc791)), closes [#46](https://github.com/TitusKirch/skills/issues/46)
+* **release:** report an unrecognised release tool as unsupported ([4a9a5c5](https://github.com/TitusKirch/skills/commit/4a9a5c5edf068f7ca08d434ec15f21f81dcdebeb)), closes [#46](https://github.com/TitusKirch/skills/issues/46)
+* **tituskirch-skills-config:** offer linear.states during work setup ([4582537](https://github.com/TitusKirch/skills/commit/4582537efee305849542e29fd482afb8e14d18c3)), closes [#51](https://github.com/TitusKirch/skills/issues/51)
+* **tituskirch-skills-config:** teach setup and drift-check the release section ([4c9086d](https://github.com/TitusKirch/skills/commit/4c9086d5a00a031a906e28e5b144ed0a35016e95)), closes [#46](https://github.com/TitusKirch/skills/issues/46)
+* **update-deps:** add skill ([8502724](https://github.com/TitusKirch/skills/commit/85027241f5664597dc937e37ecbcad2a57382a25)), closes [#50](https://github.com/TitusKirch/skills/issues/50)
+* **work-issue:** add an explicit Linear lifecycle to workflow state map ([06f79e2](https://github.com/TitusKirch/skills/commit/06f79e228bf87994c3073f30ea430a21b0626c83)), closes [#51](https://github.com/TitusKirch/skills/issues/51)
+* **work-queue:** order the queue by dependency in branch:&lt;name&gt; mode ([55f916c](https://github.com/TitusKirch/skills/commit/55f916cddc4ad4f7175fbaf20f8ab9a40c1a75ed)), closes [#34](https://github.com/TitusKirch/skills/issues/34)
+* **work-queue:** reconcile issues left in review at the start of a drain ([b401250](https://github.com/TitusKirch/skills/commit/b401250496c0e0fc73135972921e9829a31e08a9)), closes [#52](https://github.com/TitusKirch/skills/issues/52)
+* **write-docs:** teach the docs format to record ADRs ([e27f66d](https://github.com/TitusKirch/skills/commit/e27f66d62b15d70c473c957cf0aafa40123b58ab)), closes [#43](https://github.com/TitusKirch/skills/issues/43)
+
+
+### Bug Fixes
+
+* **work-issue:** align documented label defaults with the real convention ([1181c73](https://github.com/TitusKirch/skills/commit/1181c73d53152eb4076033fb2f60126b036dd652)), closes [#45](https://github.com/TitusKirch/skills/issues/45)
+* **work-issue:** make done the human's sign-off instead of the merge ([4ee0f43](https://github.com/TitusKirch/skills/commit/4ee0f4338b40aa15194d3cc4c3ac267dd0f01d8f)), closes [#52](https://github.com/TitusKirch/skills/issues/52)
+* **work-issue:** make the lifecycle label operative for eligibility ([ae80a2e](https://github.com/TitusKirch/skills/commit/ae80a2e235cdf11a0322d186c64fcacc64117c32)), closes [#49](https://github.com/TitusKirch/skills/issues/49)
+* **work-queue:** surface worker label/body conflicts in the drain report ([391246a](https://github.com/TitusKirch/skills/commit/391246aae7599c22c219c6e757c024573fc63df7)), closes [#49](https://github.com/TitusKirch/skills/issues/49)
+
 ## [0.10.0](https://github.com/TitusKirch/skills/compare/v0.9.0...v0.10.0) (2026-07-07)
 
 
