@@ -1,7 +1,7 @@
 ---
 name: work-issue
-summary: Works one tracked issue to a reviewable PR across GitHub or Linear — claim, implement, verify, open PR.
-description: Works a single tracked issue end-to-end across GitHub (gh) or Linear (MCP) — claims it via the lifecycle label, implements on a branch, runs the repo's checks, opens a pull request, and advances the label to review. Backend, label lifecycle and branch strategy come from the committed config (.tituskirch-skills.json). Also applies free-text revision feedback onto an issue's existing PR branch. Use when the user wants to work, implement, action, ship or pick up one specific issue or ticket, mentions an ai-ready issue, or says things like "work issue 42", "arbeite Issue 42 ab", "implementiere Ticket X", or "address the feedback on issue Y".
+summary: Works one tracked issue to a reviewable PR across GitHub or Linear — claim, implement, verify, open PR, sign off.
+description: Works a single tracked issue end-to-end across GitHub (gh) or Linear (MCP) — claims it via the lifecycle label, implements on a branch, runs the repo's checks, opens a pull request, and advances the label to review. Backend, label lifecycle and branch strategy come from the committed config (.tituskirch-skills.json). Review is a real waiting state — the skill also applies free-text revision feedback onto an issue's existing PR branch, and signs an issue off to done once the human approves it. Use when the user wants to work, implement, action, ship or pick up one specific issue or ticket, mentions an ai-ready issue, or says things like "work issue 42", "arbeite Issue 42 ab", "implementiere Ticket X", "address the feedback on issue Y", or "issue 42 looks good".
 allowed-tools:
   - Bash
   - Read
@@ -32,10 +32,11 @@ Config schema, the lifecycle and all mechanics: [REFERENCE.md](REFERENCE.md).
 
 The lifecycle label decides what this run does. This is the whole skill — a **state machine over one issue**:
 
-- **fresh** (`ready`, no PR) → claim and implement (steps 4–8).
-- **revision** (`review`/`working` with an existing PR, plus revision instructions — free-text args and/or feedback on the PR) → check out the existing branch, apply the feedback, re-push (steps 6–8; skip branch creation).
+- **fresh** (`ready`, no PR) → claim and implement (steps 4–9).
+- **revision** (`review`/`working` with an existing PR, plus revision instructions — free-text args and/or feedback on the PR) → move the label back to `working`, check out the existing branch, apply the feedback, re-push, back to `review` (steps 6–9; skip branch creation).
+- **sign-off** (`review`, and the human says it is good) → set `done` and stop (step 9).
 - **blocked** → leave it unless the user explicitly re-runs it; report why it was blocked.
-- **done / merged** → nothing to do; when reconciling, set `done` and stop.
+- **done** → nothing to do.
 
 ### 4. Claim the issue (lease) — before any work
 
@@ -52,7 +53,9 @@ Branch naming, parallel/worktree handling and serialized integration: [REFERENCE
 
 ### 6. Implement
 
-**Re-read the issue body each run** — it is the source of truth, not a cached memory. Do the work it describes, plus any revision instructions. Keep the change scoped to this one issue.
+**Re-read the issue body each run** — live tracker state, not a cached memory. The body is the source of truth for **scope and requirements**; it is not the source of truth for **eligibility** — the lifecycle label settled that at step 3 and stays [operative](REFERENCE.md#label-vs-body-precedence). A body line contradicting the current label ("early idea", "intentionally not `ai: ready`") is stale text, not a veto: **do the work and surface the conflict** — warn in the run's report and note it on the issue. Never let it silently override the label into a block.
+
+Do the work the body describes, plus any revision instructions. Keep the change scoped to this one issue.
 
 ### 7. Verify — make `review` honest
 
@@ -60,16 +63,29 @@ Run the repo's checks (`work.verify`, else detected — tests, lint, build). Gre
 
 ### 8. Commit, open the PR, advance the label
 
-- Commit via [`atomic-commit`](../atomic-commit/SKILL.md); reference the issue so the tracker links and auto-closes on merge (`Closes #42` / the Linear key).
+- Commit via [`atomic-commit`](../atomic-commit/SKILL.md); reference the issue so the tracker links the PR (`Closes #42` / the Linear key). That link is traceability — it is [not what reaches `done`](REFERENCE.md#terminal-done).
 - Open or update the PR via [`pull-request`](../pull-request/SKILL.md), base `pr.base`.
 - Move the label `working → review`. Report the PR url / issue id.
-- The skill **never merges** — that is the human's act. Merge → `done` (native tracker integration, reconciled on a later run).
+- The skill **never merges** — that is the human's act.
+- **No PR** (`branch:<name>` with no PR, e.g. `branch:dev`) → nothing to review and no merge to observe: set `done` after the commit and stop. [Why](REFERENCE.md#terminal-done).
+
+### 9. Wait for the sign-off — `review` is a real stop
+
+`review` means **waiting on a human**, not finished. **`done` is the human's sign-off, not the merge** — native tracker automation cannot carry a non-default `pr.base`, so the lifecycle no longer waits on it ([why](REFERENCE.md#terminal-done)).
+
+Invoked directly by a human → stop here; they answer in this same session:
+
+- **"looks good"** → set `done` and stop.
+- **feedback** → back to `working`, apply it (steps 6–8), re-push, back to `review`.
+
+Inside a [`work-queue`](../work-queue/SKILL.md) drain nobody is waiting on this worker — return `review` and let the drain move on. If the session ends before the human looks, the next drain's [reconcile](REFERENCE.md#reconcile) closes it out.
 
 ## Guardrails
 
 - **Lease before work.** Never implement an issue you have not first flipped to `working`.
 - **Stateless & resumable.** Read state from the tracker + git every run; carry nothing between runs.
 - **Only this issue.** Never touch sibling issues, never merge, never close anything you were not asked to.
+- **`done` is the human's word.** Set it on an explicit sign-off, on a [reconcile](REFERENCE.md#reconcile) that observes the PR merged, or straight after the commit on a `branch:<name>` target with no PR — never on your own initiative, and never to tidy a stale `review` away.
 - **Attribution-free & secret-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in branches, commits, PRs or comments; scan the change and context for secrets and exclude them.
 - **Confirm before writing** when invoked directly by a human; run autonomously when invoked inside a [`work-queue`](../work-queue/SKILL.md) batch (already confirmed once).
 

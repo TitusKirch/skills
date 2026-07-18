@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
   "title": "TitusKirch skills config",
-  "description": "Optional, committed config shared by the TitusKirch skills (atomic-commit, pull-request, issue, work-issue, work-queue, write-docs). Place at the repo root as .tituskirch-skills.json. Absent → skills behave on detection/native defaults only. Resolution per setting: config → native → built-in default.",
+  "description": "Optional, committed config shared by the TitusKirch skills (atomic-commit, pull-request, issue, release, merge-deps, work-issue, work-queue, write-docs). Place at the repo root as .tituskirch-skills.json. Absent → skills behave on detection/native defaults only. Resolution per setting: config → native → built-in default.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -72,6 +72,70 @@
             "instructions": {
               "$ref": "#/$defs/instructions",
               "description": "Free-text guidance for the PR title/body. Additive preference only — never overrides the template, detection, or the skill's guardrails."
+            }
+          }
+        },
+        { "const": false }
+      ]
+    },
+    "release": {
+      "description": "release skill settings, or false to disable the release skill for the repo. Drives release-please; the release tool itself is detected from the repo, never configured here.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "backend": {
+              "type": "string",
+              "enum": ["github"],
+              "description": "Forge. v1 supports only github; the slot exists for a later platform-neutral rename (mirrors pr.backend)."
+            },
+            "promote": {
+              "enum": [false, "auto", "create"],
+              "description": "Who opens the head → base promotion PR. false = release-only, never touch head → base; promotion is opt-in and this is the default. \"auto\" = automation already opens it, so the skill only finds, undrafts and merges it and never creates one. \"create\" = no such automation, the skill may open it (the only PR it ever opens, in any mode). Default: false."
+            },
+            "base": {
+              "type": "string",
+              "description": "Release branch, where releases are cut. Default: the repo's default branch."
+            },
+            "head": {
+              "type": "string",
+              "description": "Integration branch, what gets promoted onto base. Default: pr.base, else the repo's default branch."
+            },
+            "timeout": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Seconds bounding each wait (the release PR appearing, checks finishing). Default: 600."
+            }
+          }
+        },
+        { "const": false }
+      ]
+    },
+    "deps": {
+      "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since deps.merge defaults to false. Scope is fixed to pull requests authored by app/dependabot; that is a hard constraint of the skill and deliberately not configurable.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "backend": {
+              "type": "string",
+              "enum": ["github"],
+              "description": "Forge. v1 supports only github; the slot exists for a later platform-neutral rename (mirrors pr.backend)."
+            },
+            "merge": {
+              "enum": [false, "patch", "grouped", "all"],
+              "description": "Ceiling on what may be merged, once the human confirms; a permission ladder, narrowest first. false = triage and report only, never comment or merge; merging is opt-in and this is the default. \"patch\" = patch-level updates only. \"grouped\" = Dependabot's grouped minor+patch PRs, plus everything \"patch\" allows. \"all\" = nothing excluded by mode, majors included. A mode is a ceiling, never a trigger: every PR must still clear assessment and confirmation. Default: false."
+            },
+            "verify": {
+              "type": "string",
+              "description": "Command run against the PR's own head before merging, in a throwaway worktree. The primary safety gate, not a fallback: a Dependabot PR into an integration branch often triggers no relevant CI at all, and an empty check list is never read as green. Default: work.verify, else nothing."
+            },
+            "cap": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Max PRs merged per run. Default: 5."
             }
           }
         },
@@ -239,6 +303,29 @@
               "type": "array",
               "items": { "type": "string" },
               "description": "Workflow states that count as startable (e.g. [\"Todo\", \"In Progress\"])."
+            },
+            "states": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Lifecycle step to Linear workflow state name, written alongside the lifecycle label. State names are per-team and cannot be derived, so there is no default: an unmapped step leaves the workflow state untouched, and omitting the key drives the lifecycle by label alone. Never guess a state name.",
+              "properties": {
+                "ready": {
+                  "type": "string",
+                  "description": "State a human parks a startable issue in; the anchor for statuses. Read as documentation, never written by the worker."
+                },
+                "working": {
+                  "type": "string",
+                  "description": "Set on the lease (ready to working), e.g. \"In Progress\"."
+                },
+                "review": {
+                  "type": "string",
+                  "description": "Set when the PR is opened, e.g. \"In Review\"."
+                },
+                "done": {
+                  "type": "string",
+                  "description": "Terminal state, e.g. \"Done\". Normally set by Linear's GitHub integration on merge; written by the worker only on a branch target with no PR."
+                }
+              }
             }
           }
         }

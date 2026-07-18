@@ -5,9 +5,13 @@
     "scopeVocab": [
       "atomic-commit",
       "compact-readme",
+      "handoff",
       "issue",
+      "merge-deps",
       "pull-request",
+      "release",
       "tituskirch-skills-config",
+      "update-deps",
       "vhs-demo",
       "work-issue",
       "work-queue",
@@ -23,6 +27,9 @@
   },
   "pr": {
     "base": "dev"
+  },
+  "release": {
+    "promote": "auto"
   },
   "issue": {
     "backend": "github",

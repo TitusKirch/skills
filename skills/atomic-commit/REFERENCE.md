@@ -12,7 +12,7 @@ Conventions change rarely and are identical on every branch, so persist them per
 
 - **Location** — `$(git rev-parse --git-common-dir)/tituskirch-skills/conventions`. The owner-namespaced directory (`tituskirch-skills/`, matching the plugin name) lives in the _common_ git dir — shared by every branch and linked worktree, outside the working tree, never tracked — so the cache survives branch switches and can't be committed by accident. Create the directory before writing (`mkdir -p`).
 - **Migration** — the old flat `$(git rev-parse --git-common-dir)/atomic-commit-cache` is obsolete. Don't read it; just re-detect once into the new path. Optionally `rm -f` the old file when writing the new one.
-- **Validity (hybrid: TTL + config hash)** — reuse the cache only when **both** hold: it is younger than 3 days (259200 s) **and** the commitlint-config hash still matches. Re-detect and rewrite when it is missing, older than 3 days, the hash differs, or the user asks to refresh ("neu prüfen", "refresh", "--refresh").
+- **Validity (config hash, TTL only as fallback)** — how the cache is validated depends on whether a hashable config source exists. **With a config source** (`hash != none` — a `commitlint.config.*` / `.commitlintrc*` file, or a `commitlint` key in `package.json`) a hash match already proves the conventions are unchanged, so reuse on hash match alone, **regardless of age**. **Without one** (`hash = none` — conventions inferred from `git log`, which can drift silently as new commits land) age is the only staleness signal, so keep the 3-day TTL (259200 s). Re-detect and rewrite when the cache is missing, the hash differs, the fallback TTL has expired (`hash = none` only), or the user asks to refresh ("neu prüfen", "refresh", "--refresh").
 - **Transparency** — when reusing, label it in the plan header, e.g. `Conventions (cached, 2d ago): …`, so staleness stays visible and the user can force a refresh.
 
 Read and validate:
@@ -36,7 +36,10 @@ fi
 if [ -f "$cache" ]; then
   detected_at=$(grep '^detected_at=' "$cache" | cut -d= -f2)
   cached_hash=$(grep '^commitlint_hash=' "$cache" | cut -d= -f2)
-  if [ $(( now - detected_at )) -lt 259200 ] && [ "$hash" = "$cached_hash" ]; then
+  # A hash match proves the conventions are unchanged when a config source
+  # exists — reuse regardless of age. With no hashable source (hash=none,
+  # conventions inferred from git log) the 3-day TTL is the only staleness signal.
+  if [ "$hash" = "$cached_hash" ] && { [ "$hash" != none ] || [ $(( now - detected_at )) -lt 259200 ]; }; then
     echo "cache hit"   # reuse the stored conventions, skip the recipes below
   fi
 fi
