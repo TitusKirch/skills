@@ -11,4 +11,5 @@ description: '{One line — what this project is and what these docs cover.}'
 
 - [Getting started](getting-started/) — install and first run.
 - [Reference](reference/) — config, CLI, and API lookup.
+
 <!-- Add a bullet per scaffolded section, in tree order (plain text, no emoji). -->
