@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/TitusKirch/skills/compare/v0.11.0...v0.12.0) (2026-07-20)
+
+
+### Features
+
+* **release:** support multi-stage promotion chains ([79ac3dc](https://github.com/TitusKirch/skills/commit/79ac3dc17310913523c3d99377c6b13c23c0bc9c)), closes [#57](https://github.com/TitusKirch/skills/issues/57)
+
 ## [0.11.0](https://github.com/TitusKirch/skills/compare/v0.10.0...v0.11.0) (2026-07-18)
 
 
