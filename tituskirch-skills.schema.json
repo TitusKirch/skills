@@ -92,15 +92,21 @@
             },
             "promote": {
               "enum": [false, "auto", "create"],
-              "description": "Who opens the head → base promotion PR. false = release-only, never touch head → base; promotion is opt-in and this is the default. \"auto\" = automation already opens it, so the skill only finds, undrafts and merges it and never creates one. \"create\" = no such automation, the skill may open it (the only PR it ever opens, in any mode). Default: false."
+              "description": "Who opens a promotion PR (for each head → base edge of the chain). false = release-only, never promote; promotion is opt-in and this is the default. \"auto\" = automation already opens it, so the skill only finds, undrafts and merges it and never creates one. \"create\" = no such automation, the skill may open it (the only PR it ever opens, in any mode). Default: false."
+            },
+            "stages": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string" },
+              "description": "Ordered promotion chain: lowest integration stage first, release branch last (where release-please runs). Each consecutive pair is a promotion edge — [\"dev\",\"staging\",\"main\"] is two edges (dev → staging, staging → main). The canonical N-stage form of head/base: when present it wins over both; when absent the chain is [head, base]. A single element [\"main\"] means the release is cut directly on base with no promotion. Branches must be distinct. Default: absent (falls back to head/base)."
             },
             "base": {
               "type": "string",
-              "description": "Release branch, where releases are cut. Default: the repo's default branch."
+              "description": "Release branch, where releases are cut — the last element of stages when that is set. Default: the repo's default branch."
             },
             "head": {
               "type": "string",
-              "description": "Integration branch, what gets promoted onto base. Default: pr.base, else the repo's default branch."
+              "description": "Integration branch promoted onto base — the first element of stages when that is set, and ignored when it is. Default: pr.base, else the repo's default branch."
             },
             "timeout": {
               "type": "integer",

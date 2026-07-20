@@ -21,23 +21,25 @@ Drive the repo's **release-please** flow to a shipped release — get the integr
 
 - **Backend** — from `release.backend` (v1: only `github` is implemented; any other value → say it's not supported yet and stop). Confirm the repo is reachable: `gh repo view --json nameWithOwner,defaultBranchRef`. If it fails (no GitHub remote, or `gh` not authenticated), **stop**.
 - **Release tool** — the tool is **detected, not configured**. v1 recognises exactly one: release-please (`release-please-config.json` + `.release-please-manifest.json`, plus a workflow running `googleapis/release-please-action` on the release branch). None recognised → stop and report that **no supported release tool was detected**, naming what v1 supports. This skill drives a release tool; it does not invent a release process.
-- **Branches** — `head` = `release.head`, else `pr.base`, else the default branch; `base` = `release.base`, else the repo default branch. Never hardcode `dev`/`main`. `git fetch` first, then show `base ← head` in the plan.
+- **Branches** — resolve the promotion **chain**: `release.stages` if set (integration branch first, release branch last), else `[head, base]` where `head` = `release.head`, else `pr.base`, else the default branch, and `base` = `release.base`, else the repo default branch. Never hardcode `dev`/`main`. Validate `stages` (non-empty, distinct branches, real refs) — malformed → report and stop. `git fetch` first, then show the whole chain (`dev → … → base`) in the plan. [Chains](REFERENCE.md#promotion-chains).
 - **Config** — `.tituskirch-skills.json` at the repo root (optional, committed). Keys: [REFERENCE.md](REFERENCE.md#config).
 
-### 2. Promote `head` → `base` (config-gated)
+### 2. Promote along the chain (config-gated)
 
-**Nothing to promote → skip to step 3.** If `head` and `base` are the same branch, or `head` is not ahead of `base` (`git rev-list --count origin/<base>..origin/<head>` is `0`), there is nothing to release from `head` — say so and move on.
+The chain from step 1 is a list of **edges** — `dev → staging → main` is two (`dev → staging`, `staging → main`); the common case is one, `head → base`. Promote **one edge per invocation**: the **topmost pending edge** — nearest `base`, with its `head` ahead of its `base` — so the run drives a release forward. A user-named edge overrides. [Chains](REFERENCE.md#promotion-chains).
 
-Otherwise, by `release.promote` ([detail](REFERENCE.md#promotion-modes)):
+**Nothing to promote → skip to step 3.** No edge has its `head` ahead of its `base` (`git rev-list --count origin/<base>..origin/<head>` is `0` for every edge), or the chain is a single branch with no edge at all — say so and move on.
 
-| Mode                | The promotion PR                                                                                                                                                                            |
-| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `false` _(default)_ | Release-only — never touch `head` → `base`. Skip to step 3. Promotion is **opt-in**: a repo says so in its config or this skill leaves `base` alone.                                        |
-| `"auto"`            | Automation already opens it, so **never create one**. Find the open `base ← head` PR, take it out of draft, merge it. None found → **report and stop**, naming `"create"` as the fix.       |
-| `"create"`          | No such automation — the skill may open the PR itself, via [`pull-request`](../pull-request/SKILL.md) with base `base` and head `head`. **The only PR this skill ever opens, in any mode.** |
+Otherwise, for the chosen edge (its own `head` and `base`), by `release.promote` ([detail](REFERENCE.md#promotion-modes)):
+
+| Mode                | The promotion PR                                                                                                                                                                                    |
+| :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `false` _(default)_ | Release-only — never touch any edge. Skip to step 3. Promotion is **opt-in**: a repo says so in its config or this skill leaves `base` alone.                                                       |
+| `"auto"`            | Automation already opens it, so **never create one**. Find the open `base ← head` PR for this edge, take it out of draft, merge it. None found → **report and stop**, naming `"create"` as the fix. |
+| `"create"`          | No such automation — the skill may open the PR itself, via [`pull-request`](../pull-request/SKILL.md) with the edge's `base` and `head`. **The only PR this skill ever opens, in any mode.**        |
 
 - **Undrafting is what starts CI.** Where the repo's checks skip drafts (`if: github.event.pull_request.draft == false` + a `ready_for_review` trigger), the draft rollup PR has run **nothing**. Undraft first (`gh pr ready <n>`), _then_ wait for the checks that undrafting triggers — never read a draft's empty check list as "green".
-- **Checks green, then merge with a merge commit** — `gh pr merge <n> --merge`, never `--squash`. The individual `feat:`/`fix:` commits must stay visible or release-please cannot compute the bump. Fixed, not a preference.
+- **Checks green, then merge with a merge commit** — `gh pr merge <n> --merge`, never `--squash`. The individual `feat:`/`fix:` commits must stay visible or release-please cannot compute the bump. Fixed, not a preference — and it holds at **every** edge, which is what keeps a multi-stage chain's release artifacts conflict-free ([why](REFERENCE.md#promotion-chains)).
 
 ### 3. Wait for the release PR
 
@@ -70,7 +72,7 @@ Every wait is bounded. On timeout, **stop and report what was observed** — nev
 
 - **Manual invocation only.** Never fire proactively — not after a merge, not after a green CI run, not because a release "looks due". Someone asks, or this skill does nothing.
 - **Plan first; merge only after confirmation.** The promotion merge and the release merge are **two separate confirmations**. Plan-only triggers ("nur den plan", "dry run", "just show me", "nicht mergen") → print the plan and the exact `gh` commands, then stop.
-- **At most one PR, ever** — the promotion PR, and only in `"create"` mode. In `"auto"` mode this skill creates nothing; a missing rollup PR is a finding to report, never a gap to fill.
+- **At most one _open_ promotion PR at a time** — one edge per invocation, and a PR only in `"create"` mode. In `"auto"` mode this skill creates nothing; a missing rollup PR is a finding to report, never a gap to fill. A [chain](REFERENCE.md#promotion-chains) never fans out — edges are promoted sequentially, one confirmed merge each.
 - **Only its own two PRs.** The rollup PR and release-please's release PR are the only PRs it may undraft or merge — both opened by automation, and named here as the sole, deliberate exceptions to the sibling rule that automation's PRs are untouchable. Any other PR → leave it alone.
 - **Merge strategies are fixed** — merge commit for `head` → `base`, squash for the release PR. Both are mechanical requirements, not taste; neither is a config key.
 - **Never force-push, never tag by hand, never edit the version or `CHANGELOG.md`.** release-please owns all three; racing it corrupts the manifest.
