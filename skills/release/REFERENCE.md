@@ -18,13 +18,14 @@ Mechanics for the [`release`](SKILL.md) skill. **GitHub (`gh`) is the only backe
 }
 ```
 
-| Key               | Effect                                                                                                        |
-| :---------------- | :------------------------------------------------------------------------------------------------------------ |
-| `release.backend` | Forge. v1 supports only `github`; the slot exists for a later platform-neutral rename (mirrors `pr.backend`). |
-| `release.promote` | `false` / `"auto"` / `"create"` — see [Promotion modes](#promotion-modes). Default: `false`.                  |
-| `release.base`    | Release branch, where releases are cut. Default: the repo's default branch.                                   |
-| `release.head`    | Integration branch, what gets promoted. Default: `pr.base`, else the repo's default branch.                   |
-| `release.timeout` | Seconds to bound **each** wait (release PR appearing, checks finishing). Default: 600.                        |
+| Key               | Effect                                                                                                                                                                                                            |
+| :---------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `release.backend` | Forge. v1 supports only `github`; the slot exists for a later platform-neutral rename (mirrors `pr.backend`).                                                                                                     |
+| `release.promote` | `false` / `"auto"` / `"create"` — see [Promotion modes](#promotion-modes). Default: `false`.                                                                                                                      |
+| `release.stages`  | Ordered promotion chain, integration branch first, release branch last — see [Promotion chains](#promotion-chains). The N-stage form of `head`/`base`; wins over both when set. Default: absent → `[head, base]`. |
+| `release.base`    | Release branch, where releases are cut — `stages`' last element when set. Default: the repo's default branch.                                                                                                     |
+| `release.head`    | Integration branch, what gets promoted — `stages`' first element when set. Default: `pr.base`, else the default branch.                                                                                           |
+| `release.timeout` | Seconds to bound **each** wait (release PR appearing, checks finishing). Default: 600.                                                                                                                            |
 
 Also reads `pr.base` (the `head` fallback) and the shared root `language` (report wording).
 
@@ -32,7 +33,7 @@ Also reads `pr.base` (the `head` fallback) and the shared root `language` (repor
 
 ## Promotion modes
 
-`release.promote` answers one question — **who opens the `head` → `base` PR?** — and nothing else. All three modes share the [skip rule](SKILL.md#2-promote-head--base-config-gated): `head` not ahead of `base` → nothing to promote.
+`release.promote` answers one question — **who opens the promotion PR** for the edge being promoted? — and nothing else. All three modes share the [skip rule](SKILL.md#2-promote-along-the-chain-config-gated): the edge's `head` not ahead of its `base` → nothing to promote. On a [multi-stage chain](#promotion-chains) the mode governs **each** edge identically; the skill still opens at most one promotion PR at a time.
 
 ### `"auto"`
 
@@ -56,6 +57,43 @@ Produce the same PR the automation would: a `chore: merge <head> into <base>` ro
 ### `false` (default)
 
 Release-only. Never touch `head` → `base`; go straight to waiting for the release PR. For repos where promotion is a human's call, where `base` is the only branch — and for every repo that has not opted in, because this is the default.
+
+## Promotion chains
+
+A repo with a pre-production stage promotes along a **chain** — `dev → staging → main` — not a single edge. `release.stages` is that chain as an **ordered array**: lowest integration branch first, **release branch last** (the only branch release-please runs on). Consecutive pairs are the promotion **edges**.
+
+```json
+{ "release": { "promote": "auto", "stages": ["dev", "staging", "main"] } }
+```
+
+`stages` is the canonical, N-stage form of `head`/`base` and **subsumes** today's two-branch world — so nothing already configured changes:
+
+| `stages`                     | Edges                             | Meaning                                                      |
+| :--------------------------- | :-------------------------------- | :----------------------------------------------------------- |
+| _(absent)_                   | `head → base`                     | resolves to `[head, base]` — the default two-branch flow     |
+| `["dev", "main"]`            | `dev → main`                      | the two-branch flow, written out                             |
+| `["dev", "staging", "main"]` | `dev → staging`, `staging → main` | a three-stage chain                                          |
+| `["main"]`                   | none                              | single-branch — release cut directly on `base`, no promotion |
+
+**Resolution.** `stages` when set (it wins over `head`/`base`); else `[head, base]` from their own resolution; a one-element chain has no edge to promote. **Validate before use:** non-empty, branches distinct, each a real ref — a malformed `stages` is a config error to **report, not guess around**.
+
+**Promotion model — one edge per invocation.** The skill promotes a **single** edge and stops, defaulting to the **topmost pending edge** (the one nearest `base` whose `head` is ahead of its `base`) so an invocation drives a release forward; an explicit edge overrides. A full `dev → main` release is therefore N−1 human-confirmed invocations — which is the skill's whole ethos: every merge waits for a human, and a chain simply has more of them. The `release.promote` mode and the fixed **merge-commit** strategy apply to **every** edge identically. release-please still fires only on the **last** stage.
+
+**`staging` is a gate, not a release point.** By default no earlier stage cuts its own release — release-please owns versioning on `base` alone. Cutting `-rc`/`-beta` prereleases on `staging` would mean a **second** release-please instance with its own manifest, and two branches editing `CHANGELOG.md`/manifest is a conflict this design deliberately avoids ([Decisions](#decisions)).
+
+**No flow-back step is needed** — while every edge uses a merge commit. The release artifacts (`CHANGELOG.md`, `.release-please-manifest.json`) live on `base` only; no earlier stage edits them, so the merge-commit history stays an ancestor through each later promotion and stages merge forward conflict-free. The stale version on `dev`/`staging` is harmless — they do not run release-please.
+
+**Workflow triggers (consuming-repo setup).** GitHub's `on.push.branches` / `on.pull_request.branches` are **static YAML parsed before any job runs** — they cannot read this config, so a chain's branch names cannot be config-driven at the trigger. The skill does not ship these workflows; a repo adding a stage wires them itself. The robust pattern is **trigger broad, gate in a job step**:
+
+| Workflow                   | For a chain                                                                                                        |
+| :------------------------- | :----------------------------------------------------------------------------------------------------------------- |
+| CI / lint                  | Drop the base-branch filter — run on **every** PR. A `dev → staging` PR then gets CI; scoping it buys nothing.     |
+| CodeQL / security          | Same — analyse all pushes/PRs (or a glob); security scanning is never stage-specific.                              |
+| release-please             | Must run on the **release branch** (last stage). Trigger on all pushes, gate a step on `ref_name == <last stage>`. |
+| rollup-PR opener           | Maintain a standing rollup PR **per edge** — a step reads `stages` and loops (`dev → staging`, `staging → main`).  |
+| dependabot `target-branch` | The **first** stage. Still static YAML with no config hook — a documented, drift-checked hand-edit.                |
+
+Removing the hardcoded branch names is also what lets `base` be named `master` (or anything) uniformly — the skill layer already defaults `base` to the repo's own default branch; only the static workflow YAML ever hardcodes it.
 
 ## gh recipes
 
@@ -117,3 +155,7 @@ The issue that specified this skill left its defaults open. What was settled, an
 - **Opposite, fixed merge strategies** — merge commit for the promotion so release-please can see the individual commits; squash for the release PR per release-please's own convention. Both are mechanical, so neither is a config key.
 - **`"create"` delegates to `pull-request`** — same reason `work-issue` does: one skill owns PR creation. It also inherits that skill's refusal to touch automation's PRs, which is precisely the `"auto"` guard.
 - **`timeout` bounds each wait, not the run** — the unbounded risk is the release PR that never appears; a check run ends on its own. Default 600s.
+- **A chain is an ordered array, not named slots or an edge list** — `release.stages` (last element = release branch) scales to N stages and degenerates to `[head, base]` with **zero migration**, so `head`/`base` stay the two-branch sugar. Rejected: named `staging`/`head`/`base` slots (hard-cap at three, order implicit in key names) and an explicit edge list (over-general — it buys non-linear graphs at the cost of a cycle/fork validator no linear chain needs).
+- **One edge per invocation** — the skill promotes the topmost pending edge and stops, so "at most one PR, ever" generalises to **at most one _open_ promotion PR at a time**, one human confirmation per merge. Walking the whole chain in a single run would collapse several deliberate human gates — the opposite of why this skill is manual-only.
+- **`staging` is a gate, not a prerelease point (deferred)** — release-please owns versioning on `base` alone; earlier stages accumulate and promote but never version. A second release-please on `staging` is separable, needs real manifest-ownership design, and is the **one** thing that would break the merge-commit flow-back invariant — so it stays out of the chain's first cut.
+- **Workflow triggers stay the repo's own — documented, not shipped** — `on.*.branches` is static YAML parsed before any job runs, so it cannot read this config; the skill documents the trigger-broad/gate-in-a-step pattern instead of shipping workflows. The same removal of hardcoded branch names is what lets a release branch named `master` (or anything) work uniformly, since the skill already defaults `base` to the repo's own default branch.
