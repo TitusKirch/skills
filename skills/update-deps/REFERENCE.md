@@ -1,6 +1,6 @@
 # update-deps — Reference
 
-Mechanics for the [`update-deps`](SKILL.md) skill. Scope in v1 is **Node** (npm / pnpm / bun) and **PHP** (Composer), monorepos included. The updater is **detected from the repo**, never configured — see [Decisions](#decisions).
+Mechanics for the [`update-deps`](SKILL.md) skill. Scope is **Node** (npm / pnpm / bun), **PHP** (Composer) and **Rust** (Cargo), monorepos included. The updater is **detected from the repo**, never configured — see [Decisions](#decisions).
 
 ## Config
 
@@ -23,22 +23,24 @@ Lockfile-driven, with `packageManager` as the override:
 | `bun.lock` / `bun.lockb`          | Node      | bun      |
 | `package-lock.json`               | Node      | npm      |
 | `composer.lock` / `composer.json` | PHP       | Composer |
+| `Cargo.lock` / `Cargo.toml`       | Rust      | Cargo    |
 
 - **`packageManager` in `package.json` wins** over the lockfile guess — it is the repo's explicit statement, and under `packageManagerStrict: true` a wrong manager is **rejected**, not merely discouraged.
 - **`taze` in `devDependencies` outranks the native updater** for the Node side, whichever manager it is — taze rewrites `package.json` and installs through the repo's own manager, so it is manager-agnostic.
+- **A `src-tauri/Cargo.toml` is a real Cargo manifest** — a Tauri app carries its Rust crate there, not at the root, so detection looks below the root too. It is its own ecosystem run, alongside the Node manifest a Tauri repo also has.
 - **Several ecosystems at once** → each is its own run, plan and report section. Never let one ecosystem's range leak into another's.
 
 ## Range → command
 
 **Only taze has real range granularity.** Every native Node updater collapses to "within the declared range" or "latest", with nothing in between:
 
-| Range               | taze (preferred) | pnpm / npm             | bun                   | Composer                        |
-| :------------------ | :--------------- | :--------------------- | :-------------------- | :------------------------------ |
-| `patch`             | `taze patch -w`  | `pnpm update`¹         | `bun update`¹         | `composer update`¹              |
-| `minor` _(default)_ | `taze minor -w`  | `pnpm update`¹         | `bun update`¹         | `composer update`¹              |
-| `major`             | `taze major -w`  | `pnpm update --latest` | `bun update --latest` | `composer require <pkg>:^<new>` |
+| Range               | taze (preferred) | pnpm / npm             | bun                   | Composer                        | Cargo                          |
+| :------------------ | :--------------- | :--------------------- | :-------------------- | :------------------------------ | :----------------------------- |
+| `patch`             | `taze patch -w`  | `pnpm update`¹         | `bun update`¹         | `composer update`¹              | `cargo update`¹                |
+| `minor` _(default)_ | `taze minor -w`  | `pnpm update`¹         | `bun update`¹         | `composer update`¹              | `cargo update`¹                |
+| `major`             | `taze major -w`  | `pnpm update --latest` | `bun update --latest` | `composer require <pkg>:^<new>` | `cargo upgrade --incompatible` |
 
-¹ **Within the declared range only** — the manifest is not rewritten. Under `^1.2.0` that lands the newest 1.x (a minor, achieved); under `~1.2.0` it lands patches only; under an exact pin it does nothing. **The declared range is doing the ranging**, which is why native `patch` and `minor` share a command: the repo already said which it wanted.
+¹ **Within the declared range only** — the manifest is not rewritten. Under `^1.2.0` that lands the newest 1.x (a minor, achieved); under `~1.2.0` it lands patches only; under an exact pin it does nothing. **The declared range is doing the ranging**, which is why native `patch` and `minor` share a command: the repo already said which it wanted. Cargo is a native updater in the same sense — `cargo update` moves the lock within `Cargo.toml`'s constraints — see [Cargo's constraint model](#cargos-constraint-model).
 
 Useful taze flags (`taze --help` is the authority; all verified against `taze@19.14.1`):
 
@@ -128,9 +130,27 @@ A dependency declared without an operator (`oxfmt: 0.57.0`) is **locked**. Two c
 
 **Accepted asymmetry:** a minor run rewrites `package.json` (taze's doing) but leaves `composer.json` untouched. Same installed outcome, different manifest diff — because the two ecosystems disagree about what a declared range is _for_. Say so in the report rather than manufacturing symmetry.
 
+## Cargo's constraint model
+
+**Cargo behaves like Composer, not npm:** `cargo update` moves the **lock** (`Cargo.lock`) within the constraints in `Cargo.toml`; it never rewrites them. There is no taze-equivalent with range granularity, so the declared constraint does the ranging — exactly as it does for a native Composer or pnpm run.
+
+**The one trap is the default operator.** A bare version in `Cargo.toml` is a **caret**, the opposite of a bare npm version (which pins): `serde = "1.2"` means `^1.2` (`>=1.2.0, <2.0.0`), so it already floats to the newest minor.
+
+| Constraint (`Cargo.toml`) | `cargo update` reaches | So a "minor run"                   |
+| :------------------------ | :--------------------- | :--------------------------------- |
+| `serde = "1.2"` _(caret)_ | newest `1.x`           | **already achieved** — just update |
+| `serde = "~1.2"`          | newest `1.2.x`         | patch-only by the author's choice  |
+| `serde = "=1.2.3"`        | nothing                | pinned — report as held            |
+
+- **v1 is constraint-respecting.** Under the default caret, `cargo update` already lands the newest compatible release — the minor goal, with no manifest churn. `cargo update -p <crate>` scopes to one crate; `--precise <version>` sets an exact target (a **read**-shaped pin move, held-and-named like any pin).
+- **Constraint rewriting is an explicit `major` only** — `cargo upgrade --incompatible` (from **cargo-edit**; `cargo upgrade` alone only modernises within-compatible requirements). It rewrites `Cargo.toml` to the new major, each reported **separately as breaking**. If cargo-edit is absent, report the available majors and stop — installing a toolchain component is a human's call, not the skill's.
+- **`0.x` is special-cased, as in npm.** `serde = "0.9"` is `^0.9` → `>=0.9.0, <0.10.0`: the major lives in the middle number, so a caret on `0.x` floats patches only. Read a `0.x` bump the way you read one under npm's caret.
+- **Report with** `pnpm cargo:outdated` where the repo defines that script, else `cargo outdated` (from **cargo-outdated**) — it lists what the constraints are holding back, the parallel of `composer outdated --direct`.
+- **No release-age gate to honour.** The `minimumReleaseAge` machinery is pnpm-specific; Cargo has no native equivalent, so there is no gated-vs-ungated diff to run and no held-by-gate row for the Rust side.
+
 ## Monorepos
 
-- **pnpm** — `packages:` in `pnpm-workspace.yaml`. **npm / bun** — `workspaces` in `package.json`. **Composer** — path repositories.
+- **pnpm** — `packages:` in `pnpm-workspace.yaml`. **npm / bun** — `workspaces` in `package.json`. **Composer** — path repositories. **Cargo** — `[workspace]` in `Cargo.toml`; `cargo update` at the workspace root resolves the whole member tree into one `Cargo.lock`.
 - **taze `-r`** walks every workspace `package.json`. Note `--ignore-other-workspaces` defaults to **true** — a nested package with its own `.git`/`pnpm-workspace.yaml` is a different repo and is skipped, which is the correct default.
 - **Keep a shared dependency on one version across packages** — a version skew introduced by an update is a finding, not an outcome.
 - **Resolve the lockfile once, at the root**, with one install after all manifests are written.
@@ -140,7 +160,7 @@ A dependency declared without an operator (`oxfmt: 0.57.0`) is **locked**. Two c
 Run **every time**, independent of the range, and before declaring the run clean:
 
 ```bash
-pnpm audit          # or: npm audit | bun audit | composer audit
+pnpm audit          # or: npm audit | bun audit | composer audit | cargo audit
 ```
 
 | Situation                           | Action                                                                 |
@@ -171,5 +191,6 @@ The issue that specified this skill left its defaults open. What was settled, an
 - **Exact pins are held by default, and never silent** — a repo that wanted a floating minor would have written `^1.72.0`. Held is therefore right; **invisible** is not, and taze's default scope makes them invisible rather than reported. Hence the `-l` read on every run, purely to name them. Silence was the bug; held-and-named is the fix.
 - **`--include-locked`, not `latest`, is how a pin moves** — the obvious-looking advice for a pinned dep is `taze latest -w`, and the specifying issue and this repo's `CLAUDE.md` both carried it. Measured against the real tree it conflates two axes and buys more than it was asked for: `latest` is a **mode** spanning majors, and at the time of writing it targeted `oxfmt 0.57.0 → 0.58.0` (a 0.x major) and `packageManager` pnpm → a `12.0.0-alpha.9` **prerelease** — from a request that only meant "include the pinned ones". Scope (`-l`) and range (the mode) are orthogonal, so `taze minor -l` is the honest "minor run, pins included". `CLAUDE.md` was corrected alongside this skill.
 - **Composer is constraint-respecting in v1** — under a caret, `composer update` already achieves the newest minor, so v1 needs no constraint rewriting to deliver its headline promise. Rewriting (`composer bump`, `composer require pkg:^7`) is reserved for an explicit `major`, because for a library it narrows what consumers may install — a decision, not a refresh.
+- **Cargo is Composer-shaped, not npm-shaped** — added so a Tauri repo's `src-tauri/` crate is not silently skipped next to its Node frontend. `cargo update` moves the lock within `Cargo.toml`'s constraints and never rewrites them, so it slots into the existing native-updater, constraint-respecting path with **no new machinery** — a detection row and a command column, exactly as the Yarn note predicts for an added ecosystem. Constraint rewriting stays an explicit `major` (`cargo upgrade --incompatible`), and because that and `cargo audit` / `cargo outdated` are **separate tools** (cargo-edit, cargo-audit, cargo-outdated), a missing one is reported, never auto-installed — the same "the repo's tooling decides, the skill does not reach past it" rule that governs the gate. The default caret on a bare version (the inverse of npm's bare-is-pinned) is the one genuine footgun, so it earns its own line in the model.
 - **`packageManager` is a toolchain change, not a dependency** — taze offers it like any other row, but bumping it re-points every contributor and CI, and `packageManagerStrict` makes a mismatch fatal rather than cosmetic. It gets its own line in the plan; it never rides along inside "3 minor updates".
 - **Yarn is out of scope in v1** — the issue scoped Node to npm/pnpm/bun plus Composer. taze already reads yarn's config, so adding it later is a detection row, not a reshape.
