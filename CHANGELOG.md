@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/TitusKirch/skills/compare/v0.12.0...v0.13.0) (2026-07-20)
+
+
+### Features
+
+* **update-deps:** add Rust/Cargo (src-tauri) support ([26e6677](https://github.com/TitusKirch/skills/commit/26e6677bc0086cb9df831ded8bd97096175c234e)), closes [#60](https://github.com/TitusKirch/skills/issues/60)
+
 ## [0.12.0](https://github.com/TitusKirch/skills/compare/v0.11.0...v0.12.0) (2026-07-20)
 
 
