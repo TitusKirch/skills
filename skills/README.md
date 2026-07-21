@@ -67,8 +67,10 @@ Resolution per setting: **config → native/detected → built-in default** — 
 - [`update-deps`](update-deps/REFERENCE.md#config) — `language`, `work.verify` (owns no section of its own)
 - [`handoff`](handoff/REFERENCE.md#config) — `language` (owns no section of its own)
 - [`write-docs`](write-docs/REFERENCE.md#config) — `language`, `docs.*`
-- [`work-issue`](work-issue/REFERENCE.md#config) — `language`, `work.*`, `pr.base`
-- [`work-queue`](work-issue/REFERENCE.md#config) — shares `work-issue`'s `work.*` config
+- [`work-implement`](work-implement/REFERENCE.md#config) — `language`, `work.*`, `pr.base`
+- [`work-implement-queue`](work-implement/REFERENCE.md#config) — shares `work-implement`'s `work.*` config
+- [`work-review`](work-review/REFERENCE.md#config) — `language`, `work.*`, `work.review.*`
+- [`work-review-queue`](work-review/REFERENCE.md#config) — shares `work-review`'s config
 
 Auto-detected data (commit conventions, issue catalogs) is cached separately under `tituskirch-skills/` in the git common dir — never committed, TTL-disposable.
 

@@ -20,8 +20,10 @@
     "./skills/tituskirch-skills-config",
     "./skills/update-deps",
     "./skills/vhs-demo",
-    "./skills/work-issue",
-    "./skills/work-queue",
+    "./skills/work-implement",
+    "./skills/work-implement-queue",
+    "./skills/work-review",
+    "./skills/work-review-queue",
     "./skills/write-docs",
     "./skills/write-readme"
   ]

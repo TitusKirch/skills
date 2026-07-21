@@ -1,10 +1,12 @@
-# work-issue / work-queue — Reference
+# work-implement / work-implement-queue — Reference
 
-Shared mechanics for [`work-issue`](SKILL.md) (the unit) and [`work-queue`](../work-queue/SKILL.md) (the drain). One tracker per repo (GitHub `gh` / Linear MCP), chosen by config. Reuses the [`issue`](../issue/SKILL.md) skill's config file and catalog cache.
+Shared mechanics for [`work-implement`](SKILL.md) (the unit) and [`work-implement-queue`](../work-implement-queue/SKILL.md) (the drain). One tracker per repo (GitHub `gh` / Linear MCP), chosen by config. Reuses the [`issue`](../issue/SKILL.md) skill's config file and catalog cache.
 
 ## Principle
 
-> The **queue is the tracker**, the **worker is stateless.** Each issue's state lives in its lifecycle label (`ready → working → review → done`, plus `blocked`), not in the agent. Every run reads state fresh from tracker + git, so a crashed run **resumes** instead of restarting and a repeated run is **idempotent**.
+> The **queue is the tracker**, the **worker is stateless.** Each issue's state lives in its lifecycle label — `ready → working → review → {changes-requested → working | needs human | blocked | done}` — not in the agent. Every run reads state fresh from tracker + git, so a crashed run **resumes** instead of restarting and a repeated run is **idempotent**.
+
+**Two loops share this lifecycle.** The **implement loop** ([`work-implement`](SKILL.md) / [`work-implement-queue`](../work-implement-queue/SKILL.md)) owns `ready`/`changes-requested → working → review`; the **review loop** ([`work-review`](../work-review/SKILL.md) / [`work-review-queue`](../work-review-queue/SKILL.md)) owns `review → {done | changes-requested | needs human | blocked}`, reviewed by a **different** agent. `review` (implement → review) and `changes-requested` (review → implement) are the two hand-off labels. This file documents the shared mechanics and the implement side; the review side lives in [`work-review/REFERENCE.md`](../work-review/REFERENCE.md).
 
 ## Config
 
@@ -22,11 +24,14 @@ Shared mechanics for [`work-issue`](SKILL.md) (the unit) and [`work-queue`](../w
       "ready": "ai: ready",
       "working": "ai: working",
       "review": "ai: review",
+      "changesRequested": "ai: changes requested",
+      "needsHuman": "ai: needs human",
       "done": "ai: done",
       "blocked": "ai: blocked",
       "repo": false
     },
     "priorityLabels": ["urgent", "high", "medium", "low"],
+    "review": { "maxRounds": 3 },
     "linear": {
       "team": "Engineering",
       "statuses": ["Todo", "In Progress"],
@@ -34,6 +39,8 @@ Shared mechanics for [`work-issue`](SKILL.md) (the unit) and [`work-queue`](../w
         "ready": "Todo",
         "working": "In Progress",
         "review": "In Review",
+        "changesRequested": "Changes Requested",
+        "needsHuman": "Needs Human",
         "done": "Done"
       }
     }
@@ -41,19 +48,21 @@ Shared mechanics for [`work-issue`](SKILL.md) (the unit) and [`work-queue`](../w
 }
 ```
 
-| Key                    | Effect                                                                                                              |
-| :--------------------- | :------------------------------------------------------------------------------------------------------------------ |
-| `work.tracker`         | `github` or `linear`; falls back to `issue.tracker`                                                                 |
-| `work.cap`             | max issues a single drain works (mandatory bound; default 10)                                                       |
-| `work.branch`          | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)      |
-| `work.parallel`        | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))          |
-| `work.verify`          | check command run before opening the PR (tests/lint/build); `null` → detect from the repo                           |
-| `work.labels.*`        | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                               |
-| `work.labels.repo`     | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo" |
-| `work.priorityLabels`  | GitHub priority labels, highest first; Linear ignores these (native priority field)                                 |
-| `work.linear.team`     | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                  |
-| `work.linear.statuses` | Linear workflow states that count as startable                                                                      |
-| `work.linear.states`   | lifecycle step → Linear workflow state name; **no default** — see below                                             |
+| Key                                         | Effect                                                                                                                                       |
+| :------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------- |
+| `work.tracker`                              | `github` or `linear`; falls back to `issue.tracker`                                                                                          |
+| `work.cap`                                  | max issues a single drain works (mandatory bound; default 10)                                                                                |
+| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)                               |
+| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))                                   |
+| `work.verify`                               | check command run before opening the PR (tests/lint/build); `null` → detect from the repo                                                    |
+| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                                        |
+| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"                          |
+| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the [`work-review`](../work-review/SKILL.md) loop                                   |
+| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see [`work-review`](../work-review/REFERENCE.md#round-count)) |
+| `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                                          |
+| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                                           |
+| `work.linear.statuses`                      | Linear workflow states that count as startable                                                                                               |
+| `work.linear.states`                        | lifecycle step → Linear workflow state name; **no default** — see below                                                                      |
 
 **`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.review: false` → the PR's existence is the signal; `labels.blocked: false` → comment only / Linear state; `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
 
@@ -76,60 +85,53 @@ Reuses the [`issue`](../issue/REFERENCE.md#catalog-cache) cache verbatim — `$(
 ## Lifecycle state machine
 
 ```text
-ready ─(lease)─▶ working ─(PR opened)─▶ review ─(human signs off)─▶ done
-                  ▲   │                   │                          ▲
-                  └───┼────(feedback)─────┘                          │
-                      └──(branch:<name> + no PR, e.g. dev: commit)───┘
-   blocked ◀── side-exit (spec ambiguous · checks red · needs a human)
+   IMPLEMENT LOOP                                 REVIEW LOOP
+
+ready ────────────lease──▶ working ──commit+PUSH──▶ review ──AI review──┬─▶ done
+changes-requested ─lease──▶   │                                         ├─▶ needs human ──human──▶ done | changes-requested
+                              │                                         ├─▶ changes-requested   (round < maxRounds)
+                       checks unfixable                                 └─▶ blocked
+                              ▼
+                          blocked
 ```
 
-| Transition         | Who                                                                                                       |
-| :----------------- | :-------------------------------------------------------------------------------------------------------- |
-| `ready → working`  | the worker, **before** any work (the lease)                                                               |
-| `working → review` | the worker, when the PR is opened                                                                         |
-| `review → working` | the worker, on revision feedback — re-opened for another pass                                             |
-| `review → done`    | the **human's sign-off**, applied by the worker; or a [reconcile](#reconcile) that observes the PR merged |
-| `working → done`   | the worker, straight after the commit — **`branch:<name>` with no PR only**                               |
-| `* → blocked`      | the worker, when it cannot honestly reach `review`                                                        |
+| Transition                                | Loop / Who                                                                    |
+| :---------------------------------------- | :---------------------------------------------------------------------------- |
+| `ready → working`                         | implement — lease, **before** any work                                        |
+| `changes-requested → working`             | implement — lease for re-work; reads the review feedback                      |
+| `working → review`                        | implement — after commit + **push** (the artifact is now reviewable)          |
+| `working → blocked`                       | implement — checks unfixable or a genuine human call                          |
+| `review → done`                           | review — AI approve (low-risk), **or** a human "looks good" via `needs human` |
+| `review → changes-requested`              | review — AI requests changes, round < `maxRounds` (feedback posted)           |
+| `review → needs human`                    | review — approve-but-risky, can't judge, or round ≥ `maxRounds`               |
+| `review → blocked`                        | review — broken beyond a fixable change                                       |
+| `needs human → done \| changes-requested` | the human's verdict, applied by [`work-review`](../work-review/SKILL.md)      |
 
-### Terminal `done`
+### Terminal `done`, and what `review` means now
 
-**`done` is the human's sign-off, not the merge.** The worker still never merges — but it does set `done`, on the human's word.
-
-Native tracker automation is **not** the terminal signal. GitHub's `Closes #<n>` and Linear's GitHub integration both fire only on a merge into the **default** branch, so a repo whose `pr.base` is an integration branch (e.g. `dev`) never reaches `done` through them — the terminal state was unreachable for exactly the repos that need an integration branch. Waiting for that automation is what broke it, so the lifecycle no longer waits for it.
-
-So `review` is a **real waiting state**: the worker sets it and stops. The human answers in the **same session** that ran the skill — that is the actual working mode, and it is why no external trigger is needed: the skill is still running when the verdict arrives.
-
-- **"looks good"** → the worker sets `done`. That is the sign-off.
-- **feedback** → back to `working`, apply it, re-push, back to `review`. Repeat as often as it takes.
-
-The worker never sets `done` **unasked** — the old rule survives only in that sense.
-
-**Consequence, accepted:** `done` no longer means "merged" — it means **accepted by the human**. Under `worktree` (a PR per issue) the PR may still be open when the issue reads `done`. This is a deliberate redefinition: the queue's business is the work; shipping is the rollup merge's business.
-
-**No PR → no `review` stop.** A `branch:<name>` target with no PR (e.g. `branch:dev`) still goes straight to `done` after the commit. There is no artifact to review, and no merge for the [reconcile](#reconcile) to observe — so parking it in `review` would strand it exactly the way this rule exists to prevent. The batch confirmation is the sign-off, and the code review happens on the rollup PR.
+- **`review` = awaiting AI review** by a **different** agent — not "awaiting a human". The [`work-review`](../work-review/SKILL.md) loop consumes it and writes the verdict.
+- **`done` = AI-reviewed and accepted** (low-risk), or accepted by a human via [`needs human`](../work-review/REFERENCE.md#escalation-to-needs-human). It does **not** mean "merged": GitHub's `Closes #<n>` and Linear's integration fire only on a **default-branch** merge, which a non-default `pr.base` (e.g. `dev`) never triggers — so shipping is the rollup merge's business, not the queue's.
+- **`review-after-land`** — under `branch:<name>` the commit lands on the branch **before** review; the issue is still not `done` until review passes, and a `changes-requested` verdict is fixed **forward** (more commits), never reverted. Details: [`work-review`](../work-review/REFERENCE.md#review-after-land).
 
 ### Reconcile
 
-The safety net for a session that ended before the human looked. It is the **first step of every [`work-queue`](../work-queue/SKILL.md) drain**, before the queue is built — drains run anyway, so it needs no trigger of its own. (This is what the old "reconciled on a later run" promise never had: nothing re-runs `work-issue` on a finished issue, precisely because it is finished.)
+Each loop's drain reconciles its own orphans **first**, before building its queue — drains run anyway, so no separate trigger is needed. There are **two**:
 
-For each issue sitting in `review`, find its PR and read the PR's state:
+**Implement reconcile** (this loop, [`work-implement-queue`](../work-implement-queue/SKILL.md) step 2) — reclaim **`working` orphans**: an issue leased `ready → working` but abandoned when a worker crashed **before its push**. The [single-flight lock](#lease--race-rules) guarantees no live worker holds it at reconcile time, so check for a **pushed artifact** (a PR / pushed commit for the issue):
 
-| PR state             | Action                                                                             |
-| :------------------- | :--------------------------------------------------------------------------------- |
-| **merged**           | set `done` — the sign-off is implicit in the merge                                 |
-| **open**             | leave it in `review` — still waiting; this is the normal outcome                   |
-| **closed, unmerged** | set `blocked` + comment — a human closed it without merging and only they know why |
-| **no PR**            | leave it — nothing to observe; it waits on a human, not on a merge                 |
+| Pushed artifact? | Meaning                                           | Action                                                                                                         |
+| :--------------- | :------------------------------------------------ | :------------------------------------------------------------------------------------------------------------- |
+| **none**         | crashed **before** the push                       | flip back to `ready`, drop the assignee → re-worked fresh; `blocked` if it left an unrecoverable partial state |
+| **present**      | crashed **after** the push, before the label flip | advance to `review` — the work is already reviewable; finish the interrupted hand-off, don't redo it           |
 
-A closed-unmerged PR is a deliberate human act whose _intent_ the drain cannot read — rework, supersede, or abandon are all live readings. That is the [`blocked` side-exit](#lifecycle-state-machine)'s exact purpose ("needs a human call"), and routing it there keeps `review` from silently becoming the new permanent parking spot.
+Without this, a `working` orphan carries neither `ready` nor `review`, so nothing would ever reclaim it — the hole that would contradict the [resume-instead-of-restart principle](#principle).
 
-Reconcile moves **labels only**, never branches, and is **idempotent** — nothing to close out is the normal result, not an error. It never sets `done` on an unmerged PR: that is the human's word, and the drain is not the human.
+**Review reconcile** (the [`work-review-queue`](../work-review-queue/SKILL.md) loop) — for issues in `review`, close out **out-of-band human actions on the PR**: merged → `done` (implicit acceptance), closed-unmerged → `blocked`. Full rules: [`work-review-queue`](../work-review-queue/SKILL.md).
 
-**Orphaned `working` issues.** Reconcile also sweeps issues stuck in `working` with **no open PR** — leased `ready → working` but abandoned when a worker crashed between the lease (step 4) and PR-open (step 8). The [single-flight lock](#lease--race-rules) guarantees no live worker holds one at a drain's reconcile, so it is safe to **reclaim**: flip it back to `ready` and drop the assignee so the next [selection](#selection-query) re-works it fresh (the worker is stateless — it re-reads tracker + git and re-asserts a clean tree), or set `blocked` if it left an unrecoverable partial state. This is the counterpart to the `review` sweep: a `working` orphan carries **neither** `ready` nor `review`, so without it neither the selection query nor the review sweep would ever reclaim the issue — the hole that contradicted the [resume-instead-of-restart principle](#principle). (An issue in `working` **with** an open PR only failed to advance its label — treat it as `review`.)
+Both move **labels only**, never branches, and are **idempotent** — nothing to reclaim is the normal result.
 
 ```bash
-# GitHub — the PRs that reference this issue with a closing keyword, merged or not
+# GitHub — does this issue already have a pushed PR? (distinguishes crash-before vs crash-after-push)
 gh api graphql -f query='
   query($owner:String!,$repo:String!,$n:Int!){
     repository(owner:$owner,name:$repo){
@@ -142,7 +144,7 @@ gh api graphql -f query='
   }' -F owner=<owner> -F repo=<repo> -F n=<n>
 ```
 
-**Linear** — the GitHub integration links the PR as an **attachment** on the issue; read it via `get_issue` for the PR url, then ask GitHub for the state (`gh pr view <url> --json state,merged`). Whether a PR merged is GitHub's fact, never Linear's.
+For `branch:<name>` with no PR, "pushed artifact" = the issue's commits already on the remote branch (`git log origin/<branch> --grep "#<n>"`). **Linear** — the GitHub integration links the PR as an attachment; read it via `get_issue` for the PR url, then ask GitHub for state (`gh pr view <url> --json state,merged`).
 
 ### Label vs body precedence
 
@@ -161,15 +163,17 @@ This does not disarm the `blocked` side-exit: work whose **requirements** are ge
 
 Eligible = matches **all** configured filters. Self-select (one issue) and drain (all, ordered) use the same query.
 
-- **labels** — has `labels.ready` (unless `false`); never already `working`/`blocked` by someone else. Labels are the **only** eligibility input — issue text is never read for consent ([label vs body](#label-vs-body-precedence)).
+- **labels** — the implement loop selects issues with `labels.ready` **or** `labels.changesRequested` (its two inputs; skip a label that is `false`); never already `working`/`blocked` by someone else. Labels are the **only** eligibility input — issue text is never read for consent ([label vs body](#label-vs-body-precedence)). (The review loop's input is `labels.review` — see [`work-review`](../work-review/REFERENCE.md#selection-query).)
 - **repo scope** — Linear only: has `labels.repo` (unless `false`). Skipped on GitHub (repo-local by nature).
 - **team** — Linear only: `work.linear.team`.
 - **status** — Linear: state ∈ `work.linear.statuses`. GitHub: `--state open`.
 - **order** — by priority. Linear native priority field; GitHub by `work.priorityLabels` (highest first), then creation order. Under `branch:<name>` this order is then re-sorted so prerequisites come first — [dependency ordering](#dependency-ordering).
 
 ```bash
-# GitHub eligible issues, by config labels
-gh issue list --state open --label "$(jq -r '.work.labels.ready' "$config")" --json number,title,labels,createdAt
+# GitHub — implement-loop inputs (ready OR changes-requested); comma = OR within a search qualifier
+gh issue list --state open \
+  --search "label:\"$(jq -r '.work.labels.ready' "$config")\",\"$(jq -r '.work.labels.changesRequested' "$config")\"" \
+  --json number,title,labels,createdAt
 ```
 
 **Ready-gate off** (`labels.ready: false`): the query above can't filter by a ready label — list open issues and instead **exclude** the in-flight ones (`--search "-label:<working> -label:<blocked>"`), so "never already `working`/`blocked`" still holds without a gate to lean on.
@@ -180,8 +184,8 @@ Linear: `list_issues` filtered by team + label(s) + states; order by the native 
 
 - **Claim before work** — flip `ready → working` + assign, _then_ implement. A second consumer sees "not ready" and skips.
 - **Fresh fetch each iteration** — a drain re-queries the next eligible issue every loop; it never snapshots the whole queue (stale `ready` states would be re-worked). [Dependency ordering](#dependency-ordering) plans the _sequence_ up front but does not exempt an issue from that re-check.
-- **Single-flight lock** — `work-queue` takes a lock file in the git common dir; a second drain in the same repo exits. This (not the label flip, which is not a true compare-and-swap) is what makes multi-consumer safe **within a repo**; cross-repo isolation on a shared Linear team comes from [repo scope](#repo-scope).
-- **Direct invocation honours the lock too.** The lock is created by `work-queue` for the whole batch, and a drain's workers run under it (they do not re-take it). A **directly-invoked** `work-issue` (`/work-issue 42`) runs outside a drain, so it must itself honour the lock: if a drain holds it, **stop and report** (the drain will reach the issue); otherwise take the lock for the run and release it after. This closes the race where a direct run and a drain both read `ready` and lease the same issue, and it stops the drain's [reconcile](#reconcile) from mistaking a live direct run's `working` issue for a crashed orphan.
+- **Single-flight lock** — `work-implement-queue` takes a lock file in the git common dir; a second drain in the same repo exits. This (not the label flip, which is not a true compare-and-swap) is what makes multi-consumer safe **within a repo**; cross-repo isolation on a shared Linear team comes from [repo scope](#repo-scope).
+- **Direct invocation honours the lock too.** The lock is created by `work-implement-queue` for the whole batch, and a drain's workers run under it (they do not re-take it). A **directly-invoked** `work-implement` (`/work-implement 42`) runs outside a drain, so it must itself honour the lock: if a drain holds it, **stop and report** (the drain will reach the issue); otherwise take the lock for the run and release it after. This closes the race where a direct run and a drain both read `ready` and lease the same issue, and it stops the drain's [reconcile](#reconcile) from mistaking a live direct run's `working` issue for a crashed orphan.
 - **Clean-tree assert** between issues; a worker that left the tree dirty halts the drain rather than stacking onto uncommitted work.
 - **Git's `index.lock`** is the last-resort backstop; concurrency is made _impossible by construction_ (one live worker per tree), not merely locked.
 
@@ -270,7 +274,7 @@ Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — disco
 - **Lifecycle** — `update_issue` to set the lifecycle label + assignee, plus that step's `work.linear.states` state when one is mapped — **one atomic call**, so label and state never drift. Step unmapped, or no `states` at all → write the label + assignee and **leave the state alone**. Never invent a state name: the map is the only source, and `statuses` is an eligibility filter, not a mapping.
 - **Eligible** — `list_issues` by team + `labels.ready` + `labels.repo` + `work.linear.statuses`; order by native priority.
 - **Dependencies** — `list_issues` returns no relations; fan out `get_issue(includeRelations: true)` (see [dependency ordering](#dependency-ordering)).
-- **Which steps write a state** — the worker writes `states.working` on the lease and `states.review` when the PR opens. `states.done` is the **worker's** to set, on the human's [sign-off](#terminal-done), on a [reconcile](#reconcile) that observes the merge, or straight after the commit on a `branch:<name>` target with no PR. Linear's integration may also move the issue on a default-branch merge — a bonus, never the signal waited on. `states.ready` is never written — it records where a human parks a startable issue, and is the anchor `statuses` should contain. The `blocked` side-exit has no state: it is carried by `labels.blocked`.
+- **Which steps write a state** — the **implement loop** writes `states.working` on the lease and `states.review` after the push. The **review loop** writes `states.done` / `states.changesRequested` / `states.needsHuman` on its verdict; the implement reconcile writes `states.ready` when it reclaims a pre-push orphan. Linear's integration may also move the issue on a default-branch merge — a bonus, never the signal waited on. `states.ready` is otherwise not written by the worker — it records where a human parks a startable issue, the anchor `statuses` should contain. The `blocked` side-exit is carried by `labels.blocked`.
 - **PR lives on GitHub** — even for a Linear-tracked repo, the code PR is a GitHub PR. The branch name / PR carries the **Linear key** (`ENG-123`) so Linear's GitHub integration **links** it. That link is traceability: on a non-default `pr.base` the integration never moves the issue at all, so [`done`](#terminal-done) comes from the sign-off or the reconcile — never from waiting on Linear.
 - **Team is required**; resolve `work.linear.team` to its id via the cache. `states` is optional — resolve each mapped name to its id via the cache; a name that matches **no** state in the team is a config error → report it, do not fall back to a guess.
 

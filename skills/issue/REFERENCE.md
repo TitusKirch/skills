@@ -116,7 +116,7 @@ The Linear MCP server's registered name varies per setup (`mcp__claude_ai_Linear
 - **Auth/availability** — confirm the Linear MCP tools are present and authenticated. If not authenticated, call the server's `authenticate` tool / point the user to it, then continue.
 - **Tools (generic names)** — `list_teams`, `list_projects`, `list_issue_labels`, `list_issue_statuses`, `create_issue`, `update_issue`, search/`list_issues`.
 - **Team is required** to create — resolve `issue.linear.team` (name/key) to its id via the cached `teams`.
-- **Repo-scope label** — when `work.labels.repo` is a string, apply it on **every** create (alongside the contextual labels) so [`work-queue`](../work-queue/SKILL.md) can scope this repo's issues on a shared Linear team; GitHub needs none (repo-local).
+- **Repo-scope label** — when `work.labels.repo` is a string, apply it on **every** create (alongside the contextual labels) so [`work-implement-queue`](../work-implement-queue/SKILL.md) can scope this repo's issues on a shared Linear team; GitHub needs none (repo-local).
 - **No repo templates** — unlike GitHub, Linear has no in-repo issue templates (`issue.github.template` is GitHub-only). Linear's templates live server-side per team; if the MCP exposes them, offer one, otherwise **draft a clean default body** from the description + session context (the same fallback `pull-request` uses for a missing PR template).
 - **Sub-issues** — set `parentId` on the child create call. Catalogs (teams/projects/labels/states) → cache.
 

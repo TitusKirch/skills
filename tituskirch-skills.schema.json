@@ -307,9 +307,24 @@
                 "ready": { "$ref": "#/$defs/labelOrOff" },
                 "working": { "$ref": "#/$defs/labelOrOff" },
                 "review": { "$ref": "#/$defs/labelOrOff" },
+                "changesRequested": { "$ref": "#/$defs/labelOrOff" },
+                "needsHuman": { "$ref": "#/$defs/labelOrOff" },
                 "done": { "$ref": "#/$defs/labelOrOff" },
                 "blocked": { "$ref": "#/$defs/labelOrOff" },
                 "repo": { "$ref": "#/$defs/labelOrOff" }
+              }
+            },
+            "review": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "AI-review-gate options (work-review / work-review-queue). Absent → defaults.",
+              "properties": {
+                "maxRounds": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "default": 3,
+                  "description": "Max AI-review rounds before the reviewer escalates to needsHuman instead of changesRequested. The round count is derived from the issue's `review` label-transition events, not a stored counter. Default: 3."
+                }
               }
             },
             "priorityLabels": {
@@ -352,7 +367,17 @@
                     "review": {
                       "type": "string",
                       "minLength": 1,
-                      "description": "Set when the PR is opened, e.g. \"In Review\"."
+                      "description": "Set when the work is pushed and awaits AI review, e.g. \"In Review\"."
+                    },
+                    "changesRequested": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Set when AI review requests changes and hands the issue back to the implement loop, e.g. \"Changes Requested\"."
+                    },
+                    "needsHuman": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Set when the reviewer escalates to a human, e.g. \"Needs Human\"."
                     },
                     "done": {
                       "type": "string",
