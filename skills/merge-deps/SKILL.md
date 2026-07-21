@@ -1,7 +1,7 @@
 ---
 name: merge-deps
-summary: Triages the open Dependabot pull requests — verifies each one on its own branch, then merges what the repo's config allows.
-description: Triages and merges a repo's open Dependabot pull requests, selected strictly by author (app/dependabot) so no human's and no other bot's PR is ever touched. Verifies each update on its own branch first, because a Dependabot PR into an integration branch often runs no meaningful CI at all — and an empty check list is never read as green. Merging is opt-in per repo via mergeDeps.merge and always waits for confirmation. Forge chosen per-repo by config (root forge key); v1 is GitHub via the gh CLI. Invoke manually only — this skill never fires proactively and never opens a pull request. Use when the user asks to triage, review or merge Dependabot PRs or dependency updates, mentions the Dependabot queue, dependency bumps or Dependabot alerts, or says things like "merge the dependabot PRs", "check the dependency updates", "Dependabot PRs mergen", "Abhängigkeiten aktualisieren".
+summary: Triages a repo's open Dependabot PRs, verifying each on its own branch before merging.
+description: Triages and merges a repo's open Dependabot pull requests, selected strictly by author (app/dependabot) so no human's and no other bot's PR is ever touched. Verifies each update on its own branch first, because a Dependabot PR into an integration branch often runs no meaningful CI at all — and an empty check list is never read as green. Merging is opt-in per repo via mergeDeps.merge and always waits for confirmation. Forge chosen per-repo by config (root forge key); v1 is GitHub via the gh CLI. Invoke manually only — this skill never fires proactively and never opens a pull request. Use when the user asks to triage, review or merge Dependabot PRs or dependency updates, mentions the Dependabot queue, dependency bumps or Dependabot alerts, or says things like "merge the dependabot PRs", "check the dependency updates", "Dependabot PRs mergen".
 allowed-tools:
   - Bash
   - Read
@@ -11,7 +11,7 @@ allowed-tools:
 
 # merge-deps
 
-Work the **Dependabot queue** — read the open Dependabot pull requests and the repo's Dependabot alerts, establish which updates are actually safe, and merge the ones the repo has opted into. **Manual invocation only**: nothing here fires on its own, and every merge waits for a human. The backend is chosen by config (the root `forge` key); **GitHub (via `gh`) is the only backend implemented in v1**.
+Work the **Dependabot queue** — read the open Dependabot pull requests and the repo's Dependabot alerts, establish which updates are actually safe, and merge the ones the repo has opted into. **Manual invocation only**: nothing here fires on its own, and every merge waits for a human. The forge is chosen by config (the root `forge` key); **GitHub (via `gh`) is the only forge implemented in v1**.
 
 **Opted out?** If the repo config sets `mergeDeps` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the merge-deps skill is turned off in `.tituskirch-skills.json`. An _absent_ `mergeDeps` block is **not** disabled; it means [report-only](REFERENCE.md#merge-modes). Check `jq -e '.mergeDeps == false'` before any action.
 
@@ -91,7 +91,7 @@ The endpoint needs `security_events` scope — no access → say the alerts coul
 - **An empty check list is never green.** Absence of a verdict is `unknown`, and `unknown` never merges.
 - **Never resolve conflicts, never edit a lockfile, never force-push a Dependabot branch.** Hand it back with `@dependabot rebase`.
 - **Attribution-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in any comment it posts.
-- **GitHub backend (v1).** No GitHub remote / `gh` unavailable → stop; never fall back to raw `git` plumbing or the API by hand.
+- **GitHub forge (v1).** No GitHub remote / `gh` unavailable → stop; never fall back to raw `git` plumbing or the API by hand.
 
 ## Reference
 

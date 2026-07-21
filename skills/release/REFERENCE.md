@@ -1,6 +1,6 @@
 # release — Reference
 
-Mechanics for the [`release`](SKILL.md) skill. **GitHub (`gh`) is the only backend in v1.** The release tool it drives is **release-please**, detected from the repo rather than configured — see [Decisions](#decisions).
+Mechanics for the [`release`](SKILL.md) skill. **GitHub (`gh`) is the only forge in v1.** The release tool it drives is **release-please**, detected from the repo rather than configured — see [Decisions](#decisions).
 
 ## Config
 

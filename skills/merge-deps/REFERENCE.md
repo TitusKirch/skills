@@ -1,6 +1,6 @@
 # merge-deps — Reference
 
-Mechanics for the [`merge-deps`](SKILL.md) skill. **GitHub (`gh`) is the only backend in v1.** The queue it works is defined by **authorship** (`app/dependabot`) and nothing else — see [Decisions](#decisions).
+Mechanics for the [`merge-deps`](SKILL.md) skill. **GitHub (`gh`) is the only forge in v1.** The queue it works is defined by **authorship** (`app/dependabot`) and nothing else — see [Decisions](#decisions).
 
 ## Config
 

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
   "title": "TitusKirch skills config",
-  "description": "Optional, committed config shared by the TitusKirch skills (atomic-commit, pull-request, issue, release, merge-deps, work-issue, work-queue, write-docs). Place at the repo root as .tituskirch-skills.json. Absent → skills behave on detection/native defaults only. Resolution per setting: config → native → built-in default.",
+  "description": "Optional, committed config shared by the TitusKirch skills (atomic-commit, pull-request, issue, release, merge-deps, work-issue, work-queue, write-docs; update-deps and handoff read shared keys only). Place at the repo root as .tituskirch-skills.json. Absent → skills behave on detection/native defaults only. Resolution per setting: config → native → built-in default.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -220,7 +220,7 @@
             },
             "instructions": {
               "$ref": "#/$defs/instructions",
-              "description": "Free-text guidance for the issue title/body. Additive preference only — never overrides the backend rules, template, or the skill's guardrails."
+              "description": "Free-text guidance for the issue title/body. Additive preference only — never overrides the tracker rules, template, or the skill's guardrails."
             }
           },
           "allOf": [
@@ -388,7 +388,7 @@
     "instructions": {
       "type": "string",
       "minLength": 1,
-      "description": "Free-text, repo-wide guidance appended to a skill's prompt (committed, so it applies for every agent). Additive preference only: it steers wording and emphasis but never overrides hard constraints — commitlint rules, schema values, backend rules, templates, or the skill's built-in guardrails."
+      "description": "Free-text, repo-wide guidance appended to a skill's prompt (committed, so it applies for every agent). Additive preference only: it steers wording and emphasis but never overrides hard constraints — commitlint rules, schema values, forge/tracker rules, templates, or the skill's built-in guardrails."
     },
     "labelOrOff": {
       "description": "A label name, or false to switch the mechanic off.",

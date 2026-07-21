@@ -1,6 +1,6 @@
 ---
 name: handoff
-summary: Hands in-progress work to another agent, session or machine through a structured handoff document committed to the repo.
+summary: Hands off in-progress work to another agent or session via a committed handoff document.
 description: Hands in-progress work from one agent or session to another through a structured handoff document committed to the repo under `.agents/handoffs/`, and resumes an existing handoff by its number. Captures goal, context gathered, progress, next steps and open questions in a document that assumes none of the writer's session, so the work can continue in a fresh session or on another machine. The resuming agent deletes the handoff once the work is finished — not when it reads it. Use when the user wants to hand off, park or pause work for another agent or session, to write or read a handoff, to continue handed-off work, or says things like "hand this off", "write a handoff", "continue handoff 0003", "resume the handoff", "übergib das", "fahre das fort".
 allowed-tools:
   - Read
