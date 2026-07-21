@@ -39,7 +39,7 @@ Walk the sections; per section, propose from detection, ask only the **essential
 
 - **`github`** — viable only if the remote host is GitHub (`git remote get-url`) **and** `gh auth status` covers that host. gh signed in to github.com while the remote is GitLab / Gitea / Bitbucket → not viable.
 - **`linear`** — viable only if the Linear MCP answers (`whoami` / list teams).
-- **`none`** — always offered. Either omit the section (unconfigured — runs only when explicitly invoked) or write `false` to **disable** the skill outright (it refuses even when invoked). Prefer `false` when the repo has no working backend, so an accidental call stops cleanly.
+- **`none`** — always offered. Either omit the section (unconfigured — runs only when explicitly invoked) or write `false` to **disable** the skill outright (it refuses even when invoked). Prefer `false` when the repo has no working forge/tracker, so an accidental call stops cleanly.
 
 A repo with no working forge/tracker (e.g. self-hosted GitLab) just lands on `none` — no special-casing. The **forge** lives once at the repo root as `forge`, `github`-only in the schema and shared by `pr` / `release` / `mergeDeps`; when the remote isn't GitHub, name it as a known gap.
 
@@ -48,8 +48,9 @@ A repo with no working forge/tracker (e.g. self-hosted GitLab) just lands on `no
 - **`pr`** — `false`-or-omit; the forge comes from the root `forge` key (above). Propose `base` when the repo integrates onto a non-default branch (e.g. a `dev` branch exists). `title.convention` is `conventional` when commitlint or a Conventional-Commits history is present, else ask.
 - **`issue`** — pick the tracker (above). For Linear, list teams and pick `linear.team` (the one required field). Set the languages, `title.convention` (`plain` default), and `labels.exclude` for catalog labels the agent must never auto-apply.
 - **`release`** — `promote` is the one key worth asking about: it defaults to `false` (promotion is opt-in), so a repo that wants `pr.base` merged onto its release branch **must say so**. Propose `auto` when automation already opens the rollup PR (a workflow opening `base ← head` on push), `create` when nothing does, and leave it out when promotion isn't this skill's business. Branches and `timeout` default — omit them. `false` for the whole section when the repo has no release-please setup.
-- **`docs`** — `preset` from project type (cli / library / app / infra / ai-tool), or `false` to opt out; language inherits root.
-- **`work`** — only when the repo runs the queue. Pick the tracker (above); it and `linear.team` fall back to `issue.*`. Set `cap` (default 10), `branch` (`worktree` default), and the lifecycle `labels`. On Linear, also offer `linear.states` — the lifecycle step → workflow state map. It has no default (state names are per-team), and without it the worker moves the label but never the board, so propose it from the team's real states rather than leaving it out silently.
+- **`mergeDeps`** — only when the repo wants its Dependabot PR queue merged. `merge` is the key worth asking about: it defaults to `false` (report-only), so a repo that wants merges **must say so** (`patch` / `grouped` / `all`) — the same opt-in shape as `release.promote`. `verify` falls back to `work.verify`; `cap` defaults to 5 — omit both unless overriding. `false` for the whole section to disable the skill outright.
+- **`docs`** — `preset` from project type (cli / library / app / infra / ai-tool), or `false` to opt out; language inherits root. `docs.instructions` for repo-wide docs wording, only on an explicit preference.
+- **`work`** — only when the repo runs the queue. Pick the tracker (above); it and `linear.team` fall back to `issue.*`. Set `cap` (default 10), `branch` (`worktree` default), and the lifecycle `labels`. **On Linear the schema requires `linear.team`, `linear.statuses` (startable states) and `labels.repo` (the repo discriminator) — set all three.** Also offer `linear.states` — the lifecycle step → workflow state map. It has no default (state names are per-team), and without it the worker moves the label but never the board, so propose it from the team's real states rather than leaving it out silently.
 
 **Fast-path** — most repos reduce to one real decision (commit auto-detects from commitlint, languages default to `en`, forges/trackers resolve to a single viable option or `none`). After detection, name only what is actually non-default and ask those — don't walk every section aloud when just `docs.preset` is open.
 
@@ -62,7 +63,7 @@ Desired-state, idempotent — a `--fix` linter for the config. **check** is the 
 1. Read the config fresh **and** the schema (local `tituskirch-skills.schema.json`, else fetch the canonical URL).
 2. Diff against the schema **and the repo**, then group the plan:
    - **Auto-fix (mechanical)** — unknown or removed keys, a value off the schema's enum with one unambiguous correction, a `commit.scopeVocab` missing a current skill / package scope, a missing `$schema` pointer, key ordering.
-   - **Prompt (value-needing)** — a required value that is absent (`issue.tracker` `linear` with no `linear.team`, which the schema now enforces), or a setting the repo can no longer satisfy (a `pr.base`, template, label, team, or `scopeVocab` folder that does not exist).
+   - **Prompt (value-needing)** — a required value that is absent (`issue.tracker` `linear` with no `linear.team`, or `work.tracker` `linear` without `linear.statuses` / `labels.repo` — both now schema-enforced by if/then), or a setting the repo can no longer satisfy (a `pr.base`, template, label, team, or `scopeVocab` folder that does not exist).
    - **Report only** — a key written to its own default (suggest dropping it — resolution order makes it a no-op); never auto-remove one that documents deliberate intent.
 3. Show the **plan + diff**; on confirm, write **only** config keys. **check** stops here — it never writes.
 
@@ -78,4 +79,4 @@ Desired-state, idempotent — a `--fix` linter for the config. **check** is the 
 ## Reference
 
 - Every key, type, enum, and default: [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json) — the single source of truth.
-- Per-section setup detail and backend recipes stay with each owning skill: [`issue`](../issue/REFERENCE.md), [`pull-request`](../pull-request/REFERENCE.md), [`release`](../release/REFERENCE.md), [`work-issue`](../work-issue/REFERENCE.md), [`write-docs`](../write-docs/REFERENCE.md).
+- Per-section setup detail and forge/tracker recipes stay with each owning skill: [`issue`](../issue/REFERENCE.md), [`pull-request`](../pull-request/REFERENCE.md), [`release`](../release/REFERENCE.md), [`merge-deps`](../merge-deps/REFERENCE.md), [`work-issue`](../work-issue/REFERENCE.md), [`write-docs`](../write-docs/REFERENCE.md).
