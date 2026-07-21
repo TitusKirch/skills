@@ -32,7 +32,7 @@
     "promote": "auto"
   },
   "issue": {
-    "backend": "github",
+    "tracker": "github",
     "title": { "convention": "plain" },
     "labels": { "exclude": ["stack:*", "autorelease:*", "dependencies"] }
   },
