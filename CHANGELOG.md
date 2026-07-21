@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.0](https://github.com/TitusKirch/skills/compare/v0.13.0...v0.14.0) (2026-07-21)
+
+
+### Features
+
+* **issue:** constrain issue body to intent, not implementation ([baae26e](https://github.com/TitusKirch/skills/commit/baae26e654df152112ff01ce2afd1f5fc95fb1ba)), closes [#63](https://github.com/TitusKirch/skills/issues/63)
+* **issue:** translate title domain terms across languages ([5f15471](https://github.com/TitusKirch/skills/commit/5f15471b02f783d390972015abffbc43af8a55b7)), closes [#64](https://github.com/TitusKirch/skills/issues/64)
+
 ## [0.13.0](https://github.com/TitusKirch/skills/compare/v0.12.0...v0.13.0) (2026-07-20)
 
 
