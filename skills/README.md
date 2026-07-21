@@ -53,7 +53,7 @@ Some skills read an optional, committed `.tituskirch-skills.json` at the **consu
   "$schema": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
   "language": "de",
   "pr": { "base": "dev" },
-  "issue": { "backend": "github" }
+  "issue": { "tracker": "github" }
 }
 ```
 
@@ -63,7 +63,7 @@ Resolution per setting: **config → native/detected → built-in default** — 
 - [`pull-request`](pull-request/REFERENCE.md#config) — `language`, `pr.*`
 - [`issue`](issue/REFERENCE.md#config) — `language`, `issue.*`
 - [`release`](release/REFERENCE.md#config) — `language`, `release.*`, `pr.base`
-- [`merge-deps`](merge-deps/REFERENCE.md#config) — `language`, `deps.*`, `work.verify`
+- [`merge-deps`](merge-deps/REFERENCE.md#config) — `language`, `mergeDeps.*`, `work.verify`
 - [`update-deps`](update-deps/REFERENCE.md#config) — `language`, `work.verify` (owns no section of its own)
 - [`handoff`](handoff/REFERENCE.md#config) — `language` (owns no section of its own)
 - [`write-docs`](write-docs/REFERENCE.md#config) — `language`, `docs.*`

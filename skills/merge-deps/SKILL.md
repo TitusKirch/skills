@@ -1,7 +1,7 @@
 ---
 name: merge-deps
 summary: Triages the open Dependabot pull requests — verifies each one on its own branch, then merges what the repo's config allows.
-description: Triages and merges a repo's open Dependabot pull requests, selected strictly by author (app/dependabot) so no human's and no other bot's PR is ever touched. Verifies each update on its own branch first, because a Dependabot PR into an integration branch often runs no meaningful CI at all — and an empty check list is never read as green. Merging is opt-in per repo via deps.merge and always waits for confirmation. Backend chosen per-repo by config (deps.backend); v1 is GitHub via the gh CLI. Invoke manually only — this skill never fires proactively and never opens a pull request. Use when the user asks to triage, review or merge Dependabot PRs or dependency updates, mentions the Dependabot queue, dependency bumps or Dependabot alerts, or says things like "merge the dependabot PRs", "check the dependency updates", "Dependabot PRs mergen", "Abhängigkeiten aktualisieren".
+description: Triages and merges a repo's open Dependabot pull requests, selected strictly by author (app/dependabot) so no human's and no other bot's PR is ever touched. Verifies each update on its own branch first, because a Dependabot PR into an integration branch often runs no meaningful CI at all — and an empty check list is never read as green. Merging is opt-in per repo via mergeDeps.merge and always waits for confirmation. Forge chosen per-repo by config (root forge key); v1 is GitHub via the gh CLI. Invoke manually only — this skill never fires proactively and never opens a pull request. Use when the user asks to triage, review or merge Dependabot PRs or dependency updates, mentions the Dependabot queue, dependency bumps or Dependabot alerts, or says things like "merge the dependabot PRs", "check the dependency updates", "Dependabot PRs mergen", "Abhängigkeiten aktualisieren".
 allowed-tools:
   - Bash
   - Read
@@ -11,15 +11,15 @@ allowed-tools:
 
 # merge-deps
 
-Work the **Dependabot queue** — read the open Dependabot pull requests and the repo's Dependabot alerts, establish which updates are actually safe, and merge the ones the repo has opted into. **Manual invocation only**: nothing here fires on its own, and every merge waits for a human. The backend is chosen by config (`deps.backend`); **GitHub (via `gh`) is the only backend implemented in v1**.
+Work the **Dependabot queue** — read the open Dependabot pull requests and the repo's Dependabot alerts, establish which updates are actually safe, and merge the ones the repo has opted into. **Manual invocation only**: nothing here fires on its own, and every merge waits for a human. The backend is chosen by config (the root `forge` key); **GitHub (via `gh`) is the only backend implemented in v1**.
 
-**Opted out?** If the repo config sets `deps` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the merge-deps skill is turned off in `.tituskirch-skills.json`. An _absent_ `deps` block is **not** disabled; it means [report-only](REFERENCE.md#merge-modes). Check `jq -e '.deps == false'` before any action.
+**Opted out?** If the repo config sets `mergeDeps` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the merge-deps skill is turned off in `.tituskirch-skills.json`. An _absent_ `mergeDeps` block is **not** disabled; it means [report-only](REFERENCE.md#merge-modes). Check `jq -e '.mergeDeps == false'` before any action.
 
 ## Workflow
 
 ### 1. Detect (read the repo — never assume)
 
-- **Backend** — from `deps.backend` (v1: only `github` is implemented; any other value → say it is not supported yet and stop). Confirm the repo is reachable: `gh repo view --json nameWithOwner,defaultBranchRef`. If it fails (no GitHub remote, or `gh` not authenticated), **stop**.
+- **Backend** — from the root `forge` key (v1: only `github` is implemented; any other value → say it is not supported yet and stop). Confirm the repo is reachable: `gh repo view --json nameWithOwner,defaultBranchRef`. If it fails (no GitHub remote, or `gh` not authenticated), **stop**.
 - **Dependabot config** — read `.github/dependabot.yml` for **context only**: which ecosystems exist, their `target-branch`, their `groups`, their `cooldown`. It tells you what to _expect_; it is **never** a selection input. No `dependabot.yml` → Dependabot may still be raising security PRs; carry on.
 - **Config** — `.tituskirch-skills.json` at the repo root (optional, committed). Keys: [REFERENCE.md](REFERENCE.md#config).
 
@@ -48,21 +48,21 @@ Per selected PR, gather facts. **Never merge on a heuristic.**
 
 > **An empty or irrelevant check list is `unknown`, never `green`.** A workflow gated on `branches: [main]` does not run for a PR into `dev`, so its absence is not a pass — there was no verdict at all. A suite that only scans source for vulnerabilities (CodeQL) says nothing about whether a lockfile still installs or the repo still lints. Counting either as "checks green" is how an unverified bump gets merged. **Never merge on `unknown`.**
 
-- **Verify locally** — this is the **primary** gate, not a fallback. Run `deps.verify` against the PR's own head in a throwaway worktree, so the user's tree is never touched ([recipe](REFERENCE.md#gh--git-recipes)). CI, where it genuinely ran, is corroboration.
+- **Verify locally** — this is the **primary** gate, not a fallback. Run `mergeDeps.verify` against the PR's own head in a throwaway worktree, so the user's tree is never touched ([recipe](REFERENCE.md#gh--git-recipes)). CI, where it genuinely ran, is corroboration.
 - **Update type** — grouped / patch / minor / major, read from Dependabot's own artifacts (the group name in the head branch, the `Updates X from A to B` lines in the body). **Cannot be determined with confidence → hold the PR.** Do not guess a bump level.
 
-**No `deps.verify` configured _and_ the base's checks don't cover the change → hold and report.** The skill has no basis to call it safe, and says so rather than merging.
+**No `mergeDeps.verify` configured _and_ the base's checks don't cover the change → hold and report.** The skill has no basis to call it safe, and says so rather than merging.
 
 ### 4. Merge — hand the merge back to Dependabot
 
-Gated by `deps.merge` ([modes](REFERENCE.md#merge-modes)) and, always, by confirmation. Default is `false` — **report-only**; merging is opt-in.
+Gated by `mergeDeps.merge` ([modes](REFERENCE.md#merge-modes)) and, always, by confirmation. Default is `false` — **report-only**; merging is opt-in.
 
 - **Comment, don't merge directly** — `gh pr comment <n> --body "@dependabot squash and merge"`. Dependabot then owns the rebase, the merge and the branch close-out, which is the thing it is actually good at. Squash keeps one `build(deps)` commit per group; [why squash](REFERENCE.md#decisions).
 - **Dependabot merges once checks pass — including when there are none.** That is precisely why step 3's local verify runs **first**. The comment is the last act, never the gate.
 - **Conflicts** → `@dependabot rebase` and report it. **Never resolve a dependency conflict by hand** — the lockfile is Dependabot's to regenerate.
 - **Held back is an outcome, not a failure.** A major bump under `"grouped"`, an undeterminable update type, a red verify, an `unknown` check list — report each with its reason and move on.
 
-Respect `deps.cap` — the most PRs one run may merge.
+Respect `mergeDeps.cap` — the most PRs one run may merge.
 
 ### 5. Security alerts
 

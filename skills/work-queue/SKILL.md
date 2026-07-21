@@ -1,7 +1,7 @@
 ---
 name: work-queue
 summary: Drains the ready issue queue — selects, prioritises and works each issue to a PR, sequentially or in parallel.
-description: Drains a repo's queue of ready issues across GitHub (gh) or Linear (MCP) — selects every issue matching the configured labels, team and statuses, orders them by priority (and, on a shared branch, by dependency so prerequisites land first), then works each one to a reviewable pull request by delegating to work-issue. Starts by reconciling issues an earlier run left awaiting review — a merged PR moves its issue to done. Honours a per-run cap, runs sequentially or in parallel per config, and is safe to repeat (claim-before-work, single-flight lock). Backend and rules come from the committed config (.tituskirch-skills.json). Use when the user wants to batch-process, drain, or auto-work the open or ai-ready issues, run the issue loop, says things like "work the issues", "arbeite die Issues ab", "drain the queue", or runs it under /loop.
+description: Drains a repo's queue of ready issues across GitHub (gh) or Linear (MCP) — selects every issue matching the configured labels, team and statuses, orders them by priority (and, on a shared branch, by dependency so prerequisites land first), then works each one to a reviewable pull request by delegating to work-issue. Starts by reconciling issues an earlier run left awaiting review — a merged PR moves its issue to done. Honours a per-run cap, runs sequentially or in parallel per config, and is safe to repeat (claim-before-work, single-flight lock). Tracker and rules come from the committed config (.tituskirch-skills.json). Use when the user wants to batch-process, drain, or auto-work the open or ai-ready issues, run the issue loop, says things like "work the issues", "arbeite die Issues ab", "drain the queue", or runs it under /loop.
 allowed-tools:
   - Bash
   - Read
@@ -18,7 +18,7 @@ Drain the repo's queue of **ready** issues — select, prioritise, and carry eac
 
 ### 1. Load config & lock
 
-- Config + backend as in [`work-issue`](../work-issue/SKILL.md) (the `work.*` section; [REFERENCE](../work-issue/REFERENCE.md#config)).
+- Config + tracker as in [`work-issue`](../work-issue/SKILL.md) (the `work.*` section; [REFERENCE](../work-issue/REFERENCE.md#config)).
 - Acquire the **single-flight lock** — a file in the git common dir; a second drain in the same repo sees it and exits.
 
 ### 2. Reconcile — first, before the queue is built
@@ -50,7 +50,7 @@ Each worker returns `review`, `done`, `blocked`, or an error:
 - **`review`** — the normal outcome: the PR is up and waiting on a human. Nobody is waiting on the worker, so **continue**; a verdict that never arrives this session is swept by the next drain's reconcile.
 - **`done`** — a `branch:<name>` target with no PR ([why](../work-issue/REFERENCE.md#terminal-done)); **continue**.
 - **`blocked`** — the worker has already labelled and commented it; **continue** to the next issue.
-- **hard error** (git broken, backend down) — stop the drain, release the lock, report.
+- **hard error** (git broken, tracker down) — stop the drain, release the lock, report.
 
 ### 6. Report & release
 

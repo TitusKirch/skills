@@ -1,6 +1,6 @@
 # work-issue / work-queue — Reference
 
-Shared mechanics for [`work-issue`](SKILL.md) (the unit) and [`work-queue`](../work-queue/SKILL.md) (the drain). One backend per repo (GitHub `gh` / Linear MCP), chosen by config. Reuses the [`issue`](../issue/SKILL.md) skill's config file and catalog cache.
+Shared mechanics for [`work-issue`](SKILL.md) (the unit) and [`work-queue`](../work-queue/SKILL.md) (the drain). One tracker per repo (GitHub `gh` / Linear MCP), chosen by config. Reuses the [`issue`](../issue/SKILL.md) skill's config file and catalog cache.
 
 ## Principle
 
@@ -13,7 +13,7 @@ Shared mechanics for [`work-issue`](SKILL.md) (the unit) and [`work-queue`](../w
 ```json
 {
   "work": {
-    "backend": "github",
+    "tracker": "github",
     "cap": 10,
     "branch": "worktree",
     "parallel": false,
@@ -43,7 +43,7 @@ Shared mechanics for [`work-issue`](SKILL.md) (the unit) and [`work-queue`](../w
 
 | Key                    | Effect                                                                                                              |
 | :--------------------- | :------------------------------------------------------------------------------------------------------------------ |
-| `work.backend`         | `github` or `linear`; falls back to `issue.backend`                                                                 |
+| `work.tracker`         | `github` or `linear`; falls back to `issue.tracker`                                                                 |
 | `work.cap`             | max issues a single drain works (mandatory bound; default 10)                                                       |
 | `work.branch`          | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)      |
 | `work.parallel`        | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))          |
@@ -249,7 +249,7 @@ A dependency cycle (A → B → A) has no valid order and is a **tracker-data er
 
 `branch:<name>` + `parallel: true` — dependent issues **cannot** run concurrently. Process the graph in **topological levels**: each level holds mutually independent issues that may run in parallel; levels run **sequentially**, with each level's [serialized integration](#branch-strategy) landing on the branch before the next starts. A chain therefore degenerates to sequential, which is the point.
 
-## Backend — GitHub (`gh`)
+## Tracker — GitHub (`gh`)
 
 - **Lifecycle** — labels are flat (`ai: ready` …); flip with `gh issue edit <n> --add-label <x> --remove-label <y>`, assign with `--add-assignee`.
 - **Dependencies** — `blockedBy` / `parent`, GraphQL-only (see [dependency ordering](#dependency-ordering)).
@@ -258,7 +258,7 @@ A dependency cycle (A → B → A) has no valid order and is a **tracker-data er
 - **Reconcile** — find an issue's PRs with `closedByPullRequestsReferences` (see [reconcile](#reconcile)).
 - **Label sync** — if the repo mirrors labels to Linear, that is the **integration's** job; the agent writes only the GitHub side. Never double-write.
 
-## Backend — Linear (MCP)
+## Tracker — Linear (MCP)
 
 Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — discover the tools at runtime, do not hardcode.
 
@@ -275,4 +275,4 @@ Linear puts every repo's issues in one team, so the team alone cannot say "this 
 
 ## Setup
 
-No own setup flow — `work` piggybacks on the [`issue`](../issue/REFERENCE.md#setup-flow-first-run--issue-setup) skill's config + cache and only adds the `work.*` keys. The lifecycle labels must already **exist** on the configured backend's catalog (the agent filters by them, it does not create them).
+No own setup flow — `work` piggybacks on the [`issue`](../issue/REFERENCE.md#setup-flow-first-run--issue-setup) skill's config + cache and only adds the `work.*` keys. The lifecycle labels must already **exist** on the configured tracker's catalog (the agent filters by them, it does not create them).

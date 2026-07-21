@@ -1,7 +1,7 @@
 ---
 name: work-issue
 summary: Works one tracked issue to a reviewable PR across GitHub or Linear — claim, implement, verify, open PR, sign off.
-description: Works a single tracked issue end-to-end across GitHub (gh) or Linear (MCP) — claims it via the lifecycle label, implements on a branch, runs the repo's checks, opens a pull request, and advances the label to review. Backend, label lifecycle and branch strategy come from the committed config (.tituskirch-skills.json). Review is a real waiting state — the skill also applies free-text revision feedback onto an issue's existing PR branch, and signs an issue off to done once the human approves it. Use when the user wants to work, implement, action, ship or pick up one specific issue or ticket, mentions an ai-ready issue, or says things like "work issue 42", "arbeite Issue 42 ab", "implementiere Ticket X", "address the feedback on issue Y", or "issue 42 looks good".
+description: Works a single tracked issue end-to-end across GitHub (gh) or Linear (MCP) — claims it via the lifecycle label, implements on a branch, runs the repo's checks, opens a pull request, and advances the label to review. Tracker, label lifecycle and branch strategy come from the committed config (.tituskirch-skills.json). Review is a real waiting state — the skill also applies free-text revision feedback onto an issue's existing PR branch, and signs an issue off to done once the human approves it. Use when the user wants to work, implement, action, ship or pick up one specific issue or ticket, mentions an ai-ready issue, or says things like "work issue 42", "arbeite Issue 42 ab", "implementiere Ticket X", "address the feedback on issue Y", or "issue 42 looks good".
 allowed-tools:
   - Bash
   - Read
@@ -13,13 +13,13 @@ allowed-tools:
 
 # work-issue
 
-Take **one** tracked issue and carry it to a reviewable pull request — the stateless unit behind [`work-queue`](../work-queue/SKILL.md). One issue, one backend (**GitHub** via `gh` or **Linear** via its MCP), picked per-repo by the same committed config the [`issue`](../issue/SKILL.md) skill uses. State lives in the issue's **lifecycle label**, never in the agent — so a crashed run **resumes** instead of restarting.
+Take **one** tracked issue and carry it to a reviewable pull request — the stateless unit behind [`work-queue`](../work-queue/SKILL.md). One issue, one tracker (**GitHub** via `gh` or **Linear** via its MCP), picked per-repo by the same committed config the [`issue`](../issue/SKILL.md) skill uses. State lives in the issue's **lifecycle label**, never in the agent — so a crashed run **resumes** instead of restarting.
 
 ## Workflow
 
-### 1. Load config & resolve backend
+### 1. Load config & resolve tracker
 
-Read `$(git rev-parse --show-toplevel)/.tituskirch-skills.json` with `jq`; the `work.*` section holds backend, label lifecycle, branch strategy and Linear scope. Resolution per setting: **config → default**. Determine the backend (`work.backend`, falling back to `issue.backend`) and confirm it is available/authenticated. Reuse the [`issue`](../issue/REFERENCE.md#catalog-cache) catalog cache for labels/teams/states.
+Read `$(git rev-parse --show-toplevel)/.tituskirch-skills.json` with `jq`; the `work.*` section holds tracker, label lifecycle, branch strategy and Linear scope. Resolution per setting: **config → default**. Determine the tracker (`work.tracker`, falling back to `issue.tracker`) and confirm it is available/authenticated. Reuse the [`issue`](../issue/REFERENCE.md#catalog-cache) catalog cache for labels/teams/states.
 
 Config schema, the lifecycle and all mechanics: [REFERENCE.md](REFERENCE.md).
 
@@ -91,4 +91,4 @@ Inside a [`work-queue`](../work-queue/SKILL.md) drain nobody is waiting on this 
 
 ## Reference
 
-Config schema, the lifecycle state machine, selection query, lease & race rules, branch strategies (`worktree` / `branch:<name>`, sequential & parallel) and the two backend recipes: [REFERENCE.md](REFERENCE.md). Why it is shaped this way: [DESIGN.md](DESIGN.md).
+Config schema, the lifecycle state machine, selection query, lease & race rules, branch strategies (`worktree` / `branch:<name>`, sequential & parallel) and the two tracker recipes: [REFERENCE.md](REFERENCE.md). Why it is shaped this way: [DESIGN.md](DESIGN.md).

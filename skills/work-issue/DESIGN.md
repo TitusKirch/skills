@@ -29,7 +29,7 @@ Split because the unit has **independent value** (`/work-issue 42`) and a fresh 
 - **Verify before the PR** so `review` is honest; red-and-unfixable → `blocked`. `blocked` continues the drain — only a skill error stops it.
 - **Feedback is a conversational argument, not a mechanism** — `work-issue 42, change X`. You are in the loop typing it, so there is no trust filter, no thread-resolution ledger, no auto-detect. (Code review still happens on the GitHub PR; CI / chat are equally valid revision channels.)
 - **Linear repo scope = a stable label** (`work.labels.repo`), the single source of truth read by `work` (to filter) and `issue` (to tag). Projects are unsuitable — they are completable. No scope on Linear → the drain refuses.
-- **One backend per repo**, never both. If labels mirror GitHub↔Linear, that is the integration's job; the agent writes only the configured side.
+- **One tracker per repo**, never both. If labels mirror GitHub↔Linear, that is the integration's job; the agent writes only the configured side.
 
 ## Deferred (v2)
 

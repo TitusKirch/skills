@@ -1,7 +1,7 @@
 ---
 name: issue
-summary: Creates/updates/searches issues across GitHub (gh) or Linear (MCP), backend chosen by config.
-description: Manages issues — create, update, search/list, and bulk — across GitHub (gh CLI) or Linear (MCP), with the active backend chosen per-repo by a committed config (.tituskirch-skills.json). Drafts title and body from a free-text description plus session context, previews once, and creates only after confirmation; switches to plan-only when asked. Use when the user wants to create, open, update, or find an issue or ticket, mentions GitHub issues or Linear, or says things like "open an issue", "create a ticket", "find the issue about X", "Issue erstellen", "Ticket anlegen".
+summary: Creates/updates/searches issues across GitHub (gh) or Linear (MCP), tracker chosen by config.
+description: Manages issues — create, update, search/list, and bulk — across GitHub (gh CLI) or Linear (MCP), with the active tracker chosen per-repo by a committed config (.tituskirch-skills.json). Drafts title and body from a free-text description plus session context, previews once, and creates only after confirmation; switches to plan-only when asked. Use when the user wants to create, open, update, or find an issue or ticket, mentions GitHub issues or Linear, or says things like "open an issue", "create a ticket", "find the issue about X", "Issue erstellen", "Ticket anlegen".
 allowed-tools:
   - Bash
   - Read
@@ -11,23 +11,23 @@ allowed-tools:
 
 # issue
 
-Create, update, and search issues without caring which tracker the repo uses. One skill, two backends — **GitHub** (via `gh`) or **Linear** (via its MCP server) — picked per-repo by a small committed config. The skill drafts the issue from your free-text description plus the session context, shows it once, and writes it only after you confirm — or just prints the command when you ask for a plan.
+Create, update, and search issues without caring which tracker the repo uses. One skill, two trackers — **GitHub** (via `gh`) or **Linear** (via its MCP server) — picked per-repo by a small committed config. The skill drafts the issue from your free-text description plus the session context, shows it once, and writes it only after you confirm — or just prints the command when you ask for a plan.
 
-**Opted out?** If the repo config sets `issue` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the issue skill is turned off in `.tituskirch-skills.json`. An _absent_ `issue` block is **not** disabled (it falls back to detection/defaults). Check `jq -e '.issue == false'` before any action — and before indexing `.issue.backend`.
+**Opted out?** If the repo config sets `issue` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the issue skill is turned off in `.tituskirch-skills.json`. An _absent_ `issue` block is **not** disabled (it falls back to detection/defaults). Check `jq -e '.issue == false'` before any action — and before indexing `.issue.tracker`.
 
 ## Workflow
 
 ### 1. Load config & cache (guided setup on first run)
 
-- **Config** — read `$(git rev-parse --show-toplevel)/.tituskirch-skills.json` with `jq` (missing file/`jq` → run setup, or warn and fall back to GitHub detection). The `issue.*` section holds the backend and rules. Resolution per setting: **config → native → built-in default**.
+- **Config** — read `$(git rev-parse --show-toplevel)/.tituskirch-skills.json` with `jq` (missing file/`jq` → run setup, or warn and fall back to GitHub detection). The `issue.*` section holds the tracker and rules. Resolution per setting: **config → native → built-in default**.
 - **No / incomplete config, or `/issue setup`** → run the guided setup (step below). Setup is also where the catalog cache is first filled.
-- **Catalog cache** — read `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (JSON). Reuse when younger than ~3 days **and** the `backend` is unchanged; refresh when missing, stale, the backend changed, or the user passes `--refresh`. Label staleness in the plan header (`Catalogs (cached, 2d ago): …`).
+- **Catalog cache** — read `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (JSON). Reuse when younger than ~3 days **and** the `tracker` is unchanged; refresh when missing, stale, the tracker changed, or the user passes `--refresh`. Label staleness in the plan header (`Catalogs (cached, 2d ago): …`).
 
-Config/cache schema, the full setup flow, and backend recipes: [REFERENCE.md](REFERENCE.md).
+Config/cache schema, the full setup flow, and tracker recipes: [REFERENCE.md](REFERENCE.md).
 
-### 2. Determine the backend
+### 2. Determine the tracker
 
-From `issue.backend` (`github` | `linear`). Then check availability: GitHub → `gh repo view --json nameWithOwner`; Linear → confirm the Linear MCP tools are present and authenticated. Unavailable/unauthenticated → say so and point to the fix (e.g. authenticate the Linear MCP), don't guess the other backend.
+From `issue.tracker` (`github` | `linear`). Then check availability: GitHub → `gh repo view --json nameWithOwner`; Linear → confirm the Linear MCP tools are present and authenticated. Unavailable/unauthenticated → say so and point to the fix (e.g. authenticate the Linear MCP), don't guess the other tracker.
 
 ### 3. Detect the action
 
@@ -46,7 +46,7 @@ From the phrasing: **create** (default for a new description), **update** (an is
 
 ### 6. Present the plan (always, before any write)
 
-One preview: backend · action · title · body · labels/state/team (and the full list for bulk). Flag anything guessed or missing (no team for Linear, possible duplicate). Format: [REFERENCE.md](REFERENCE.md#plan-output).
+One preview: tracker · action · title · body · labels/state/team (and the full list for bulk). Flag anything guessed or missing (no team for Linear, possible duplicate). Format: [REFERENCE.md](REFERENCE.md#plan-output).
 
 ### 7. Execute — or stop
 
@@ -61,8 +61,8 @@ One preview: backend · action · title · body · labels/state/team (and the fu
 - **Body states intent, not implementation** — describe _what_ is wanted (outcome, context, open questions), not _how_ to build it. Never reverse-engineer the repo's conventions into build steps, and never explore the codebase to pad the body — **unless the user explicitly asks** for an implementation plan.
 - **Cache never committed** — it lives in the git common dir.
 - **Only the requested action** — never close, reassign, or relabel anything you weren't asked to.
-- **Backend is never silently chosen** — first run always asks (see setup).
+- **Tracker is never silently chosen** — first run always asks (see setup).
 
 ## Reference
 
-Config/cache schema, the guided setup flow, GitHub and Linear backend recipes, sub-issue mechanics, the plan-output format, and worked examples: [REFERENCE.md](REFERENCE.md).
+Config/cache schema, the guided setup flow, GitHub and Linear tracker recipes, sub-issue mechanics, the plan-output format, and worked examples: [REFERENCE.md](REFERENCE.md).

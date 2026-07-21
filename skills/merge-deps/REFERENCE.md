@@ -4,12 +4,12 @@ Mechanics for the [`merge-deps`](SKILL.md) skill. **GitHub (`gh`) is the only ba
 
 ## Config
 
-`deps.*` in the repo-root `.tituskirch-skills.json`, or `deps: false` to disable the skill for the repo. Resolution per setting: **config → detected → built-in default**. Read with `jq`. Every key, type, enum and default lives once in the repo-root [`tituskirch-skills.schema.json`](../../tituskirch-skills.schema.json) — the single source of truth.
+`mergeDeps.*` in the repo-root `.tituskirch-skills.json`, or `mergeDeps: false` to disable the skill for the repo. Resolution per setting: **config → detected → built-in default**. Read with `jq`. Every key, type, enum and default lives once in the repo-root [`tituskirch-skills.schema.json`](../../tituskirch-skills.schema.json) — the single source of truth.
 
 ```json
 {
-  "deps": {
-    "backend": "github",
+  "forge": "github",
+  "mergeDeps": {
     "merge": "grouped",
     "verify": "pnpm check",
     "cap": 5
@@ -17,20 +17,20 @@ Mechanics for the [`merge-deps`](SKILL.md) skill. **GitHub (`gh`) is the only ba
 }
 ```
 
-| Key            | Effect                                                                                                        |
-| :------------- | :------------------------------------------------------------------------------------------------------------ |
-| `deps.backend` | Forge. v1 supports only `github`; the slot exists for a later platform-neutral rename (mirrors `pr.backend`). |
-| `deps.merge`   | What may be merged after confirmation — see [Merge modes](#merge-modes). Default: `false`.                    |
-| `deps.verify`  | Command run against the PR's own head before merging. Default: `work.verify`, else nothing.                   |
-| `deps.cap`     | Max PRs merged per run. Default: 5.                                                                           |
+| Key                | Effect                                                                                                 |
+| :----------------- | :----------------------------------------------------------------------------------------------------- |
+| `forge` _(root)_   | Forge, a shared root key read by all forge-aware skills. v1 supports only `github`. Default: `github`. |
+| `mergeDeps.merge`  | What may be merged after confirmation — see [Merge modes](#merge-modes). Default: `false`.             |
+| `mergeDeps.verify` | Command run against the PR's own head before merging. Default: `work.verify`, else nothing.            |
+| `mergeDeps.cap`    | Max PRs merged per run. Default: 5.                                                                    |
 
 Also reads the shared root `language` (report wording).
 
-**`deps.verify` falls back to `work.verify`.** Both answer the same question — "does this repo still pass its own checks?" — and a repo that has already written one should not write it twice. A repo needing a different command for dependency updates (a full install, an audit) sets `deps.verify` explicitly.
+**`mergeDeps.verify` falls back to `work.verify`.** Both answer the same question — "does this repo still pass its own checks?" — and a repo that has already written one should not write it twice. A repo needing a different command for dependency updates (a full install, an audit) sets `mergeDeps.verify` explicitly.
 
 ## Merge modes
 
-`deps.merge` answers one question — **what may this skill merge, once the human confirms?** It is a permission ladder, narrowest first:
+`mergeDeps.merge` answers one question — **what may this skill merge, once the human confirms?** It is a permission ladder, narrowest first:
 
 | Mode                | Merges                                                                                        |
 | :------------------ | :-------------------------------------------------------------------------------------------- |
@@ -39,7 +39,7 @@ Also reads the shared root `language` (report wording).
 | `"grouped"`         | Dependabot's grouped minor+patch PRs, plus everything `"patch"` allows.                       |
 | `"all"`             | Everything selected, majors included.                                                         |
 
-**`false` is the default because merging is the consequential act.** Same reasoning as [`release.promote`](../release/REFERENCE.md#decisions): the only mode that touches nothing is what a repo gets until it says otherwise. Reading the queue is free; merging is not. A repo that wants unattended-after-confirmation merges writes a `deps` block.
+**`false` is the default because merging is the consequential act.** Same reasoning as [`release.promote`](../release/REFERENCE.md#decisions): the only mode that touches nothing is what a repo gets until it says otherwise. Reading the queue is free; merging is not. A repo that wants unattended-after-confirmation merges writes a `mergeDeps` block.
 
 **A mode is a ceiling, never a trigger.** `"all"` does not mean "merge everything" — it means nothing is excluded _by mode_. Every PR still has to clear [assessment](#assessment-checklist) and the human still has to confirm.
 
@@ -56,7 +56,7 @@ This is why [assessment](#assessment-checklist) resolves checks **per PR against
 
 > A workflow gated on `on.pull_request.branches: [main]` runs for the security PR and **not** for the version PR. Two PRs from the same bot, one verified by CI and one not verified at all — and the unverified one shows a check list that is merely _shorter_, not obviously empty. That is the trap.
 
-**Corollary worth reporting:** a repo whose version updates land on a base its checks ignore has a **CI gap**, not a skill problem. The skill compensates with `deps.verify`; it should still [name the gap](SKILL.md#6-report), because extending the workflow to that base is the real fix.
+**Corollary worth reporting:** a repo whose version updates land on a base its checks ignore has a **CI gap**, not a skill problem. The skill compensates with `mergeDeps.verify`; it should still [name the gap](SKILL.md#6-report), because extending the workflow to that base is the real fix.
 
 ## gh / git recipes
 
@@ -113,7 +113,7 @@ The skill **gathers**; the human **decides**. Every row is a fact to show in the
 | Identity    | `author.login` is `app/dependabot` — re-read per PR, not inherited from the search |
 | Base        | `baseRefName`, and which workflows that base actually triggers                     |
 | Checks      | what ran and its verdict — plus, explicitly, **what did not run**                  |
-| Verify      | `deps.verify` exit status against the PR's own head                                |
+| Verify      | `mergeDeps.verify` exit status against the PR's own head                           |
 | Mergeable   | `mergeStateStatus`; `UNKNOWN` is unresolved, not clean                             |
 | Update type | grouped / patch / minor / major, from the branch group and the body's diff lines   |
 
@@ -123,14 +123,14 @@ Any gap — an `unknown` check list, an undeterminable update type, a failed ver
 
 The issue that specified this skill left its defaults open. What was settled, and why:
 
-- **Name `merge-deps`** — verb-noun, matching `write-docs` / `compact-readme`, and it names the consequential act the way `release` does. Rejected: `work-dependabot` and `work-deps` — the `work-*` prefix is spoken for by `work-issue` / `work-queue`, whose whole shape is the issue lifecycle (lease, label, branch, PR). This skill shares none of that machinery, and borrowing the prefix would promise it. That the config section is `deps.*` while the skill is `merge-deps` is not a mismatch to fix — `pull-request` ↔ `pr.*` set that precedent.
+- **Name `merge-deps`** — verb-noun, matching `write-docs` / `compact-readme`, and it names the consequential act the way `release` does. Rejected: `work-dependabot` and `work-deps` — the `work-*` prefix is spoken for by `work-issue` / `work-queue`, whose whole shape is the issue lifecycle (lease, label, branch, PR). This skill shares none of that machinery, and borrowing the prefix would promise it. The config section is named `mergeDeps`, not `deps`, to disambiguate it from the separate `update-deps` skill — a bare `deps` would read as dependency updates rather than Dependabot-PR merging. A section name still need not equal the skill name (`pr` ↔ `pull-request` shows that), but here the fuller `mergeDeps` is chosen for clarity.
 - **Its own skill, not a `work-queue` mode** — the resemblance ("select a queue, cap it, work it, report") is real but shallow. `work-queue` drains _issues_ through a lifecycle it owns end to end: it leases with a label, branches, commits, and delegates to `work-issue`. Not one of those steps exists here — there is no label, no lease, no branch, no commit, and the artifact already exists and belongs to a bot. The shared part is a `for` loop over a capped list; the rest is disjoint. Folding them would put "never touch a PR that isn't Dependabot's" inside a skill whose day job is opening PRs.
-- **Selection is by author, and that is not a config key** — a `deps.selector` would only let a repo widen the one constraint that must not widen. The `dependencies` label and a `build(deps)` title are settable by any contributor; `author.login` is settable by nobody. Live proof in the specifying repo: `app/github-actions` also has an open PR there, and it must stay invisible to this skill for exactly the same reason a human's PR must.
+- **Selection is by author, and that is not a config key** — a `mergeDeps.selector` would only let a repo widen the one constraint that must not widen. The `dependencies` label and a `build(deps)` title are settable by any contributor; `author.login` is settable by nobody. Live proof in the specifying repo: `app/github-actions` also has an open PR there, and it must stay invisible to this skill for exactly the same reason a human's PR must.
 - **`merge` defaults to `false`** — merging is opt-in, mirroring [`release.promote`](../release/REFERENCE.md#decisions) exactly and for the same reason: the consequential act is the merge, so the default is the mode that performs none. A repo that wants merges says so.
-- **The skill verifies locally; it does not wait for a CI fix** — the issue asked whether the repo's CI gap is a prerequisite. It is not. Making a skill's correctness depend on a workflow edit in one repo would make it wrong in every repo whose CI happens not to cover its integration branch — and that is a whole class, not one repo. `deps.verify` is the **primary** gate and CI is corroboration, which is the only arrangement that holds regardless of a given repo's workflow triggers. The gap still gets reported, because the workflow edit remains the better fix; it is just not this skill's dependency.
+- **The skill verifies locally; it does not wait for a CI fix** — the issue asked whether the repo's CI gap is a prerequisite. It is not. Making a skill's correctness depend on a workflow edit in one repo would make it wrong in every repo whose CI happens not to cover its integration branch — and that is a whole class, not one repo. `mergeDeps.verify` is the **primary** gate and CI is corroboration, which is the only arrangement that holds regardless of a given repo's workflow triggers. The gap still gets reported, because the workflow edit remains the better fix; it is just not this skill's dependency.
 - **An empty check list is `unknown`, not `green`** — the inverse of [`release`'s draft rule](../release/SKILL.md#2-promote-head--base-config-gated), which learned that a draft PR's checks have not run _yet_. Here they will never run at all. Both collapse to one rule: **absence of a verdict is not a pass.** This is the single most load-bearing line in the skill, because the failure it prevents is silent — the check list looks short, not empty, and CodeQL passing on a lockfile bump reads exactly like success.
 - **Squash, by comment, and fixed** — `@dependabot squash and merge` rather than a direct `gh pr merge`, so Dependabot owns the rebase and close-out. Squash because a grouped PR is one logical change and `build(deps)` is hidden from release-please's changelog either way, so nothing downstream needs the individual commits — unlike the promotion merge, where preserving them is [mechanically required](../release/REFERENCE.md#decisions). Since neither choice is load-bearing, neither is a config key. **The most discretionary call here** — a repo preferring merge commits for bump forensics has a real argument, and this is the decision to revisit first.
 - **Majors are never merged by default** — `"grouped"` and `"patch"` both exclude them, so a major needs an explicit `"all"`. A major bump is a semver-declared breaking change; a green lint run is not evidence it is safe, only that it is syntactically fine.
 - **Nothing to do downstream after a merge** — the specifying repo's rollup PR is refreshed by a workflow on push to the integration branch, so the merge is already the whole act. The skill has no post-merge step and needs none.
 - **Alerts without a fix are reported every run** — the alternative (stay quiet until a patch exists) hides exactly the alerts that most need a human, since "no fix available" is a decision to make, not a wait to sit out. Repetition is the cheapest part of the report.
-- **`backend` key, `github`-only enum** — mirrors `pr.backend` exactly: the slot exists now so a second forge is a value, not a schema break.
+- **Forge via the shared root `forge` key, `github`-only enum** — one key read by `pull-request`, `release` and this skill rather than a per-skill `backend`, so a second forge is a value, not a schema break.

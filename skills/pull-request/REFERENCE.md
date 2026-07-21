@@ -1,6 +1,6 @@
 # pull-request — Reference
 
-Mechanics for the [SKILL.md](SKILL.md) workflow. The backend is chosen by `pr.backend`; v1 implements the **GitHub backend**, which goes through the GitHub CLI (`gh`) against the `origin` remote. Other forges (e.g. GitLab merge requests) would dock as additional backends — none implemented yet.
+Mechanics for the [SKILL.md](SKILL.md) workflow. The backend is chosen by the root `forge` key; v1 implements the **GitHub backend**, which goes through the GitHub CLI (`gh`) against the `origin` remote. Other forges (e.g. GitLab merge requests) would dock as additional backends — none implemented yet.
 
 ## Detecting conventions
 
@@ -65,13 +65,13 @@ gh pr list --head "$(git branch --show-current)" --state open \
 
 Keys this skill reads:
 
-| Key                   | Effect                                                                                  |
-| :-------------------- | :-------------------------------------------------------------------------------------- |
-| `language` (root)     | title/body language — any code/name or `match`; shared with `atomic-commit`             |
-| `pr.base`             | PR base branch — overrides `defaultBranchRef.name` (e.g. a `feature → dev` flow)        |
-| `pr.title.convention` | `conventional` (default) or `plain`                                                     |
-| `pr.instructions`     | free-text wording guidance for the PR title/body — additive, never overrides guardrails |
-| `pr.backend`          | platform — v1 implements only `github`; the slot is here so other forges can dock later |
+| Key                   | Effect                                                                                                                                       |
+| :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
+| `language` (root)     | title/body language — any code/name or `match`; shared with `atomic-commit`                                                                  |
+| `pr.base`             | PR base branch — overrides `defaultBranchRef.name` (e.g. a `feature → dev` flow)                                                             |
+| `pr.title.convention` | `conventional` (default) or `plain`                                                                                                          |
+| `pr.instructions`     | free-text wording guidance for the PR title/body — additive, never overrides guardrails                                                      |
+| `forge` (root)        | forge for PRs/releases — repo-root key, github-only in v1; shared with the `release` and `merge-deps` skills, so other forges can dock later |
 
 ```bash
 config="$(git rev-parse --show-toplevel)/.tituskirch-skills.json"

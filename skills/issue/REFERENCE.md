@@ -1,6 +1,6 @@
 # issue — Reference
 
-Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two backends (GitHub `gh` / Linear MCP), chosen per-repo by config.
+Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two trackers (GitHub `gh` / Linear MCP), chosen per-repo by config.
 
 ## Config
 
@@ -10,7 +10,7 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two backends (GitHub
 {
   "language": "de",
   "issue": {
-    "backend": "github",
+    "tracker": "github",
     "language": { "title": "en", "body": "de" },
     "title": { "convention": "plain" },
     "linear": {
@@ -24,23 +24,23 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two backends (GitHub
 }
 ```
 
-| Key                                            | Effect                                                                                                        |
-| :--------------------------------------------- | :------------------------------------------------------------------------------------------------------------ |
-| `issue.backend`                                | `github` or `linear` — the active backend (set by setup, never guessed silently)                              |
-| `issue.language`                               | title/body language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`     |
-| `issue.title.convention`                       | `plain` (default — most trackers) or `conventional` (`type: subject`)                                         |
-| `issue.instructions`                           | free-text wording guidance for the title/body — additive, never overrides backend rules or guardrails         |
-| `issue.linear.team`                            | **required to create on Linear** — a human name/key (e.g. `"ENG"`); resolved to the team id via the cache     |
-| `issue.linear.{project,priority,defaultState}` | optional Linear defaults (`priority`: none/low/medium/high/urgent)                                            |
-| `issue.github.template`                        | optional default issue template                                                                               |
-| `issue.labels.exclude`                         | glob patterns (e.g. `stack:*`, `autorelease:*`, `dependencies`) for catalog labels the agent must never apply |
+| Key                                            | Effect                                                                                                                                                       |
+| :--------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `issue.tracker`                                | `github` or `linear` — the active tracker (set by setup, never guessed silently)                                                                             |
+| `issue.language`                               | title/body language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`                                                    |
+| `issue.title.convention`                       | `plain` (default — most trackers) or `conventional` (`type: subject`)                                                                                        |
+| `issue.instructions`                           | free-text wording guidance for the title/body — additive, never overrides tracker rules or guardrails                                                        |
+| `issue.linear.team`                            | **required to create on Linear** (schema-enforced when `issue.tracker` is `linear`) — a human name/key (e.g. `"ENG"`); resolved to the team id via the cache |
+| `issue.linear.{project,priority,defaultState}` | optional Linear defaults (`priority`: none/low/medium/high/urgent)                                                                                           |
+| `issue.github.template`                        | optional default issue template                                                                                                                              |
+| `issue.labels.exclude`                         | glob patterns (e.g. `stack:*`, `autorelease:*`, `dependencies`) for catalog labels the agent must never apply                                                |
 
-`language` is a shared root key; `issue.*` is this skill's section (`commit.*`/`pr.*` belong to the other skills). `issue.instructions` mirrors `commit.instructions` / `pr.instructions` — additive wording guidance that never overrides the backend rules, template, or guardrails. On Linear it also reads the cross-skill key `work.labels.repo` to pin a repo-scope tag on create. Full schema: the repo-root `tituskirch-skills.schema.json`.
+`language` is a shared root key; `issue.*` is this skill's section (`commit.*`/`pr.*` belong to the other skills). `issue.instructions` mirrors `commit.instructions` / `pr.instructions` — additive wording guidance that never overrides the tracker rules, template, or guardrails. On Linear it also reads the cross-skill key `work.labels.repo` to pin a repo-scope tag on create. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
 ```bash
 config="$(git rev-parse --show-toplevel)/.tituskirch-skills.json"
 if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
-  backend=$(jq -er '.issue.backend // empty' "$config" 2>/dev/null) || backend=
+  tracker=$(jq -er '.issue.tracker // empty' "$config" 2>/dev/null) || tracker=
   team=$(jq -er '.issue.linear.team // empty' "$config" 2>/dev/null) || team=
   instructions=$(jq -er '.issue.instructions // empty' "$config" 2>/dev/null) || instructions=
 fi
@@ -48,16 +48,16 @@ fi
 
 ## Catalog cache
 
-Enumerable backend data, fetched once and reused so the agent can pick labels/state/team contextually.
+Enumerable tracker data, fetched once and reused so the agent can pick labels/state/team contextually.
 
 - **Location** — `$(git rev-parse --git-common-dir)/tituskirch-skills/issue`. Owner-namespaced directory in the common git dir (shared across branches/worktrees, never tracked). Create it before writing (`mkdir -p`). **JSON** — this skill already depends on `jq`, and the catalogs are structured (unlike the flat `conventions` cache the commit/PR skills share).
-- **Validity** — reuse when younger than ~3 days **and** `backend` is unchanged. Refetch when missing, stale, the backend changed, or the user passes `--refresh` / `/issue --refresh`.
+- **Validity** — reuse when younger than ~3 days **and** `tracker` is unchanged. Refetch when missing, stale, the tracker changed, or the user passes `--refresh` / `/issue --refresh`.
 - **Transparency** — label staleness in the plan header (`Catalogs (cached, 2d ago): …`).
 
 ```jsonc
 {
   "detected_at": 1718900000,
-  "backend": "github",
+  "tracker": "github",
   "labels": [{ "name": "bug", "description": "…", "color": "d73a4a" }],
   "teams": [{ "id": "…", "name": "Engineering", "key": "ENG" }], // Linear — id resolves issue.linear.team
   "projects": [{ "id": "…", "name": "Platform" }],
@@ -72,18 +72,18 @@ Purpose: **read the catalog and choose contextually** — labels are deliberatel
 
 Triggered when the config is missing/incomplete or the user runs `/issue setup`. Guided through the essentials only; everything else stays an editable config key.
 
-1. **Pick the backend — always ask, never set silently.**
+1. **Pick the tracker — always ask, never set silently.**
    - GitHub remote present (`gh repo view` succeeds) → ask "GitHub or Linear?", **default GitHub**.
-   - No GitHub remote → ask "which backend?", **no default**.
-   - Write the answer to `issue.backend`; from then on the config wins and the skill never re-guesses.
+   - No GitHub remote → ask "which tracker?", **no default**.
+   - Write the answer to `issue.tracker`; from then on the config wins and the skill never re-guesses.
 2. **Language rules** — title and body (any language, or `match`).
 3. **Title convention** — `plain` (default) or `conventional`.
-4. **Backend defaults (only what's needed):**
+4. **Tracker defaults (only what's needed):**
    - **Linear** — check the MCP is authenticated **first** (if not, send the user to authenticate, then continue). List teams from the catalog and have the user **pick `team`** (the one required field). `project`/`priority`/`defaultState` stay optional config keys — not asked here.
    - **GitHub** — optionally a default issue template.
 5. **Write the config** and **populate the cache** initially.
 
-## Backend — GitHub (`gh`)
+## Tracker — GitHub (`gh`)
 
 - **Availability** — `gh repo view --json nameWithOwner` (fails → not a GitHub repo or `gh` not authenticated).
 - **Create** — `gh issue create --title <t> --body-file <f> [--label <l>] [--assignee <a>] [--milestone <m>] [--project <p>]`.
@@ -109,7 +109,7 @@ gh api --method DELETE repos/{owner}/{repo}/issues/{parent}/sub_issue -F sub_iss
 
 Add `-F replace_parent=true` to reparent a child that already has a parent. Reprioritize with `PATCH .../issues/{parent}/sub_issues/priority` (`sub_issue_id` + `after_id`/`before_id`).
 
-## Backend — Linear (MCP)
+## Tracker — Linear (MCP)
 
 The Linear MCP server's registered name varies per setup (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …). Reference the tools generically and discover them at runtime — do **not** hardcode the server name.
 
@@ -128,7 +128,7 @@ Present this before any write:
 
 ```text
 issue plan
-  backend : github
+  tracker : github
   action  : create
   catalogs: cached, 2d ago
   title   : Login fails on expired session
@@ -145,6 +145,6 @@ For bulk, list each drafted issue (and parent/child links) under one plan. For p
 
 ## Worked examples
 
-- **Create (GitHub)** — "open an issue for the expired-session bug we just found." Backend `github`; action create; draft title+body from the session; pick `bug` + `area:auth` from the cached labels; preview; on confirm `gh issue create …`; report the URL.
-- **Bulk sub-issues (Linear)** — "split this epic into 3 sub-issues." Backend `linear`; resolve `team` `ENG` → id; draft parent + 3 children; one bundled preview; on confirm create the parent, then each child with `parentId`; report the ids.
+- **Create (GitHub)** — "open an issue for the expired-session bug we just found." Tracker `github`; action create; draft title+body from the session; pick `bug` + `area:auth` from the cached labels; preview; on confirm `gh issue create …`; report the URL.
+- **Bulk sub-issues (Linear)** — "split this epic into 3 sub-issues." Tracker `linear`; resolve `team` `ENG` → id; draft parent + 3 children; one bundled preview; on confirm create the parent, then each child with `parentId`; report the ids.
 - **Search before create** — "is there already a ticket about flaky CI?" Action search; `gh issue list --search "flaky CI"` (or Linear `list_issues`); report matches; offer to create only if none fit.
