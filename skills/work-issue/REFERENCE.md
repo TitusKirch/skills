@@ -126,6 +126,8 @@ A closed-unmerged PR is a deliberate human act whose _intent_ the drain cannot r
 
 Reconcile moves **labels only**, never branches, and is **idempotent** — nothing to close out is the normal result, not an error. It never sets `done` on an unmerged PR: that is the human's word, and the drain is not the human.
 
+**Orphaned `working` issues.** Reconcile also sweeps issues stuck in `working` with **no open PR** — leased `ready → working` but abandoned when a worker crashed between the lease (step 4) and PR-open (step 8). The [single-flight lock](#lease--race-rules) guarantees no live worker holds one at a drain's reconcile, so it is safe to **reclaim**: flip it back to `ready` and drop the assignee so the next [selection](#selection-query) re-works it fresh (the worker is stateless — it re-reads tracker + git and re-asserts a clean tree), or set `blocked` if it left an unrecoverable partial state. This is the counterpart to the `review` sweep: a `working` orphan carries **neither** `ready` nor `review`, so without it neither the selection query nor the review sweep would ever reclaim the issue — the hole that contradicted the [resume-instead-of-restart principle](#principle). (An issue in `working` **with** an open PR only failed to advance its label — treat it as `review`.)
+
 ```bash
 # GitHub — the PRs that reference this issue with a closing keyword, merged or not
 gh api graphql -f query='
@@ -170,6 +172,8 @@ Eligible = matches **all** configured filters. Self-select (one issue) and drain
 gh issue list --state open --label "$(jq -r '.work.labels.ready' "$config")" --json number,title,labels,createdAt
 ```
 
+**Ready-gate off** (`labels.ready: false`): the query above can't filter by a ready label — list open issues and instead **exclude** the in-flight ones (`--search "-label:<working> -label:<blocked>"`), so "never already `working`/`blocked`" still holds without a gate to lean on.
+
 Linear: `list_issues` filtered by team + label(s) + states; order by the native priority field.
 
 ## Lease & race rules
@@ -177,6 +181,7 @@ Linear: `list_issues` filtered by team + label(s) + states; order by the native 
 - **Claim before work** — flip `ready → working` + assign, _then_ implement. A second consumer sees "not ready" and skips.
 - **Fresh fetch each iteration** — a drain re-queries the next eligible issue every loop; it never snapshots the whole queue (stale `ready` states would be re-worked). [Dependency ordering](#dependency-ordering) plans the _sequence_ up front but does not exempt an issue from that re-check.
 - **Single-flight lock** — `work-queue` takes a lock file in the git common dir; a second drain in the same repo exits. This (not the label flip, which is not a true compare-and-swap) is what makes multi-consumer safe **within a repo**; cross-repo isolation on a shared Linear team comes from [repo scope](#repo-scope).
+- **Direct invocation honours the lock too.** The lock is created by `work-queue` for the whole batch, and a drain's workers run under it (they do not re-take it). A **directly-invoked** `work-issue` (`/work-issue 42`) runs outside a drain, so it must itself honour the lock: if a drain holds it, **stop and report** (the drain will reach the issue); otherwise take the lock for the run and release it after. This closes the race where a direct run and a drain both read `ready` and lease the same issue, and it stops the drain's [reconcile](#reconcile) from mistaking a live direct run's `working` issue for a crashed orphan.
 - **Clean-tree assert** between issues; a worker that left the tree dirty halts the drain rather than stacking onto uncommitted work.
 - **Git's `index.lock`** is the last-resort backstop; concurrency is made _impossible by construction_ (one live worker per tree), not merely locked.
 
@@ -271,8 +276,10 @@ Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — disco
 
 ### Repo scope
 
-Linear puts every repo's issues in one team, so the team alone cannot say "this issue is this repo." `work.labels.repo` (a stable label, e.g. `repo: TitusKirch/envprism`) is the discriminator — the **single source of truth** for repo identity in Linear, and the cross-repo race-breaker. It is read here to **filter** and (when the [`issue`](../issue/SKILL.md) skill applies it on create) to **tag** — projects are unsuitable because they are completable. No `labels.repo` configured on Linear → the drain **refuses** rather than reach into another repo's issues.
+Linear puts every repo's issues in one team, so the team alone cannot say "this issue is this repo." `work.labels.repo` (a stable label, e.g. `repo: TitusKirch/envprism`) is the discriminator — the **single source of truth** for repo identity in Linear, and the cross-repo race-breaker. It is read here to **filter** and (when the [`issue`](../issue/SKILL.md) skill applies it on create) to **tag** — projects are unsuitable because they are completable. Set it to a **string** to filter by that label; set it to **`false`** only for a **single-repo Linear team** — a deliberate opt-out where the team already _is_ the repo, so no filter is needed and the drain **proceeds**. The schema now **requires** the key present when `tracker: linear`, so an _absent_ key is a config error to report — never a licence to reach into another repo's issues.
 
 ## Setup
 
 No own setup flow — `work` piggybacks on the [`issue`](../issue/REFERENCE.md#setup-flow-first-run--issue-setup) skill's config + cache and only adds the `work.*` keys. The lifecycle labels must already **exist** on the configured tracker's catalog (the agent filters by them, it does not create them).
+
+**When `issue` is `false`.** The work skills lean on the `issue` section three ways — `work.tracker` falls back to `issue.tracker`, `work.linear.team` to `issue.linear.team`, and the [catalog cache](#catalog-cache) is the `issue` skill's. A repo may disable the `issue` skill (`issue: false`) while still running the queue; then none of those inheritances hold. So a repo that sets `issue: false` **and** enables `work` must set `work.tracker` (and, on Linear, `work.linear.team`) explicitly, and the cache is populated by the work run itself rather than inherited. If both are needed but `work.tracker` is absent, stop and report rather than guess.

@@ -15,6 +15,8 @@ allowed-tools:
 
 Take **one** tracked issue and carry it to a reviewable pull request — the stateless unit behind [`work-queue`](../work-queue/SKILL.md). One issue, one tracker (**GitHub** via `gh` or **Linear** via its MCP), picked per-repo by the same committed config the [`issue`](../issue/SKILL.md) skill uses. State lives in the issue's **lifecycle label**, never in the agent — so a crashed run **resumes** instead of restarting.
 
+**Opted out?** If the repo config sets `work` to `false`, this skill is **disabled** for the repo (as is [`work-queue`](../work-queue/SKILL.md)) — stop immediately and tell the user the work skills are turned off in `.tituskirch-skills.json`. An _absent_ `work` block is **not** disabled (it falls back to defaults). Check `jq -e '.work == false'` before any action — and before indexing `.work.*`.
+
 ## Workflow
 
 ### 1. Load config & resolve tracker

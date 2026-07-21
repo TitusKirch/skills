@@ -14,6 +14,8 @@ allowed-tools:
 
 Drain the repo's queue of **ready** issues — select, prioritise, and carry each one to a reviewable PR by delegating to [`work-issue`](../work-issue/SKILL.md). The loop is **thin**: the tracker is the queue and each issue is worked in a **fresh worker** so nothing accumulates across issues. Run it under `/loop work-queue` for continuous operation — the temporal repeat is the harness's job, the drain is this skill's.
 
+**Opted out?** If the repo config sets `work` to `false`, both work skills are **disabled** for the repo — stop immediately and tell the user they are turned off in `.tituskirch-skills.json`. An _absent_ `work` block is **not** disabled. Check `jq -e '.work == false'` before acquiring the lock or building the queue.
+
 ## Workflow
 
 ### 1. Load config & lock
@@ -23,7 +25,12 @@ Drain the repo's queue of **ready** issues — select, prioritise, and carry eac
 
 ### 2. Reconcile — first, before the queue is built
 
-Close out what an earlier run left waiting. For every issue sitting in `review`, read its PR — **merged → `done`**, **closed unmerged → `blocked`** + comment, **open (or no PR) → leave it**. Full rules: [REFERENCE](../work-issue/REFERENCE.md#reconcile).
+Close out what an earlier run left stranded — in **two** places:
+
+- **`review`** (waiting on a human) — read its PR: **merged → `done`**, **closed unmerged → `blocked`** + comment, **open (or no PR) → leave it**.
+- **`working` with no open PR** (a **crashed** worker) — an issue leased `ready → working` but abandoned before its PR opened. The [single-flight lock](../work-issue/REFERENCE.md#lease--race-rules) guarantees no live worker holds it, so **reclaim it**: flip it back to `ready` (and drop the assignee) to be re-worked, or `blocked` if it left an unrecoverable state. Without this, a `working` orphan carries neither `ready` nor `review`, so neither the selection query nor the `review` sweep would ever touch it again — the gap that broke the "a crashed run resumes" promise.
+
+Full rules: [REFERENCE](../work-issue/REFERENCE.md#reconcile).
 
 This is the safety net for the terminal state: [`done` is the human's sign-off](../work-issue/REFERENCE.md#terminal-done), given in the session that ran the worker, so a session that ended before the human looked leaves the issue parked. The drain is the right home because **drains run anyway** — no dedicated trigger, which is exactly what the old "reconcile on a later run" promise lacked.
 
