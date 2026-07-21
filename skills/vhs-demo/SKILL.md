@@ -1,6 +1,6 @@
 ---
 name: vhs-demo
-summary: Creates & maintains a reproducible terminal-demo GIF from a VHS tape.
+summary: Creates and maintains a reproducible terminal-demo GIF from a VHS tape.
 description: Creates and maintains a scripted, reproducible terminal-demo GIF for a CLI repo from a Charm VHS tape rendered headless via Docker — the .tape is the committed source of truth, the GIF a regenerated artifact. Use when the user wants to add, record, regenerate or tweak a terminal demo GIF for a kirchDev CLI repo (citty/Bun tools like envprism, forgemap), or asks about VHS tapes, demo.gif, or README terminal previews. Do not use for editing or optimising arbitrary existing GIFs.
 allowed-tools:
   - Read
@@ -32,7 +32,7 @@ VHS normally wants a real TTY (and on macOS, Homebrew + sometimes a screen recor
 
 1. **Scaffold** `.github/assets/vhs.Dockerfile` from [`templates/vhs.Dockerfile`](templates/vhs.Dockerfile). Keep or drop the Bun layer (see below).
 2. **Scaffold** the tape (`demo.tape` or `<name>.tape`) from [`templates/demo.tape`](templates/demo.tape) and write the choreography for this CLI.
-3. **Build the CLI** so the tape runs the built artifact, not the sources: `pnpm build`.
+3. **Build the CLI** so the tape runs the built artifact, not the sources: run the repo's build (e.g. `pnpm build` / `bun run build`).
 4. **Build the image** (once, or after editing the Dockerfile):
    ```bash
    docker build -f .github/assets/vhs.Dockerfile -t <repo>-vhs .
@@ -71,7 +71,7 @@ Use the lighter 1280×720 @ FontSize 16 profile when the GIF needs to be smaller
 ## Pitfalls — do's & don'ts
 
 - **`Output` path MUST be relative** (e.g. `.github/assets/demo.gif`). An absolute path like `/vhs/...` is rejected by the VHS parser.
-- **Build the CLI first** (`pnpm build`). The tape launches the built artifact (`dist/…`), not the source.
+- **Build the CLI first** — run the repo's build (e.g. `pnpm build` / `bun run build`). The tape launches the built artifact (`dist/…`), not the source.
 - **Bun CLIs need the Bun image layer** — see above.
 - **Work on a throwaway copy of fixtures** if the demo edits/writes files. Copy them to `/tmp` inside the hidden `Hide … Show` block so the working tree stays clean (e.g. `cp -r /vhs/examples /tmp/demo`).
 - **Clear pre-filled edit fields before typing.** Popovers/inputs seeded with the current value need emptying first: `Backspace@25ms 40`. Backspace on an empty field is a no-op, so over-counting is safe.
@@ -87,7 +87,7 @@ After each render, confirm the GIF actually matches the tape. Requires `ffprobe`
    ffprobe -v error -select_streams v:0 -show_entries stream=width,height \
      -of csv=p=0 .github/assets/demo.gif
    ```
-2. **Duration ≈ sum of all `Sleep`s** in the tape (plus typing time). If it's meaningfully shorter, frames were dropped → lower `Set Framerate` and re-render:
+2. **Duration ≈ sum of the _visible_ `Sleep`s** (plus visible typing time). Count only actions that are actually captured — exclude anything inside a `Hide … Show` block, since VHS records nothing there, so those sleeps/typing never reach the GIF. If it's meaningfully shorter than that, frames were dropped → lower `Set Framerate` and re-render:
    ```bash
    ffprobe -v error -show_entries format=duration -of csv=p=0 .github/assets/demo.gif
    ```
@@ -113,7 +113,7 @@ For multiple demos, embed each under the relevant section with its descriptive n
 Quick start covers the first run; afterwards only the cadence differs:
 
 - **Image** — rebuild only when the Dockerfile changes.
-- **Every demo change** — `pnpm build` → re-render → [verify](#verification).
+- **Every demo change** — run the repo's build (e.g. `pnpm build` / `bun run build`) → re-render → [verify](#verification).
 - **Commit** the tape, Dockerfile, and regenerated GIF together — the tape is the source of truth.
 
 ## Reference

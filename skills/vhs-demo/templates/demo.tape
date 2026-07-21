@@ -22,7 +22,7 @@ Set Theme "Catppuccin Mocha"
 Set TypingSpeed 55ms
 
 # --- setup (hidden): launch the BUILT artifact; work on a throwaway copy of
-#     fixtures so any saves don't dirty the repo. Build first with `pnpm build`. ---
+#     fixtures so any saves don't dirty the repo. Build first (e.g. `pnpm build` / `bun run build`). ---
 Hide
 Type "cp -r /vhs/examples /tmp/demo && bun /vhs/dist/bin/<repo>.mjs <subcommand> /tmp/demo"
 Enter

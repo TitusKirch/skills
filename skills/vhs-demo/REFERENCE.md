@@ -36,7 +36,7 @@ VHS tapes are line-oriented. The ones that matter for these demos:
 ### Timing notes
 
 - `@<dur>` on a repeatable action sets the per-press delay; the trailing number is the repeat count: `Right@250ms 2`.
-- The GIF's total duration ≈ sum of all `Sleep`s + cumulative typing time. Verification compares against this.
+- The GIF's total duration ≈ sum of the _visible_ `Sleep`s + visible typing time — count only what's actually captured, excluding anything inside a `Hide … Show` block (VHS records nothing there). Verification compares against this.
 - End on a `Sleep`, not a quit key — see the pitfalls in SKILL.md.
 
 ## Themes
