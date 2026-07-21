@@ -1,6 +1,6 @@
 # pull-request — Reference
 
-Mechanics for the [SKILL.md](SKILL.md) workflow. The backend is chosen by the root `forge` key; v1 implements the **GitHub backend**, which goes through the GitHub CLI (`gh`) against the `origin` remote. Other forges (e.g. GitLab merge requests) would dock as additional backends — none implemented yet.
+Mechanics for the [SKILL.md](SKILL.md) workflow. The forge is chosen by the root `forge` key; v1 implements the **GitHub forge**, which goes through the GitHub CLI (`gh`) against the `origin` remote. Other forges (e.g. GitLab merge requests) would dock as additional forges — none implemented yet.
 
 ## Detecting conventions
 
@@ -12,7 +12,7 @@ gh repo view --json nameWithOwner,defaultBranchRef \
 git branch --show-current        # head
 ```
 
-If `gh repo view` errors, the repo has no GitHub remote or `gh` is not authenticated → **stop** (GitHub is the only backend in v1). Default the PR base to `defaultBranchRef.name`; never hardcode `main`/`dev`. Confirm `base ← head` in the plan and let the user override (`--base <other>`).
+If `gh repo view` errors, the repo has no GitHub remote or `gh` is not authenticated → **stop** (GitHub is the only forge in v1). Default the PR base to `defaultBranchRef.name`; never hardcode `main`/`dev`. Confirm `base ← head` in the plan and let the user override (`--base <other>`).
 
 ### PR template
 
@@ -20,7 +20,7 @@ Look in priority order: `.github/pull_request_template.md` → `.github/PULL_REQ
 
 ### Title convention (shared convention cache)
 
-The commit convention **is** the PR-title convention, so reuse the cache that `atomic-commit` already writes — don't re-detect if it's fresh. It lives at `$(git rev-parse --git-common-dir)/tituskirch-skills/conventions` and holds only the shared convention block:
+The commit convention **is** the PR-title convention, so reuse the cache that `atomic-commit` already writes — validated exactly as `atomic-commit` validates it, so both skills agree. It lives at `$(git rev-parse --git-common-dir)/tituskirch-skills/conventions` and holds only the shared convention block:
 
 ```bash
 cache="$(git rev-parse --git-common-dir)/tituskirch-skills/conventions"
@@ -33,19 +33,22 @@ else hash=none; fi
 if [ -f "$cache" ]; then
   detected_at=$(grep '^detected_at=' "$cache" | cut -d= -f2)
   cached_hash=$(grep '^commitlint_hash=' "$cache" | cut -d= -f2)
-  if [ $(( now - detected_at )) -lt 259200 ] && [ "$hash" = "$cached_hash" ]; then
+  # A hash match proves the conventions are unchanged when a config source
+  # exists — reuse regardless of age. With no hashable source (hash=none,
+  # conventions inferred from git log) the 3-day TTL is the only staleness signal.
+  if [ "$hash" = "$cached_hash" ] && { [ "$hash" != none ] || [ $(( now - detected_at )) -lt 259200 ]; }; then
     is_conventional=$(grep '^types=' "$cache" >/dev/null && echo yes)   # cache hit
     header_max=$(grep '^header_max_length=' "$cache" | cut -d= -f2-)
   fi
 fi
 ```
 
-- **Cache hit** → use `types`/`scopes`/`language`/`header_max_length` for the title; skip detection.
-- **Miss/stale** → detect (commitlint config + history, exactly as `atomic-commit` does) and **write the same block** back (`detected_at`, `commitlint_hash`, `scopes`, `types`, `scope_vocab`, `language`, `header_max_length`), so the next run of either skill reuses it. Create the dir first (`mkdir -p`).
+- **Cache hit** → use `types`/`scopes`/`language`/`header_max_length` for the title; skip detection. A commitlint-config hash match means reuse **regardless of age**; only when there is no hashable config (`hash=none`) does the 3-day TTL (259200 s) decide freshness — the same rule `atomic-commit` applies.
+- **Miss/stale** → detect (commitlint config + history, exactly as `atomic-commit` does) and **write the same block** back (`detected_at`, `commitlint_hash`, `scopes`, `scope_count`, `types`, `scope_vocab`, `language`, `header_max_length`, `commitlint`), so the next run of either skill reuses it. Create the dir first (`mkdir -p`).
 - A commitlint config (or a Conventional-Commits history) means the PR title is Conventional too — many repos lint it with actions like `amannn/action-semantic-pull-request`, and templates often say so outright. Honor the cached `header_max_length`.
 - `pr.title.convention: plain` in `.tituskirch-skills.json` overrides this to a non-Conventional title.
 
-`base` and `template` are **not** cached: `gh repo view … defaultBranchRef` already runs every time (the backend availability check), and the template is a local glob — both are cheap to read fresh.
+`base` and `template` are **not** cached: `gh repo view … defaultBranchRef` already runs every time (the forge availability check), and the template is a local glob — both are cheap to read fresh.
 
 ### Existing PR (and who owns it)
 
@@ -67,7 +70,8 @@ Keys this skill reads:
 
 | Key                   | Effect                                                                                                                                       |
 | :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
-| `language` (root)     | title/body language — any code/name or `match`; shared with `atomic-commit`                                                                  |
+| `pr.language`         | PR title/body language — any code/name or `match`; overrides root + detection                                                                |
+| `language` (root)     | shared default language; used when `pr.language` is unset; shared with `atomic-commit`                                                       |
 | `pr.base`             | PR base branch — overrides `defaultBranchRef.name` (e.g. a `feature → dev` flow)                                                             |
 | `pr.title.convention` | `conventional` (default) or `plain`                                                                                                          |
 | `pr.instructions`     | free-text wording guidance for the PR title/body — additive, never overrides guardrails                                                      |
@@ -83,7 +87,7 @@ if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
 fi
 ```
 
-`language` is a shared root key; `pr.*` are this skill's section. `pr.instructions` mirrors `commit.instructions` / `issue.instructions` — additive wording guidance that never overrides the template, detection, or guardrails. Full schema: the repo-root `tituskirch-skills.schema.json`.
+`language` is a shared root key; `pr.*` are this skill's section. `pr.language` overrides the root `language` for the PR title/body, mirroring `commit.language` / `issue.language`. `pr.instructions` mirrors `commit.instructions` / `issue.instructions` — additive wording guidance that never overrides the template, detection, or guardrails. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
 ## Title derivation (umbrella)
 

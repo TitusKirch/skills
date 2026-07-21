@@ -11,7 +11,7 @@ allowed-tools:
 
 # pull-request
 
-Turn the current branch into a pull request that follows the repo's own conventions — an umbrella Conventional-Commits title and a body filled from the repo's PR template — then create it after your confirmation, update your _own_ existing PR, or just show the exact command. The backend is chosen by the root `forge` key; **GitHub (via `gh`) is the only backend implemented in v1**.
+Turn the current branch into a pull request that follows the repo's own conventions — an umbrella Conventional-Commits title and a body filled from the repo's PR template — then create it after your confirmation, update your _own_ existing PR, or just show the exact command. The forge is chosen by the root `forge` key; **GitHub (via `gh`) is the only forge implemented in v1**.
 
 **Opted out?** If the repo config sets `pr` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the pull-request skill is turned off in `.tituskirch-skills.json`. An _absent_ `pr` block is **not** disabled. Check `jq -e '.pr == false'` before any action.
 
@@ -19,12 +19,12 @@ Turn the current branch into a pull request that follows the repo's own conventi
 
 ### 1. Detect conventions (read the repo — never assume)
 
-- **Backend** — from the root `forge` key (v1: only `github` is implemented; any other value → say it's not supported yet and stop). For GitHub, confirm the repo is reachable: `gh repo view --json nameWithOwner,defaultBranchRef`. If it fails (no GitHub remote, or `gh` not authenticated), **stop** with a clear message.
+- **Forge** — from the root `forge` key (v1: only `github` is implemented; any other value → say it's not supported yet and stop). For GitHub, confirm the repo is reachable: `gh repo view --json nameWithOwner,defaultBranchRef`. If it fails (no GitHub remote, or `gh` not authenticated), **stop** with a clear message.
 - **Base ← head** — base = `pr.base` from `.tituskirch-skills.json` if set, else `defaultBranchRef.name`; head = current branch (`git branch --show-current`). Never hardcode `main`/`dev`; show `base ← head` in the plan and let the user override.
 - **PR template** — find `.github/pull_request_template.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/PULL_REQUEST_TEMPLATE/*.md`, or a root/`docs/` variant. Use it verbatim as the body skeleton and fill its sections; if none, fall back to Summary / Changes / Related issues.
 - **Title convention** — Conventional Commits when the repo uses them. Read it from the **shared convention cache** (`$(git rev-parse --git-common-dir)/tituskirch-skills/conventions`, written by `atomic-commit` or by this skill — same detection, memoized); if the cache is missing/stale, detect it (commitlint config + history) and write the block yourself. Honor the cached `header_max_length` for the title — PR titles are commonly linted too. `pr.title.convention: plain` in `.tituskirch-skills.json` forces a non-Conventional title.
 - **Existing PR** — `gh pr list --head <branch> --state open` and check its author (step 5).
-- **Config** — `.tituskirch-skills.json` at the repo root (optional, committed) can set `pr.base`, `pr.title.convention`, `pr.instructions` (free-text wording guidance for title/body), and the shared `language`; the root `forge` key exists but v1 supports only `github`. Read with `jq` (missing file/`jq` → ignore, warn once). Keys: [REFERENCE.md](REFERENCE.md#config).
+- **Config** — `.tituskirch-skills.json` at the repo root (optional, committed) can set `pr.base`, `pr.title.convention`, `pr.instructions` (free-text wording guidance for title/body), `pr.language` (a per-skill language override), and the shared `language`; the root `forge` key exists but v1 supports only `github`. Read with `jq` (missing file/`jq` → ignore, warn once). Keys: [REFERENCE.md](REFERENCE.md#config).
 
 Detection recipes and the shared cache: [REFERENCE.md](REFERENCE.md#detecting-conventions).
 
@@ -53,7 +53,7 @@ Show: title · `base ← head` · ready/draft · existing-PR status · the rende
 
 ## Guardrails
 
-- **GitHub backend (v1).** The root `forge` key selects the forge, but only `github` is implemented. No GitHub remote / `gh` unavailable → stop; never fall back to raw `git` PR plumbing. Any other `forge` value isn't supported yet — say so and stop.
+- **GitHub forge (v1).** The root `forge` key selects the forge, but only `github` is implemented. No GitHub remote / `gh` unavailable → stop; never fall back to raw `git` PR plumbing. Any other `forge` value isn't supported yet — say so and stop.
 - **Keep the title/body attribution-free** — no `Generated with`/🤖 line, no session/permalink URL, no agent self-naming (Claude, Codex, Copilot, Cursor, or any future assistant). Strip it if the harness injects it.
 - **Only ever touch your own PR.** Never edit a PR opened by another user or by automation, and never open a duplicate of one that already exists.
 - **Never force-push; never merge** unless explicitly asked. Push the head branch only after confirmation.
@@ -62,4 +62,4 @@ Show: title · `base ← head` · ready/draft · existing-PR status · the rende
 
 ## Reference
 
-GitHub-backend detection recipes, the umbrella-title heuristics, template-filling rules, the plan-output format, and worked examples: [REFERENCE.md](REFERENCE.md).
+GitHub-forge detection recipes, the umbrella-title heuristics, template-filling rules, the plan-output format, and worked examples: [REFERENCE.md](REFERENCE.md).
