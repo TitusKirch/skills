@@ -86,7 +86,7 @@ Use the prescribed section emojis from the [`write-readme` REFERENCE](../write-r
 Before writing, show the **diagnosis + planned cuts**, then ask:
 
 1. **Aggressiveness** — light / medium / aggressive.
-2. **Full feature list** — collapse into `<details>` _(recommended default)_ / drop entirely / move to `docs/`.
+2. **Full feature list** — collapse into `<details>` _(recommended default)_ / drop entirely / move to `docs/` (only offer `docs/` when the repo isn't docs-disabled — skip it if `.tituskirch-skills.json` sets `docs: false`).
 
 Then apply, and end with the before/after visible-line count and the "what moved where" summary.
 

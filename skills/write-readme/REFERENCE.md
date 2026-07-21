@@ -23,11 +23,12 @@ These are the **prescribed** emojis for recurring sections. Use the same emoji f
 
 | Section                                    | Emoji | Notes                                              |
 | :----------------------------------------- | :---: | :------------------------------------------------- |
-| Features / Highlights                      |  ✨   | "Features" for libs, "Highlights" for infra/apps.  |
+| Why / Problem                              |  🤔   | Problem → solution framing, right after the hook.  |
 | Installation / Stack                       |  📦   | "Installation" for libs, "Stack" for infra.        |
 | Quick start / Setup                        |  🚀   | "Quick start" for libs, "Setup" for infra/apps.    |
+| Features / Highlights                      |  ✨   | "Features" for libs, "Highlights" for infra/apps.  |
 | Configuration                              |  ⚙️   | Use when there's a non-trivial config table.       |
-| Testing                                    |  🧪   | Library-grade test suites.                         |
+| Testing / CI / scripting                   |  🧪   | Test suites; also "use in CI / scripting" blocks.  |
 | Multi-tenant / Org / Workspace scoping     |  🏢   | Anything tenant-aware.                             |
 | Sessions / device management               |  📱   | Listing, naming, revoking sessions/devices.        |
 | Events / listeners / broadcasting          |  📡   | Emitted events, listeners, broadcast channels.     |
@@ -43,6 +44,8 @@ These are the **prescribed** emojis for recurring sections. Use the same emoji f
 | Security policy                            |  🔐   | When linking SECURITY.md prominently.              |
 | FAQ                                        |  ❓   | If included.                                       |
 | Roadmap                                    |  🗺️   | If included.                                       |
+
+**Order & merging:** Installation / Quick start lead (before Features) so a reader reaches the install command fast; an optional **Why / Problem** block sits between the hook and Installation. Installation + Quick start may be merged into one **Install & run** section — this keeps a write-readme scaffold and a [`compact-readme`](../compact-readme/SKILL.md) pass in agreement.
 
 If you need a section that's not in the catalogue, pick a sensible emoji and **add it here in the same PR** so the next README stays consistent.
 

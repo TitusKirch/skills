@@ -36,15 +36,15 @@ No color override on the CI/Tests badge.
 
 That's it. {{single sentence summarising the value proposition}}.
 
-## ✨ {{Features|Highlights}}
+<!-- Optional: a short problem→solution "why this exists" block, right after the hook. Drop it if the tagline already says enough. -->
 
-- **{{emoji}} {{Feature title}}** — {{one-sentence body}}.
-- **{{emoji}} {{Feature title}}** — {{one-sentence body}}.
-- **{{emoji}} {{Feature title}}** — {{one-sentence body}}.
+## 🤔 {{Why}}
+
+{{one or two sentences: the problem, then how this solves it}}.
 
 ## 📦 {{Installation|Stack}}
 
-<!-- Library: install command. Infra/app: stack bullets. -->
+<!-- Library: install command. Infra/app: stack bullets. Lead with install so the reader reaches a runnable command fast; may merge with Quick start into a single "Install & run". -->
 
 ```bash
 {{install command}}
@@ -55,6 +55,12 @@ That's it. {{single sentence summarising the value proposition}}.
 ```{{lang}}
 {{minimal usage example}}
 ```
+
+## ✨ {{Features|Highlights}}
+
+- **{{emoji}} {{Feature title}}** — {{one-sentence body}}.
+- **{{emoji}} {{Feature title}}** — {{one-sentence body}}.
+- **{{emoji}} {{Feature title}}** — {{one-sentence body}}.
 
 <!-- Optional domain sections. Add as many as needed; pick emojis from REFERENCE.md. -->
 

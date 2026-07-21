@@ -27,13 +27,16 @@ allowed-tools:
 | 1   | Hero block         | (project) | Always — `<div align="center">` + `# {emoji} {name}` + bold tagline. |
 | 2   | Badges             |     —     | Only for public packages (Packagist / npm / CI / license).           |
 | 3   | Hook               |     —     | Always — fenced code block + a single "That's it. …" sentence.       |
-| 4   | Features           |    ✨     | Always — bullet list, each bullet `**{emoji} Title** — body.`        |
-| 5   | Installation/Stack |    📦     | Always (label "Installation" for packages, "Stack" for infra/apps).  |
-| 6   | Quick start/Setup  |    🚀     | Always (label "Quick start" for packages, "Setup" for infra/apps).   |
+| 4   | Installation/Stack |    📦     | Always (label "Installation" for packages, "Stack" for infra/apps).  |
+| 5   | Quick start/Setup  |    🚀     | Always (label "Quick start" for packages, "Setup" for infra/apps).   |
+| 6   | Features           |    ✨     | Always — bullet list, each bullet `**{emoji} Title** — body.`        |
 | 7   | Domain sections    |  varies   | As many as needed; pick emoji from the catalogue in REFERENCE.md.    |
 | 8   | Contributing       |    🤝     | If the repo accepts external PRs.                                    |
 | 9   | Versioning         |    🛣️     | Always — link to CHANGELOG.md and release-please.                    |
 | 10  | License            |    📄     | Always — link to LICENSE + author/org line.                          |
+
+> [!NOTE]
+> **Installation / Quick start lead, then Features** — surfacing the install/run command near the top lets a reader reach it in ~30 seconds. Merging Installation + Quick start into a single **Install & run** section is acceptable (and is what [`compact-readme`](../compact-readme/SKILL.md) produces from a scaffolded file).
 
 ## Style rules
 
