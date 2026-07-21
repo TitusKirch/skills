@@ -49,7 +49,7 @@ A real feature usually spans several types: how-it-works (`concepts`) + usage (`
 ## Scaffold — `docs/` is missing
 
 1. **Resolve the preset** — `docs.preset` config → detect from the repo (bin/CLI → `cli`, library manifest → `library`, app/server → `app`, IaC → `infra`, agent/skill → `ai-tool`) → ask. Preset = which sections beyond the core.
-2. **Resolve the language** — `docs.language` → root `language` → existing docs/repo language → `en` (see [REFERENCE.md#config](REFERENCE.md#config)).
+2. **Resolve the language** — `docs.language` → root `language` → existing docs/repo language → `en` (see [REFERENCE.md#config](REFERENCE.md#config)). When set, `docs.instructions` shapes the generated-docs wording (tone, house conventions) — additive only, never overriding the docs format or guardrails.
 3. **Plan the tree** — core (`getting-started`, `reference`) + the preset's sections; show it.
 4. **On confirm** — create numeric-prefixed section dirs, each with an `index.md` (frontmatter `title` + `description`, plain-text H1), plus a `docs/index.md` landing page. Generated docs are emoji-free. Skeletons: [`templates/`](templates/).
 

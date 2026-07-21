@@ -166,24 +166,27 @@ Read the whole tree fresh every run — it is live state and is **never cached**
   "language": "de",
   "docs": {
     "preset": "app",
-    "language": { "title": "en", "body": "de" }
+    "language": { "title": "en", "body": "de" },
+    "instructions": "…"
   }
 }
 ```
 
-| Key             | Effect                                                                                                                                               |
-| :-------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs.preset`   | `library` / `cli` / `app` / `infra` / `ai-tool` — which sections to scaffold; falls back to repo detection, then asks                                |
-| `docs.language` | docs language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`, then the existing docs/repo language, then `en` |
+| Key                 | Effect                                                                                                                                               |
+| :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs.preset`       | `library` / `cli` / `app` / `infra` / `ai-tool` — which sections to scaffold; falls back to repo detection, then asks                                |
+| `docs.language`     | docs language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`, then the existing docs/repo language, then `en` |
+| `docs.instructions` | free-text guidance for generated docs (tone, house conventions) — additive preference only, never overrides the docs format or guardrails            |
 
-`language` is a shared root key; `docs.*` is this skill's section (`commit.*`/`pr.*`/`issue.*` belong to the other skills). `match` mirrors the repo/source language. Set `docs` to `false` (instead of an object) to opt the repo out entirely — the skill then **stops with a "disabled" notice** instead of falling back; an _absent_ block still falls back to defaults/detection. Full schema: the repo-root [`tituskirch-skills.schema.json`](../../tituskirch-skills.schema.json).
+`language` is a shared root key; `docs.*` is this skill's section (`commit.*`/`pr.*`/`issue.*` belong to the other skills). `match` mirrors the repo/source language. `docs.instructions` mirrors `commit.instructions` / `pr.instructions` / `issue.instructions` — additive wording guidance that never overrides the docs format or guardrails. Set `docs` to `false` (instead of an object) to opt the repo out entirely — the skill then **stops with a "disabled" notice** instead of falling back; an _absent_ block still falls back to defaults/detection. Full schema: the repo-root [`tituskirch-skills.schema.json`](../../tituskirch-skills.schema.json).
 
 ```bash
 config="$(git rev-parse --show-toplevel)/.tituskirch-skills.json"
 if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
   disabled=$(jq -er 'if .docs == false then 1 else empty end' "$config" 2>/dev/null) || disabled=
   preset=$(jq -er '.docs.preset // empty' "$config" 2>/dev/null) || preset=
-  lang=$(jq -er '.docs.language // .language // empty' "$config" 2>/dev/null) || lang=
+  lang=$(jq -er '.docs.language // .language // empty' "$config" 2>/dev/null) || lang= # may be a { title, body } object, not a scalar
+  instructions=$(jq -er '.docs.instructions // empty' "$config" 2>/dev/null) || instructions=
 fi
 ```
 
