@@ -39,7 +39,8 @@
     "labels": { "exclude": ["stack:*", "autorelease:*", "dependencies"] }
   },
   "docs": {
-    "preset": "ai-tool"
+    "preset": "ai-tool",
+    "instructions": "Skills are self-documenting in place (SKILL.md / REFERENCE.md / DESIGN.md per skill); reserve docs/ for cross-cutting guides and ADRs — concise and example-first."
   },
   "work": {
     "branch": "branch:dev",
