@@ -37,9 +37,9 @@ Idempotent; nothing to close out is the normal outcome. `needs human` issues are
 
 The [selection query](../work-review/REFERENCE.md#selection-query) → every issue in `review` → ordered by priority (Linear native priority; GitHub `work.priorityLabels`). No dependency re-sort — review order is priority only.
 
-### 4. Confirm the batch — once
+### 4. Announce the batch — then drain
 
-Show the ordered queue plus the cap. **One** confirmation, then run autonomously. Plan-only triggers ("nur den plan", "dry run", "don't run") → print the plan and stop.
+Issues in `review` were pushed by the implement loop **for exactly this** — so the review drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, then drain (unattended under `/loop`). **Plan-only triggers** ("nur den plan", "dry run", "don't run") still stop after the plan.
 
 ### 5. Drain
 

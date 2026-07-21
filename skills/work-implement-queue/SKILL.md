@@ -34,9 +34,12 @@ Before building the queue, reclaim issues an earlier implement-run crashed on: a
 - The [selection query](../work-implement/REFERENCE.md#selection-query) → every eligible issue (`ready` **or** `changes-requested`) → ordered by priority (Linear native priority; GitHub `work.priorityLabels`).
 - **`branch:<name>` → re-sort into [dependency order](../work-implement/REFERENCE.md#dependency-ordering)** — prerequisites before dependents, priority as the tiebreak; **order first, then apply the cap**. Under `worktree` skip this.
 
-### 4. Confirm the batch — once
+### 4. Announce the batch — then drain
 
-Show the ordered queue plus the cap, branch strategy and parallel mode — call out any **dependency-forced order**, plus issues **deferred** or **skipped** (cycle). **One** confirmation for the whole batch, then run autonomously — the review happens later in the review loop. Plan-only triggers ("nur den plan", "dry run", "don't run") → print the plan and stop.
+**`ai: ready` is already the human's approval** to work an issue — the label means "scoped + approved for an AI agent to pick up". So the drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, branch strategy and parallel mode (call out any **dependency-forced order**, plus issues **deferred** or **skipped**), then drain. Under `/loop` it runs unattended.
+
+- **Plan-only triggers** ("nur den plan", "dry run", "don't run") still stop after the plan.
+- If the ready-gate is **widened** (`labels.ready: false`, so issues were never explicitly opted-in), confirm before working those — there is no per-issue approval to lean on.
 
 ### 5. Drain
 

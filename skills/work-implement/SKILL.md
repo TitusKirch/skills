@@ -86,7 +86,7 @@ Inside a [`work-implement-queue`](../work-implement-queue/SKILL.md) drain nobody
 - **Only this issue.** Never touch sibling issues, never merge, never close anything you were not asked to.
 - **Never review your own work.** This skill only produces `review` or `blocked`; it never sets `done`, `changes-requested`, or `needs human`.
 - **Attribution-free & secret-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in branches, commits, PRs or comments; scan the change and context for secrets and exclude them.
-- **Confirm before writing** when invoked directly by a human; run autonomously when invoked inside a [`work-implement-queue`](../work-implement-queue/SKILL.md) batch (already confirmed once).
+- **`ai: ready` is the approval.** A human marking an issue `ai: ready` ("scoped + approved for an AI agent to pick up") is the opt-in, so the drain — and a direct `/work-implement 42` on an already-`ready`/`changes-requested` issue — works it **without re-confirming**. Confirm first only when there is no such opt-in (an issue not in an approved state, or a ready-gate widened to `false`).
 
 ## Reference
 
