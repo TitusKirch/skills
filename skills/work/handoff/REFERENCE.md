@@ -99,13 +99,20 @@ Template: [`templates/handoff.md`](templates/handoff.md).
 
 ## Lifecycle
 
-```text
-        write ─────▶ .agents/handoffs/NNNN-slug.md ─────▶ resume ─────▶ work finishes
-                            ▲            │                                     │
-                            └── update ──┘                                     ▼
-                             (parked again, same id)                    file deleted
-                                                                   (same commit as the work)
+```mermaid
+flowchart LR
+  start(["work in progress"])
+  doc[".agents/handoffs/<br/>NNNN-slug.md"]
+  resumed["another session<br/>continues the work"]
+  gone(["file deleted"])
+
+  start ==>|"write"| doc
+  doc ==>|"resume<br/>(deletes nothing)"| resumed
+  resumed ==>|"work finishes"| gone
+  resumed -.->|"parked again — update<br/>in place, same id"| doc
 ```
+
+The document outlives every read: only the commit that **finishes** the work removes it, which is why the resume edge deletes nothing and the update edge loops back to the same file rather than opening a new one.
 
 | Transition | Rule                                                                                          |
 | :--------- | :-------------------------------------------------------------------------------------------- |

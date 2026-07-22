@@ -84,16 +84,39 @@ Reuses the [`issue`](../issue/REFERENCE.md#catalog-cache) cache verbatim — `$(
 
 ## Lifecycle state machine
 
-```text
-   IMPLEMENT LOOP                                 REVIEW LOOP
+```mermaid
+flowchart LR
+  subgraph IMPL["Implement loop"]
+    direction TB
+    ready["ready"]
+    changes["changes-requested"]
+    working["working"]
+  end
 
-ready ────────────lease──▶ working ──commit+PUSH──▶ review ──AI review──┬─▶ done
-changes-requested ─lease──▶   │                                         ├─▶ needs human ──human──▶ done | changes-requested
-                              │                                         ├─▶ changes-requested   (round < maxRounds)
-                       checks unfixable                                 └─▶ blocked
-                              ▼
-                          blocked
+  subgraph REV["Review loop"]
+    direction TB
+    review["review"]
+  end
+
+  human{{"needs human"}}
+  done(["done"])
+  blocked(["blocked"])
+
+  ready ==>|"lease"| working
+  changes ==>|"lease, re-work"| working
+  working ==>|"commit + push"| review
+
+  review ==>|"approve"| done
+  review -->|"feedback,<br/>round &lt; maxRounds"| changes
+  review -->|"risky, or<br/>round ≥ maxRounds"| human
+  review -->|"broken"| blocked
+  working -->|"checks unfixable"| blocked
+
+  human -->|"human: ok"| done
+  human -->|"human: changes"| changes
 ```
+
+Thick edges are the path a healthy issue takes; everything thin is an exception. A rectangle is a state one of the loops will act on by itself, the hexagon waits on a person, and a rounded box is terminal. `changes-requested` sits in the implement lane because that loop **consumes** it — the review loop only writes it.
 
 | Transition                                | Loop / Who                                                                    |
 | :---------------------------------------- | :---------------------------------------------------------------------------- |
