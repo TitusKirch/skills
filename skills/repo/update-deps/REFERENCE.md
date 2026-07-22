@@ -6,10 +6,16 @@ Mechanics for the [`update-deps`](SKILL.md) skill. Scope is **Node** (npm / pnpm
 
 **This skill owns no config section.** Everything it would configure is either a per-run decision or already expressed by the repo's own updater — [why](#decisions). It reads two keys that other sections already own:
 
-| Key           | Use                                                                  |
-| :------------ | :------------------------------------------------------------------- |
-| `work.verify` | the check command run after updating. Absent → detect from the repo. |
-| `language`    | report wording (shared root key).                                    |
+| Key           | Use                                                                                   |
+| :------------ | :------------------------------------------------------------------------------------ |
+| `work.verify` | the repo's own check command, run here after updating. Absent → detect from the repo. |
+| `language`    | report wording (shared root key).                                                     |
+
+**`work` may be `false`, and that is not about this skill.** `work: false` disables the four `work-*` skills; it says nothing about whether the repo has checks. Test the section before indexing into it — `jq '.work.verify'` against a boolean is an error, and a swallowed one degrades silently to detection:
+
+```bash
+verify=$(jq -er 'if (.work | type) == "object" then .work.verify // empty else empty end' "$config" 2>/dev/null) || verify=
+```
 
 Per-package policy belongs in the **repo's own updater config**, where the repo's own `pnpm taze` will honour it too — `taze.config.ts` (`exclude`, `packageMode` per package), the declared range or constraint itself, and `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`.
 

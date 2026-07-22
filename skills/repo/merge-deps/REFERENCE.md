@@ -28,6 +28,12 @@ Also reads the shared root `language` (report wording).
 
 **`mergeDeps.verify` falls back to `work.verify`.** Both answer the same question — "does this repo still pass its own checks?" — and a repo that has already written one should not write it twice. A repo needing a different command for dependency updates (a full install, an audit) sets `mergeDeps.verify` explicitly.
 
+**The fallback has to survive `work: false`.** That value disables the four `work-*` skills and says nothing about this one, so read the section defensively rather than indexing into a boolean:
+
+```bash
+verify=$(jq -er '.mergeDeps.verify // (if (.work | type) == "object" then .work.verify else null end) // empty' "$config" 2>/dev/null) || verify=
+```
+
 ## Merge modes
 
 `mergeDeps.merge` answers one question — **what may this skill merge, once the human confirms?** It is a permission ladder, narrowest first:
