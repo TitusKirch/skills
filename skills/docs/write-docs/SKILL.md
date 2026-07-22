@@ -29,6 +29,20 @@ Optional verb shortcuts: `/write-docs init`, `/write-docs add <topic>`, `/write-
 
 **Proactive trigger** — don't wait to be asked. Once a feature has passed all its reviews and reached final approval (signed off or merged), engage this skill yourself and run the **route/add** job for that feature. Trigger on _final approval_, not on _implementation finished_ — code still facing review is too early, and a feature that gets reworked shouldn't be documented twice. The write still follows plan → confirm → apply.
 
+## What belongs in docs at all
+
+**Code says what happens. Docs say why.** An agent reads the code, so a page that narrates what the code does is a slower, staler copy of something already open in the editor — and if the code needs narrating, the fix is the code, not a page about it.
+
+Before writing anything, ask what the reader could **not** recover by reading the source. Exactly three answers survive that test:
+
+| Code cannot express           | Because                                                                                      | Goes to                       |
+| :---------------------------- | :------------------------------------------------------------------------------------------- | :---------------------------- |
+| **The roads not taken**       | What was rejected, and why, leaves no trace in what shipped                                  | `adr`, `concepts`             |
+| **How new work here is done** | The intended approach for the next change is not a property of the current one               | `conventions`, `guides`       |
+| **Where to start**            | A repo has no first line; which seam to enter by, and how the parts relate, is not in a file | `concepts`, `getting-started` |
+
+Everything else — what a function does, which options exist, what a command prints — either belongs in the code and its own reference output, or is [already in a file](#route--add--docs-exists) that owns it. If a planned page fits none of the three rows, that is the answer: don't write it.
+
 ## Routing matrix — what you changed → page type → section
 
 | You added / changed                            | Page type                 | Section           |
@@ -42,7 +56,9 @@ Optional verb shortcuts: `/write-docs init`, `/write-docs add <topic>`, `/write-
 | A project-specific rule or pattern             | concept                   | `conventions`     |
 | An architectural decision + its reasoning      | ADR (own schema)          | `adr`             |
 
-A real feature usually spans several types: how-it-works (`concepts`) + usage (`guides`) + lookup values (`reference`). **Lead with how-it-works and how-to-use; push every lookup value to `reference` and link to it.** Page type is implied by section + template — it is **not** a frontmatter field. Catalogue, core sections and presets: [REFERENCE.md](REFERENCE.md).
+A real feature usually spans several types: how-it-works (`concepts`) + usage (`guides`) + lookup values (`reference`). **"How it works" means the shape and the reasoning** — the seams, the invariants, why it is built this way — never a walk through the implementation, which the code states better and keeps current for free.
+
+**The `reference` row is the one to challenge.** Lookup values earn a page only where nothing machine-readable already holds them — an HTTP API with no published schema, env vars with no `.env.example`. Where a schema, a manifest or `--help` is the real answer, the reference page is one sentence naming it plus whatever it cannot say (which values are safe to change, which combinations conflict). A transcribed option table is the single most common stale page in any repo. **Lead with how-it-works and how-to-use; push every lookup value to `reference` and link to it.** Page type is implied by section + template — it is **not** a frontmatter field. Catalogue, core sections and presets: [REFERENCE.md](REFERENCE.md).
 
 **ADRs are the standing exception.** They live in `docs/99.adr/` (fixed prefix, flat), are named `NNNN-title.md` for a permanent decision id, carry `status` + `date` on top of the house frontmatter, and are **append-only** — a reversed decision writes a new ADR and marks the old one `superseded`, never edits it. A concept page explains how a thing works _today_; an ADR records why it was chosen, _then_. Full contract: [REFERENCE.md](REFERENCE.md#architecture-decision-records).
 
@@ -84,7 +100,7 @@ Desired-state, idempotent — like a `--fix` linter for the docs tree.
 
 ## Guardrails (inherited)
 
-- **Docs are never the source of truth — the repo is.** A page exists to say what no file in the repo says: why, how the parts fit, what will surprise you. Documentation that mirrors a file costs tokens on every read and starts lying at the next commit, so when a page would restate one, link it and write only the delta.
+- **Docs are never the source of truth — the repo is.** Code says what happens; a page exists for the why, the rejected alternatives, and the way in — the three things [code cannot express](#what-belongs-in-docs-at-all). Documentation that mirrors code or a file costs tokens on every read and starts lying at the next commit, so when a page would restate one, link it and write only the delta.
 - **Plan/preview first; apply only after confirmation.** Respect plan-only / dry-run.
 - **Keep generated content attribution-free** — no agent self-naming or `Generated with`/🤖 lines.
 - **No secrets** in generated docs — scan, warn, exclude.
