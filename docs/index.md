@@ -5,13 +5,12 @@ description: 'Reusable Claude Code agent skills — how they are built, configur
 
 # TitusKirch skills
 
-This repository publishes reusable Claude Code agent skills. Each skill is self-documenting in place — `SKILL.md`, plus `REFERENCE.md` and `DESIGN.md` where the mechanics or the reasoning need room. These docs cover what spans more than one skill: the shared per-repo config, the workflows the skills form together, and the conventions they assume.
+This repository publishes reusable Claude Code agent skills. Each skill is self-documenting in place — `SKILL.md`, plus `REFERENCE.md` and `DESIGN.md` where the mechanics or the reasoning need room. A skill ships on its own, so it has to carry its own documentation.
 
-Start at the [root README](../README.md) for the skill catalogue and installation.
+That leaves exactly one thing without a home: what spans **more than one** skill. This tree is only that.
 
 ## Sections
 
-- [Getting started](1.getting-started/) — install the tooling, link the skills, run the checks.
-- [Guides](2.guides/) — task-oriented walkthroughs, such as adding a skill.
-- [Concepts](3.concepts/) — how the skills fit together: shared config, workflow loops, release flow.
-- [Reference](4.reference/) — lookup: config keys, commands, conventions.
+- [Concepts](1.concepts/) — how the skills reach each other, and the lifecycle their two work loops share.
+
+Everything else has a canonical home already: the [root README](../README.md) for the catalogue and installation, [`CONTRIBUTING.md`](../CONTRIBUTING.md) for the contribution workflow, [`skills/README.md`](../skills/README.md) for the skill layout and frontmatter contract, and [`tituskirch-skills.schema.json`](../tituskirch-skills.schema.json) for every config key. No section here restates them.
