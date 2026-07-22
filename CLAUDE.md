@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository purpose
 
-This repo publishes reusable [Claude Code agent skills](https://docs.claude.com/en/docs/claude-code/skills). Each subfolder under `skills/` is a self-contained skill consisting of a `SKILL.md` (YAML frontmatter + body) plus optional bundled assets. The repo itself ships no runtime code — only the skill definitions and the tooling that keeps them lint/format-clean.
+This repo publishes reusable [Claude Code agent skills](https://docs.claude.com/en/docs/claude-code/skills). Skills live at `skills/<category>/<skill>/` — the categories are `repo/`, `work/`, `docs/` and `meta/` — and each is self-contained: a `SKILL.md` (YAML frontmatter + body) plus optional bundled assets. The repo itself ships no runtime code — only the skill definitions and the tooling that keeps them lint/format-clean.
 
 ## Common commands
 
@@ -35,8 +35,8 @@ There is no test suite — skills are documentation, validated by lint/format on
 
 ## Adding a new skill
 
-1. Create `skills/<new-skill>/SKILL.md` (use the `write-a-skill` skill or copy an existing skill as a starting point). Frontmatter: `name` (kebab-case, matches folder), `summary` (short line for the root README table), `description` (one-line, action-oriented — this is what Claude reads to decide invocation), optional `allowed-tools`.
-2. Run `pnpm skills:sync` to regenerate the root `README.md` skills table and `.claude-plugin/plugin.json` from the frontmatter — never hand-edit them (CI runs `pnpm skills:check`).
+1. Create `skills/<category>/<new-skill>/SKILL.md` (use the `write-a-skill` skill or copy an existing skill as a starting point). Frontmatter: `name` (kebab-case, matches folder), `summary` (short line for the root README table), `description` (one-line, action-oriented — this is what Claude reads to decide invocation), optional `allowed-tools`.
+2. Run `pnpm skills:sync` to regenerate the four artifacts from the frontmatter — the root `README.md` table, `skills/<category>/README.md`, `.claude-plugin/plugin.json` and `skills.sh.json`'s groupings — never hand-edit them (CI runs `pnpm skills:check`). A new category also needs an entry in `CATEGORIES` in `scripts/gen-skills.mjs`, or the sync fails.
 3. Commit as `feat(<new-skill>): add skill`.
 
 Full workflow in [`CONTRIBUTING.md`](CONTRIBUTING.md); frontmatter contract and layout in `skills/README.md`.

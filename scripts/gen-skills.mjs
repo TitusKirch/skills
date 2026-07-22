@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Single source of truth for the skill registry.
-// Discovers skills from the filesystem (skills/<name>/SKILL.md frontmatter)
-// and projects them into README.md's table and .claude-plugin/plugin.json.
+// Discovers skills from the filesystem (skills/<category>/<name>/SKILL.md
+// frontmatter) and projects them into four artifacts: README.md's table, each
+// skills/<category>/README.md, .claude-plugin/plugin.json and skills.sh.json.
 //
-//   node scripts/gen-skills.mjs           # rewrite both, if drifted
-//   node scripts/gen-skills.mjs --check   # exit 1 if either is stale (CI)
+//   node scripts/gen-skills.mjs           # rewrite whichever have drifted
+//   node scripts/gen-skills.mjs --check   # exit 1 if any is stale (CI)
 //   node scripts/gen-skills.mjs --paths   # list SKILL.md paths (for scripts)
 
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
@@ -16,6 +17,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS_DIR = join(ROOT, 'skills');
 const README = join(ROOT, 'README.md');
 const PLUGIN = join(ROOT, '.claude-plugin', 'plugin.json');
+const SKILLS_SH = join(ROOT, 'skills.sh.json');
 
 const START = '<!-- skills:start -->';
 const END = '<!-- skills:end -->';
@@ -48,56 +50,132 @@ function deriveSummary(description) {
   return cut;
 }
 
+// Skills are nested one level deep: skills/<category>/<skill>/SKILL.md. The
+// filesystem owns membership — which skill sits in which category — and this
+// table owns each category's display metadata and its order. Adding a skill
+// means creating a directory; adding a category means one entry here.
+const CATEGORIES = {
+  repo: {
+    title: 'Repository & release',
+    description:
+      "Commits, pull requests, releases and dependency updates — each driven by the repo's own conventions."
+  },
+  work: {
+    title: 'Tracked work',
+    description:
+      'Issues, the two AI work loops (implement and review), and handing work between sessions.'
+  },
+  docs: {
+    title: 'Docs & READMEs',
+    description:
+      'Generate and maintain project documentation, READMEs and terminal demos in the house style.'
+  },
+  meta: {
+    title: 'Meta',
+    description: 'Configure the skills themselves, per repo.'
+  }
+};
+
 function discoverSkills() {
-  return readdirSync(SKILLS_DIR, { withFileTypes: true })
+  const categories = readdirSync(SKILLS_DIR, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort()
-    .map((dir) => {
-      let raw;
-      try {
-        raw = readFileSync(join(SKILLS_DIR, dir, 'SKILL.md'), 'utf8');
-      } catch {
-        return null;
-      }
-      const fm = parseFrontmatter(raw);
-      return {
-        dir,
-        name: fm.name ?? dir,
-        summary: fm.summary ?? deriveSummary(fm.description ?? ''),
-        frontmatter: { summary: fm.summary, description: fm.description }
-      };
-    })
-    .filter((skill) => skill !== null);
+    .map((entry) => entry.name);
+
+  const unknown = categories.filter((c) => !(c in CATEGORIES));
+  if (unknown.length) {
+    throw new Error(
+      `skills/${unknown.join(', skills/')}: not a known category — add it to CATEGORIES in scripts/gen-skills.mjs`
+    );
+  }
+
+  // Category order comes from CATEGORIES; skills sort alphabetically within one.
+  return Object.keys(CATEGORIES)
+    .filter((category) => categories.includes(category))
+    .flatMap((category) =>
+      readdirSync(join(SKILLS_DIR, category), { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)
+        .sort()
+        .map((dir) => {
+          let raw;
+          try {
+            raw = readFileSync(
+              join(SKILLS_DIR, category, dir, 'SKILL.md'),
+              'utf8'
+            );
+          } catch {
+            return null;
+          }
+          const fm = parseFrontmatter(raw);
+          return {
+            category,
+            dir,
+            path: `${category}/${dir}`,
+            name: fm.name ?? dir,
+            summary: fm.summary ?? deriveSummary(fm.description ?? ''),
+            frontmatter: { summary: fm.summary, description: fm.description }
+          };
+        })
+        .filter((skill) => skill !== null)
+    );
 }
 
-function renderTable(skills) {
-  const rows = skills.map(
-    (s) => `| [\`${s.name}\`](skills/${s.dir}/SKILL.md) | ${s.summary} |`
-  );
-  return [
-    START,
-    NOTE,
+// [{ category, title, description, skills: [...] }] in CATEGORIES order.
+function byCategory(skills) {
+  return Object.entries(CATEGORIES)
+    .map(([category, meta]) => ({
+      category,
+      ...meta,
+      skills: skills.filter((s) => s.category === category)
+    }))
+    .filter((group) => group.skills.length > 0);
+}
+
+function renderTable(groups) {
+  const sections = groups.flatMap((group) => [
+    '',
+    `### ${group.title}`,
+    '',
+    group.description,
     '',
     '| Skill | Description |',
     '| :-- | :-- |',
-    ...rows,
-    END
-  ].join('\n');
+    ...group.skills.map(
+      (s) => `| [\`${s.name}\`](skills/${s.path}/SKILL.md) | ${s.summary} |`
+    )
+  ]);
+  return [START, NOTE, ...sections, END].join('\n');
 }
 
-// Parse the committed table semantically so oxfmt's column alignment never
-// trips the drift check.
+// Parse the committed block semantically so oxfmt's column alignment and its
+// table-padding never trip the drift check. Headings and rows both matter —
+// a skill silently moving category has to register as drift.
 function parseTable(block) {
-  const rows = [];
+  const tokens = [];
   for (const line of block.split('\n')) {
-    const m = line.match(/^\|\s*\[`([^`]+)`\]\([^)]+\)\s*\|\s*(.*?)\s*\|\s*$/);
-    if (m) rows.push(`${m[1]}\t${m[2]}`);
+    const heading = line.match(/^###\s+(.*?)\s*$/);
+    if (heading) {
+      tokens.push(`h\t${heading[1]}`);
+      continue;
+    }
+    const row = line.match(
+      /^\|\s*\[`([^`]+)`\]\(([^)]+)\)\s*\|\s*(.*?)\s*\|\s*$/
+    );
+    if (row) tokens.push(`r\t${row[1]}\t${row[2]}\t${row[3]}`);
   }
-  return rows;
+  return tokens;
 }
 
-function syncReadme(skills, check) {
+function expectedTableTokens(groups) {
+  return groups.flatMap((group) => [
+    `h\t${group.title}`,
+    ...group.skills.map(
+      (s) => `r\t${s.name}\tskills/${s.path}/SKILL.md\t${s.summary}`
+    )
+  ]);
+}
+
+function syncReadme(groups, check) {
   const content = readFileSync(README, 'utf8');
   const from = content.indexOf(START);
   const to = content.indexOf(END);
@@ -106,10 +184,68 @@ function syncReadme(skills, check) {
   }
   const block = content.slice(from, to + END.length);
   const current = parseTable(block);
-  const expected = skills.map((s) => `${s.name}\t${s.summary}`);
+  const expected = expectedTableTokens(groups);
   const drift = JSON.stringify(current) !== JSON.stringify(expected);
   if (drift && !check) {
-    writeFileSync(README, content.replace(block, renderTable(skills)));
+    writeFileSync(README, content.replace(block, renderTable(groups)));
+  }
+  return drift;
+}
+
+// One README per category — the section landing a reader hits when they open
+// skills/<category>/. Fully generated; edit skill frontmatter, not these.
+function renderCategoryReadme(group) {
+  return `${[
+    `<!-- Generated by \`pnpm skills:sync\` — edit skill frontmatter, not this file. -->`,
+    '',
+    `# ${group.title}`,
+    '',
+    group.description,
+    '',
+    ...group.skills.map(
+      (s) => `- **[${s.name}](./${s.dir}/SKILL.md)** — ${s.summary}`
+    ),
+    '',
+    `Back to [all skills](../README.md).`
+  ].join('\n')}\n`;
+}
+
+function syncCategoryReadmes(groups, check) {
+  const stale = [];
+  for (const group of groups) {
+    const file = join(SKILLS_DIR, group.category, 'README.md');
+    const expected = renderCategoryReadme(group);
+    let current = '';
+    try {
+      current = readFileSync(file, 'utf8');
+    } catch {
+      current = '';
+    }
+    // Compare on collapsed whitespace so oxfmt's wrapping never reads as drift.
+    const norm = (s) => s.replace(/\s+/g, ' ').trim();
+    if (norm(current) !== norm(expected)) {
+      stale.push(`skills/${group.category}/README.md`);
+      if (!check) writeFileSync(file, expected);
+    }
+  }
+  return stale;
+}
+
+// skills.sh.json drives how skills.sh displays the collection. Projected from
+// the same categories so the website grouping can never drift from the folders.
+function syncSkillsSh(groups, check) {
+  const content = readFileSync(SKILLS_SH, 'utf8');
+  const data = JSON.parse(content);
+  const expected = groups.map((group) => ({
+    title: group.title,
+    description: group.description,
+    skills: group.skills.map((s) => s.name)
+  }));
+  const drift =
+    JSON.stringify(data.groupings ?? []) !== JSON.stringify(expected);
+  if (drift && !check) {
+    data.groupings = expected;
+    writeFileSync(SKILLS_SH, `${JSON.stringify(data, null, 2)}\n`);
   }
   return drift;
 }
@@ -117,7 +253,7 @@ function syncReadme(skills, check) {
 function syncPlugin(skills, check) {
   const content = readFileSync(PLUGIN, 'utf8');
   const data = JSON.parse(content);
-  const expected = skills.map((s) => `./skills/${s.dir}`);
+  const expected = skills.map((s) => `./skills/${s.path}`);
   const drift = JSON.stringify(data.skills ?? []) !== JSON.stringify(expected);
   if (drift && !check) {
     data.skills = expected;
@@ -137,12 +273,12 @@ function lintFrontmatter(skills) {
       if (!value || /^['"]/.test(value.trim())) continue;
       if (value.includes(': ')) {
         problems.push(
-          `${skill.dir}: \`${field}\` contains ": " (colon+space) — use " — " instead, else skills.sh drops the skill`
+          `${skill.path}: \`${field}\` contains ": " (colon+space) — use " — " instead, else skills.sh drops the skill`
         );
       }
       if (value.includes(' #')) {
         problems.push(
-          `${skill.dir}: \`${field}\` contains " #" (space+hash) — YAML reads it as a comment`
+          `${skill.path}: \`${field}\` contains " #" (space+hash) — YAML reads it as a comment`
         );
       }
     }
@@ -154,11 +290,12 @@ const mode = process.argv[2] ?? '--write';
 
 if (mode === '--paths') {
   for (const skill of discoverSkills()) {
-    process.stdout.write(`skills/${skill.dir}/SKILL.md\n`);
+    process.stdout.write(`skills/${skill.path}/SKILL.md\n`);
   }
 } else if (mode === '--check' || mode === '--write') {
   const check = mode === '--check';
   const skills = discoverSkills();
+  const groups = byCategory(skills);
 
   const problems = lintFrontmatter(skills);
   if (problems.length) {
@@ -169,8 +306,10 @@ if (mode === '--paths') {
   }
 
   const stale = [];
-  if (syncReadme(skills, check)) stale.push('README.md table');
+  if (syncReadme(groups, check)) stale.push('README.md table');
   if (syncPlugin(skills, check)) stale.push('plugin.json skills array');
+  if (syncSkillsSh(groups, check)) stale.push('skills.sh.json groupings');
+  stale.push(...syncCategoryReadmes(groups, check));
 
   if (check && stale.length) {
     process.stderr.write(

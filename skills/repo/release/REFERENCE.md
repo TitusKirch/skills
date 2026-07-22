@@ -4,7 +4,7 @@ Mechanics for the [`release`](SKILL.md) skill. **GitHub (`gh`) is the only forge
 
 ## Config
 
-`release.*` in the repo-root `.tituskirch-skills.json`, or `release: false` to disable the skill for the repo. Resolution per setting: **config → detected → built-in default**. Read with `jq`. Every key, type, enum and default lives once in the repo-root [`tituskirch-skills.schema.json`](../../tituskirch-skills.schema.json) — the single source of truth.
+`release.*` in the repo-root `.tituskirch-skills.json`, or `release: false` to disable the skill for the repo. Resolution per setting: **config → detected → built-in default**. Read with `jq`. Every key, type, enum and default lives once in the repo-root [`tituskirch-skills.schema.json`](../../../tituskirch-skills.schema.json) — the single source of truth.
 
 ```json
 {

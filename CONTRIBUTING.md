@@ -30,9 +30,9 @@ pnpm install   # wires husky hooks
 
 ## Adding a new skill
 
-1. Create `skills/<skill-name>/SKILL.md` — YAML frontmatter (`name`, `summary`, `description`, optional `allowed-tools`) followed by the skill body. See [`skills/README.md`](skills/README.md) for the frontmatter contract and layout; use an existing skill (e.g. [`skills/write-readme/`](skills/write-readme/)) as a reference.
+1. Pick a category — `repo/`, `work/`, `docs/` or `meta/` (see [`skills/README.md`](skills/README.md)) — and create `skills/<category>/<skill-name>/SKILL.md`: YAML frontmatter (`name`, `summary`, `description`, optional `allowed-tools`) followed by the skill body. Use an existing skill (e.g. [`skills/docs/write-readme/`](skills/docs/write-readme/)) as a reference.
 2. Keep any bundled resources (templates, scripts) inside the same folder.
-3. Run `pnpm skills:sync` — it regenerates the root [`README.md`](README.md) skills table and [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) from your frontmatter. **Don't hand-edit either** (CI runs `pnpm skills:check`).
+3. Run `pnpm skills:sync` — it regenerates the root [`README.md`](README.md) skills table, the category's `README.md`, [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) and [`skills.sh.json`](skills.sh.json)'s groupings from your frontmatter. **Don't hand-edit any of them** (CI runs `pnpm skills:check`).
 4. Run `pnpm skills:link` to try it locally, then `pnpm check` before pushing.
 5. Commit as `feat(<skill-name>): add skill`.
 

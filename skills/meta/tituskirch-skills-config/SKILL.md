@@ -74,9 +74,9 @@ Desired-state, idempotent — a `--fix` linter for the config. **check** is the 
 - **Forge/tracker is never guessed or auto-selected** — always asked, with the offered options gated to what actually works here (see Setup).
 - **Minimal config** — resolution order means defaults need not be written.
 - **Valid before writing** — the result must be valid JSON and validate against the schema. Only ever touch `.tituskirch-skills.json`.
-- **Commit via [`atomic-commit`](../atomic-commit/SKILL.md)**, not from here.
+- **Commit via [`atomic-commit`](../../repo/atomic-commit/SKILL.md)**, not from here.
 
 ## Reference
 
 - Every key, type, enum, and default: [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json) — the single source of truth.
-- Per-section setup detail and forge/tracker recipes stay with each owning skill: [`issue`](../issue/REFERENCE.md), [`pull-request`](../pull-request/REFERENCE.md), [`release`](../release/REFERENCE.md), [`merge-deps`](../merge-deps/REFERENCE.md), [`work-implement`](../work-implement/REFERENCE.md), [`write-docs`](../write-docs/REFERENCE.md).
+- Per-section setup detail and forge/tracker recipes stay with each owning skill: [`issue`](../../work/issue/REFERENCE.md), [`pull-request`](../../repo/pull-request/REFERENCE.md), [`release`](../../repo/release/REFERENCE.md), [`merge-deps`](../../repo/merge-deps/REFERENCE.md), [`work-implement`](../../work/work-implement/REFERENCE.md), [`write-docs`](../../docs/write-docs/REFERENCE.md).

@@ -31,7 +31,7 @@ The document is the whole product. It is written for a reader who has **none of 
 
 A handoff is committed **so another machine can pick it up**. That promise is only kept if the _work_ travels too, not just the note about it.
 
-- **Uncommitted work is unreachable.** Commit it (via [`atomic-commit`](../atomic-commit/SKILL.md)) and push the branch. Work in progress that is not yet coherent goes in one honest `wip` commit — the resumer needs the code more than it needs a tidy history.
+- **Uncommitted work is unreachable.** Commit it (via [`atomic-commit`](../../repo/atomic-commit/SKILL.md)) and push the branch. Work in progress that is not yet coherent goes in one honest `wip` commit — the resumer needs the code more than it needs a tidy history.
 - **Nothing to commit** is a fine answer — say so in the document (`Progress` records "nothing uncommitted").
 - **Cannot push** (no remote, offline, work that must not leave the machine) → still write the handoff, but state it plainly under `Progress` and drop the `branch` field. A handoff describing work that exists nowhere but this disk is a **local note**, and must not claim otherwise.
 
@@ -55,7 +55,7 @@ Write it **self-contained**:
 
 ### 5. Commit the handoff
 
-Commit the new file via [`atomic-commit`](../atomic-commit/SKILL.md) and push. Until it is pushed, the handoff has not happened. Report the id, the path and the branch.
+Commit the new file via [`atomic-commit`](../../repo/atomic-commit/SKILL.md) and push. Until it is pushed, the handoff has not happened. Report the id, the path and the branch.
 
 ### 6. Find the handoff to resume
 
@@ -95,7 +95,7 @@ Resumed work that is being parked again **updates the existing document** — sa
 - **Ids are permanent and never reused** — even though the files are not ([REFERENCE.md](REFERENCE.md#id-allocation)).
 - **Attribution-free.** No agent or model name, no `Generated with`/🤖 line, no session url, in the document, the commit, or anything this skill writes. The frontmatter has no author field on purpose — a handoff is a note to the next worker, not a signed artifact, and the next worker gains nothing from knowing which tool typed it.
 - **Secret-free.** The document is committed. Scan what you paste into `Context` — logs, env dumps and config excerpts are where secrets get in.
-- **A handoff is not an ADR.** Same `NNNN-title.md` shape, opposite lifecycle — an [ADR](../write-docs/SKILL.md) is a permanent record that must never be deleted; a handoff is working state that is consumed and removed. Never file a decision as a handoff, and never let a handoff's deletion take a decision's record with it — if the work settled something architectural, that belongs in an ADR before the handoff goes ([REFERENCE.md](REFERENCE.md#relationship-to-the-siblings)).
+- **A handoff is not an ADR.** Same `NNNN-title.md` shape, opposite lifecycle — an [ADR](../../docs/write-docs/SKILL.md) is a permanent record that must never be deleted; a handoff is working state that is consumed and removed. Never file a decision as a handoff, and never let a handoff's deletion take a decision's record with it — if the work settled something architectural, that belongs in an ADR before the handoff goes ([REFERENCE.md](REFERENCE.md#relationship-to-the-siblings)).
 
 ## Reference
 

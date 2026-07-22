@@ -71,8 +71,8 @@ Run the repo's checks (`work.verify`, else detected — tests, lint, build). Gre
 
 The **push** is the moment the work becomes reviewable — it is the boundary between `working` and `review`.
 
-- Commit via [`atomic-commit`](../atomic-commit/SKILL.md); reference the issue so the tracker links it (`Refs #42` / the Linear key).
-- **PUSH** the work: open/update the PR via [`pull-request`](../pull-request/SKILL.md) (worktree), or push the commit(s) to the shared branch (`branch:<name>`). Until this succeeds the issue stays `working` (a crash before the push is reclaimed as a [working-orphan](REFERENCE.md#reconcile)).
+- Commit via [`atomic-commit`](../../repo/atomic-commit/SKILL.md); reference the issue so the tracker links it (`Refs #42` / the Linear key).
+- **PUSH** the work: open/update the PR via [`pull-request`](../../repo/pull-request/SKILL.md) (worktree), or push the commit(s) to the shared branch (`branch:<name>`). Until this succeeds the issue stays `working` (a crash before the push is reclaimed as a [working-orphan](REFERENCE.md#reconcile)).
 - Move the label `working → review` — the handoff to [`work-review`](../work-review/SKILL.md). Report the issue id / PR url.
 - The skill **never merges**, never reviews, and **never sets `done`, `changes-requested` or `needs human`** — those are the review loop's and the human's outputs.
 

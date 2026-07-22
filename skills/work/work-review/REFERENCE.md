@@ -20,7 +20,7 @@ Reads the shared `work.*` section ([schema](../work-implement/REFERENCE.md#confi
 | `work.labels.needsHuman`       | The "escalated to a human" label.                                                                       |
 | `work.labels.done`             | Terminal "accepted".                                                                                    |
 
-Every key, type and default lives once in the repo-root [`tituskirch-skills.schema.json`](../../tituskirch-skills.schema.json).
+Every key, type and default lives once in the repo-root [`tituskirch-skills.schema.json`](../../../tituskirch-skills.schema.json).
 
 ## Selection query
 
