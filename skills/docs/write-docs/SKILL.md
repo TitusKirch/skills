@@ -51,14 +51,17 @@ A real feature usually spans several types: how-it-works (`concepts`) + usage (`
 1. **Resolve the preset** — `docs.preset` config → detect from the repo (bin/CLI → `cli`, library manifest → `library`, app/server → `app`, IaC → `infra`, agent/skill → `ai-tool`) → ask. Preset = which sections beyond the core.
 2. **Resolve the language** — `docs.language` → root `language` → existing docs/repo language → `en` (see [REFERENCE.md#config](REFERENCE.md#config)). When set, `docs.instructions` shapes the generated-docs wording (tone, house conventions) — additive only, never overriding the docs format or guardrails.
 3. **Plan the tree** — core (`getting-started`, `reference`) + the preset's sections; show it.
-4. **On confirm** — create numeric-prefixed section dirs, each with an `index.md` (frontmatter `title` + `description`, plain-text H1), plus a `docs/index.md` landing page. Generated docs are emoji-free. Skeletons: [`templates/`](templates/).
+4. **Drop any section that would only redirect.** For each planned section ask: does this repo have a page's worth of material that is **not** already canonical somewhere else — a README that covers install and first run, a committed schema that _is_ the config reference, per-module docs that ship with their module? If not, the section's `index.md` can only say "the real thing is over there", which costs a click and returns nothing. Leave it out, name it in the plan with the reason, and let **route/add** create it later when it has a page of its own. This applies to the core sections too: core is the default, not an obligation.
+5. **On confirm** — create numeric-prefixed section dirs, each with an `index.md` (frontmatter `title` + `description`, plain-text H1), plus a `docs/index.md` landing page. Generated docs are emoji-free. Skeletons: [`templates/`](templates/).
+
+A scaffold that produces one section is a **success**, not a failure — the tree's job is to hold what has no other home, and in a repo whose parts already document themselves that can be a single section. Numbering starts at `1.` over whatever survives, so nothing looks missing.
 
 ## Route / add — `docs/` exists
 
 1. Run the routing matrix; list **every** page to create or touch.
 2. New page → next free `N.kebab.md` in the section, frontmatter `title` + `description`, body from the matching template, then link it from that section's `index.md`.
 3. **How-tos end with a checklist.** Add a `> [!NOTE]` **Status** callout (see [REFERENCE.md#status-marker](REFERENCE.md#status-marker)) if the feature isn't shipped yet.
-4. **Delta principle** — don't restate what an authoritative upstream source (framework docs, a library's README, a standard) already documents; link it, and document the project-specific delta + the glue. A strong guideline, not a hard block.
+4. **Delta principle** — don't restate what an authoritative upstream source (framework docs, a library's README, a standard) already documents; link it, and document the project-specific delta + the glue. A strong guideline, not a hard block. It binds hardest against **anything the repo ships**: a library, a plugin, or a skill travels without `docs/`, so it has to carry its own reference — and a copy here is the one guaranteed to drift.
 5. **Updating** an existing topic — the one-topic-per-page rule means there's usually exactly one page; `grep docs/` for the term, edit it **in place**, never open a second page on the same topic, and update affected reference tables + cross-links. **Never for an ADR** — a changed decision is a new ADR that supersedes the old one, and the ADR section's `index.md` decision log gets the row in the same change.
 6. Verify every fact against current code before writing.
 

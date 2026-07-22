@@ -40,7 +40,7 @@ The recognized sections. The slug is the directory name (after its numeric prefi
 | `contributing`    | How to develop and contribute.                              |      |
 | `adr`             | Architecture decision records — one decision per file.      |      |
 
-`adr` is the one slug with a **fixed prefix** (`99.adr/`) and its own page contract — see [Architecture decision records](#architecture-decision-records). **Core** sections are always scaffolded. The catalogue is organized by **documentation type** (intent) — every slug answers _what kind of page_, never _what subject_. A section not in this catalogue is allowed but triggers a **gap report** (see SKILL.md): only fold in a genuinely missing **type**. A **subject** section (`plugins`, `themes`, `integrations`, `billing`) is a category error — route its content through the type it fits (see the routing matrix), and nest it if it needs grouping (see below), rather than minting a top-level slug.
+`adr` is the one slug with a **fixed prefix** (`99.adr/`) and its own page contract — see [Architecture decision records](#architecture-decision-records). **Core** marks the two sections a scaffold reaches for first — not two it must create. A section whose material is already canonical elsewhere is [dropped from the scaffold](SKILL.md#scaffold--docs-is-missing) rather than created as a redirect. The catalogue is organized by **documentation type** (intent) — every slug answers _what kind of page_, never _what subject_. A section not in this catalogue is allowed but triggers a **gap report** (see SKILL.md): only fold in a genuinely missing **type**. A **subject** section (`plugins`, `themes`, `integrations`, `billing`) is a category error — route its content through the type it fits (see the routing matrix), and nest it if it needs grouping (see below), rather than minting a top-level slug.
 
 ## Nesting & subject grouping
 
@@ -48,7 +48,7 @@ Sections hold pages, but a page slot can be a **subject folder** when one topic 
 
 ## Presets
 
-Which sections to scaffold beyond the core, by project type. Core (`getting-started`, `reference`) is implicit in every preset.
+Which sections to scaffold beyond the core, by project type. Core (`getting-started`, `reference`) is implicit in every preset — subject to the redirect test in [SKILL.md](SKILL.md#scaffold--docs-is-missing), which can drop either one.
 
 | Preset    | Adds                               |
 | :-------- | :--------------------------------- |
@@ -194,6 +194,7 @@ This skill keeps **no cache** — unlike the commit/PR/issue skills, its only in
 
 ## Anti-patterns
 
+- ❌ A section `index.md` whose body only points elsewhere — a promise of pages with none behind it. Either it lists real pages, or the section should not exist yet.
 - ❌ Order in frontmatter instead of the filename prefix.
 - ❌ A `type:` (or `icon:`/`nav:`) frontmatter field — the contract is `title` + `description` only (an ADR adds `status` + `date`; nothing else does).
 - ❌ A subject-matter top-level section (`plugins/`, `themes/`, `integrations/`) instead of routing content into a type section (nested if needed).
