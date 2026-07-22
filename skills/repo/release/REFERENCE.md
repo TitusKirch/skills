@@ -136,7 +136,7 @@ gh pr merge "$n" --squash        # preferred — release-please's own convention
 gh pr merge "$n" --merge         # when the branch is pinned to merge commits
 ```
 
-`rules/branches/<branch>` returns the **effective** rules for that branch — every ruleset that applies, already resolved — so it answers for `~DEFAULT_BRANCH` targeting and overlapping rulesets alike. A release branch that is also a promotion target commonly returns `["merge"]`: the rule that keeps promotions' individual commits visible applies to every PR into it, release-please's included.
+`rules/branches/<branch>` returns the **effective** rules for that branch — every ruleset that applies, already resolved — so it answers for `~DEFAULT_BRANCH` targeting and overlapping rulesets alike, which a raw `rulesets` listing does not. Why a release branch commonly answers `["merge"]`: [SKILL.md](SKILL.md#5-merge-then-report).
 
 ## Validation checklist
 

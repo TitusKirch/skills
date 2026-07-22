@@ -12,7 +12,7 @@ Conventions change rarely and are identical on every branch, so persist them per
 
 - **Location** — `$(git rev-parse --git-common-dir)/tituskirch-skills/conventions`. The owner-namespaced directory (`tituskirch-skills/`, matching the plugin name) lives in the _common_ git dir — shared by every branch and linked worktree, outside the working tree, never tracked — so the cache survives branch switches and can't be committed by accident. Create the directory before writing (`mkdir -p`).
 - **Migration** — the old flat `$(git rev-parse --git-common-dir)/atomic-commit-cache` is obsolete. Don't read it; just re-detect once into the new path. Optionally `rm -f` the old file when writing the new one.
-- **Validity (config hash, TTL only as fallback)** — how the cache is validated depends on whether a hashable config source exists. **With a config source** (`hash != none` — a `commitlint.config.*` / `.commitlintrc*` file, or a `commitlint` key in `package.json`) a hash match already proves the conventions are unchanged, so reuse on hash match alone, **regardless of age**. **Without one** (`hash = none` — conventions inferred from `git log`, which can drift silently as new commits land) age is the only staleness signal, so keep the 3-day TTL (259200 s). Re-detect and rewrite when the cache is missing, the hash differs, the fallback TTL has expired (`hash = none` only), or the user asks to refresh ("neu prüfen", "refresh", "--refresh").
+- **Validity (config hash, TTL only as fallback)** — how the cache is validated depends on whether a hashable config source exists. **With a config source** (`hash != none` — a `commitlint.config.*` / `.commitlintrc*` file, or a `commitlint` key in `package.json`) a hash match already proves the conventions are unchanged, so reuse on hash match alone, **regardless of age**. **Without one** (`hash = none` — conventions inferred from `git log`, which can drift silently as new commits land) age is the only staleness signal, so keep the 3-day TTL (259200 s). When to re-detect is [SKILL.md](SKILL.md#1-detect-conventions-read-the-repo--never-assume)'s rule; this is why it is a hash first and a clock only as a fallback.
 - **Transparency** — when reusing, label it in the plan header, e.g. `Conventions (cached, 2d ago): …`, so staleness stays visible and the user can force a refresh.
 
 Read and validate:
@@ -108,7 +108,7 @@ If subjects are consistently in another language, match it. Otherwise write Engl
 
 ## Config
 
-`.tituskirch-skills.json` at the repo root (`$(git rev-parse --show-toplevel)`) is an optional, committed config shared across TitusKirch skills. Absent → behave exactly as before. Read with `jq`; if the file or `jq` is missing, ignore it (warn once) and fall back to detection. Resolution per setting: **config → detected/native → built-in default**.
+`.tituskirch-skills.json` at the repo root (`$(git rev-parse --show-toplevel)`) is an optional, committed config shared across TitusKirch skills. Absent → behave exactly as before. Resolution per setting: **config → detected/native → built-in default**; reading it (and what to do when `jq` or the file is missing) is [SKILL.md](SKILL.md#1-detect-conventions-read-the-repo--never-assume)'s step 1.
 
 Keys this skill reads:
 
