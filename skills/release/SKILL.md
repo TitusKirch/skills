@@ -39,7 +39,7 @@ Otherwise, for the chosen edge (its own `head` and `base`), by `release.promote`
 | `"create"`          | No such automation — the skill may open the PR itself, via [`pull-request`](../pull-request/SKILL.md) with the edge's `base` and `head`. **The only PR this skill ever opens, in any mode.**        |
 
 - **Undrafting is what starts CI.** Where the repo's checks skip drafts (`if: github.event.pull_request.draft == false` + a `ready_for_review` trigger), the draft rollup PR has run **nothing**. Undraft first (`gh pr ready <n>`), _then_ wait for the checks that undrafting triggers — never read a draft's empty check list as "green".
-- **Checks green, then merge with a merge commit** — `gh pr merge <n> --merge`, never `--squash`. The individual `feat:`/`fix:` commits must stay visible or release-please cannot compute the bump. Fixed, not a preference — and it holds at **every** edge, which is what keeps a multi-stage chain's release artifacts conflict-free ([why](REFERENCE.md#promotion-chains)).
+- **Checks green, then merge with a merge commit** — `gh pr merge <n> --merge`, never `--squash`. The individual `feat:`/`fix:` commits must stay visible or release-please cannot compute the bump. Fixed, not a preference — and it holds at **every** edge, which is what keeps a multi-stage chain's release artifacts conflict-free ([why](REFERENCE.md#promotion-chains)). A `base` whose ruleset forbids `merge` breaks release-please itself — **report that and stop**; it is a repo misconfiguration, not something to squash around.
 
 ### 3. Wait for the release PR
 
@@ -60,7 +60,12 @@ Anything unexplained — a bump the commits don't justify, an empty changelog, a
 
 ### 5. Merge, then report
 
-After confirmation: `gh pr merge <n> --squash`. Squash is release-please's own convention and is right here for the mirror-image reason a merge commit is right in step 2 — the release PR is one generated `chore(main): release …` commit and nothing downstream reads its history. release-please then tags the release; the workflow deletes the merged `release-please--*` branch.
+After confirmation, merge it with a method the **release branch actually allows** — ask the forge, never assume ([recipe](REFERENCE.md#gh-recipes)):
+
+- **Squash if allowed** — release-please's own convention, and right here for the mirror-image reason a merge commit is right in step 2: the release PR is one generated `chore(main): release …` commit and nothing downstream reads its history.
+- **Otherwise a merge commit.** A release branch that is also a **promotion target** is typically pinned to `merge` — the ruleset that keeps a promotion's individual commits visible binds every PR into that branch, release-please's included. Squashing there is not a preference the skill can hold; it is a merge the forge rejects.
+
+Either way release-please then tags the release, and the workflow deletes the merged `release-please--*` branch.
 
 Report the version, the tag, the release url, and every PR touched.
 
@@ -74,7 +79,7 @@ Every wait is bounded. On timeout, **stop and report what was observed** — nev
 - **Plan first; merge only after confirmation.** The promotion merge and the release merge are **two separate confirmations**. Plan-only triggers ("nur den plan", "dry run", "just show me", "nicht mergen") → print the plan and the exact `gh` commands, then stop.
 - **At most one _open_ promotion PR at a time** — one edge per invocation, and a PR only in `"create"` mode. In `"auto"` mode this skill creates nothing; a missing rollup PR is a finding to report, never a gap to fill. A [chain](REFERENCE.md#promotion-chains) never fans out — edges are promoted sequentially, one confirmed merge each.
 - **Only its own two PRs.** The rollup PR and release-please's release PR are the only PRs it may undraft or merge — both opened by automation, and named here as the sole, deliberate exceptions to the sibling rule that automation's PRs are untouchable. Any other PR → leave it alone.
-- **Merge strategies are fixed** — merge commit for `head` → `base`, squash for the release PR. Both are mechanical requirements, not taste; neither is a config key.
+- **The promotion's merge commit is fixed** — `head` → `base` merges, never squashes, or release-please loses the individual commits it computes the bump from. A ruleset forbidding it is a repo **misconfiguration to report**, not to work around. The **release PR** is the softer case: squash preferred, but the forge's allowed methods decide (step 5). Neither is a config key — one is a mechanical requirement, the other is read from the forge.
 - **Never force-push, never tag by hand, never edit the version or `CHANGELOG.md`.** release-please owns all three; racing it corrupts the manifest.
 - **Attribution-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in any PR, comment, or commit it produces.
 - **GitHub forge (v1).** No GitHub remote / `gh` unavailable → stop; never fall back to raw `git` plumbing or the API by hand.

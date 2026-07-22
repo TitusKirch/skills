@@ -123,11 +123,20 @@ gh pr checks "$n"
 gh pr diff "$n" -- .release-please-manifest.json CHANGELOG.md
 ```
 
-**Merge it:**
+**Merge it** — with a method the release branch allows, read from the forge rather than assumed:
 
 ```bash
-gh pr merge "$n" --squash
+methods=$(gh api "repos/{owner}/{repo}/rules/branches/$base" \
+  --jq '[.[] | select(.type == "pull_request") | .parameters.allowed_merge_methods] | add')
+# ["squash"] → --squash   ["merge"] → --merge   empty/null → unrestricted, prefer --squash
 ```
+
+```bash
+gh pr merge "$n" --squash        # preferred — release-please's own convention
+gh pr merge "$n" --merge         # when the branch is pinned to merge commits
+```
+
+`rules/branches/<branch>` returns the **effective** rules for that branch — every ruleset that applies, already resolved — so it answers for `~DEFAULT_BRANCH` targeting and overlapping rulesets alike. A release branch that is also a promotion target commonly returns `["merge"]`: the rule that keeps promotions' individual commits visible applies to every PR into it, release-please's included.
 
 ## Validation checklist
 
@@ -150,7 +159,7 @@ The issue that specified this skill left its defaults open. What was settled, an
 - **Release tool is detected, not configured** — `release-please-config.json` and the workflow already say which tool the repo uses; a `release.tool` key would only let the config contradict the repo. If changesets ever arrives, it arrives as detection plus a branch in the workflow, not a config break.
 - **`promote` defaults to `false`** — promotion is opt-in. `"auto"` was the first answer, on the grounds that it is the mode that _cannot_ open a PR; that argument measures the wrong risk. The consequential act is **merging onto the release branch**, and `"auto"` does that — not creating a PR. `false` is the only mode that touches nothing, so it is what a repo gets until it says otherwise. The cost is real and accepted: every repo wanting the ordinary `head` → `base` flow now writes a `release` block. Rejected alternative: default `"auto"` and rely on the skip rule (`head == base` → nothing to promote) to protect repos without an integration branch. It does protect them, but it makes the blast radius a function of repo layout rather than of an explicit choice.
 - **Forge lives once at the repo root** — the forge axis is the root `forge` key (`github`-only enum in v1), shared by `pull-request`, `release` and `merge-deps`, not a per-skill `backend` slot. One home means a second forge docks there as a value, not a schema break — and no per-section keys to keep in sync.
-- **Opposite, fixed merge strategies** — merge commit for the promotion so release-please can see the individual commits; squash for the release PR per release-please's own convention. Both are mechanical, so neither is a config key.
+- **Opposite merge strategies — one fixed, one read from the forge** — the promotion **must** merge so release-please sees the individual commits; that is mechanical, so it stays fixed and a ruleset contradicting it is a misconfiguration to report. The release PR was originally fixed to squash on the same footing, and that was wrong: it is a _convention_, not a requirement — release-please tags the release either way, since nothing downstream reads the history of a single generated commit. Meanwhile a release branch that is also a promotion target is routinely pinned to `merge`, because `allowed_merge_methods` binds a branch, not a PR's provenance — so the ruleset that protects the promotion also rejects the squash. Two mechanical requirements cannot both hold on the same branch, so the softer one yields: query `rules/branches/<base>` and use what it permits. Still not a config key — the forge already knows the answer, and a config key could only be a way to contradict it.
 - **`"create"` delegates to `pull-request`** — same reason `work-implement` does: one skill owns PR creation. It also inherits that skill's refusal to touch automation's PRs, which is precisely the `"auto"` guard.
 - **`timeout` bounds each wait, not the run** — the unbounded risk is the release PR that never appears; a check run ends on its own. Default 600s.
 - **A chain is an ordered array, not named slots or an edge list** — `release.stages` (last element = release branch) scales to N stages and degenerates to `[head, base]` with **zero migration**, so `head`/`base` stay the two-branch sugar. Rejected: named `staging`/`head`/`base` slots (hard-cap at three, order implicit in key names) and an explicit edge list (over-general — it buys non-linear graphs at the cost of a cycle/fork validator no linear chain needs).
