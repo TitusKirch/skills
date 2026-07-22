@@ -86,37 +86,22 @@ Reuses the [`issue`](../issue/REFERENCE.md#catalog-cache) cache verbatim — `$(
 
 ```mermaid
 flowchart LR
-  subgraph IMPL["Implement loop"]
-    direction TB
-    ready["ready"]
-    changes["changes-requested"]
-    working["working"]
-  end
+  ready["ready"] ==>|"lease"| working["working"]
+  working ==>|"commit + push"| review["review"]
+  review ==>|"approve"| done(["done"])
 
-  subgraph REV["Review loop"]
-    direction TB
-    review["review"]
-  end
+  review -->|"feedback,<br/>round &lt; maxRounds"| changes["changes-requested"]
+  changes -->|"lease, re-work"| working
 
-  human{{"needs human"}}
-  done(["done"])
-  blocked(["blocked"])
-
-  ready ==>|"lease"| working
-  changes ==>|"lease, re-work"| working
-  working ==>|"commit + push"| review
-
-  review ==>|"approve"| done
-  review -->|"feedback,<br/>round &lt; maxRounds"| changes
-  review -->|"risky, or<br/>round ≥ maxRounds"| human
-  review -->|"broken"| blocked
-  working -->|"checks unfixable"| blocked
-
+  review -->|"risky, or<br/>round ≥ maxRounds"| human{{"needs human"}}
   human -->|"human: ok"| done
   human -->|"human: changes"| changes
+
+  working -->|"checks unfixable"| blocked(["blocked"])
+  review -->|"broken"| blocked
 ```
 
-Thick edges are the path a healthy issue takes; everything thin is an exception. A rectangle is a state one of the loops will act on by itself, the hexagon waits on a person, and a rounded box is terminal. `changes-requested` sits in the implement lane because that loop **consumes** it — the review loop only writes it.
+Thick edges are the path a healthy issue takes; everything thin is an exception. A rectangle is a state one of the loops will act on by itself, the hexagon waits on a person, and a rounded box is terminal. Which loop owns which transition is the table below.
 
 | Transition                                | Loop / Who                                                                    |
 | :---------------------------------------- | :---------------------------------------------------------------------------- |
