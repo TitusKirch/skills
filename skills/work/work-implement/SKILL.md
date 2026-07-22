@@ -65,7 +65,7 @@ Keep the change scoped to this one issue.
 
 ### 7. Verify
 
-Run the repo's checks (`work.verify`, else detected — tests, lint, build). Green → continue. **Red and unfixable, spec ambiguous, or a genuine human decision needed → set `blocked`**, comment the reason on the issue, stop. `blocked` is a real outcome, not a failure to hide.
+Run the repo's checks (the root `verify` key, else detected — tests, lint, build). Green → continue. **Red and unfixable, spec ambiguous, or a genuine human decision needed → set `blocked`**, comment the reason on the issue, stop. `blocked` is a real outcome, not a failure to hide.
 
 ### 8. Commit, PUSH, hand off to review
 

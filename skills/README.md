@@ -69,14 +69,14 @@ Some skills read an optional, committed `.tituskirch-skills.json` at the **consu
 }
 ```
 
-Resolution per setting: **config → native/detected → built-in default** — absent config means today's behavior. The only shared root key is `language`; everything else lives under a skill section (`pr.*`, `issue.*`). Each skill documents only the keys it reads, in its own `REFERENCE.md`:
+Resolution per setting: **config → native/detected → built-in default** — absent config means today's behavior. Three keys sit at the root because they are facts about the **repo**, not about one skill — `forge`, `language` and `verify`; everything else lives under a skill section (`pr.*`, `issue.*`). Each skill documents only the keys it reads, in its own `REFERENCE.md`:
 
 - [`atomic-commit`](repo/atomic-commit/REFERENCE.md#config) — `language`, `commit.language`
 - [`pull-request`](repo/pull-request/REFERENCE.md#config) — `language`, `pr.*`
 - [`issue`](work/issue/REFERENCE.md#config) — `language`, `issue.*`
 - [`release`](repo/release/REFERENCE.md#config) — `language`, `release.*`, `pr.base`
-- [`merge-deps`](repo/merge-deps/REFERENCE.md#config) — `language`, `mergeDeps.*`, `work.verify`
-- [`update-deps`](repo/update-deps/REFERENCE.md#config) — `language`, `work.verify` (owns no section of its own)
+- [`merge-deps`](repo/merge-deps/REFERENCE.md#config) — `language`, `verify`, `mergeDeps.*`
+- [`update-deps`](repo/update-deps/REFERENCE.md#config) — `language`, `verify` (owns no section of its own)
 - [`handoff`](work/handoff/REFERENCE.md#config) — `language` (owns no section of its own)
 - [`write-docs`](docs/write-docs/REFERENCE.md#config) — `language`, `docs.*`
 - [`work-implement`](work/work-implement/REFERENCE.md#config) — `language`, `work.*`, `pr.base`

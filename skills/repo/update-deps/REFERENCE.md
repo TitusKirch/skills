@@ -6,15 +6,13 @@ Mechanics for the [`update-deps`](SKILL.md) skill. Scope is **Node** (npm / pnpm
 
 **This skill owns no config section.** Everything it would configure is either a per-run decision or already expressed by the repo's own updater — [why](#decisions). It reads two keys that other sections already own:
 
-| Key           | Use                                                                                   |
-| :------------ | :------------------------------------------------------------------------------------ |
-| `work.verify` | the repo's own check command, run here after updating. Absent → detect from the repo. |
-| `language`    | report wording (shared root key).                                                     |
-
-**`work` may be `false`, and that is not about this skill.** `work: false` disables the four `work-*` skills; it says nothing about whether the repo has checks. Test the section before indexing into it — `jq '.work.verify'` against a boolean is an error, and a swallowed one degrades silently to detection:
+| Key               | Use                                                                                   |
+| :---------------- | :------------------------------------------------------------------------------------ |
+| `verify` _(root)_ | the repo's own check command, run here after updating. Absent → detect from the repo. |
+| `language`        | report wording (shared root key).                                                     |
 
 ```bash
-verify=$(jq -er 'if (.work | type) == "object" then .work.verify // empty else empty end' "$config" 2>/dev/null) || verify=
+verify=$(jq -er '.verify // empty' "$config" 2>/dev/null) || verify=
 ```
 
 Per-package policy belongs in the **repo's own updater config**, where the repo's own `pnpm taze` will honour it too — `taze.config.ts` (`exclude`, `packageMode` per package), the declared range or constraint itself, and `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`.
@@ -183,13 +181,13 @@ pnpm audit          # or: npm audit | bun audit | composer audit | cargo audit
 The issue that specified this skill left its defaults open. What was settled, and why:
 
 - **Name `update-deps`** — verb-noun, matching `merge-deps` / `write-docs` / `compact-readme`, and it pairs with `merge-deps` as the domain's two verbs. Rejected `bump-deps`: in a repo running release-please, "bump" already names the **version bump of a release** (`bump-minor-pre-major`), and a skill called `bump-deps` sitting next to a skill called `release` invites exactly the wrong reading. Rejected `update-dependencies` — the siblings abbreviate (`merge-deps`, `pr.*`).
-- **No config section — the skill reads `work.verify` and `language`, and owns nothing.** The specifying issue sketched `update-deps.range` / `.verify` / `.exclude` / `false`. Each fell to the skill's own principle:
+- **No config section — the skill reads the root `verify` and `language`, and owns nothing.** The specifying issue sketched `update-deps.range` / `.verify` / `.exclude` / `false`. Each fell to the skill's own principle:
   - **`exclude`** — the repo's updater already owns this, and owns it better. taze reads its own `taze.config.ts` (`exclude`, and `packageMode` for per-package ranges), a declared range or constraint **is** an exclude, and `minimumReleaseAgeExclude` is honoured verbatim. A second list in `.tituskirch-skills.json` would be one the repo's own `pnpm taze` ignores — two lists that can disagree, where one already works everywhere, for every tool, including the human's hands. Same reasoning that rejected [`release.tool`](../release/REFERENCE.md#decisions): a key whose only power is to contradict the repo.
   - **`range`** — a per-run decision by design, and the issue says so itself. The one thing a stored default could do that a spoken word cannot is make an unqualified "update the deps" perform **majors** — the exact overreach the minor-by-default rule exists to prevent. A knob that can only be neutral or harmful is not a knob.
-  - **`verify`** — `work.verify` answers the identical question and is already written by the repos that care; `mergeDeps.verify` documents that same fallback. A second key before anyone needs a different command is speculative.
+  - **`verify`** — the root `verify` answers the identical question and is already written by the repos that care; `mergeDeps.verify` documents that same fallback. A second key before anyone needs a different command is speculative.
   - **`false`** — manual-only, plans first, writes after confirmation, and never commits, pushes or merges. There is no unattended act to disable; **not invoking it** is the off switch. `mergeDeps: false` and `release: false` exist because those skills **merge**.
 
-  Nothing survived, so there is no section — and no `oneOf [{}, false]` shell whose only content is an off switch, which no sibling has. **Revisit when** a repo actually needs a non-`work.verify` command or a patch-by-default policy; that is when the section earns its keys, and adding one later is additive.
+  Nothing survived, so there is no section — and no `oneOf [{}, false]` shell whose only content is an off switch, which no sibling has. **Revisit when** a repo actually needs a command other than the root `verify` or a patch-by-default policy; that is when the section earns its keys, and adding one later is additive.
 
 - **Not folded into `mergeDeps.*`** — `mergeDeps.*` is **merge-deps'** own section, named for that skill precisely to stay distinct from this one ([its own Decisions say so](../merge-deps/REFERENCE.md#decisions)). Sharing it would hand two skills one `false`, so "do not merge Dependabot's PRs" would silently also mean "do not update deps locally" — two unrelated permissions collapsed into one word. No section in the schema is shared by two skills, and this is not the one to start with.
 - **Complementary to [`merge-deps`](../merge-deps/SKILL.md), not overlapping** — that skill triages PRs **a bot authored**, selected strictly by author, and merges them by comment; it never opens a PR and never bumps a version. This one bumps versions and never touches a PR. They cannot even collide: merge-deps refuses anything not authored by `app/dependabot`, and this skill authors nothing. The shared part is the noun.

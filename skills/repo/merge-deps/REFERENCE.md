@@ -21,17 +21,15 @@ Mechanics for the [`merge-deps`](SKILL.md) skill. **GitHub (`gh`) is the only fo
 | :----------------- | :----------------------------------------------------------------------------------------------------- |
 | `forge` _(root)_   | Forge, a shared root key read by all forge-aware skills. v1 supports only `github`. Default: `github`. |
 | `mergeDeps.merge`  | What may be merged after confirmation — see [Merge modes](#merge-modes). Default: `false`.             |
-| `mergeDeps.verify` | Command run against the PR's own head before merging. Default: `work.verify`, else nothing.            |
+| `mergeDeps.verify` | Command run against the PR's own head before merging. Default: the root `verify`, else nothing.        |
 | `mergeDeps.cap`    | Max PRs merged per run. Default: 5.                                                                    |
 
 Also reads the shared root `language` (report wording).
 
-**`mergeDeps.verify` falls back to `work.verify`.** Both answer the same question — "does this repo still pass its own checks?" — and a repo that has already written one should not write it twice. A repo needing a different command for dependency updates (a full install, an audit) sets `mergeDeps.verify` explicitly.
-
-**The fallback has to survive `work: false`.** That value disables the four `work-*` skills and says nothing about this one, so read the section defensively rather than indexing into a boolean:
+**`mergeDeps.verify` falls back to the root `verify`.** Both answer the same question — "does this repo still pass its own checks?" — and a repo that has already written one should not write it twice. A repo needing a different command for dependency updates (a full install, an audit) sets `mergeDeps.verify` explicitly.
 
 ```bash
-verify=$(jq -er '.mergeDeps.verify // (if (.work | type) == "object" then .work.verify else null end) // empty' "$config" 2>/dev/null) || verify=
+verify=$(jq -er '.mergeDeps.verify // .verify // empty' "$config" 2>/dev/null) || verify=
 ```
 
 ## Merge modes

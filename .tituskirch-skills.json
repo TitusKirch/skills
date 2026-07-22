@@ -1,6 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
   "language": "en",
+  "verify": "pnpm check",
   "commit": {
     "scopeVocab": [
       "atomic-commit",
@@ -35,8 +36,12 @@
   },
   "issue": {
     "tracker": "github",
-    "title": { "convention": "plain" },
-    "labels": { "exclude": ["stack:*", "autorelease:*", "dependencies"] }
+    "title": {
+      "convention": "plain"
+    },
+    "labels": {
+      "exclude": ["stack:*", "autorelease:*", "dependencies"]
+    }
   },
   "docs": {
     "preset": "ai-tool",
@@ -44,7 +49,6 @@
   },
   "work": {
     "branch": "branch:dev",
-    "verify": "pnpm check",
     "labels": {
       "ready": "ai: ready",
       "working": "ai: working",

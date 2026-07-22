@@ -20,6 +20,11 @@
       "$ref": "#/$defs/language",
       "description": "Shared default message/title/body language for all skills. Overridable per skill section."
     },
+    "verify": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "The command this repo runs to check itself (tests / lint / build) — a repo-level fact, shared by every skill that needs to know the repo still passes. work-implement runs it before pushing, update-deps after updating, merge-deps against a dependency PR's own head (overridable via mergeDeps.verify). null or absent → each skill detects it from the repo. It lives at the root, not inside a skill section, so disabling a skill never withdraws it."
+    },
     "commit": {
       "description": "atomic-commit settings, or false to disable the atomic-commit skill for the repo.",
       "oneOf": [
@@ -38,7 +43,10 @@
             },
             "scopeVocab": {
               "type": "array",
-              "items": { "type": "string", "minLength": 1 },
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
               "uniqueItems": true,
               "description": "Preferred scope vocabulary, unioned with scopes detected from the git log; filtered against a commitlint scope-enum when one exists. Use when the intended scopes (e.g. monorepo packages or not-yet-committed areas) aren't all in the history yet."
             },
@@ -48,7 +56,9 @@
             }
           }
         },
-        { "const": false }
+        {
+          "const": false
+        }
       ]
     },
     "pr": {
@@ -65,7 +75,9 @@
             },
             "title": {
               "$ref": "#/$defs/titleConvention",
-              "default": { "convention": "conventional" },
+              "default": {
+                "convention": "conventional"
+              },
               "description": "PR title style. Default: conventional."
             },
             "language": {
@@ -78,7 +90,9 @@
             }
           }
         },
-        { "const": false }
+        {
+          "const": false
+        }
       ]
     },
     "release": {
@@ -97,7 +111,10 @@
               "type": "array",
               "minItems": 1,
               "uniqueItems": true,
-              "items": { "type": "string", "minLength": 1 },
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
               "description": "Ordered promotion chain: lowest integration stage first, release branch last (where release-please runs). Each consecutive pair is a promotion edge — [\"dev\",\"staging\",\"main\"] is two edges (dev → staging, staging → main). The canonical N-stage form of head/base: when present it wins over both; when absent the chain is [head, base]. A single element [\"main\"] means the release is cut directly on base with no promotion. Branches must be distinct (enforced). Default: absent (falls back to head/base)."
             },
             "base": {
@@ -118,7 +135,9 @@
             }
           }
         },
-        { "const": false }
+        {
+          "const": false
+        }
       ]
     },
     "mergeDeps": {
@@ -136,7 +155,7 @@
             "verify": {
               "type": "string",
               "minLength": 1,
-              "description": "Command run against the PR's own head before merging, in a throwaway worktree. The primary safety gate, not a fallback: a Dependabot PR into an integration branch often triggers no relevant CI at all, and an empty check list is never read as green. Default: work.verify, else nothing."
+              "description": "Command run against the PR's own head before merging, in a throwaway worktree. The primary safety gate, not a fallback: a Dependabot PR into an integration branch often triggers no relevant CI at all, and an empty check list is never read as green. Default: the root verify key, else nothing."
             },
             "cap": {
               "type": "integer",
@@ -146,7 +165,9 @@
             }
           }
         },
-        { "const": false }
+        {
+          "const": false
+        }
       ]
     },
     "issue": {
@@ -167,7 +188,9 @@
             },
             "title": {
               "$ref": "#/$defs/titleConvention",
-              "default": { "convention": "plain" },
+              "default": {
+                "convention": "plain"
+              },
               "description": "Issue title style. Default: plain (most trackers)."
             },
             "linear": {
@@ -201,7 +224,10 @@
               "properties": {
                 "exclude": {
                   "type": "array",
-                  "items": { "type": "string", "minLength": 1 },
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "uniqueItems": true,
                   "description": "Glob patterns (e.g. \"stack:*\", \"autorelease:*\") for catalog labels the agent must never auto-apply."
                 }
@@ -226,17 +252,27 @@
           "allOf": [
             {
               "if": {
-                "properties": { "tracker": { "const": "linear" } },
+                "properties": {
+                  "tracker": {
+                    "const": "linear"
+                  }
+                },
                 "required": ["tracker"]
               },
               "then": {
                 "required": ["linear"],
-                "properties": { "linear": { "required": ["team"] } }
+                "properties": {
+                  "linear": {
+                    "required": ["team"]
+                  }
+                }
               }
             }
           ]
         },
-        { "const": false }
+        {
+          "const": false
+        }
       ]
     },
     "docs": {
@@ -261,7 +297,9 @@
             }
           }
         },
-        { "const": false }
+        {
+          "const": false
+        }
       ]
     },
     "work": {
@@ -284,8 +322,13 @@
             },
             "branch": {
               "oneOf": [
-                { "const": "worktree" },
-                { "type": "string", "pattern": "^branch:.+" }
+                {
+                  "const": "worktree"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^branch:.+"
+                }
               ],
               "default": "worktree",
               "description": "Where work lands: \"worktree\" (own branch + PR per issue) or \"branch:<name>\" (all issues on one shared branch, e.g. \"branch:dev\"). Default: worktree."
@@ -295,23 +338,35 @@
               "default": false,
               "description": "Run workers concurrently in isolated git worktrees instead of sequentially. Independent of branch. Default: false."
             },
-            "verify": {
-              "type": ["string", "null"],
-              "description": "Check command run before opening the PR (tests/lint/build). null → detect from the repo."
-            },
             "labels": {
               "type": "object",
               "additionalProperties": false,
               "description": "Lifecycle label names. Each is a label string, or false to disable that mechanic.",
               "properties": {
-                "ready": { "$ref": "#/$defs/labelOrOff" },
-                "working": { "$ref": "#/$defs/labelOrOff" },
-                "review": { "$ref": "#/$defs/labelOrOff" },
-                "changesRequested": { "$ref": "#/$defs/labelOrOff" },
-                "needsHuman": { "$ref": "#/$defs/labelOrOff" },
-                "done": { "$ref": "#/$defs/labelOrOff" },
-                "blocked": { "$ref": "#/$defs/labelOrOff" },
-                "repo": { "$ref": "#/$defs/labelOrOff" }
+                "ready": {
+                  "$ref": "#/$defs/labelOrOff"
+                },
+                "working": {
+                  "$ref": "#/$defs/labelOrOff"
+                },
+                "review": {
+                  "$ref": "#/$defs/labelOrOff"
+                },
+                "changesRequested": {
+                  "$ref": "#/$defs/labelOrOff"
+                },
+                "needsHuman": {
+                  "$ref": "#/$defs/labelOrOff"
+                },
+                "done": {
+                  "$ref": "#/$defs/labelOrOff"
+                },
+                "blocked": {
+                  "$ref": "#/$defs/labelOrOff"
+                },
+                "repo": {
+                  "$ref": "#/$defs/labelOrOff"
+                }
               }
             },
             "review": {
@@ -329,7 +384,10 @@
             },
             "priorityLabels": {
               "type": "array",
-              "items": { "type": "string", "minLength": 1 },
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
               "uniqueItems": true,
               "description": "GitHub priority labels, highest first (e.g. [\"urgent\", \"high\", \"medium\", \"low\"]). Linear uses its native priority field and ignores these."
             },
@@ -345,7 +403,10 @@
                 },
                 "statuses": {
                   "type": "array",
-                  "items": { "type": "string", "minLength": 1 },
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "uniqueItems": true,
                   "description": "Workflow states that count as startable (e.g. [\"Todo\", \"In Progress\"])."
                 },
@@ -392,20 +453,30 @@
           "allOf": [
             {
               "if": {
-                "properties": { "tracker": { "const": "linear" } },
+                "properties": {
+                  "tracker": {
+                    "const": "linear"
+                  }
+                },
                 "required": ["tracker"]
               },
               "then": {
                 "required": ["tracker", "linear", "labels"],
                 "properties": {
-                  "linear": { "required": ["team", "statuses"] },
-                  "labels": { "required": ["repo"] }
+                  "linear": {
+                    "required": ["team", "statuses"]
+                  },
+                  "labels": {
+                    "required": ["repo"]
+                  }
                 }
               }
             }
           ]
         },
-        { "const": false }
+        {
+          "const": false
+        }
       ]
     }
   },
@@ -417,19 +488,36 @@
     },
     "labelOrOff": {
       "description": "A label name, or false to switch the mechanic off.",
-      "oneOf": [{ "type": "string", "minLength": 1 }, { "const": false }]
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "const": false
+        }
+      ]
     },
     "language": {
       "description": "A language code or name (e.g. \"en\", \"de\", \"fr\", \"pt-BR\"), or \"match\" to mirror the repo/source language. A scalar applies to both title and body; the object form sets them separately.",
       "oneOf": [
-        { "type": "string", "minLength": 1 },
+        {
+          "type": "string",
+          "minLength": 1
+        },
         {
           "type": "object",
           "additionalProperties": false,
           "minProperties": 1,
           "properties": {
-            "title": { "type": "string", "minLength": 1 },
-            "body": { "type": "string", "minLength": 1 }
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         }
       ]

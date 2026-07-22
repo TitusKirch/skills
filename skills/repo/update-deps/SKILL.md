@@ -69,7 +69,7 @@ Run the advisory check **every time**, even on a `patch` run, even when nothing 
 
 ### 6. Verify
 
-Run the repo's own check command — `work.verify` from `.tituskirch-skills.json`, else the repo's detected check/test/build. Green → report. **Red → say so plainly and leave the tree as it is**; do not start reverting packages one by one unless asked. A failed verify after a dependency bump is information, and the diff is the evidence.
+Run the repo's own check command — the root `verify` key in `.tituskirch-skills.json`, else the repo's detected check/test/build. Green → report. **Red → say so plainly and leave the tree as it is**; do not start reverting packages one by one unless asked. A failed verify after a dependency bump is information, and the diff is the evidence.
 
 ### 7. Report
 
