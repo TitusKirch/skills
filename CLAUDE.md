@@ -1,49 +1,40 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This repo publishes reusable [Claude Code agent skills](https://docs.claude.com/en/docs/claude-code/skills). Skills live at `skills/<category>/<skill>/` — categories are `repo/`, `work/`, `docs/`, `meta/` — each self-contained: a `SKILL.md` (YAML frontmatter + body) plus optional assets. **No runtime code ships** — only skill definitions and the tooling that keeps them lint/format-clean, so there is no test suite. Don't go looking for one.
 
-## Repository purpose
+Every file named below is the source of truth for what it configures. Read it rather than trusting a summary here — this file carries only what no file states outright.
 
-This repo publishes reusable [Claude Code agent skills](https://docs.claude.com/en/docs/claude-code/skills). Skills live at `skills/<category>/<skill>/` — the categories are `repo/`, `work/`, `docs/` and `meta/` — and each is self-contained: a `SKILL.md` (YAML frontmatter + body) plus optional bundled assets. The repo itself ships no runtime code — only the skill definitions and the tooling that keeps them lint/format-clean.
+## Commands
 
-## Common commands
+`package.json` has the full list. The ones with non-obvious behaviour:
 
-| Command          | Purpose                                                                |
-| :--------------- | :--------------------------------------------------------------------- |
-| `pnpm install`   | Install devDeps and wire husky hooks (`prepare` script runs husky).    |
-| `pnpm lint`      | `oxlint . --deny-warnings` — fails on any warning.                     |
-| `pnpm format`    | `oxfmt --check .` — does not write.                                    |
-| `pnpm check`     | Lint + format check (mirrors CI).                                      |
-| `pnpm check:fix` | `pnpm lint:fix && pnpm format:fix` — apply both fixers.                |
-| `pnpm taze`      | List dependency drift. `pnpm taze:w` writes updates to `package.json`. |
+| Command             | Why it needs saying                                                               |
+| :------------------ | :-------------------------------------------------------------------------------- |
+| `pnpm check`        | Lint + format check — exactly what CI runs. `pnpm check:fix` applies both fixers. |
+| `pnpm skills:sync`  | Regenerates four files from skill frontmatter. **Run after touching any skill.**  |
+| `pnpm skills:check` | The CI guard for the above. Fails if any of the four drifted.                     |
+| `pnpm skills:link`  | Symlinks every skill into `~/.claude/skills/` for live local testing.             |
 
-There is no test suite — skills are documentation, validated by lint/format only.
+**Four files are generated — never hand-edit them:** the root `README.md` skills table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, and `skills.sh.json`'s groupings. A new category also needs an entry in `CATEGORIES` in `scripts/gen-skills.mjs`, or the sync fails loudly.
 
-## Tooling layout (non-obvious bits)
+## Non-obvious tooling
 
-- **pnpm is mandatory** — `packageManagerStrict: true` in `pnpm-workspace.yaml` and the `packageManager` pin in `package.json`. npm/yarn will be rejected.
-- **`pnpm-workspace.yaml` holds all pnpm settings** — pnpm 10+ reads only auth/registry from `.npmrc`; every other setting (the gate, linker, strictness) must live in `pnpm-workspace.yaml` or it is silently ignored. There is no `.npmrc`.
-- **`pnpm-workspace.yaml` sets `minimumReleaseAge: 4320`** (3 days). Packages published within the last 3 days will not install. `pnpm taze` respects this too — if a newer version exists but is too recent, taze will report "up to date." Bump pinned versions (`oxfmt`, `oxlint`) manually if needed.
-- **oxfmt is the formatter for everything**, including markdown, JSON, and YAML — `lint-staged.config.js` routes `*.md`, `*.{json,jsonc,yml,yaml}` through `oxfmt`, and only `*.{js,ts,mjs,cjs}` through oxlint + oxfmt. The primary use case is markdown (skill bodies); JS is incidental.
-- **`oxlint` and `oxfmt` are pinned to exact versions** (no `^`). Taze's default scope omits them entirely — they are absent from the table, not reported as up to date. `-l`/`--include-locked` brings them in, and it composes with the mode, so `pnpm exec taze minor -w -l` is a minor run including the pins. Don't reach for `latest` to move a pin: it is a mode spanning majors, and today it targets `oxfmt 0.57.0 → 0.58.0` (a 0.x major) and `packageManager` pnpm → a `12.0.0-alpha.9` prerelease.
-- **Husky hooks** (`.husky/pre-commit`, `.husky/commit-msg`) run lint-staged and commitlint. Don't `--no-verify` unless explicitly asked.
-- **Conventional Commits are enforced** by commitlint (`@commitlint/config-conventional`). Scope by skill name when changing a single skill: `feat(write-readme): ...`.
+- **pnpm is mandatory** — `packageManagerStrict: true` plus the `packageManager` pin. npm/yarn are rejected outright.
+- **`pnpm-workspace.yaml` holds every pnpm setting.** pnpm 10+ reads only auth/registry from `.npmrc`; anything else placed there is **silently ignored**. There is no `.npmrc`.
+- **A release-age gate is active** (`minimumReleaseAge` in `pnpm-workspace.yaml`). Packages published inside that window will not install, and `pnpm taze` reports them as "up to date" rather than as withheld — so "up to date" never proves nothing newer exists.
+- **oxfmt formats markdown, JSON and YAML too**, not just JS — see `lint-staged.config.js`. Markdown is the point here; JS is incidental.
+- **`oxlint` and `oxfmt` are pinned exactly** (no `^`), which drops them out of taze's default scope entirely — absent from its table, not reported as current. `-l` brings them back in and composes with the mode (`taze minor -w -l`). Don't reach for `latest` to move a pin: it spans majors and will happily propose a 0.x major or a prerelease.
+- **Husky runs lint-staged and commitlint** on every commit. Don't `--no-verify` unless asked.
+- **Conventional Commits are enforced.** Scope by skill name when changing one skill: `feat(write-readme): …`.
+- **release-please cuts releases from `main`** with `bump-minor-pre-major`, so a pre-1.0 breaking change bumps the minor. Only `feat`/`fix`/breaking reach the changelog — typing a user-visible change as `chore` or `refactor` silently drops it from the release.
 
-## Releases
+## CI gotchas
 
-[release-please](https://github.com/googleapis/release-please) runs on push to `main` (`.github/workflows/release-please.yml`) and opens/updates a release PR based on Conventional Commits. Configured as a single `release-type: node` package at the repo root with `bump-minor-pre-major: true` — pre-1.0 breaking changes bump the minor. The workflow also cleans up merged `release-please--*` branches after release.
+`.github/workflows/` is authoritative. Two behaviours that mislead if unknown:
 
-## Adding a new skill
+- **CI skips draft PRs** — a draft's empty check list is not a pass.
+- **CodeQL only fires on `**/*.{js,ts,mjs,cjs}` or workflow changes** — it will not run on a markdown-only PR, which is most PRs here.
 
-1. Create `skills/<category>/<new-skill>/SKILL.md` (use the `write-a-skill` skill or copy an existing skill as a starting point). Frontmatter: `name` (kebab-case, matches folder), `summary` (short line for the root README table), `description` (one-line, action-oriented — this is what Claude reads to decide invocation), optional `allowed-tools`.
-2. Run `pnpm skills:sync` to regenerate the four artifacts from the frontmatter — the root `README.md` table, `skills/<category>/README.md`, `.claude-plugin/plugin.json` and `skills.sh.json`'s groupings — never hand-edit them (CI runs `pnpm skills:check`). A new category also needs an entry in `CATEGORIES` in `scripts/gen-skills.mjs`, or the sync fails.
-3. Commit as `feat(<new-skill>): add skill`.
+## Adding a skill
 
-Full workflow in [`CONTRIBUTING.md`](CONTRIBUTING.md); frontmatter contract and layout in `skills/README.md`.
-
-## CI
-
-- `.github/workflows/ci.yml` — runs `pnpm lint` and `pnpm format` on PRs to `main`. Skips drafts.
-- `.github/workflows/codeql.yml` — only fires on changes to `**/*.{js,ts,mjs,cjs}` or `.github/workflows/**`. Won't run on pure markdown PRs.
-- `.github/workflows/release-please.yml` — see "Releases" above.
-- `.github/dependabot.yml` — weekly npm bumps, monthly github-actions bumps, both grouped minor+patch.
+Create `skills/<category>/<name>/SKILL.md`, run `pnpm skills:sync`, commit as `feat(<name>): add skill`. The frontmatter contract and layout live in [`skills/README.md`](skills/README.md); the full workflow in [`CONTRIBUTING.md`](CONTRIBUTING.md).
