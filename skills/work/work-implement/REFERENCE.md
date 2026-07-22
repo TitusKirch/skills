@@ -90,12 +90,12 @@ flowchart LR
   working ==>|"commit + push"| review["review"]
   review ==>|"approve"| done(["done"])
 
-  review -->|"feedback,<br/>round &lt; maxRounds"| changes["changes-requested"]
-  changes -->|"lease, re-work"| working
-
   review -->|"risky, or<br/>round ≥ maxRounds"| human{{"needs human"}}
   human -->|"human: ok"| done
-  human -->|"human: changes"| changes
+  human -->|"human: changes"| changes["changes-requested"]
+
+  review -->|"feedback,<br/>round &lt; maxRounds"| changes
+  changes -->|"lease, re-work"| working
 
   working -->|"checks unfixable"| blocked(["blocked"])
   review -->|"broken"| blocked
