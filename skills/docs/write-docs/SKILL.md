@@ -61,7 +61,11 @@ A scaffold that produces one section is a **success**, not a failure — the tre
 1. Run the routing matrix; list **every** page to create or touch.
 2. New page → next free `N.kebab.md` in the section, frontmatter `title` + `description`, body from the matching template, then link it from that section's `index.md`.
 3. **How-tos end with a checklist.** Add a `> [!NOTE]` **Status** callout (see [REFERENCE.md#status-marker](REFERENCE.md#status-marker)) if the feature isn't shipped yet.
-4. **Delta principle** — don't restate what an authoritative upstream source (framework docs, a library's README, a standard) already documents; link it, and document the project-specific delta + the glue. A strong guideline, not a hard block. It binds hardest against **anything the repo ships**: a library, a plugin, or a skill travels without `docs/`, so it has to carry its own reference — and a copy here is the one guaranteed to drift.
+4. **Delta principle** — don't restate what something else already documents; link it, and write the project-specific delta plus the glue. Three sources outrank a page here, in descending order of how badly a copy hurts:
+   - **A file in this repo.** `package.json`'s scripts, a workflow, a schema, a lockfile, a config — a doc that lists their contents is wrong the moment the file changes, and nothing will tell you. Name the file and what is surprising about it; never transcribe values, versions or option tables out of it.
+   - **Anything the repo ships.** A library, plugin or skill travels without `docs/`, so it must carry its own reference — a second copy here is the one guaranteed to drift.
+   - **An authoritative upstream source** — framework docs, a dependency's README, a standard.
+     A strong guideline, not a hard block: cross-cutting glue, and the reason a thing is set the way it is, are exactly what no source file states.
 5. **Updating** an existing topic — the one-topic-per-page rule means there's usually exactly one page; `grep docs/` for the term, edit it **in place**, never open a second page on the same topic, and update affected reference tables + cross-links. **Never for an ADR** — a changed decision is a new ADR that supersedes the old one, and the ADR section's `index.md` decision log gets the row in the same change.
 6. Verify every fact against current code before writing.
 
@@ -73,13 +77,14 @@ Desired-state, idempotent — like a `--fix` linter for the docs tree.
 2. Diff against the convention and group the plan:
    - **Auto-fix (mechanical)** — numbering gaps/dupes, missing `index.md`, removed/unknown frontmatter keys, `N.kebab.md` filename normalization, unambiguous broken relative links.
    - **Prompt (value-needing)** — a missing required field (`title`/`description`): derive a candidate from the H1 / first paragraph and confirm.
-   - **Report only** — a how-to without a checklist, a page that fits no section, suspected upstream duplication, any secret detected. Never auto-edited.
+   - **Report only** — a how-to without a checklist, a page that fits no section, suspected duplication of an upstream source **or of a file in the repo**, any secret detected. Never auto-edited.
 3. Show the **plan + diff**; on confirm apply **only structure + frontmatter**. **Never rewrite prose. Only touch files inside `docs/`.**
 
 `99.adr/` is **exempt** — links and the decision log only. An ADR id is permanent, so never renumber one, never rename it to the dot-schema, never close a gap in the sequence ([REFERENCE.md](REFERENCE.md#reconcile-rules)).
 
 ## Guardrails (inherited)
 
+- **Docs are never the source of truth — the repo is.** A page exists to say what no file in the repo says: why, how the parts fit, what will surprise you. Documentation that mirrors a file costs tokens on every read and starts lying at the next commit, so when a page would restate one, link it and write only the delta.
 - **Plan/preview first; apply only after confirmation.** Respect plan-only / dry-run.
 - **Keep generated content attribution-free** — no agent self-naming or `Generated with`/🤖 lines.
 - **No secrets** in generated docs — scan, warn, exclude.

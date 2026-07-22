@@ -46,6 +46,7 @@ allowed-tools:
 - **Feature bullets**: `- **{emoji} Title** — sentence.` Emojis act as scannable column-1 indicators.
 - **Tables**: left-aligned (`| :--- |`).
 - **Callouts**: use `> [!TIP]`, `> [!IMPORTANT]`, `> [!NOTE]` — never plain blockquotes.
+- **Never mirror a file the repo already ships.** A README's job is the shortest path from landing to running — not a second copy of `package.json`'s scripts, a schema's option table, an `.env.example`, or a workflow. Show the handful of values a newcomer needs, then link the file for the rest. A copied table is wrong at the next commit and nothing will tell you; the repo, not the README, is the source of truth.
 - **License footer** — copy the closing footer verbatim from [`templates/README.template.md`](templates/README.template.md), the single source for the Versioning/License blocks and the `© …` author line. Never retype the author/license string by hand.
 
 ## Workflow

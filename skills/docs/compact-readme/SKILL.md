@@ -34,7 +34,8 @@ Take an existing README that has grown into a wall of text and tables, and tight
 3. **Spot redundancy**, e.g.:
    - the tagline restated in hero + hook + a later sentence,
    - a runtime/requirement note ("needs Bun, `npx` won't work") repeated across hero, install, and a callout,
-   - a repeated core claim ("round-trip preserving", "zero-config") stated in several places.
+   - a repeated core claim ("round-trip preserving", "zero-config") stated in several places,
+   - **a block that mirrors a file the repo ships** — every config option out of a schema, every script out of `package.json`, every env var out of `.env.example`. This one is not merely long: it is duplicated state, so it is already wrong somewhere or will be at the next commit.
 4. **Check the house style** is intact (centered hero, section emojis, Versioning/License closers) — preserve whatever is already correct.
 
 Present the diagnosis (line count, biggest sections, redundancies found) and the planned cuts **before** editing — see [Interaction](#interaction).
@@ -47,8 +48,9 @@ Apply these, in roughly this priority:
 2. **Configuration/options → teaser + minimal example + `<details>`.** Keep a short teaser sentence and one minimal config example visible; collapse all option tables and theme/color keys into `<details><summary>All configuration options</summary>…</details>`. Keep everything in **one file** — do not spin out to `docs/` unless the user explicitly asks.
 3. **Merge Install + Quick start** into one "Install & run" section. State the runtime requirement **exactly once**, as a `> [!IMPORTANT]` callout in that block, including the concrete gotcha (e.g. "`npx` won't work").
 4. **Dedupe repeated claims** — pick the single best spot for each restated tagline / requirement / core claim and remove the echoes.
-5. **Reduce bold density.** If every bullet is fully `**bold**`, nothing stands out. Bold only ~the first phrase of each bullet.
-6. **Tighten prose** — e.g. a Why/Problem section from 3 paragraphs to 2 — but keep the author's voice; do not flatten it into generic AI slop.
+5. **A block mirroring a file → the values that matter + a link.** Where a table was transcribed from a schema, `package.json` or `.env.example`, `<details>` is the wrong tool: collapsing a copy keeps its drift and merely hides it. Keep the two or three values a newcomer actually sets, then point at the file that owns the rest. **Nothing is lost** — the content was never the README's to hold; it is going back to the one place that cannot go stale. Name the file in the plan so the move is visible.
+6. **Reduce bold density.** If every bullet is fully `**bold**`, nothing stands out. Bold only ~the first phrase of each bullet.
+7. **Tighten prose** — e.g. a Why/Problem section from 3 paragraphs to 2 — but keep the author's voice; do not flatten it into generic AI slop.
 
 ## Step 3 — Target structure (order)
 
@@ -69,7 +71,7 @@ Use the prescribed section emojis from the [`write-readme` REFERENCE](../write-r
 
 ## Guardrails
 
-- **Never delete content** — relocate into `<details>` or merge into a paragraph.
+- **Never delete content** — relocate into `<details>`, merge into a paragraph, or (only for a block copied out of a file the repo ships) replace it with a link to that file. Content leaves the README only when something else in the repo already holds it.
 - **Preserve the house style strictly** — centered hero in `<div align="center">`, section emojis, Versioning/License at the end. For kirchDev repos, treat [`write-readme`](../write-readme/SKILL.md) as the style source of truth.
 - **Leave these untouched**: badges, links, the demo GIF, and the license/author line.
 - **Factual accuracy** — never rewrite or invent defaults, flags, or option values. Copy tables **verbatim**; only move them.
