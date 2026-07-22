@@ -125,7 +125,7 @@ Claude Code picks the right skill based on the `description:` field in each `SKI
 
 ## ➕ Adding a new skill
 
-Drop a `skills/<name>/SKILL.md`, run `pnpm skills:sync` — it regenerates the table above and [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) from the frontmatter — then commit as `feat(<name>): add skill`.
+Drop a `skills/<category>/<name>/SKILL.md`, run `pnpm skills:sync` — it regenerates the table above, the category's `README.md`, [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) and [`skills.sh.json`](skills.sh.json) from the frontmatter — then commit as `feat(<name>): add skill`.
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full workflow and [`skills/README.md`](skills/README.md) for the frontmatter contract.
 
