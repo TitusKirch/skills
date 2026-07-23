@@ -54,7 +54,33 @@ A repo with no working forge/tracker (e.g. self-hosted GitLab) just lands on `no
 - **`docs`** — `preset` from project type (cli / library / app / infra / ai-tool), or `false` to opt out; language inherits root. `docs.instructions` for repo-wide docs wording, only on an explicit preference.
 - **`work`** — only when the repo runs the queue. Pick the tracker (above); it and `linear.team` fall back to `issue.*`. Set `cap` (default 10), `branch` (`worktree` default), and the lifecycle `labels`. **On Linear the schema requires `linear.team`, `linear.statuses` (startable states) and `labels.repo` (the repo discriminator) — set all three.** Also offer `linear.states` — the lifecycle step → workflow state map. It has no default (state names are per-team), and without it the worker moves the label but never the board, so propose it from the team's real states rather than leaving it out silently.
 
+- **`profiles`** — never propose one during setup. A profile answers "this context wants different values", which a fresh repo has no evidence for; write one only when the user names the context and what should differ in it.
+
 **Fast-path** — most repos reduce to one real decision (commit auto-detects from commitlint, languages default to `en`, forges/trackers resolve to a single viable option or `none`). After detection, name only what is actually non-default and ask those — don't walk every section aloud when just `docs.preset` is open.
+
+## Profiles — one config, several execution contexts
+
+`profiles` holds named overlays, each a **partial** config deep-merged onto the base when selected. It exists for the case where the same repo wants different behaviour depending on who is running: a remote runner that should open pull requests where a local session commits straight onto the integration branch.
+
+```json
+{
+  "work": { "branch": "branch:dev" },
+  "profiles": {
+    "ci": { "work": { "branch": "worktree" }, "release": false }
+  }
+}
+```
+
+Four rules govern what may go in one:
+
+- **Write only the delta.** The overlay merges recursively, so a profile touching `work.branch` leaves every other `work` key intact. Repeating the base's values is the same no-op as writing a default, and it drifts the moment the base changes.
+- **A fragment need not be valid alone, but the merged result must be.** The schema references section _shapes_ inside `profiles` — no required keys, no cross-key rules — precisely so `{"tracker": "linear"}` is writable. The constraints still apply to what the merge produces, so check the merged config, never the fragment.
+- **Arrays and scalars replace; they do not merge.** A profile setting `commit.scopeVocab` replaces the whole list. Where the intent is "the base plus one more", the base is the wrong place for the shared part.
+- **Profiles do not nest**, and a profile may not contain `profiles` or `$schema`.
+
+**Selection is explicit.** `TITUSKIRCH_SKILLS_PROFILE` names the profile; failing that, `CI` holding a truthy value selects `ci`. An unset or unknown name resolves to the base config unchanged — so a typo degrades to the base rather than to something arbitrary. When writing a profile, say which variable the context sets, because a profile nothing selects is dead config.
+
+**In reconcile & check**, treat profiles as first-class: a profile referencing a branch, label or template that no longer exists is the same drift as in the base, and an overlay whose every value now equals the base is worth reporting as removable.
 
 Write the file with a leading `$schema` key pointing at the canonical raw URL so editors validate it. Plan → confirm → write.
 
@@ -68,6 +94,40 @@ Desired-state, idempotent — a `--fix` linter for the config. **check** is the 
    - **Prompt (value-needing)** — a required value that is absent (`issue.tracker` `linear` with no `linear.team`, or `work.tracker` `linear` without `linear.statuses` / `labels.repo` — both now schema-enforced by if/then), or a setting the repo can no longer satisfy (a `pr.base`, template, label, team, or `scopeVocab` folder that does not exist).
    - **Report only** — a key written to its own default (suggest dropping it — resolution order makes it a no-op); never auto-remove one that documents deliberate intent.
 3. Show the **plan + diff**; on confirm, write **only** config keys. **check** stops here — it never writes.
+
+<skills-config>
+
+### Reading the config
+
+The config is `.tituskirch-skills.json` at the **consuming repo's** root — committed, optional, and shared by every TitusKirch skill. Absent means detection and built-in defaults, never an error. Its keys, types and defaults are defined by [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json).
+
+**Resolve it before reading it.** A repo may define `profiles` — named overlays for an execution context, so a remote runner can open pull requests where a local session commits directly. [`templates/resolve-config.sh`](templates/resolve-config.sh) prints the resolved config, and every skill ships the same copy, so they all see the same values:
+
+```sh
+# $skill is this skill's own directory — the one this file was loaded from,
+# not the repo being worked on. The resolver reads the repo's config itself.
+resolved=$(sh "$skill/templates/resolve-config.sh") || resolved=
+[ -n "$resolved" ] || resolved='{}'
+```
+
+The profile comes from `TITUSKIRCH_SKILLS_PROFILE`, falling back to `ci` when `CI` holds a truthy value, and to no profile otherwise. An unset or unknown name yields the base config unchanged.
+
+**The merge is a rule, not just a command.** Objects merge recursively at any depth, arrays and scalars are replaced rather than concatenated, an explicit `null` sets null rather than deleting a key, and `profiles` is dropped from the result. Any path that resolves the config by other means owes the same semantics.
+
+**`jq` may not be installed.** It ships preinstalled on none of Windows, macOS or Linux, and `gh`'s built-in `--jq` is no substitute — that filters API responses, it cannot read a local file. `resolve-config.sh` exits `2` in that case. Do **not** fall through to defaults: `Read` the file, apply the merge rule above, and carry on with the repo's real values. Nothing else is needed — no Node, no Python.
+
+**Guard every read, resolve into a variable, then use it.** Never let a substitution reach a command flag directly — `jq -r` prints the literal string `null` for a missing key, and an empty value is silently ignored by some tools rather than matching nothing:
+
+```sh
+value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) || value=
+[ -n "$value" ] || value=<documented default>
+```
+
+**Tell "off" apart from "absent".** `// empty` collapses `false` and a missing key into the same empty string, which turns a deliberately disabled mechanic into its default. Where a key may be `false`, resolve it as `select(. != null) | tostring` and test for the string afterwards.
+
+**Snippets are POSIX `sh`.** No `[[ ]]`, no arrays, no `<<<`, and nothing that differs between GNU and BSD coreutils — the shell is whatever the user runs.
+
+</skills-config>
 
 ## Guardrails
 
