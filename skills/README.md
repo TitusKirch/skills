@@ -78,6 +78,7 @@ Resolution per setting: **config → native/detected → built-in default** — 
 - [`merge-deps`](repo/merge-deps/REFERENCE.md#config) — `language`, `verify`, `mergeDeps.*`
 - [`prune-branches`](repo/prune-branches/REFERENCE.md#config) — `language`, `pr.base`, `pruneBranches.*`
 - [`update-deps`](repo/update-deps/REFERENCE.md#config) — `language`, `verify` (owns no section of its own)
+- [`prune-comments`](repo/prune-comments/REFERENCE.md#config) — `language`, `verify`, `pr.base` (owns no section of its own)
 - [`handoff`](work/handoff/REFERENCE.md#config) — `language` (owns no section of its own)
 - [`write-docs`](docs/write-docs/REFERENCE.md#config) — `language`, `docs.*`
 - [`work-implement`](work/work-implement/REFERENCE.md#config) — `language`, `work.*`, `pr.base`

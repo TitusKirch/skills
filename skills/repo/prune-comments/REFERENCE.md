@@ -2,6 +2,66 @@
 
 Mechanics for the [`prune-comments`](SKILL.md) skill: what counts as redundant, what is protected, how to scope a run, how to remove a comment without touching code, and why the defaults are what they are.
 
+## Config
+
+**This skill owns no config section.** Every knob it could have — which languages, how wide the scope, how aggressive to be — is a per-run decision, [why](#decisions). It reads three keys other sections already own, each a standing fact about the **repo** rather than about this run:
+
+| Key                  | Use                                                                                                   |
+| :------------------- | :---------------------------------------------------------------------------------------------------- |
+| `verify` _(root)_    | the repo's own check command, run after the removals. Absent → detect from the repo.                  |
+| `pr.base` _(shared)_ | the integration branch the clean-tree scope diffs against. Absent → the remote's `HEAD`, then `main`. |
+| `language`           | report wording (shared root key).                                                                     |
+
+```bash
+# $resolved comes from the resolver — see "Reading the config" in this file.
+verify=$(printf '%s' "$resolved" | jq -er '.verify // empty' 2>/dev/null) || verify=
+[ -n "$verify" ] || verify=   # absent or unreadable → detect from the repo
+```
+
+**Why a skill this per-run reads anything at all.** The check command is not a decision the run gets to make: the repo already declared what "still passes" means, and detecting `pnpm check` when the repo says `pnpm verify` runs the wrong gate on a tree this skill just edited. `update-deps` reads the same root `verify` while owning no section of its own — same reasoning, same key. Detection stays the fallback, never the first answer.
+
+<skills-config>
+
+### Reading the config
+
+The config is `.tituskirch-skills.json` at the **consuming repo's** root — committed, optional, and shared by every TitusKirch skill. Absent means detection and built-in defaults, never an error. Its keys, types and defaults are defined by [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json).
+
+**Resolve it before reading it.** A repo may define `profiles` — named overlays for an execution context, so a remote runner can open pull requests where a local session commits directly. [`templates/resolve-config.sh`](templates/resolve-config.sh) prints the resolved config, and every skill ships the same copy, so they all see the same values:
+
+```sh
+# Fill in this skill's own directory — the path this file was loaded from, not the
+# repo being worked on. It is a blank to fill, not a variable that is already set.
+skill=/absolute/path/to/this/skill
+
+resolved=$(sh "$skill/templates/resolve-config.sh"); status=$?
+case $status in
+0)  [ -n "$resolved" ] || resolved='{}' ;;   # ran fine; empty means the repo has no config
+10) resolved= ;;                           # no jq — read the file yourself, see below
+*)  echo "resolve-config failed ($status)" >&2; exit 1 ;;
+esac
+```
+
+**A failure here is never silent.** Any exit other than `0` or `10` means the resolver could not be found or could not run, and the only wrong response is to carry on with `{}` — that reports the repo's defaults as if they were its settings. Stop and say what failed.
+
+The profile comes from `TITUSKIRCH_SKILLS_PROFILE`, falling back to `ci` when `CI` holds a truthy value, and to no profile otherwise. An unset or unknown name yields the base config unchanged.
+
+**The merge is a rule, not just a command.** Objects merge recursively at any depth, arrays and scalars are replaced rather than concatenated, an explicit `null` sets null rather than deleting a key, and `profiles` is dropped from the result. Any path that resolves the config by other means owes the same semantics.
+
+**`jq` may not be installed.** It ships preinstalled on none of Windows, macOS or Linux, and `gh`'s built-in `--jq` is no substitute — that filters API responses, it cannot read a local file. `resolve-config.sh` exits `10` in that case. Do **not** fall through to defaults: `Read` the file, apply the merge rule above, and carry on with the repo's real values. Nothing else is needed — no Node, no Python.
+
+**Guard every read, resolve into a variable, then use it.** Never let a substitution reach a command flag directly — `jq -r` prints the literal string `null` for a missing key, and an empty value is silently ignored by some tools rather than matching nothing:
+
+```sh
+value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) || value=
+[ -n "$value" ] || value=<documented default>
+```
+
+**Tell "off" apart from "absent".** `// empty` collapses `false` and a missing key into the same empty string, which turns a deliberately disabled mechanic into its default. Where a key may be `false`, resolve it as `select(. != null) | tostring` and test for the string afterwards.
+
+**Snippets are POSIX `sh`.** No `[[ ]]`, no arrays, no `<<<`, and nothing that differs between GNU and BSD coreutils — the shell is whatever the user runs.
+
+</skills-config>
+
 ## The delete test
 
 One test decides every comment, and it is applied by reading the comment **and** the code:
@@ -89,11 +149,13 @@ Never listed, never proposed, never removed:
 | **Legal**                      | license, copyright, `SPDX-License-Identifier`, attribution headers                          |
 | **Generated banners**          | `@generated`, `Code generated by … DO NOT EDIT`, `This file is auto-generated`              |
 | **Tool directives**            | everything in the next table                                                                |
-| **Public API doc comments**    | listed in the never-preselected tier at most — see [Presentation](#presentation)            |
 | **Prose in another language**  | German (or any non-English) comments in a repo that writes them                             |
 | **Test-case narration**        | Given/When/Then and spec references inside tests — they document intent, not mechanics      |
 
 When two readings are available and one of them is "this is the only place that constraint is written down", that reading wins.
+
+> [!NOTE]
+> **Two kinds are neither protected nor default — they are never preselected.** A **public API doc comment** and a comment in a **language whose doc convention could not be confirmed** are judged like anything else and, when redundant, **listed** — but never preselected and never removed on the run's own authority. They are not in the table above because they are not "never listed": the whole point of the [never-preselected tier](#presentation) is _we judged, you decide_. Everything in the table is out of the run entirely.
 
 ## Directives that only look like comments
 
@@ -130,7 +192,7 @@ Recognising the doc form matters more than recognising the line form — the doc
 | Shell / YAML / TOML | `#`         | —            | —                                 |
 | SQL                 | `--`        | `/* … */`    | —                                 |
 
-**Anything not in this table is judged by the same delete test — or skipped.** If the language's doc convention cannot be confirmed from the file itself, the run reports the language as skipped rather than guessing which comments are load-bearing. In Go especially, the doc comment has no distinct syntax: a plain `//` line directly above an exported symbol **is** the doc comment, so it belongs to the never-preselected tier.
+**Anything not in this table is judged by the same delete test.** If the language's doc convention cannot be confirmed from the file itself, the run cannot tell a doc comment from a plain one — so every candidate in that language goes to the **never-preselected tier** rather than being guessed at in either direction. It is listed with its code and left for the reader to opt into; it is never in the default set, and the language is **not** reported as skipped (skipping is for paths that were never read). In Go especially, the doc comment has no distinct syntax: a plain `//` line directly above an exported symbol **is** the doc comment, so it belongs to the never-preselected tier.
 
 ## Scope recipes
 
@@ -142,8 +204,16 @@ git diff HEAD --name-only
 git diff HEAD -U5
 
 # Clean tree → this branch's own commits against the integration branch.
-base=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || echo origin/main)
-git diff "$base"...HEAD -U5
+# Never `@{u}` — that is this branch's *own* upstream (origin/<branch>), so on an
+# already-pushed branch the diff is empty and the fallback silently yields nothing.
+# Resolve the integration branch instead: config → the remote's HEAD → `main`.
+# $resolved comes from the resolver — see "Reading the config" in this file.
+base=$(printf '%s' "$resolved" | jq -er '.pr.base // empty' 2>/dev/null) || base=
+[ -n "$base" ] || base=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+[ -n "$base" ] || base=main          # last resort; `git remote set-head origin -a` restores the ref
+ref=origin/$base
+git rev-parse --verify --quiet "$ref" >/dev/null || ref=$base   # no remote copy → the local branch
+git diff "$ref"...HEAD -U5
 
 # A named path: tracked files only, so ignored build output stays out.
 git ls-files -- src/lib
@@ -153,6 +223,8 @@ head -n 5 <file> | grep -Eiq '@generated|do not edit|auto-generated'
 ```
 
 `-U5` rather than the default `-U3`: the comment attached to a changed line is frequently just outside a three-line window, and a comment that is invisible to the run cannot be judged.
+
+**The clean-tree base is the integration branch, never the branch's own upstream.** `@{u}` resolves to `origin/<current-branch>`, which is the same commits the branch already has — an empty diff on every pushed branch, and an empty diff here is indistinguishable from "nothing to prune". Standing on the integration branch itself legitimately yields nothing, and that falls through to **ask which path**, as documented.
 
 ## Presentation
 
@@ -171,7 +243,7 @@ src/lib/queue.ts
 ```
 
 - **Default tier** — plain redundancy, preselected for removal.
-- **Never-preselected tier** — public API doc comments, and anything in a language whose doc convention could not be confirmed. Listed so the reader can opt in explicitly; never removed on the strength of the run's own judgement.
+- **Never-preselected tier** — public API doc comments, and anything in a language whose doc convention could not be confirmed. Listed so the reader can opt in explicitly; never removed on the strength of the run's own judgement. Both are **listed, not skipped** — the report's _Skipped_ section is for paths the run never read.
 - **Contradictions** get their own block, with both the comment and what the code actually does. No action, ever.
 
 ## Removal mechanics
@@ -181,7 +253,7 @@ src/lib/queue.ts
 - **Block comment** → all-or-nothing. Remove it only when every line inside is redundant; a block with one informative line stays whole.
 - **Doc block** → the same rule, and it applies per block, never per tag.
 - **Indentation and separators stay as they are.** The diff must contain removed comment lines and nothing else.
-- **Re-run the repo's own check** afterwards. A comment removal that changes a check result means a directive was removed — restore it immediately and report it as a near miss.
+- **Re-run the repo's own check** afterwards — the declared `verify`, else the detected one ([Config](#config)). A comment removal that changes a check result means a directive was removed — restore it immediately and report it as a near miss.
 
 ## Common mistakes
 
@@ -201,9 +273,10 @@ The issue that specified this skill left three questions open. What was settled,
 - **Category `repo/`, name `prune-comments`.** The issue weighed `repo/` against `meta/`; `meta/` is for configuring the skills themselves, so it never fit. `docs/` was considered and rejected on a clean line: its skills produce and maintain **documentation artifacts** — a README, a `docs/` tree, a demo GIF — while this one edits **source files** and hands back a dirty tree, exactly as `update-deps` does. The verb-noun name matches its neighbours (`merge-deps`, `update-deps`, `write-docs`), and `prune-` is already this repo's verb for _report the candidates, delete only after confirmation_.
 - **Scope defaults to the working diff; a whole path only when named.** Judging a comment means reading the code around it, so the run's cost is real and a repo-wide sweep produces a report nobody reads. The change in front of the reader is also where the value is: a change is the single most common reason a comment stopped being true. Hence the fallback chain — working diff → the branch's commits against its integration branch → **ask**. "Scan everything" is available, but it is a request, never a default.
 - **A comment attached to a changed line is in scope even when the comment itself is untouched.** The narrower reading (only comment lines inside the diff) misses the case the skill exists for: the code moved, the comment did not. The wider reading (every comment in a touched file) turns a focused change into an unrelated diff. Attachment — directly above, or trailing — is the line between them.
-- **Languages: judgement is language-agnostic, the catalogue is not.** The delete test needs no parser, so nothing is gated on a language list; what is gated is the **doc form**, because that decides the never-preselected tier. The table covers what the house writes (TS/JS, PHP, Vue/HTML/CSS, Rust, Go, Python, shell, YAML, SQL); anything else is judged the same way or reported as skipped. Rejected: shipping comment-syntax regexes per language — that is the linter's approach, and the linter is what this skill exists to complement.
+- **Languages: judgement is language-agnostic, the catalogue is not.** The delete test needs no parser, so nothing is gated on a language list; what is gated is the **doc form**, because that decides the never-preselected tier. The table covers what the house writes (TS/JS, PHP, Vue/HTML/CSS, Rust, Go, Python, shell, YAML, SQL); anything else is judged the same way, and lands in the never-preselected tier when its doc form cannot be confirmed. Rejected: shipping comment-syntax regexes per language — that is the linter's approach, and the linter is what this skill exists to complement.
+- **An unconfirmable doc convention downgrades a candidate; it does not delete the file from the run.** The alternative — report the language as skipped and list nothing — was rejected: it throws away a judgement the run is perfectly able to make and hides plain restatements behind a language the table happens not to name. The tier already exists for exactly this shape of uncertainty ("we judged, you decide"), so the uncertainty is expressed as _never preselected_, not as _never listed_. _Skipped_ stays what it says: paths the run never read.
 - **Two tiers of consent, not one.** Public API doc comments are the sharpest disagreement in the domain — thin ones are noise to one reader and the editor hover to the next, and they can feed generated documentation with consumers outside the repo. Listing them without preselecting them settles it without the skill taking a side.
 - **Contradictions are reported, never removed.** A comment that disagrees with its code is the highest-value finding of the whole run, and its resolution is genuinely ambiguous: correcting the comment and correcting the code are opposite outcomes. Silently deleting it would hide the discrepancy — the one failure mode worse than leaving noise in place.
 - **Commented-out code is out of scope.** It is dead code in comment clothing, not a comment restating anything: the question is "is this still wanted?", not "does the code say this already". Different question, different risk, and the linter rules the issue mentions already handle the mechanical part. It is named in the report when the run passes it, and never touched.
-- **No config section, and no key read.** Every knob it could have — the languages, the scope, how aggressive to be — is a per-run decision, and the skill has no unattended act to disable: it plans first, writes after confirmation, and never commits or pushes, so **not invoking it** is the off switch. Revisit when a repo genuinely needs a standing policy; adding a section later is additive.
+- **No config section of its own, but three shared keys are read.** Every knob it could _own_ — the languages, the scope, how aggressive to be — is a per-run decision, and the skill has no unattended act to disable: it plans first, writes after confirmation, and never commits or pushes, so **not invoking it** is the off switch. That reasoning covers the knobs; it does not cover the facts. The check command (`verify`) and the integration branch (`pr.base`) are standing properties of the repo, already declared, already read by `update-deps` and `prune-branches` respectively — detecting them here would mean running a different gate against a different base than the repo says it uses. So the skill reads `verify`, `pr.base` and `language`, owns no section, and adds none. Revisit when a repo genuinely needs a standing prune policy; adding a section later is additive.
 - **It does not commit.** The verified, dirty tree is the hand-off — `atomic-commit` owns commit messages and this repo's conventions, `pull-request` owns PRs. Same delegation every writing skill here makes.
