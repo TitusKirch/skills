@@ -138,11 +138,23 @@ git worktree add "$tmp" "merge-deps-$n"
 git worktree remove --force "$tmp" && git branch -D "merge-deps-$n"
 ```
 
-**Merge — by comment, never directly:**
+**Merge — directly, with the method the PR's own base allows:**
 
 ```bash
-gh pr comment "$n" --body "@dependabot squash and merge"
-gh pr comment "$n" --body "@dependabot rebase"          # conflicts only
+base=$(gh pr view "$n" --json baseRefName --jq '.baseRefName')
+methods=$(gh api "repos/{owner}/{repo}/rules/branches/$base" \
+  --jq '[.[] | select(.type == "pull_request") | .parameters.allowed_merge_methods] | add')
+# ["squash"] → --squash   ["merge"] → --merge   empty/null → unrestricted, prefer --squash
+
+gh pr merge "$n" --squash --delete-branch
+```
+
+`rules/branches/<branch>` returns the **effective** rules for that branch, every applicable ruleset already resolved — the [same read `release` performs](../release/REFERENCE.md#gh-recipes), and the reason neither skill carries a hardcoded method. Read it **per PR**: [the queue is mixed across bases](#the-two-bases), and `allowed_merge_methods` binds a branch.
+
+**Rebase — the one comment command that still exists:**
+
+```bash
+gh pr comment "$n" --body "@dependabot rebase"   # on conflict, and after every merge (see below)
 ```
 
 **Open alerts, and which have no PR:**
@@ -151,6 +163,18 @@ gh pr comment "$n" --body "@dependabot rebase"          # conflicts only
 gh api "repos/$owner/$repo/dependabot/alerts" --paginate \
   --jq '.[] | select(.state=="open") | {number, pkg: .dependency.package.name, sev: .security_advisory.severity, fix: .security_vulnerability.first_patched_version}'
 ```
+
+## Cascading rebase
+
+Merging one Dependabot PR **stales every other one on the same base** — each was opened against the old tip, and a lockfile is the file most likely to have just moved. The removed comment command handled this invisibly: Dependabot merged, then rebased the rest of its own queue. Merging directly does not, so the cascade has to be driven.
+
+After each merge, for every **remaining selected** PR sharing that base:
+
+1. `@dependabot rebase` — still supported, so the mechanism survives even though the merge command did not.
+2. **Re-read mergeability before the next merge.** A rebase is asynchronous; `mergeStateStatus` reverts to `UNKNOWN` while Dependabot works, and [`UNKNOWN` is never a pass](#assessment-checklist).
+3. **Re-verify the rebased head.** The tree that `mergeDeps.verify` passed is not the tree that will land — a rebase produces a new one. Carrying the old verdict forward is the same mistake as calling an empty check list green.
+
+Not doing this is not a silent risk — it is the ordinary case. A queue of three PRs on one base is two rebases, and skipping them means merging two heads nobody verified.
 
 ## Assessment checklist
 
@@ -177,8 +201,10 @@ The issue that specified this skill left its defaults open. What was settled, an
 - **`merge` defaults to `false`** — merging is opt-in, mirroring [`release.promote`](../release/REFERENCE.md#decisions) exactly and for the same reason: the consequential act is the merge, so the default is the mode that performs none. A repo that wants merges says so.
 - **The skill verifies locally; it does not wait for a CI fix** — the issue asked whether the repo's CI gap is a prerequisite. It is not. Making a skill's correctness depend on a workflow edit in one repo would make it wrong in every repo whose CI happens not to cover its integration branch — and that is a whole class, not one repo. `mergeDeps.verify` is the **primary** gate and CI is corroboration, which is the only arrangement that holds regardless of a given repo's workflow triggers. The gap still gets reported, because the workflow edit remains the better fix; it is just not this skill's dependency.
 - **An empty check list is `unknown`, not `green`** — the inverse of [`release`'s draft rule](../release/SKILL.md#2-promote-head--base-config-gated), which learned that a draft PR's checks have not run _yet_. Here they will never run at all. Both collapse to one rule: **absence of a verdict is not a pass.** This is the single most load-bearing line in the skill, because the failure it prevents is silent — the check list looks short, not empty, and CodeQL passing on a lockfile bump reads exactly like success.
-- **Squash, by comment, and fixed** — `@dependabot squash and merge` rather than a direct `gh pr merge`, so Dependabot owns the rebase and close-out. Squash because a grouped PR is one logical change and `build(deps)` is hidden from release-please's changelog either way, so nothing downstream needs the individual commits — unlike the promotion merge, where preserving them is [mechanically required](../release/REFERENCE.md#decisions). Since neither choice is load-bearing, neither is a config key. **The most discretionary call here** — a repo preferring merge commits for bump forensics has a real argument, and this is the decision to revisit first.
+- **Merged directly with `gh pr merge`, because the comment command no longer exists** — this skill originally merged by commenting `@dependabot squash and merge`, handing the rebase, the merge and the close-out to the bot. GitHub [removed five comment commands on 27 January 2026](https://github.blog/changelog/2026-01-27-changes-to-github-dependabot-pull-request-comment-commands/) — `merge`, `cancel merge`, `squash and merge`, `close`, `reopen` — recommending the UI, the CLI and the REST API instead; [the current reference](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands) no longer lists them, while `rebase` and `recreate` remain, so the conflict path is untouched. **The removal fails silently**: nothing rejects the comment because nothing is listening — no error reply, no reaction, no job — so the old instruction posted successfully and reported a merge that never happened. Observed: a comment sitting eight minutes with no reaction and `autoMergeRequest: null`, on a mergeable PR with green checks. That is the same failure shape as the empty-check-list entry directly above — absence of a verdict read as success — which is why it earns the same treatment rather than a footnote. **Rejected: native auto-merge and a `dependabot/fetch-metadata` workflow** — GitHub's own documented automation paths, but both require the consuming repo to enable auto-merge and declare required status checks. A skill cannot depend on a per-repo setting it does not control; the same reasoning that already keeps verification local rather than waiting on CI.
+- **The merge method is read from the base's ruleset, not fixed to squash** — the removed command implied squash, so the method was never a choice this skill made. `gh pr merge` forces one, and a branch pinned to merge commits rejects `--squash` outright, so any hardcoded default is a coin flip on someone else's ruleset. `allowed_merge_methods` from `rules/branches/<base>` is [the source `release` already reads](../release/REFERENCE.md#decisions) for exactly this reason, so this skill reads it too rather than adding a second default — and, like there, it is **not** a config key: the forge already knows the answer, and a key could only contradict it. Unrestricted → squash, preserving the old behaviour of one `build(deps)` commit per group, which nothing downstream depends on since release-please hides `build(deps)` from the changelog either way.
+- **What Dependabot did for free is now explicit** — the merge method, `--delete-branch`, and [rebasing the rest of the queue](#cascading-rebase) were all the bot's, and all three are now steps in the skill. The cascade is the one that matters: it was the old command's genuine strength, and it is the one whose absence is invisible rather than loud. **And the merge becomes an act by the authenticated user, not by a bot** — which makes [`merge` defaulting to `false`](#merge-modes) more load-bearing than it was, not less.
 - **Majors are never merged by default** — `"grouped"` and `"patch"` both exclude them, so a major needs an explicit `"all"`. A major bump is a semver-declared breaking change; a green lint run is not evidence it is safe, only that it is syntactically fine.
-- **Nothing to do downstream after a merge** — the specifying repo's rollup PR is refreshed by a workflow on push to the integration branch, so the merge is already the whole act. The skill has no post-merge step and needs none.
+- **Nothing to do downstream after a merge — except inside the queue itself** — the specifying repo's rollup PR is refreshed by a workflow on push to the integration branch, so nothing _outside_ the repo needs driving. Within the queue there is exactly one post-merge step, and only because the comment command took it away: the remaining PRs on that base are now stale, so they get [rebased and re-verified](#cascading-rebase) before the next merge.
 - **Alerts without a fix are reported every run** — the alternative (stay quiet until a patch exists) hides exactly the alerts that most need a human, since "no fix available" is a decision to make, not a wait to sit out. Repetition is the cheapest part of the report.
 - **Forge via the shared root `forge` key, `github`-only enum** — one key read by `pull-request`, `release` and this skill rather than a per-skill `backend`, so a second forge is a value, not a schema break.

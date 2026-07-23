@@ -53,12 +53,14 @@ Per selected PR, gather facts. **Never merge on a heuristic.**
 
 **No `mergeDeps.verify` configured _and_ the base's checks don't cover the change → hold and report.** The skill has no basis to call it safe, and says so rather than merging.
 
-### 4. Merge — hand the merge back to Dependabot
+### 4. Merge — directly, with `gh pr merge`
 
 Gated by `mergeDeps.merge` ([modes](REFERENCE.md#merge-modes)) and, always, by confirmation. Default is `false` — **report-only**; merging is opt-in.
 
-- **Comment, don't merge directly** — `gh pr comment <n> --body "@dependabot squash and merge"`. Dependabot then owns the rebase, the merge and the branch close-out, which is the thing it is actually good at. Squash keeps one `build(deps)` commit per group; [why squash](REFERENCE.md#decisions).
-- **Dependabot merges once checks pass — including when there are none.** That is precisely why step 3's local verify runs **first**. The comment is the last act, never the gate.
+- **Merge directly; never by comment.** GitHub **removed** the `@dependabot merge` / `squash and merge` comment commands on 27 January 2026. The comment still posts, nothing listens, and nothing errors — a silent no-op that reads as success ([why](REFERENCE.md#decisions)). `@dependabot rebase` and `recreate` are unaffected.
+- **The merge method comes from the base's ruleset, never a hardcoded default** — read `allowed_merge_methods` for the PR's own `baseRefName`, the same source [`release`](../release/REFERENCE.md#decisions) reads; unrestricted → prefer squash, keeping one `build(deps)` commit per group. Add `--delete-branch`: the branch close-out was Dependabot's and is now this skill's ([recipe](REFERENCE.md#gh--git-recipes)).
+- **The merge is the authenticated user's act now, not a bot's.** Nothing stands between the confirmation and the merged commit, which is exactly why step 3's local verify is **the** gate and `mergeDeps.merge` defaults to `false`.
+- **Merging one PR stales the rest — drive the rebase.** Dependabot used to cascade that itself. After each merge, `@dependabot rebase` every remaining selected PR on that base and re-read mergeability before the next one ([cascading rebase](REFERENCE.md#cascading-rebase)).
 - **Conflicts** → `@dependabot rebase` and report it. **Never resolve a dependency conflict by hand** — the lockfile is Dependabot's to regenerate.
 - **Held back is an outcome, not a failure.** A major bump under `"grouped"`, an undeterminable update type, a red verify, an `unknown` check list — report each with its reason and move on.
 
