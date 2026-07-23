@@ -9,6 +9,7 @@
       "handoff",
       "issue",
       "merge-deps",
+      "prune-comments",
       "pull-request",
       "release",
       "tituskirch-skills-config",

@@ -38,13 +38,14 @@ That's it. Every skill in this bundle is now discoverable inside Claude Code —
 
 Commits, pull requests, releases and dependency updates — each driven by the repo's own conventions.
 
-| Skill                                                 | Description                                                                                                        |
-| :---------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------- |
-| [`atomic-commit`](skills/repo/atomic-commit/SKILL.md) | Commits session work as atomic Conventional Commits (or just plans).                                               |
-| [`merge-deps`](skills/repo/merge-deps/SKILL.md)       | Triages a repo's open Dependabot PRs, verifying each on its own branch before merging.                             |
-| [`pull-request`](skills/repo/pull-request/SKILL.md)   | Opens a pull request from the current branch via gh; forge chosen by config (github in v1).                        |
-| [`release`](skills/repo/release/SKILL.md)             | Drives the release-please flow to a shipped release — promotes the integration branch, then merges the release PR. |
-| [`update-deps`](skills/repo/update-deps/SKILL.md)     | Updates a repo's dependencies via its own updater — minor by default, honouring gates and pins.                    |
+| Skill                                                   | Description                                                                                                        |
+| :------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------- |
+| [`atomic-commit`](skills/repo/atomic-commit/SKILL.md)   | Commits session work as atomic Conventional Commits (or just plans).                                               |
+| [`merge-deps`](skills/repo/merge-deps/SKILL.md)         | Triages a repo's open Dependabot PRs, verifying each on its own branch before merging.                             |
+| [`prune-comments`](skills/repo/prune-comments/SKILL.md) | Reports comments that only restate the code, and removes them after confirmation.                                  |
+| [`pull-request`](skills/repo/pull-request/SKILL.md)     | Opens a pull request from the current branch via gh; forge chosen by config (github in v1).                        |
+| [`release`](skills/repo/release/SKILL.md)               | Drives the release-please flow to a shipped release — promotes the integration branch, then merges the release PR. |
+| [`update-deps`](skills/repo/update-deps/SKILL.md)       | Updates a repo's dependencies via its own updater — minor by default, honouring gates and pins.                    |
 
 ### Tracked work
 
