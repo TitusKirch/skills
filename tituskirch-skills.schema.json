@@ -439,7 +439,7 @@
             },
             "priority": {
               "enum": ["none", "low", "medium", "high", "urgent", null],
-              "description": "Default priority."
+              "description": "Default priority, seeding Linear's native priority field on the create call. Named here, numeric there: the call takes 0 none, 1 urgent, 2 high, 3 medium, 4 low, so the word is mapped across and the scale runs opposite to it. Absent or none sends nothing (Linear stores 0 either way). Priority is a field on Linear, never a label: the priority: label group is a GitHub convention (see work.priorityLabels) and is not reproduced on Linear, so its absence from a Linear label catalog is not a finding."
             },
             "defaultState": {
               "type": ["string", "null"],

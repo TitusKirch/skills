@@ -24,16 +24,17 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two trackers (GitHub
 }
 ```
 
-| Key                                            | Effect                                                                                                                                                                                                                     |
-| :--------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `issue.tracker`                                | `github` or `linear` — the active tracker (set by setup, never guessed silently)                                                                                                                                           |
-| `issue.language`                               | title/body language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`                                                                                                                  |
-| `issue.title.convention`                       | `plain` (default — most trackers) or `conventional` (`type: subject`)                                                                                                                                                      |
-| `issue.instructions`                           | free-text wording guidance for the title/body — additive, never overrides tracker rules or guardrails                                                                                                                      |
-| `issue.linear.team`                            | **required to create on Linear** (schema-enforced when `issue.tracker` is `linear`) — a human name/key (e.g. `"ENG"`); resolved to the team id via the cache                                                               |
-| `issue.linear.{project,priority,defaultState}` | optional Linear defaults (`priority`: none/low/medium/high/urgent)                                                                                                                                                         |
-| `issue.template`                               | forces one issue template on **either tracker** — a repo-relative **path** to the file, not a template name; absent **or** an explicit `null`, the skill chooses by reading them (see [Issue templates](#issue-templates)) |
-| `issue.labels.exclude`                         | glob patterns (e.g. `stack:*`, `autorelease:*`, `dependencies`) for catalog labels the agent must never apply                                                                                                              |
+| Key                                   | Effect                                                                                                                                                                                                                     |
+| :------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `issue.tracker`                       | `github` or `linear` — the active tracker (set by setup, never guessed silently)                                                                                                                                           |
+| `issue.language`                      | title/body language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`                                                                                                                  |
+| `issue.title.convention`              | `plain` (default — most trackers) or `conventional` (`type: subject`)                                                                                                                                                      |
+| `issue.instructions`                  | free-text wording guidance for the title/body — additive, never overrides tracker rules or guardrails                                                                                                                      |
+| `issue.linear.team`                   | **required to create on Linear** (schema-enforced when `issue.tracker` is `linear`) — a human name/key (e.g. `"ENG"`); resolved to the team id via the cache                                                               |
+| `issue.linear.priority`               | seeds Linear's **native priority field** on create — `none`/`low`/`medium`/`high`/`urgent`, mapped to the number the call takes ([Tracker — Linear](#tracker--linear-mcp)). Never a label, and never applied on GitHub     |
+| `issue.linear.{project,defaultState}` | optional Linear defaults                                                                                                                                                                                                   |
+| `issue.template`                      | forces one issue template on **either tracker** — a repo-relative **path** to the file, not a template name; absent **or** an explicit `null`, the skill chooses by reading them (see [Issue templates](#issue-templates)) |
+| `issue.labels.exclude`                | glob patterns (e.g. `stack:*`, `autorelease:*`, `dependencies`) for catalog labels the agent must never apply                                                                                                              |
 
 `issue.template` sits at the `issue.*` level, not under `issue.github`, because the templates it points at are read on **both** trackers ([Issue templates](#issue-templates)). `issue.github.template` is the older location and is still read as a fallback when `issue.template` is **absent**, so an existing config keeps working; it is deprecated, GitHub-only by its nesting, and setup writes the new key.
 
@@ -129,20 +130,23 @@ Third-party text — an issue body, a review, a comment, a handoff document, an 
 Enumerable tracker data, fetched once and reused so the agent can pick labels/state/team contextually.
 
 - **Location** — `$(git rev-parse --git-common-dir)/tituskirch-skills/issue`. Owner-namespaced directory in the common git dir (shared across branches/worktrees, never tracked). Create it before writing (`mkdir -p`). **JSON** — this skill already depends on `jq`, and the catalogs are structured (unlike the flat `conventions` cache the commit/PR skills share).
-- **Validity** — reuse when younger than ~3 days **and** `tracker` is unchanged. Refetch when missing, stale, the tracker changed, or the user passes `--refresh` / `/issue --refresh`.
+- **Validity** — reuse when younger than ~3 days **and** `tracker` is unchanged **and**, on Linear, the cached `team` still matches the configured one. Refetch when missing, stale, the tracker or team changed, or the user passes `--refresh` / `/issue --refresh`.
 - **Transparency** — label staleness in the plan header (`Catalogs (cached, 2d ago): …`).
 
 ```jsonc
 {
   "detected_at": 1718900000,
   "tracker": "github",
+  "team": null, // Linear — the team the catalog below was fetched for; null on GitHub
   "labels": [{ "name": "bug", "description": "…", "color": "d73a4a" }],
-  "teams": [{ "id": "…", "name": "Engineering", "key": "ENG" }], // Linear — id resolves issue.linear.team
+  "teams": [{ "id": "…", "name": "Engineering", "key": "ENG" }], // Linear — workspace-wide; id resolves issue.linear.team
   "projects": [{ "id": "…", "name": "Platform" }],
-  "states": [{ "id": "…", "name": "Todo", "type": "unstarted" }] // Linear workflow states
+  "states": [{ "id": "…", "name": "Todo", "type": "unstarted" }] // Linear — that team's workflow states
   // extensible: members, milestones, …
 }
 ```
+
+**One team's catalog on Linear, the repo's on GitHub — `team` is what says which.** GitHub labels are repo-local, so a flat list is the whole truth and `team` stays `null`. Linear's are not: workspace labels are shared by every team, team labels belong to one, and **a label carries no team of its own** — the only thing that says which team a label is usable on is the query it came from. `list_issue_labels` takes an optional `team` and `list_issue_statuses` **requires** one, so fetch both **for the team `issue.linear.team` resolves to** and record that team in `team`. A workspace-wide listing caches labels this team's create call would be unable to apply, and — the more misleading direction — makes a label the team really does have look absent. `teams` is the one array that stays workspace-wide; it is what resolves the team in the first place.
 
 Purpose: **read the catalog and choose contextually** — labels are deliberately not pinned in the config; the agent only skips whatever `issue.labels.exclude` lists.
 
@@ -200,7 +204,7 @@ A `"bug" → "🐛 Bug report"` table in the config would be a **second copy** o
 
 **Resolve a template's labels against the catalog before the write — on both trackers.** A template _names_ labels; it does not create them, and a name it declares may not exist in the repo at all. Match every declared name against the cached catalog first, apply the ones that resolve, **name the ones that don't in the plan**, and never create a label to satisfy a template.
 
-This is not a nicety on GitHub — it is the difference between filing the issue and losing it. `gh` resolves each `--label` to a label id before the write and **aborts the entire call** on an unknown name, after the human has already approved the plan: `gh issue edit <n> --add-label zzz` answers `'zzz' not found` and changes nothing (verified against `gh` 2.92; `--label` on create goes through the same metadata resolution). This repo is the live example — its three templates declare `triage` and `enhancement`, neither of which is in its label catalog. On Linear labels are additionally **team-scoped**, so resolve against the team's catalog rather than the repo's.
+This is not a nicety on GitHub — it is the difference between filing the issue and losing it. `gh` resolves each `--label` to a label id before the write and **aborts the entire call** on an unknown name, after the human has already approved the plan: `gh issue edit <n> --add-label zzz` answers `'zzz' not found` and changes nothing (verified against `gh` 2.92; `--label` on create goes through the same metadata resolution). This repo is the live example — its three templates declare `triage` and `enhancement`, neither of which is in its label catalog. On Linear labels are additionally **team-scoped**, so resolve against the team's catalog rather than the repo's — which is exactly the catalog the [cache](#catalog-cache) holds, fetched for the configured team.
 
 **`title:` and `assignees:` are settled the same way as `labels:`.** The rule is that what a template declares is already decided, and it does not stop at labels — both formats can declare all three. A `title:` is a **prefix** the tracker pre-fills the field with (`"[Bug]: "`), never a whole title: keep it verbatim and write the drafted title after it, with `issue.title.convention` governing only the part that is the skill's. `assignees:` are applied as declared and resolved exactly like labels — an account `gh` cannot resolve aborts the same call, so an unresolvable one is named in the plan and dropped, never invented. Both appear in the plan as fields, like any other.
 
@@ -259,11 +263,12 @@ The Linear MCP server's registered name varies per setup (`mcp__claude_ai_Linear
 - **Auth/availability** — confirm the Linear MCP tools are present and authenticated. If not authenticated, call the server's `authenticate` tool / point the user to it, then continue.
 - **Tools (generic names)** — `list_teams`, `list_projects`, `list_issue_labels`, `list_issue_statuses`, `save_issue`, search/`list_issues`. **Create and update are one tool**: `save_issue` creates when no issue `id` is given and updates the issue when one is — there is no separate `create_issue`/`update_issue`. Discover the actual names at runtime rather than assuming this list; where this file says "the create call", it means `save_issue` without an `id`.
 - **Team is required** to create — resolve `issue.linear.team` (name/key) to its id via the cached `teams`.
+- **Priority is a field, not a label.** The create call takes `priority` as a **number**, not a name, and the scale runs opposite to the words — `0` none, `1` urgent, `2` high, `3` medium, `4` low (the parameter's own documented range). Seed it from `issue.linear.priority` and map the word across (`urgent` → `1`, `low` → `4`); absent, or `none`, means send nothing — Linear stores `0` either way. **The `priority:` label group is GitHub's way of saying the same thing** (`work.priorityLabels`, the ladder the work loop orders GitHub issues by) and is deliberately not mirrored here: never resolve a priority against the label catalog, never create one, and never list a missing `priority:` group among the plan's unresolved items. There is nothing there to resolve — the field already carries it. `work-implement` draws the same line from the other side, ignoring the GitHub ladder on Linear.
 - **Repo-scope label** — when `work.labels.repo` is a string, apply it on **every** create (alongside the contextual labels) so `work-implement-queue` can scope this repo's issues on a shared Linear team; GitHub needs none (repo-local).
 - **Repo templates apply here too** — the repo's `.github/ISSUE_TEMPLATE/` files are read on Linear exactly as on GitHub ([Issue templates](#issue-templates)); that directory is a repo convention, not a GitHub feature, and the tracker does not get to change the body's shape. Nothing is filed template-less on Linear that would have used a template on GitHub.
 - **Linear's own server-side templates are not reached** — deliberately. The MCP exposes none: there is no template-listing tool, and the create call (`save_issue`, above) takes no `template` parameter among its fields, so no code path can request one. Reproducing that structure over Linear's GraphQL API was considered and rejected — a new API surface for something the repo already states in a file both trackers can read.
 - **A team's default template does not overwrite what the API sends.** A Linear default template is a **composer pre-fill**: it puts the template's text into the description field _before_ the issue is submitted — that is how Linear's docs describe it for the in-app composer and for the Slack integration ("that template's text will appear in the description field"). An API-created issue arrives with `description` already set and no composer in the path, so there is nothing to pre-fill and the repo template's body is what is stored. A default template can still apply team-level **properties** (status, labels, priority) server-side; that is a fields effect, not a body one, and it does not collide with the template body. If a stored body ever does come back altered, the repo template is authoritative — report the discrepancy instead of re-drafting to match Linear.
-- **Sub-issues** — set `parentId` on the child create call. Catalogs (teams/projects/labels/states) → cache.
+- **Sub-issues** — set `parentId` on the child create call. Catalogs (teams/projects/labels/states) → cache, labels and states fetched **per team** ([Catalog cache](#catalog-cache)).
 
 > **`allowed-tools` note.** This skill declares `Bash, Read, Grep, Glob` only — no MCP entry. `allowed-tools` accepts exact names only (no wildcards) and does **not** restrict which tools are callable; it only pre-approves the listed ones. The Linear MCP tools therefore remain fully callable, governed by the user's permission settings (they may prompt). Because the server name varies, it cannot be listed reliably anyway — omitting it is correct.
 
@@ -287,7 +292,9 @@ issue plan
 Run: gh issue create --title "Login fails on expired session" --label bug,area:auth --body-file <tmp>
 ```
 
-**Fields, not prose** — labels, milestone, project, assignee and state live in the plan header and are applied via flags / MCP params; never write them into the body, and omit any that are unset (no `No milestone` / `Labels: none` lines).
+**Fields, not prose** — labels, priority, milestone, project, assignee and state live in the plan header and are applied via flags / MCP params; never write them into the body, and omit any that are unset (no `No milestone` / `Labels: none` lines).
+
+**Priority is previewed in the tracker's own terms.** On Linear it earns its own line carrying both halves of the mapping — `priority: high (2)` — so a wrong number is caught before the write rather than after it. On GitHub it is just one of the `labels` lines, because there it is just a label. Neither tracker is ever shown in the other's form.
 
 **Anything a template declares but the tracker cannot resolve gets its own `!` line** — the label or assignee, and that it was skipped. The `Run:` command must be the command that will actually be sent, so a name that is not going into it cannot be listed as though it were. Silently promising a label the write would have rejected is the one failure the preview exists to prevent.
 
