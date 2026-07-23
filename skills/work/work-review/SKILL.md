@@ -15,7 +15,7 @@ Take **one** issue that an implementer pushed and **review it** — the stateles
 
 This skill is the **review half** of the two-loop workflow. It **never implements, edits, commits, or merges** — its only outputs are a **verdict** (a label move plus a comment): `done`, `changes-requested`, `needs human`, or `blocked`.
 
-**Opted out?** If the repo config sets `work` to `false`, all `work-*` skills are **disabled** — stop and tell the user they are turned off in `.tituskirch-skills.json`. Check `jq -e '.work == false'` before any action. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
+**Opted out?** If the repo config sets `work` to `false`, all `work-*` skills are **disabled** — stop and tell the user they are turned off in `.tituskirch-skills.json`. Check `.work == false` on the resolved config before any action. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
 ## Workflow
 

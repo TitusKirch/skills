@@ -4,7 +4,7 @@ Mechanics for the [`merge-deps`](SKILL.md) skill. **GitHub (`gh`) is the only fo
 
 ## Config
 
-`mergeDeps.*` in the repo-root `.tituskirch-skills.json`, or `mergeDeps: false` to disable the skill for the repo. Resolution per setting: **config → detected → built-in default**. Read with `jq`. Every key, type, enum and default lives once in the repo-root [`tituskirch-skills.schema.json`](../../../tituskirch-skills.schema.json) — the single source of truth.
+`mergeDeps.*` in the repo-root `.tituskirch-skills.json`, or `mergeDeps: false` to disable the skill for the repo. Resolution per setting: **config → detected → built-in default**. Read with `jq`. Every key, type, enum and default lives once in the repo-root [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json) — the single source of truth.
 
 ```json
 {
@@ -29,13 +29,45 @@ Also reads the shared root `language` (report wording).
 **`mergeDeps.verify` falls back to the root `verify`.** Both answer the same question — "does this repo still pass its own checks?" — and a repo that has already written one should not write it twice. A repo needing a different command for dependency updates (a full install, an audit) sets `mergeDeps.verify` explicitly.
 
 ```bash
-if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
-  verify=$(jq -er '.mergeDeps.verify // .verify // empty' "$config" 2>/dev/null) || verify=
-fi
+resolved=$(sh "$skill/templates/resolve-config.sh") || resolved=
+[ -n "$resolved" ] || resolved='{}'
+verify=$(printf '%s' "$resolved" | jq -er '.mergeDeps.verify // .verify // empty' 2>/dev/null) || verify=
 [ -n "$verify" ] || verify=   # no command configured or config unreadable → detect, or skip the gate
 ```
 
-`jq` is not guaranteed to exist ([reading the config](../../README.md#reading-the-config)); an unreadable config resolves the same as an absent one.
+<skills-config>
+
+### Reading the config
+
+The config is `.tituskirch-skills.json` at the **consuming repo's** root — committed, optional, and shared by every TitusKirch skill. Absent means detection and built-in defaults, never an error. Its keys, types and defaults are defined by [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json).
+
+**Resolve it before reading it.** A repo may define `profiles` — named overlays for an execution context, so a remote runner can open pull requests where a local session commits directly. [`templates/resolve-config.sh`](templates/resolve-config.sh) prints the resolved config, and every skill ships the same copy, so they all see the same values:
+
+```sh
+# $skill is this skill's own directory — the one this file was loaded from,
+# not the repo being worked on. The resolver reads the repo's config itself.
+resolved=$(sh "$skill/templates/resolve-config.sh") || resolved=
+[ -n "$resolved" ] || resolved='{}'
+```
+
+The profile comes from `TITUSKIRCH_SKILLS_PROFILE`, falling back to `ci` when `CI` holds a truthy value, and to no profile otherwise. An unset or unknown name yields the base config unchanged.
+
+**The merge is a rule, not just a command.** Objects merge recursively at any depth, arrays and scalars are replaced rather than concatenated, an explicit `null` sets null rather than deleting a key, and `profiles` is dropped from the result. Any path that resolves the config by other means owes the same semantics.
+
+**`jq` may not be installed.** It ships preinstalled on none of Windows, macOS or Linux, and `gh`'s built-in `--jq` is no substitute — that filters API responses, it cannot read a local file. `resolve-config.sh` exits `2` in that case. Do **not** fall through to defaults: `Read` the file, apply the merge rule above, and carry on with the repo's real values. Nothing else is needed — no Node, no Python.
+
+**Guard every read, resolve into a variable, then use it.** Never let a substitution reach a command flag directly — `jq -r` prints the literal string `null` for a missing key, and an empty value is silently ignored by some tools rather than matching nothing:
+
+```sh
+value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) || value=
+[ -n "$value" ] || value=<documented default>
+```
+
+**Tell "off" apart from "absent".** `// empty` collapses `false` and a missing key into the same empty string, which turns a deliberately disabled mechanic into its default. Where a key may be `false`, resolve it as `select(. != null) | tostring` and test for the string afterwards.
+
+**Snippets are POSIX `sh`.** No `[[ ]]`, no arrays, no `<<<`, and nothing that differs between GNU and BSD coreutils — the shell is whatever the user runs.
+
+</skills-config>
 
 ## Merge modes
 

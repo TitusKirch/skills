@@ -17,7 +17,7 @@ Take **one** tracked issue, implement it, and push it so a **different** agent c
 
 This skill is the **implement half** of a two-loop workflow: it builds and pushes; [`work-review`](../work-review/SKILL.md) then reviews the pushed work. It **never reviews its own output** and never sets `done` — its terminal outputs are `review` (handed to the review loop) or `blocked`.
 
-**Opted out?** If the repo config sets `work` to `false`, this skill is **disabled** for the repo (as are the other `work-*` skills) — stop immediately and tell the user the work skills are turned off in `.tituskirch-skills.json`. An _absent_ `work` block is **not** disabled (it falls back to defaults). Check `jq -e '.work == false'` before any action — and before indexing `.work.*`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
+**Opted out?** If the repo config sets `work` to `false`, this skill is **disabled** for the repo (as are the other `work-*` skills) — stop immediately and tell the user the work skills are turned off in `.tituskirch-skills.json`. An _absent_ `work` block is **not** disabled (it falls back to defaults). Check `.work == false` on the resolved config before any action — and before indexing `.work.*`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
 ## Workflow
 

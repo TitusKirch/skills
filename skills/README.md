@@ -47,7 +47,7 @@ Instructions for Claude when this skill is invoked. Be specific about:
 ### Field notes
 
 - **`name`** — kebab-case, matches the folder name. Used as the invocation slug.
-- **`summary`** _(optional)_ — short one-liner for the root README skills table; falls back to the first clause of `description`. Four artifacts are generated from the skill folders via `pnpm skills:sync` (CI runs `pnpm skills:check`), so none is hand-edited: the root README table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, and `skills.sh.json`'s groupings.
+- **`summary`** _(optional)_ — short one-liner for the root README skills table; falls back to the first clause of `description`. Five artifacts are generated from the skill folders via `pnpm skills:sync` (CI runs `pnpm skills:check`), so none is hand-edited: the root README table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, `skills.sh.json`'s groupings, and the [mirrored config contract](#reading-the-config--mirrored-not-linked).
 - **`description`** — kept tight; the better the description, the more reliably Claude picks the right skill.
 - **`allowed-tools`** _(optional)_ — restrict the skill to a subset of tools. Omit to inherit the caller's toolset.
 
@@ -86,29 +86,26 @@ Resolution per setting: **config → native/detected → built-in default** — 
 
 Auto-detected data (commit conventions, issue catalogs) is cached separately under `tituskirch-skills/` in the git common dir — never committed, TTL-disposable.
 
-## Reading the config
+## Reading the config — mirrored, not linked
 
-The contract every skill's config recipe follows. Each skill still spells the pattern out in its own `REFERENCE.md` — a skill travels without this file, so it cannot lean on it.
+**A skill may not link out of its own folder.** It can be installed on its own, so a link to another skill, to this file, or to anything at the repo root resolves to nothing on the installed copy. Whatever several skills need, each one has to carry.
 
-**`jq` may not be there.** It ships preinstalled on none of Windows, macOS or Linux, and `gh`'s built-in `--jq` is no substitute — that filters API responses, it cannot read a local file. So every read is guarded, and a missing `jq` resolves exactly like a missing config: to the documented default.
+So the config contract is written once in [`scripts/config-block.md`](../scripts/config-block.md) and mirrored by `pnpm skills:sync` into every skill that opts in by carrying a `<skills-config>` element — together with [`scripts/resolve-config.sh`](../scripts/resolve-config.sh), copied to that skill's `templates/`. `pnpm skills:check` fails the moment a copy drifts, so the duplication is mechanical rather than something to maintain.
 
-```bash
-config="$(git rev-parse --show-toplevel)/.tituskirch-skills.json"
-if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
-  base=$(jq -er '.pr.base // empty' "$config" 2>/dev/null) || base=
-fi
-[ -n "$base" ] || base=<documented default>
+**The boundary is a tag, not an HTML comment.** A `SKILL.md` is a prompt, so where a block ends should be visible to the model reading it rather than hidden in a comment it may skip. It carries **no attributes** — naming its source file or the command that writes it would point at things the installed skill does not have, the same mistake as linking out. The tag is matched by name, so an attribute added later still cannot orphan a committed block:
+
+```markdown
+<skills-config>
+…
+</skills-config>
 ```
 
-**Never let an unresolved substitution reach a command flag.** `--label "$(jq -r …)"` is the shape to avoid: `jq -r` prints the literal string `null` for a missing key, and `gh` **drops an empty `--label` silently**, returning every open issue rather than none. Resolve into a variable, apply the default, then use it.
+Two consequences worth knowing before editing a skill:
 
-**Distinguish "off" from "absent".** A `false` value means the mechanic is turned off; an absent key means use the default. `// empty` collapses both, so where a key is `labelOrOff` use `select(. != null) | tostring` and test for the string `false` afterwards.
+- **Never edit a mirrored block or a skill's `resolve-config.sh`** — edit the source in `scripts/` and re-run the sync, exactly as with the generated tables.
+- **Reaching for a cross-skill link is the signal** that the content belongs in the mirrored block instead. The existing cross-skill links predate this rule and are tracked separately.
 
-**The opt-out check fails open by construction.** `jq -e '.commit == false'` exits non-zero when `jq` is absent, when the file is absent, and when the value simply is not `false` — three causes, one outcome. That outcome is correct (absent config is not opt-out), but it is not evidence the config was read. Never report "the skill is enabled" as a finding from it.
-
-**The fallback for no `jq` is the agent, not another tool.** `Read` the config and parse the JSON directly. Node is unavailable in the PHP and Rust repos these skills run in, and Python is no safer.
-
-**Snippets are POSIX `sh`.** No `[[ ]]`, no arrays, no `<<<`, no `mapfile`, and nothing that differs between GNU and BSD coreutils (`date +%s` is fine; `sed -i` and `stat -c` are not). The shell is whatever the user runs — often `zsh`, where an unquoted glob in an argument is expanded rather than passed through.
+The resolver exists because a repo may define **profiles** — named overlays merged onto the base config for an execution context, so a remote runner can open pull requests where a local session commits directly. Every skill running the same script is what makes them agree on the result.
 
 ## Adding a new skill
 

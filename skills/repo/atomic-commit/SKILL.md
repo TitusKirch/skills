@@ -13,7 +13,7 @@ allowed-tools:
 
 Turn the uncommitted work from a session into a clean series of **atomic Conventional Commits**. The skill reads the repo's own conventions, splits the changes into the smallest sensible commits, and either commits them after your confirmation — or, when you ask it not to, just shows exactly what would go where.
 
-**Opted out?** If the repo config sets `commit` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the atomic-commit skill is turned off in `.tituskirch-skills.json`. An _absent_ `commit` block is **not** disabled (it falls back to detection/defaults). Check `jq -e '.commit == false'` before any action — and before indexing `.commit.*`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
+**Opted out?** If the repo config sets `commit` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the atomic-commit skill is turned off in `.tituskirch-skills.json`. An _absent_ `commit` block is **not** disabled (it falls back to detection/defaults). Check `.commit == false` on the resolved config before any action — and before indexing `.commit.*`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
 ## Workflow
 

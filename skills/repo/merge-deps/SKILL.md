@@ -13,7 +13,7 @@ allowed-tools:
 
 Work the **Dependabot queue** — read the open Dependabot pull requests and the repo's Dependabot alerts, establish which updates are actually safe, and merge the ones the repo has opted into. **Manual invocation only**: nothing here fires on its own, and every merge waits for a human. The forge is chosen by config (the root `forge` key); **GitHub (via `gh`) is the only forge implemented in v1**.
 
-**Opted out?** If the repo config sets `mergeDeps` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the merge-deps skill is turned off in `.tituskirch-skills.json`. An _absent_ `mergeDeps` block is **not** disabled; it means [report-only](REFERENCE.md#merge-modes). Check `jq -e '.mergeDeps == false'` before any action. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
+**Opted out?** If the repo config sets `mergeDeps` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the merge-deps skill is turned off in `.tituskirch-skills.json`. An _absent_ `mergeDeps` block is **not** disabled; it means [report-only](REFERENCE.md#merge-modes). Check `.mergeDeps == false` on the resolved config before any action. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
 ## Workflow
 
