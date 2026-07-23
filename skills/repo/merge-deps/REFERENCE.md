@@ -11,18 +11,20 @@ Mechanics for the [`merge-deps`](SKILL.md) skill. **GitHub (`gh`) is the only fo
   "forge": "github",
   "mergeDeps": {
     "merge": "grouped",
+    "confirm": "major",
     "verify": "pnpm check",
     "cap": 5
   }
 }
 ```
 
-| Key                | Effect                                                                                                 |
-| :----------------- | :----------------------------------------------------------------------------------------------------- |
-| `forge` _(root)_   | Forge, a shared root key read by all forge-aware skills. v1 supports only `github`. Default: `github`. |
-| `mergeDeps.merge`  | What may be merged after confirmation — see [Merge modes](#merge-modes). Default: `false`.             |
-| `mergeDeps.verify` | Command run against the PR's own head before merging. Default: the root `verify`, else nothing.        |
-| `mergeDeps.cap`    | Max PRs merged per run. Default: 5.                                                                    |
+| Key                 | Effect                                                                                                 |
+| :------------------ | :----------------------------------------------------------------------------------------------------- |
+| `forge` _(root)_    | Forge, a shared root key read by all forge-aware skills. v1 supports only `github`. Default: `github`. |
+| `mergeDeps.merge`   | Ceiling on what may be merged — see [Merge modes](#merge-modes). Default: `false`.                     |
+| `mergeDeps.confirm` | Which opted-in merges still wait for a human — see [Confirmation](#confirmation). Default: `"major"`.  |
+| `mergeDeps.verify`  | Command run against the PR's own head before merging. Default: the root `verify`, else nothing.        |
+| `mergeDeps.cap`     | Max PRs merged per run. Default: 5.                                                                    |
 
 Also reads the shared root `language` (report wording).
 
@@ -112,7 +114,20 @@ Third-party text — an issue body, a review, a comment, a handoff document, an 
 
 **`false` is the default because merging is the consequential act.** Same reasoning as `release.promote`: the only mode that touches nothing is what a repo gets until it says otherwise. Reading the queue is free; merging is not. A repo that wants unattended-after-confirmation merges writes a `mergeDeps` block.
 
-**A mode is a ceiling, never a trigger.** `"all"` does not mean "merge everything" — it means nothing is excluded _by mode_. Every PR still has to clear [assessment](#assessment-checklist) and the human still has to confirm.
+**A mode is a ceiling, never a trigger.** `"all"` does not mean "merge everything" — it means nothing is excluded _by mode_. Every PR still has to clear [assessment](#assessment-checklist); whether it then merges on the standing opt-in or waits for an explicit yes is [`mergeDeps.confirm`](#confirmation)'s call, and a major always waits.
+
+## Confirmation
+
+`mergeDeps.merge` says **what may merge**; `mergeDeps.confirm` says **which of those still need a human yes**. They are independent — the mode is the ceiling, `confirm` is the trigger the mode deliberately is not.
+
+| `confirm`             | Waits for an explicit per-PR yes                                                                                                                                                                             |
+| :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `"major"` _(default)_ | **Only major / semver-breaking bumps.** The low-risk tier the mode allows — patch, minor, and the grouped minor+patch PR — merges on the standing opt-in once it clears [assessment](#assessment-checklist). |
+| `"always"`            | **Every merge.** The strict prior behaviour, for a repo that wants a hand on each one.                                                                                                                       |
+
+**Why the default loosens.** Setting `mergeDeps.merge` is already the opt-in — a standing, committed "yes" to merging that class. Asking again for every routine patch/minor/grouped PR that has already passed [verify](SKILL.md#3-assess--green-is-a-claim-you-have-to-earn) is a second yes that buys little: the real safety gate is the local verify, not the keystroke. So the low-risk tier rides the opt-in, and the explicit confirmation is spent where it earns its keep — a **major never auto-merges**, because a green check run is not evidence a semver-breaking change is safe.
+
+**What `confirm` cannot do.** It governs only the low-risk tier; it can neither raise the [ceiling](#merge-modes) — a mode still excludes what it excludes, so a major under `"grouped"` is held whatever `confirm` says — nor lower a gate: an `unknown` check list, a failed verify or an undeterminable update type still holds the PR. And the plan/report is shown first in every mode; `"always"` stays available for a repo that wants the old hand-on-every-merge posture.
 
 ## The two bases
 

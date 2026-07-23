@@ -1,7 +1,7 @@
 ---
 name: merge-deps
 summary: Triages a repo's open Dependabot PRs, verifying each on its own branch before merging.
-description: Triages and merges a repo's open Dependabot pull requests, selected strictly by author (app/dependabot) so no human's and no other bot's PR is ever touched. Verifies each update on its own branch first, because a Dependabot PR into an integration branch often runs no meaningful CI at all — and an empty check list is never read as green. Merging is opt-in per repo via mergeDeps.merge and always waits for confirmation. Forge chosen per-repo by config (root forge key); v1 is GitHub via the gh CLI. Invoke manually only — this skill never fires proactively and never opens a pull request. Use when the user asks to triage, review or merge Dependabot PRs or dependency updates, mentions the Dependabot queue, dependency bumps or Dependabot alerts, or says things like "merge the dependabot PRs", "check the dependency updates", "Dependabot PRs mergen".
+description: Triages and merges a repo's open Dependabot pull requests, selected strictly by author (app/dependabot) so no human's and no other bot's PR is ever touched. Verifies each update on its own branch first, because a Dependabot PR into an integration branch often runs no meaningful CI at all — and an empty check list is never read as green. Merging is opt-in per repo via mergeDeps.merge; once opted in, the low-risk tier merges on that standing opt-in and only major bumps wait for a human, with mergeDeps.confirm set to always to restore a confirmation on every merge. Forge chosen per-repo by config (root forge key); v1 is GitHub via the gh CLI. Invoke manually only — this skill never fires proactively and never opens a pull request. Use when the user asks to triage, review or merge Dependabot PRs or dependency updates, mentions the Dependabot queue, dependency bumps or Dependabot alerts, or says things like "merge the dependabot PRs", "check the dependency updates", "Dependabot PRs mergen".
 allowed-tools:
   - Bash
   - Read
@@ -11,7 +11,7 @@ allowed-tools:
 
 # merge-deps
 
-Work the **Dependabot queue** — read the open Dependabot pull requests and the repo's Dependabot alerts, establish which updates are actually safe, and merge the ones the repo has opted into. **Manual invocation only**: nothing here fires on its own, and every merge waits for a human. The forge is chosen by config (the root `forge` key); **GitHub (via `gh`) is the only forge implemented in v1**.
+Work the **Dependabot queue** — read the open Dependabot pull requests and the repo's Dependabot alerts, establish which updates are actually safe, and merge the ones the repo has opted into. **Manual invocation only**: nothing here fires on its own; merging is opt-in, and a **major bump always waits for a human**. The forge is chosen by config (the root `forge` key); **GitHub (via `gh`) is the only forge implemented in v1**.
 
 **Opted out?** If the repo config sets `mergeDeps` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the merge-deps skill is turned off in `.tituskirch-skills.json`. An _absent_ `mergeDeps` block is **not** disabled; it means [report-only](REFERENCE.md#merge-modes). Check `.mergeDeps == false` on the resolved config before any action. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
@@ -55,11 +55,12 @@ Per selected PR, gather facts. **Never merge on a heuristic.**
 
 ### 4. Merge — directly, with `gh pr merge`
 
-Gated by `mergeDeps.merge` ([modes](REFERENCE.md#merge-modes)) and, always, by confirmation. Default is `false` — **report-only**; merging is opt-in.
+Gated by `mergeDeps.merge` ([modes](REFERENCE.md#merge-modes)); default `false` — **report-only** — so merging is opt-in. Once opted in, `mergeDeps.confirm` ([when it asks](REFERENCE.md#confirmation)) decides which merges still wait for a human: a **major always does**; the low-risk tier the mode allows (patch / minor / grouped) rides the opt-in unless `confirm` is `"always"`.
 
+- **Confirm where it counts, not on every merge.** At the default `mergeDeps.confirm` of `"major"`, a patch/minor/grouped PR that has cleared [assessment](REFERENCE.md#assessment-checklist) merges on the standing opt-in — no second yes — while a major waits for an explicit one. `"always"` restores a confirmation on every merge. The plan/report is shown first either way; `confirm` never raises the [ceiling](REFERENCE.md#merge-modes) or lowers a gate.
 - **Merge directly; never by comment.** GitHub **removed** the `@dependabot merge` / `squash and merge` comment commands on 27 January 2026. The comment still posts, nothing listens, and nothing errors — a silent no-op that reads as success ([why](REFERENCE.md#decisions)). `@dependabot rebase` and `recreate` are unaffected.
 - **The merge method comes from the base's ruleset, never a hardcoded default** — read `allowed_merge_methods` for the PR's own `baseRefName`, the same source `release` reads; unrestricted → prefer squash, keeping one `build(deps)` commit per group. Add `--delete-branch`: the branch close-out was Dependabot's and is now this skill's ([recipe](REFERENCE.md#gh--git-recipes)).
-- **The merge is the authenticated user's act now, not a bot's.** Nothing stands between the confirmation and the merged commit, which is exactly why step 3's local verify is **the** gate and `mergeDeps.merge` defaults to `false`.
+- **The merge is the authenticated user's act, not a bot's** — and for the auto-merged low-risk tier nothing stands between assessment and the merged commit at all. That is exactly why step 3's local verify is **the** gate, `mergeDeps.merge` defaults to `false`, and a **major never auto-merges**: a green check run is not evidence a semver-breaking change is safe.
 - **Merging one PR stales the rest — drive the rebase.** Dependabot used to cascade that itself. After each merge, `@dependabot rebase` every remaining selected PR on that base and re-read mergeability before the next one ([cascading rebase](REFERENCE.md#cascading-rebase)).
 - **Conflicts** → `@dependabot rebase` and report it. **Never resolve a dependency conflict by hand** — the lockfile is Dependabot's to regenerate.
 - **Held back is an outcome, not a failure.** A major bump under `"grouped"`, an undeterminable update type, a red verify, an `unknown` check list — report each with its reason and move on.
@@ -88,7 +89,7 @@ The endpoint needs `security_events` scope — no access → say the alerts coul
 
 - **Dependabot-authored PRs only, matched on author.** Never any other PR, under any circumstance, for any reason. Not a comment, not a label, not a mention in the report.
 - **Manual invocation only.** Never fire proactively — not on a push, not because bumps "look due". Someone asks, or this skill does nothing.
-- **Plan first; merge only after confirmation.** Plan-only triggers ("nur den plan", "dry run", "just show me", "nicht mergen") → print the plan and the exact `gh` commands, then stop.
+- **Plan first; then merge only what the config authorizes.** The plan/report is always shown before any merge. A **major bump waits for an explicit confirmation** even when opted in; the low-risk tier merges on the standing opt-in unless `mergeDeps.confirm` is `"always"`. Plan-only triggers ("nur den plan", "dry run", "just show me", "nicht mergen") → print the plan and the exact `gh` commands, then stop.
 - **Never opens a PR.** In any mode. A missing Dependabot PR is a finding to report, never a gap to fill by hand.
 - **An empty check list is never green.** Absence of a verdict is `unknown`, and `unknown` never merges.
 - **Never resolve conflicts, never edit a lockfile, never force-push a Dependabot branch.** Hand it back with `@dependabot rebase`.

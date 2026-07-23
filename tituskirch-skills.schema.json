@@ -348,7 +348,12 @@
         "merge": {
           "enum": [false, "patch", "grouped", "all"],
           "default": false,
-          "description": "Ceiling on what may be merged, once the human confirms; a permission ladder, narrowest first. false = triage and report only, never comment or merge; merging is opt-in and this is the default. \"patch\" = patch-level updates only. \"grouped\" = Dependabot's grouped minor+patch PRs, plus everything \"patch\" allows. \"all\" = nothing excluded by mode, majors included. A mode is a ceiling, never a trigger: every PR must still clear assessment and confirmation. Default: false."
+          "description": "Ceiling on what may be merged; a permission ladder, narrowest first. false = triage and report only, never comment or merge; merging is opt-in and this is the default. \"patch\" = patch-level updates only. \"grouped\" = Dependabot's grouped minor+patch PRs, plus everything \"patch\" allows. \"all\" = nothing excluded by mode, majors included. A mode is a ceiling, never a trigger: every PR must still clear assessment, and mergeDeps.confirm decides which then wait for a human. Default: false."
+        },
+        "confirm": {
+          "enum": ["major", "always"],
+          "default": "major",
+          "description": "Once merging is opted in via merge, which merges still wait for an explicit per-PR confirmation. \"major\" (default) = only major / semver-breaking bumps; the low-risk tier the mode allows (patch, minor, grouped minor+patch) merges on the standing opt-in once it clears assessment, so an opted-in repo is not asked twice for routine updates. \"always\" = every merge waits, the strict prior behaviour. Independent of merge: merge is the ceiling on what may merge at all, confirm is which of those still need a human yes. The plan is always shown first regardless, a major never auto-merges, and confirm can neither raise the ceiling nor lower a gate — an unknown check list, a failed verify or an undeterminable update type still holds the PR. Default: \"major\"."
         },
         "verify": {
           "type": "string",
