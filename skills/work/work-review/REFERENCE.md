@@ -1,16 +1,16 @@
 # work-review / work-review-queue — Reference
 
-Mechanics for [`work-review`](SKILL.md) (the unit) and [`work-review-queue`](../work-review-queue/SKILL.md) (the drain) — the **review half** of the two-loop agent workflow. Shares the config, catalog cache and tracker recipes with [`work-implement`](../work-implement/REFERENCE.md); this file covers what is review-specific.
+Mechanics for [`work-review`](SKILL.md) (the unit) and `work-review-queue` (the drain) — the **review half** of the two-loop agent workflow. Shares the config, catalog cache and tracker recipes with `work-implement`; this file covers what is review-specific.
 
 ## Principle
 
 > **The reviewer is independent and read-only.** A different agent than the implementer, with fresh context, judges the pushed work and writes a **verdict** — a label move plus a comment. It never edits, commits, or merges. State lives in the label, so a crashed review just re-runs (idempotent).
 
-The two loops meet at two hand-off labels: `review` (implement → review) and `changes-requested` (review → implement). See the [lifecycle](../work-implement/REFERENCE.md#lifecycle-state-machine).
+The two loops meet at two hand-off labels: `review` (implement → review) and `changes-requested` (review → implement). See the **Lifecycle state machine** in `work-implement`'s REFERENCE.
 
 ## Config
 
-Reads the shared `work.*` section ([schema](../work-implement/REFERENCE.md#config)). Review-specific keys:
+Reads the shared `work.*` section (schema: **Config** in `work-implement`'s REFERENCE). Review-specific keys:
 
 | Key                            | Effect                                                                                                  |
 | :----------------------------- | :------------------------------------------------------------------------------------------------------ |
@@ -69,7 +69,7 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 Eligible = the issues this loop reviews. Self-select (one) and drain (all, ordered) use the same query.
 
 - **label** — has `work.labels.review`; not already `needs human`/`blocked`.
-- **repo scope / team** — Linear only, as in the [implement selection](../work-implement/REFERENCE.md#selection-query).
+- **repo scope / team** — Linear only, as in the implement loop's own **Selection query**.
 - **order** — by priority (Linear native; GitHub `work.priorityLabels`), then creation order. **No dependency re-sort** — review order is priority only (unlike the implement loop, review has no accumulation to order for).
 
 **Resolve the label before you query with it** — an unresolved substitution reaching `--label` is the failure mode this loop is most exposed to, because `gh` **drops an empty `--label` silently** and returns every open issue instead of none:
@@ -84,7 +84,7 @@ review=$(printf '%s' "$resolved" | jq -er '.work.labels.review | select(. != nul
 test -n "$review" && gh issue list --state open --label "$review" --json number,title,labels,createdAt
 ```
 
-**Never pass `--label "$review"` unguarded.** With `labels.review: false` the label mechanic is off and [the PR's existence is the signal](../work-implement/REFERENCE.md#config) — select on that instead; do **not** fall through to a label query with an empty value.
+**Never pass `--label "$review"` unguarded.** With `labels.review: false` the label mechanic is off and the PR's existence is the signal — select on that instead; do **not** fall through to a label query with an empty value.
 
 ## Round count
 
@@ -152,4 +152,4 @@ Then move the label to `work.labels.changesRequested`. For `done`/`needs human`/
 
 ## Tracker recipes
 
-Label moves mirror the [implement recipes](../work-implement/REFERENCE.md#tracker--github-gh); the reviewer only ever writes the **verdict** labels (`done` / `changesRequested` / `needsHuman` / `blocked`) and their mapped Linear states — never `working`/`ready` (those are the implement loop's).
+Label moves mirror the implement loop's own **Tracker — GitHub (`gh`)** recipes; the reviewer only ever writes the **verdict** labels (`done` / `changesRequested` / `needsHuman` / `blocked`) and their mapped Linear states — never `working`/`ready` (those are the implement loop's).

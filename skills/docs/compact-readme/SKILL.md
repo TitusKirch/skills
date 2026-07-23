@@ -16,7 +16,7 @@ allowed-tools:
 Take an existing README that has grown into a wall of text and tables, and tighten the landing view so a reader reaches the install/run command in ~30 seconds — while preserving every fact by relocating (never deleting) detail into `<details>` blocks and merged paragraphs.
 
 > [!IMPORTANT]
-> **This is the complement to [`write-readme`](../write-readme/SKILL.md).** `write-readme` = scaffold a new README from scratch in the kirchDev house style. `compact-readme` = slim down an _existing_ one. If there is no README yet, stop and use `write-readme` instead.
+> **This is the complement to `write-readme`.** `write-readme` = scaffold a new README from scratch in the kirchDev house style. `compact-readme` = slim down an _existing_ one. If there is no README yet, stop and use `write-readme` instead.
 
 > [!IMPORTANT]
 > **Never delete content.** Everything you cut from the visible view must land somewhere — folded into a `<details>` block or merged into an existing paragraph. The goal is fewer _visible_ lines, not less information.
@@ -67,12 +67,12 @@ Hook (1 code line + ~2 sentences)
 📄 License
 ```
 
-Use the prescribed section emojis from the [`write-readme` REFERENCE](../write-readme/REFERENCE.md#section-emoji-catalogue).
+Use the prescribed section emojis from `write-readme`'s REFERENCE (**Section emoji catalogue**).
 
 ## Guardrails
 
 - **Never delete content** — relocate into `<details>`, merge into a paragraph, or (only for a block copied out of a file the repo ships) replace it with a link to that file. Content leaves the README only when something else in the repo already holds it.
-- **Preserve the house style strictly** — centered hero in `<div align="center">`, section emojis, Versioning/License at the end. For kirchDev repos, treat [`write-readme`](../write-readme/SKILL.md) as the style source of truth.
+- **Preserve the house style strictly** — centered hero in `<div align="center">`, section emojis, Versioning/License at the end. For kirchDev repos, treat `write-readme` as the style source of truth.
 - **Leave these untouched**: badges, links, the demo GIF, and the license/author line.
 - **Factual accuracy** — never rewrite or invent defaults, flags, or option values. Copy tables **verbatim**; only move them.
 - **Formatter check** — if the repo has an oxfmt/Prettier config, confirm `README.md` is excluded from the formatter (kirchDev excludes it in `lint-staged.config.js`, because oxfmt reflows the centered hero and `<details>` markup). If it is **not** excluded, run the formatter after editing so you don't leave a diff CI will reject.
@@ -95,4 +95,4 @@ Then apply, and end with the before/after visible-line count and the "what moved
 ## Reference
 
 - Transformation playbook, `<details>` patterns, and the envprism before/after: [REFERENCE.md](REFERENCE.md).
-- House-style source of truth (emojis, badges, closers): [`write-readme`](../write-readme/SKILL.md) and its [REFERENCE.md](../write-readme/REFERENCE.md).
+- House-style source of truth (emojis, badges, closers): `write-readme` and its `REFERENCE.md`.

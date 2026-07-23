@@ -106,7 +106,7 @@ Reference the GIF with a plain image tag near the top of the README (after the h
 ![<repo> demo](.github/assets/demo.gif)
 ```
 
-For multiple demos, embed each under the relevant section with its descriptive name. If the README is being (re)written, the [`write-readme`](../write-readme/SKILL.md) skill owns layout — this skill only owns the asset and its reference.
+For multiple demos, embed each under the relevant section with its descriptive name. If the README is being (re)written, the `write-readme` skill owns layout — this skill only owns the asset and its reference.
 
 ## Steady-state loop (after the first run)
 

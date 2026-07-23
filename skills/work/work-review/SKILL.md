@@ -11,7 +11,7 @@ allowed-tools:
 
 # work-review
 
-Take **one** issue that an implementer pushed and **review it** — the stateless review-unit behind [`work-review-queue`](../work-review-queue/SKILL.md), and the deliberate counterweight to [`work-implement`](../work-implement/SKILL.md). A **different** agent, with **fresh context**: it did not build this and carries no "it works because I wrote it" bias. State lives in the issue's **lifecycle label**; the review is **read-only** and idempotent, so a crashed review just re-runs.
+Take **one** issue that an implementer pushed and **review it** — the stateless review-unit behind `work-review-queue`, and the deliberate counterweight to `work-implement`. A **different** agent, with **fresh context**: it did not build this and carries no "it works because I wrote it" bias. State lives in the issue's **lifecycle label**; the review is **read-only** and idempotent, so a crashed review just re-runs.
 
 This skill is the **review half** of the two-loop workflow. It **never implements, edits, commits, or merges** — its only outputs are a **verdict** (a label move plus a comment): `done`, `changes-requested`, `needs human`, or `blocked`.
 
@@ -21,7 +21,7 @@ This skill is the **review half** of the two-loop workflow. It **never implement
 
 ### 1. Load config & resolve tracker
 
-Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included); the `work.*` section holds tracker, labels, and `work.review.maxRounds` (default 3). Resolve the tracker (`work.tracker`, falling back to `issue.tracker`); reuse the [`issue`](../issue/REFERENCE.md#catalog-cache) catalog cache. Config + mechanics: [REFERENCE.md](REFERENCE.md).
+Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included); the `work.*` section holds tracker, labels, and `work.review.maxRounds` (default 3). Resolve the tracker (`work.tracker`, falling back to `issue.tracker`); reuse the `issue` catalog cache. Config + mechanics: [REFERENCE.md](REFERENCE.md).
 
 ### 2. Resolve the target issue
 
@@ -61,7 +61,7 @@ Count the review rounds first — the number of times this issue has entered `re
 | **`changes-requested`** | fixable problems, round < `maxRounds`                                                                          | **post the feedback** (`gh pr review --request-changes` with inline comments, or an issue/Linear comment referencing the commit), then set `changes-requested` — back to the implement loop |
 | **`blocked`**           | broken beyond a fixable change / a hard human call                                                             | set `blocked` + comment                                                                                                                                                                     |
 
-Report the verdict and the reasoning. Inside a [`work-review-queue`](../work-review-queue/SKILL.md) drain, return the verdict and let the drain move on.
+Report the verdict and the reasoning. Inside a `work-review-queue` drain, return the verdict and let the drain move on.
 
 ## Guardrails
 
@@ -74,4 +74,4 @@ Report the verdict and the reasoning. Inside a [`work-review-queue`](../work-rev
 
 ## Reference
 
-Config, the selection query, the round-count recipe, the escalation policy, review-after-land, and the feedback recipes: [REFERENCE.md](REFERENCE.md). The implement half and the shared lifecycle: [`work-implement`](../work-implement/SKILL.md).
+Config, the selection query, the round-count recipe, the escalation policy, review-after-land, and the feedback recipes: [REFERENCE.md](REFERENCE.md). The implement half and the shared lifecycle: `work-implement`.

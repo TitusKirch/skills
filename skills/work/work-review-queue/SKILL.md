@@ -12,7 +12,7 @@ allowed-tools:
 
 # work-review-queue
 
-Drain the repo's queue of issues **awaiting review** — every issue in `review` — and give each a verdict by delegating to [`work-review`](../work-review/SKILL.md). The **review half** of the two-loop workflow: it consumes what [`work-implement-queue`](../work-implement-queue/SKILL.md) pushed, and each issue leaves as `done`, `changes-requested` (back to the implement loop), `needs human`, or `blocked`. Each issue is reviewed by a **fresh worker** — a different agent than the one that built it. Run it under `/loop work-review-queue` for continuous operation, alongside the implement loop.
+Drain the repo's queue of issues **awaiting review** — every issue in `review` — and give each a verdict by delegating to `work-review`. The **review half** of the two-loop workflow: it consumes what `work-implement-queue` pushed, and each issue leaves as `done`, `changes-requested` (back to the implement loop), `needs human`, or `blocked`. Each issue is reviewed by a **fresh worker** — a different agent than the one that built it. Run it under `/loop work-review-queue` for continuous operation, alongside the implement loop.
 
 **Opted out?** If the repo config sets `work` to `false`, all `work-*` skills are **disabled** — stop and tell the user they are turned off in `.tituskirch-skills.json`. Check `.work == false` on the resolved config before acquiring the lock or building the queue. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
@@ -20,7 +20,7 @@ Drain the repo's queue of issues **awaiting review** — every issue in `review`
 
 ### 1. Load config & lock
 
-- Config + tracker as in [`work-implement`](../work-implement/SKILL.md) (the `work.*` section; `work.review.maxRounds` governs escalation).
+- Config + tracker as in `work-implement` (the `work.*` section; `work.review.maxRounds` governs escalation).
 - Acquire the **review single-flight lock** — a **separate** lock file from the implement loop's, so an implement-drain and a review-drain can run at the same time in the same repo.
 
 ### 2. Reconcile — close out out-of-band human actions
@@ -35,7 +35,7 @@ Idempotent; nothing to close out is the normal outcome. `needs human` issues are
 
 ### 3. Build the queue
 
-The [selection query](../work-review/REFERENCE.md#selection-query) → every issue in `review` → ordered by priority (Linear native priority; GitHub `work.priorityLabels`). No dependency re-sort — review order is priority only.
+The **selection query** (`work-review`'s REFERENCE) → every issue in `review` → ordered by priority (Linear native priority; GitHub `work.priorityLabels`). No dependency re-sort — review order is priority only.
 
 ### 4. Announce the batch — then drain
 
@@ -43,7 +43,7 @@ Issues in `review` were pushed by the implement loop **for exactly this** — so
 
 ### 5. Drain
 
-For each issue, up to `work.cap`, spawn a **fresh worker** that runs [`work-review`](../work-review/SKILL.md) on exactly that issue. **Sequential** re-fetches the next `review` issue each iteration; **parallel** reviews N concurrently (review is read-only, so no integration race).
+For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-review` on exactly that issue. **Sequential** re-fetches the next `review` issue each iteration; **parallel** reviews N concurrently (review is read-only, so no integration race).
 
 Each worker returns a verdict — `done`, `changes-requested`, `needs human`, or `blocked` — or an error. Any verdict → **continue**; only a **hard error** (git broken, tracker down) stops the drain, releases the lock, and reports.
 
@@ -106,8 +106,8 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 - **The cap is mandatory** — apply it after the ordering.
 - **Fresh worker per issue, never the implementer.** Review value comes from independence; the drain spawns a new reviewer each time.
 - **This loop never implements.** It produces verdicts only; the fix is the implement loop's job.
-- Inherits [`work-review`](../work-review/SKILL.md)'s read-only, attribution-free, secret-free guardrails.
+- Inherits `work-review`'s read-only, attribution-free, secret-free guardrails.
 
 ## Reference
 
-The review unit, selection query, round-count, escalation policy and feedback recipes: [`work-review/REFERENCE.md`](../work-review/REFERENCE.md). The implement half: [`work-implement-queue`](../work-implement-queue/SKILL.md). Lifecycle and design: [`work-implement/DESIGN.md`](../work-implement/DESIGN.md).
+The review unit, selection query, round-count, escalation policy and feedback recipes: `work-review/REFERENCE.md`. The implement half: `work-implement-queue`. Lifecycle and design: `work-implement/DESIGN.md`.

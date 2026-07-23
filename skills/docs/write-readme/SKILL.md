@@ -36,7 +36,7 @@ allowed-tools:
 | 10  | License            |    📄     | Always — link to LICENSE + author/org line.                          |
 
 > [!NOTE]
-> **Installation / Quick start lead, then Features** — surfacing the install/run command near the top lets a reader reach it in ~30 seconds. Merging Installation + Quick start into a single **Install & run** section is acceptable (and is what [`compact-readme`](../compact-readme/SKILL.md) produces from a scaffolded file).
+> **Installation / Quick start lead, then Features** — surfacing the install/run command near the top lets a reader reach it in ~30 seconds. Merging Installation + Quick start into a single **Install & run** section is acceptable (and is what `compact-readme` produces from a scaffolded file).
 
 ## Style rules
 

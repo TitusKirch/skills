@@ -1,18 +1,18 @@
 # work-implement / work-implement-queue — Reference
 
-Shared mechanics for [`work-implement`](SKILL.md) (the unit) and [`work-implement-queue`](../work-implement-queue/SKILL.md) (the drain). One tracker per repo (GitHub `gh` / Linear MCP), chosen by config. Reuses the [`issue`](../issue/SKILL.md) skill's config file and catalog cache.
+Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement-queue` (the drain). One tracker per repo (GitHub `gh` / Linear MCP), chosen by config. Reuses the `issue` skill's config file and catalog cache.
 
 ## Principle
 
 > The **queue is the tracker**, the **worker is stateless.** Each issue's state lives in its lifecycle label — `ready → working → review → {changes-requested → working | needs human | blocked | done}` — not in the agent. Every run reads state fresh from tracker + git, so a crashed run **resumes** instead of restarting and a repeated run is **idempotent**.
 
-**Two loops share this lifecycle.** The **implement loop** ([`work-implement`](SKILL.md) / [`work-implement-queue`](../work-implement-queue/SKILL.md)) owns `ready`/`changes-requested → working → review`; the **review loop** ([`work-review`](../work-review/SKILL.md) / [`work-review-queue`](../work-review-queue/SKILL.md)) owns `review → {done | changes-requested | needs human | blocked}`, reviewed by a **different** agent. `review` (implement → review) and `changes-requested` (review → implement) are the two hand-off labels. This file documents the shared mechanics and the implement side; the review side lives in [`work-review/REFERENCE.md`](../work-review/REFERENCE.md).
+**Two loops share this lifecycle.** The **implement loop** ([`work-implement`](SKILL.md) / `work-implement-queue`) owns `ready`/`changes-requested → working → review`; the **review loop** (`work-review` / `work-review-queue`) owns `review → {done | changes-requested | needs human | blocked}`, reviewed by a **different** agent. `review` (implement → review) and `changes-requested` (review → implement) are the two hand-off labels. This file documents the shared mechanics and the implement side; the review side lives in `work-review/REFERENCE.md`.
 
 ## Config
 
 `work.*` in the repo-root `.tituskirch-skills.json`. Resolution per setting: **config → default**. **Resolve it before reading it** — [Reading the config](#reading-the-config) is the single statement of how, including what happens when `jq` is absent.
 
-**The check command is not in this section.** It is the root `verify` key — a fact about the repo, shared with [`update-deps`](../../repo/update-deps/REFERENCE.md#config) and [`merge-deps`](../../repo/merge-deps/REFERENCE.md#config), which run the same command at their own moments. Keeping it out of `work.*` is deliberate: `work: false` turns off these four skills, and that must not withdraw the repo's checks from skills it says nothing about.
+**The check command is not in this section.** It is the root `verify` key — a fact about the repo, shared with `update-deps` and `merge-deps`, which run the same command at their own moments. Keeping it out of `work.*` is deliberate: `work: false` turns off these four skills, and that must not withdraw the repo's checks from skills it says nothing about.
 
 ```json
 {
@@ -49,20 +49,20 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and [`work-implemen
 }
 ```
 
-| Key                                         | Effect                                                                                                                                       |
-| :------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------- |
-| `work.tracker`                              | `github` or `linear`; falls back to `issue.tracker`                                                                                          |
-| `work.cap`                                  | max issues a single drain works (mandatory bound; default 10)                                                                                |
-| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)                               |
-| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))                                   |
-| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                                        |
-| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"                          |
-| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the [`work-review`](../work-review/SKILL.md) loop                                   |
-| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see [`work-review`](../work-review/REFERENCE.md#round-count)) |
-| `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                                          |
-| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                                           |
-| `work.linear.statuses`                      | Linear workflow states that count as startable                                                                                               |
-| `work.linear.states`                        | lifecycle step → Linear workflow state name; **no default** — see below                                                                      |
+| Key                                         | Effect                                                                                                              |
+| :------------------------------------------ | :------------------------------------------------------------------------------------------------------------------ |
+| `work.tracker`                              | `github` or `linear`; falls back to `issue.tracker`                                                                 |
+| `work.cap`                                  | max issues a single drain works (mandatory bound; default 10)                                                       |
+| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)      |
+| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))          |
+| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                               |
+| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo" |
+| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                     |
+| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                   |
+| `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                 |
+| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                  |
+| `work.linear.statuses`                      | Linear workflow states that count as startable                                                                      |
+| `work.linear.states`                        | lifecycle step → Linear workflow state name; **no default** — see below                                             |
 
 **`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.review: false` → the PR's existence is the signal; `labels.blocked: false` → comment only / Linear state; `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
 
@@ -122,7 +122,7 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 
 ## Catalog cache
 
-Reuses the [`issue`](../issue/REFERENCE.md#catalog-cache) cache verbatim — `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (labels, teams, projects, states), so label names resolve to ids and teams/states are looked up without re-fetching. Same TTL (~3 days) and `--refresh`.
+Reuses the `issue` cache verbatim — `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (labels, teams, projects, states), so label names resolve to ids and teams/states are looked up without re-fetching. Same TTL (~3 days) and `--refresh`.
 
 ## Lifecycle state machine
 
@@ -155,19 +155,19 @@ Thick edges are the path a healthy issue takes; everything thin is an exception.
 | `review → changes-requested`              | review — AI requests changes, round < `maxRounds` (feedback posted)           |
 | `review → needs human`                    | review — approve-but-risky, can't judge, or round ≥ `maxRounds`               |
 | `review → blocked`                        | review — broken beyond a fixable change                                       |
-| `needs human → done \| changes-requested` | the human's verdict, applied by [`work-review`](../work-review/SKILL.md)      |
+| `needs human → done \| changes-requested` | the human's verdict, applied by `work-review`                                 |
 
 ### Terminal `done`, and what `review` means now
 
-- **`review` = awaiting AI review** by a **different** agent — not "awaiting a human". The [`work-review`](../work-review/SKILL.md) loop consumes it and writes the verdict.
-- **`done` = AI-reviewed and accepted** (low-risk), or accepted by a human via [`needs human`](../work-review/REFERENCE.md#escalation-to-needs-human). It does **not** mean "merged": GitHub's `Closes #<n>` and Linear's integration fire only on a **default-branch** merge, which a non-default `pr.base` (e.g. `dev`) never triggers — so shipping is the rollup merge's business, not the queue's.
-- **`review-after-land`** — under `branch:<name>` the commit lands on the branch **before** review; the issue is still not `done` until review passes, and a `changes-requested` verdict is fixed **forward** (more commits), never reverted. Details: [`work-review`](../work-review/REFERENCE.md#review-after-land).
+- **`review` = awaiting AI review** by a **different** agent — not "awaiting a human". The `work-review` loop consumes it and writes the verdict.
+- **`done` = AI-reviewed and accepted** (low-risk), or accepted by a human via `needs human`. It does **not** mean "merged": GitHub's `Closes #<n>` and Linear's integration fire only on a **default-branch** merge, which a non-default `pr.base` (e.g. `dev`) never triggers — so shipping is the rollup merge's business, not the queue's.
+- **`review-after-land`** — under `branch:<name>` the commit lands on the branch **before** review; the issue is still not `done` until review passes, and a `changes-requested` verdict is fixed **forward** (more commits), never reverted. Details: `work-review`.
 
 ### Reconcile
 
 Each loop's drain reconciles its own orphans **first**, before building its queue — drains run anyway, so no separate trigger is needed. There are **two**:
 
-**Implement reconcile** (this loop, [`work-implement-queue`](../work-implement-queue/SKILL.md) step 2) — reclaim **`working` orphans**: an issue leased `ready → working` but abandoned when a worker crashed **before its push**. The [single-flight lock](#lease--race-rules) guarantees no live worker holds it at reconcile time, so check for a **pushed artifact** (a PR / pushed commit for the issue):
+**Implement reconcile** (this loop, `work-implement-queue` step 2) — reclaim **`working` orphans**: an issue leased `ready → working` but abandoned when a worker crashed **before its push**. The [single-flight lock](#lease--race-rules) guarantees no live worker holds it at reconcile time, so check for a **pushed artifact** (a PR / pushed commit for the issue):
 
 | Pushed artifact? | Meaning                                           | Action                                                                                                         |
 | :--------------- | :------------------------------------------------ | :------------------------------------------------------------------------------------------------------------- |
@@ -176,7 +176,7 @@ Each loop's drain reconciles its own orphans **first**, before building its queu
 
 Without this, a `working` orphan carries neither `ready` nor `review`, so nothing would ever reclaim it — the hole that would contradict the [resume-instead-of-restart principle](#principle).
 
-**Review reconcile** (the [`work-review-queue`](../work-review-queue/SKILL.md) loop) — for issues in `review`, close out **out-of-band human actions on the PR**: merged → `done` (implicit acceptance), closed-unmerged → `blocked`. Full rules: [`work-review-queue`](../work-review-queue/SKILL.md).
+**Review reconcile** (the `work-review-queue` loop) — for issues in `review`, close out **out-of-band human actions on the PR**: merged → `done` (implicit acceptance), closed-unmerged → `blocked`. Full rules: `work-review-queue`.
 
 Both move **labels only**, never branches, and are **idempotent** — nothing to reclaim is the normal result.
 
@@ -213,7 +213,7 @@ This does not disarm the `blocked` side-exit: work whose **requirements** are ge
 
 Eligible = matches **all** configured filters. Self-select (one issue) and drain (all, ordered) use the same query.
 
-- **labels** — the implement loop selects issues with `labels.ready` **or** `labels.changesRequested` (its two inputs; skip a label that is `false`); never already `working`/`blocked` by someone else. Labels are the **only** eligibility input — issue text is never read for consent ([label vs body](#label-vs-body-precedence)). (The review loop's input is `labels.review` — see [`work-review`](../work-review/REFERENCE.md#selection-query).)
+- **labels** — the implement loop selects issues with `labels.ready` **or** `labels.changesRequested` (its two inputs; skip a label that is `false`); never already `working`/`blocked` by someone else. Labels are the **only** eligibility input — issue text is never read for consent ([label vs body](#label-vs-body-precedence)). (The review loop's input is `labels.review` — see `work-review`.)
 - **repo scope** — Linear only: has `labels.repo` (unless `false`). Skipped on GitHub (repo-local by nature).
 - **team** — Linear only: `work.linear.team`.
 - **status** — Linear: state ∈ `work.linear.statuses`. GitHub: `--state open`.
@@ -342,10 +342,10 @@ Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — disco
 
 ### Repo scope
 
-Linear puts every repo's issues in one team, so the team alone cannot say "this issue is this repo." `work.labels.repo` (a stable label, e.g. `repo: TitusKirch/envprism`) is the discriminator — the **single source of truth** for repo identity in Linear, and the cross-repo race-breaker. It is read here to **filter** and (when the [`issue`](../issue/SKILL.md) skill applies it on create) to **tag** — projects are unsuitable because they are completable. Set it to a **string** to filter by that label; set it to **`false`** only for a **single-repo Linear team** — a deliberate opt-out where the team already _is_ the repo, so no filter is needed and the drain **proceeds**. The schema now **requires** the key present when `tracker: linear`, so an _absent_ key is a config error to report — never a licence to reach into another repo's issues.
+Linear puts every repo's issues in one team, so the team alone cannot say "this issue is this repo." `work.labels.repo` (a stable label, e.g. `repo: TitusKirch/envprism`) is the discriminator — the **single source of truth** for repo identity in Linear, and the cross-repo race-breaker. It is read here to **filter** and (when the `issue` skill applies it on create) to **tag** — projects are unsuitable because they are completable. Set it to a **string** to filter by that label; set it to **`false`** only for a **single-repo Linear team** — a deliberate opt-out where the team already _is_ the repo, so no filter is needed and the drain **proceeds**. The schema now **requires** the key present when `tracker: linear`, so an _absent_ key is a config error to report — never a licence to reach into another repo's issues.
 
 ## Setup
 
-No own setup flow — `work` piggybacks on the [`issue`](../issue/REFERENCE.md#setup-flow-first-run--issue-setup) skill's config + cache and only adds the `work.*` keys. The lifecycle labels must already **exist** on the configured tracker's catalog (the agent filters by them, it does not create them).
+No own setup flow — `work` piggybacks on the `issue` skill's config + cache and only adds the `work.*` keys. The lifecycle labels must already **exist** on the configured tracker's catalog (the agent filters by them, it does not create them).
 
 **When `issue` is `false`.** The work skills lean on the `issue` section three ways — `work.tracker` falls back to `issue.tracker`, `work.linear.team` to `issue.linear.team`, and the [catalog cache](#catalog-cache) is the `issue` skill's. A repo may disable the `issue` skill (`issue: false`) while still running the queue; then none of those inheritances hold. So a repo that sets `issue: false` **and** enables `work` must set `work.tracker` (and, on Linear, `work.linear.team`) explicitly, and the cache is populated by the work run itself rather than inherited. If both are needed but `work.tracker` is absent, stop and report rather than guess.

@@ -103,7 +103,7 @@ So the config contract is written once in [`scripts/config-block.md`](../scripts
 Two consequences worth knowing before editing a skill:
 
 - **Never edit a mirrored block or a skill's `resolve-config.sh`** — edit the source in `scripts/` and re-run the sync, exactly as with the generated tables.
-- **Reaching for a cross-skill link is the signal** that the content belongs in the mirrored block instead. The existing cross-skill links predate this rule and are tracked separately.
+- **Reaching for a cross-skill link is the signal** that the content belongs in the mirrored block instead. Where it is genuinely a "see also", **name the skill and drop the link** — `` `work-review` ``, not a path into its folder. An agent that has the skill installed can open it; one that does not gains nothing from a dangling path. This holds for the two work loops too: `work-implement-queue` reads `work-implement`'s `REFERENCE.md`, and says so by name and heading rather than by link. `test/isolation.test.ts` enforces it.
 
 The resolver exists because a repo may define **profiles** — named overlays merged onto the base config for an execution context, so a remote runner can open pull requests where a local session commits directly. Every skill running the same script is what makes them agree on the result.
 

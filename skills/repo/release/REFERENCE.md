@@ -90,7 +90,7 @@ gh pr merge "$n" --merge         # merge commit — never squash
 
 ### `"create"`
 
-No such automation, so the skill may open the PR itself — delegating to [`pull-request`](../pull-request/SKILL.md) with an explicit `base ← head` override (the inverse of that skill's usual `pr.base` default). This is the **only** PR the release skill ever opens, in any mode.
+No such automation, so the skill may open the PR itself — delegating to `pull-request` with an explicit `base ← head` override (the inverse of that skill's usual `pr.base` default). This is the **only** PR the release skill ever opens, in any mode.
 
 Produce the same PR the automation would: a `chore: merge <head> into <base>` rollup title and a body that states the merge-commit requirement. Ready, not draft — there is no automation to hand off to, so there is nothing to wait for.
 

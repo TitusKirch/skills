@@ -18,7 +18,7 @@ Its one principle, from which everything else follows:
 
 > **The repo's own tooling and config decide what "allowed" means.** A release-age gate, an exact pin, a declared constraint, a private registry — each is a deliberate choice to **honour**, never an obstacle to route around. What the skill does not move, it **reports with the reason**. Silence is the one failure mode this skill exists to prevent.
 
-The sibling skill [`merge-deps`](../merge-deps/SKILL.md) triages the **Dependabot queue** — updates a bot already opened as PRs. This one **performs** the updates locally. Same domain, disjoint machinery; [why they stay separate](REFERENCE.md#decisions).
+The sibling skill `merge-deps` triages the **Dependabot queue** — updates a bot already opened as PRs. This one **performs** the updates locally. Same domain, disjoint machinery; [why they stay separate](REFERENCE.md#decisions).
 
 ## Workflow
 
@@ -77,7 +77,7 @@ Run the repo's own check command — the root `verify` key in `.tituskirch-skill
 - **Held, with the reason** — release-age gate (and the version it withheld), exact pin, major outside range, declared constraint, excluded by the repo's updater config.
 - **Advisories** — open ones, which are fixed by this run, which are not, and why not.
 - **Verify** — the command and its result.
-- **Hand-off** — the tree is dirty and verified; committing is [`atomic-commit`](../atomic-commit/SKILL.md)'s job and a PR is [`pull-request`](../pull-request/SKILL.md)'s. Name them; do not do them.
+- **Hand-off** — the tree is dirty and verified; committing is `atomic-commit`'s job and a PR is `pull-request`'s. Name them; do not do them.
 
 ## Guardrails
 

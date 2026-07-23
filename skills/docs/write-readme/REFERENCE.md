@@ -45,7 +45,7 @@ These are the **prescribed** emojis for recurring sections. Use the same emoji f
 | FAQ                                        |  ❓   | If included.                                       |
 | Roadmap                                    |  🗺️   | If included.                                       |
 
-**Order & merging:** Installation / Quick start lead (before Features) so a reader reaches the install command fast; an optional **Why / Problem** block sits between the hook and Installation. Installation + Quick start may be merged into one **Install & run** section — this keeps a write-readme scaffold and a [`compact-readme`](../compact-readme/SKILL.md) pass in agreement.
+**Order & merging:** Installation / Quick start lead (before Features) so a reader reaches the install command fast; an optional **Why / Problem** block sits between the hook and Installation. Installation + Quick start may be merged into one **Install & run** section — this keeps a write-readme scaffold and a `compact-readme` pass in agreement.
 
 If you need a section that's not in the catalogue, pick a sensible emoji and **add it here in the same PR** so the next README stays consistent.
 

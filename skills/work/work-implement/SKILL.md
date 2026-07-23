@@ -13,9 +13,9 @@ allowed-tools:
 
 # work-implement
 
-Take **one** tracked issue, implement it, and push it so a **different** agent can review it — the stateless implement-unit behind [`work-implement-queue`](../work-implement-queue/SKILL.md). One issue, one tracker (**GitHub** via `gh` or **Linear** via its MCP), picked per-repo by the same committed config the [`issue`](../issue/SKILL.md) skill uses. State lives in the issue's **lifecycle label**, never in the agent — so a crashed run **resumes** instead of restarting.
+Take **one** tracked issue, implement it, and push it so a **different** agent can review it — the stateless implement-unit behind `work-implement-queue`. One issue, one tracker (**GitHub** via `gh` or **Linear** via its MCP), picked per-repo by the same committed config the `issue` skill uses. State lives in the issue's **lifecycle label**, never in the agent — so a crashed run **resumes** instead of restarting.
 
-This skill is the **implement half** of a two-loop workflow: it builds and pushes; [`work-review`](../work-review/SKILL.md) then reviews the pushed work. It **never reviews its own output** and never sets `done` — its terminal outputs are `review` (handed to the review loop) or `blocked`.
+This skill is the **implement half** of a two-loop workflow: it builds and pushes; `work-review` then reviews the pushed work. It **never reviews its own output** and never sets `done` — its terminal outputs are `review` (handed to the review loop) or `blocked`.
 
 **Opted out?** If the repo config sets `work` to `false`, this skill is **disabled** for the repo (as are the other `work-*` skills) — stop immediately and tell the user the work skills are turned off in `.tituskirch-skills.json`. An _absent_ `work` block is **not** disabled (it falls back to defaults). Check `.work == false` on the resolved config before any action — and before indexing `.work.*`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
@@ -23,7 +23,7 @@ This skill is the **implement half** of a two-loop workflow: it builds and pushe
 
 ### 1. Load config & resolve tracker
 
-Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included); the `work.*` section holds tracker, label lifecycle, branch strategy and Linear scope. Resolution per setting: **config → default**. Determine the tracker (`work.tracker`, falling back to `issue.tracker`) and confirm it is available/authenticated. Reuse the [`issue`](../issue/REFERENCE.md#catalog-cache) catalog cache for labels/teams/states.
+Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included); the `work.*` section holds tracker, label lifecycle, branch strategy and Linear scope. Resolution per setting: **config → default**. Determine the tracker (`work.tracker`, falling back to `issue.tracker`) and confirm it is available/authenticated. Reuse the `issue` catalog cache for labels/teams/states.
 
 Config schema, the full lifecycle and all mechanics: [REFERENCE.md](REFERENCE.md).
 
@@ -39,7 +39,7 @@ The lifecycle label decides what this run does — this skill is a **state machi
 - **fresh** (`ready`) → claim and implement from the body (steps 4–8).
 - **re-work** (`changes-requested`) → claim and implement from the body **plus the review feedback** (the reviewer's PR review / issue comment) — steps 4–8.
 - **resume** (`working`) → a previous run leased it and crashed; continue where it left off (re-assert a clean tree first).
-- **not ours** (`review` / `needs human` / `done`) → nothing to do here; `review` and `needs human` belong to [`work-review`](../work-review/SKILL.md) and the human. `blocked` → leave it unless the user explicitly re-runs it; report why it was blocked.
+- **not ours** (`review` / `needs human` / `done`) → nothing to do here; `review` and `needs human` belong to `work-review` and the human. `blocked` → leave it unless the user explicitly re-runs it; report why it was blocked.
 
 ### 4. Claim the issue (lease) — before any work
 
@@ -71,12 +71,12 @@ Run the repo's checks (the root `verify` key, else detected — tests, lint, bui
 
 The **push** is the moment the work becomes reviewable — it is the boundary between `working` and `review`.
 
-- Commit via [`atomic-commit`](../../repo/atomic-commit/SKILL.md); reference the issue so the tracker links it (`Refs #42` / the Linear key).
-- **PUSH** the work: open/update the PR via [`pull-request`](../../repo/pull-request/SKILL.md) (worktree), or push the commit(s) to the shared branch (`branch:<name>`). Until this succeeds the issue stays `working` (a crash before the push is reclaimed as a [working-orphan](REFERENCE.md#reconcile)).
-- Move the label `working → review` — the handoff to [`work-review`](../work-review/SKILL.md). Report the issue id / PR url.
+- Commit via `atomic-commit`; reference the issue so the tracker links it (`Refs #42` / the Linear key).
+- **PUSH** the work: open/update the PR via `pull-request` (worktree), or push the commit(s) to the shared branch (`branch:<name>`). Until this succeeds the issue stays `working` (a crash before the push is reclaimed as a [working-orphan](REFERENCE.md#reconcile)).
+- Move the label `working → review` — the handoff to `work-review`. Report the issue id / PR url.
 - The skill **never merges**, never reviews, and **never sets `done`, `changes-requested` or `needs human`** — those are the review loop's and the human's outputs.
 
-Inside a [`work-implement-queue`](../work-implement-queue/SKILL.md) drain nobody waits on this worker — return `review` and let the drain move on. The review loop picks the issue up next.
+Inside a `work-implement-queue` drain nobody waits on this worker — return `review` and let the drain move on. The review loop picks the issue up next.
 
 ## Guardrails
 
