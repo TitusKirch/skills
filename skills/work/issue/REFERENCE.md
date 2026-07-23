@@ -148,7 +148,7 @@ The two formats are different kinds of file and are filled differently — the s
 
 1. Enumerate `.github/ISSUE_TEMPLATE/*.md` and `*.yml`, skipping `config.yml`.
 2. Read each one's own selection rule — `name` + `description` (`.yml` forms), `name` + `about` (`.md` frontmatter). That text states **when the template applies**; it is structurally the same job a skill's `description` does when Claude picks between skills.
-3. Match the drafted intent against it and take the best fit. No fit → fall back to a clean drafted body, unless blank issues are disabled (below).
+3. Match the drafted intent against it and take the best fit. No fit → fall back to the [default body structure](#default-body-structure), unless blank issues are disabled (below).
 
 A `"bug" → "🐛 Bug report"` table in the config would be a **second copy** of what the templates already say, drifting the moment one is renamed. There is deliberately no such key: force one template, or none.
 
@@ -161,6 +161,26 @@ A `"bug" → "🐛 Bug report"` table in the config would be a **second copy** o
 **With a template, labels reverse direction.** Without one the skill picks labels from the catalog and then writes a body. With one, the template's `labels:` are **already decided** — the repo's own declaration, taken as-is — and the skill only **adds** what they don't already cover. `issue.labels.exclude` governs those additions; it does not strip what the template itself declares. They stay fields on the create call either way, never body text. **On Linear, match them against the team's label catalog first**: labels are team-scoped there, so a name a template declares may not exist. Apply the ones that resolve, and **name the ones that don't in the plan** — never create a Linear label to satisfy a template.
 
 **The preview is the safety net.** Name the chosen template in the [plan](#plan-output) beside title, body and labels, with how it was chosen (forced by config / matched on its description). The match need not be perfect automatically — it needs to be **visible before the write**, so a human can redirect it.
+
+## Default body structure
+
+No template fits, or the repo ships none — the body still has a shape, and it is **this skill's own**, on either tracker. It is the [altitude rule](SKILL.md#4-draft-the-content) written down as sections: **outcome, context, open questions**.
+
+| Section             | What goes in it                                                                              | When it is omitted                                                  |
+| :------------------ | :------------------------------------------------------------------------------------------- | :------------------------------------------------------------------ |
+| `## Problem`        | the context — what is wrong, missing or awkward today, and why that matters                  | never; it is why the issue exists                                   |
+| `## Wanted`         | the outcome — the desired end state, stated as _what_, not routes, files, layers or commands | when the problem statement already _is_ the ask (a pure question)   |
+| `## Open questions` | the decisions genuinely still open, one per bullet                                           | whenever there are none — an empty section is worse than no section |
+
+**A starting point, not a form.** Rename a heading when the subject reads better under a different one (`## Goal`, `## The bug`, `## The rule`), and add sections the subject actually calls for — `## Evidence`, `## Sources`, `## Proposal`, `## Not in scope`, `## Rejected alternatives`. Drop what has no content instead of filling it with `N/A` or `none`. The failure mode is a rigid skeleton that pads every issue to the same length; the structure exists so nothing has to be invented from scratch, not so every issue comes out identical.
+
+**A `## Not in scope` / `## Rejected alternatives` section is a boundary, not an implementation plan** — it names what the issue deliberately does _not_ ask for, which is still an outcome statement. It does not license the build steps the altitude rule rules out.
+
+The rest of the body rules apply unchanged: the configured language, `issue.instructions` wording guidance, no field state in prose ([Plan output](#plan-output)), no attribution, no secrets.
+
+**Not a way around a mandatory template.** Where `blank_issues_enabled: false` binds, this structure is not the escape hatch — a template is still required, and "none fits" goes in the plan for a human to settle.
+
+**It is not `pull-request`'s fallback, and never borrows it.** That skill's `## Summary` / `## Changes` / `## Related issues` describes work already done; an issue describes work wanted, so `## Changes` has no referent yet and reads as a plan the issue is not allowed to contain. Two skills, two documents, two defaults — this one is stated here in full so nothing has to be fetched from the other.
 
 ## Tracker — GitHub (`gh`)
 
