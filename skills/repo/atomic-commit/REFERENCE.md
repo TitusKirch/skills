@@ -108,7 +108,7 @@ If subjects are consistently in another language, match it. Otherwise write Engl
 
 ## Config
 
-`.tituskirch-skills.json` at the repo root (`$(git rev-parse --show-toplevel)`) is an optional, committed config shared across TitusKirch skills. Absent → behave exactly as before. Resolution per setting: **config → detected/native → built-in default**; reading it (and what to do when `jq` or the file is missing) is [SKILL.md](SKILL.md#1-detect-conventions-read-the-repo--never-assume)'s step 1.
+`.tituskirch-skills.json` at the repo root (`$(git rev-parse --show-toplevel)`) is an optional, committed config shared across TitusKirch skills. Absent → behave exactly as before. **Resolve it before reading it** — [Reading the config](#reading-the-config) is the single statement of how, including what happens when `jq` is absent. Resolution per setting: **config → detected/native → built-in default**.
 
 Keys this skill reads:
 

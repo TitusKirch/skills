@@ -21,7 +21,7 @@ This skill is the **review half** of the two-loop workflow. It **never implement
 
 ### 1. Load config & resolve tracker
 
-Read `.tituskirch-skills.json`; the `work.*` section holds tracker, labels, and `work.review.maxRounds` (default 3). Resolve the tracker (`work.tracker`, falling back to `issue.tracker`); reuse the [`issue`](../issue/REFERENCE.md#catalog-cache) catalog cache. Config + mechanics: [REFERENCE.md](REFERENCE.md).
+Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included); the `work.*` section holds tracker, labels, and `work.review.maxRounds` (default 3). Resolve the tracker (`work.tracker`, falling back to `issue.tracker`); reuse the [`issue`](../issue/REFERENCE.md#catalog-cache) catalog cache. Config + mechanics: [REFERENCE.md](REFERENCE.md).
 
 ### 2. Resolve the target issue
 

@@ -23,7 +23,7 @@ This skill is the **implement half** of a two-loop workflow: it builds and pushe
 
 ### 1. Load config & resolve tracker
 
-Read `$(git rev-parse --show-toplevel)/.tituskirch-skills.json` with `jq`; the `work.*` section holds tracker, label lifecycle, branch strategy and Linear scope. Resolution per setting: **config → default**. Determine the tracker (`work.tracker`, falling back to `issue.tracker`) and confirm it is available/authenticated. Reuse the [`issue`](../issue/REFERENCE.md#catalog-cache) catalog cache for labels/teams/states.
+Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included); the `work.*` section holds tracker, label lifecycle, branch strategy and Linear scope. Resolution per setting: **config → default**. Determine the tracker (`work.tracker`, falling back to `issue.tracker`) and confirm it is available/authenticated. Reuse the [`issue`](../issue/REFERENCE.md#catalog-cache) catalog cache for labels/teams/states.
 
 Config schema, the full lifecycle and all mechanics: [REFERENCE.md](REFERENCE.md).
 

@@ -10,7 +10,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and [`work-implemen
 
 ## Config
 
-`work.*` in the repo-root `.tituskirch-skills.json`. Resolution per setting: **config → default**. Read with `jq`.
+`work.*` in the repo-root `.tituskirch-skills.json`. Resolution per setting: **config → default**. **Resolve it before reading it** — [Reading the config](#reading-the-config) is the single statement of how, including what happens when `jq` is absent.
 
 **The check command is not in this section.** It is the root `verify` key — a fact about the repo, shared with [`update-deps`](../../repo/update-deps/REFERENCE.md#config) and [`merge-deps`](../../repo/merge-deps/REFERENCE.md#config), which run the same command at their own moments. Keeping it out of `work.*` is deliberate: `work: false` turns off these four skills, and that must not withdraw the repo's checks from skills it says nothing about.
 

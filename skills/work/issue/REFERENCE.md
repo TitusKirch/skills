@@ -4,7 +4,7 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two trackers (GitHub
 
 ## Config
 
-`.tituskirch-skills.json` at the repo root (`$(git rev-parse --show-toplevel)`) is an optional, committed config shared across TitusKirch skills. The `issue.*` section is this skill's. Read with `jq`; if the file or `jq` is missing, run setup (or warn and fall back to GitHub detection). Resolution per setting: **config → native → built-in default**.
+`.tituskirch-skills.json` at the repo root (`$(git rev-parse --show-toplevel)`) is an optional, committed config shared across TitusKirch skills. The `issue.*` section is this skill's. **Resolve it before reading it** — [Reading the config](#reading-the-config) is the single statement of how, including what happens when `jq` is absent. An _absent config file_ is what triggers setup; a missing `jq` is not, and never degrades to GitHub detection. Resolution per setting: **config → native → built-in default**.
 
 ```json
 {

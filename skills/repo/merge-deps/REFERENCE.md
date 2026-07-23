@@ -4,7 +4,7 @@ Mechanics for the [`merge-deps`](SKILL.md) skill. **GitHub (`gh`) is the only fo
 
 ## Config
 
-`mergeDeps.*` in the repo-root `.tituskirch-skills.json`, or `mergeDeps: false` to disable the skill for the repo. Resolution per setting: **config → detected → built-in default**. Read with `jq`. Every key, type, enum and default lives once in the repo-root [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json) — the single source of truth.
+`mergeDeps.*` in the repo-root `.tituskirch-skills.json`, or `mergeDeps: false` to disable the skill for the repo. Resolution per setting: **config → detected → built-in default**. **Resolve it before reading it** — [Reading the config](#reading-the-config) is the single statement of how, including what happens when `jq` is absent. Every key, type, enum and default lives once in the repo-root [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json) — the single source of truth.
 
 ```json
 {

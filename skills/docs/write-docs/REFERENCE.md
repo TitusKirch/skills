@@ -159,7 +159,7 @@ Read the whole tree fresh every run — it is live state and is **never cached**
 
 ## Config
 
-`.tituskirch-skills.json` at the consuming repo's root (`$(git rev-parse --show-toplevel)`) is an optional, committed config shared across TitusKirch skills. The `docs.*` section is this skill's. Read with `jq`; if the file or `jq` is missing, fall back to detection. Resolution per setting: **config → native/detected → built-in default**.
+`.tituskirch-skills.json` at the consuming repo's root (`$(git rev-parse --show-toplevel)`) is an optional, committed config shared across TitusKirch skills. The `docs.*` section is this skill's. **Resolve it before reading it** — [Reading the config](#reading-the-config) is the single statement of how, including what happens when `jq` is absent. Resolution per setting: **config → native/detected → built-in default**.
 
 ```json
 {
