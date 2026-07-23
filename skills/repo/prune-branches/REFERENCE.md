@@ -195,39 +195,107 @@ git for-each-ref "refs/remotes/$remote" \
 git branch --merged "$remote/$base" --format='%(refname:short)'
 ```
 
-**Delete — local first, then remote, then re-prune.** Containment is proven _before_ either verb runs, and `-D` is reached only inside that guard — never by running the line below `-d`:
+**Delete — local first, then remote, then re-prune.** The tip SHA is recorded on **each side** before either verb runs, and `-D` is reached only through a `git branch -d` refusal that a recorded licence overrides — never by running the line below `-d`:
 
 ```sh
-# per confirmed branch $b, with $category its classification
-sha=$(git rev-parse --short "$b")            # record before, always — it is the restore argument
-deleted=no
+remote=origin
+base=dev
+baseref="$remote/$base"          # restated here — never carried in from another block
+scope=both                       # local | remote | both — the run's scope argument
 
-if git merge-base --is-ancestor "$b" "$baseref"; then
-  proof="contained in $baseref"              # git itself: every commit is already in the base
-elif [ "$category" = merged ]; then
-  proof="category 1: $category"              # squash/rebase merge git cannot see; it is in the report
+# Re-prove the base here rather than trusting the earlier block: an unresolvable $baseref
+# only makes --is-ancestor error, which would silently downgrade "contained" to the
+# category's own licence instead of stopping. Step 1 already refused to get this far.
+git rev-parse --verify --quiet "$baseref^{commit}" >/dev/null \
+  || { echo "$baseref does not resolve — deleting nothing" >&2; exit 1; }
+
+# Per confirmed branch. $b is the SHORT name (feature/x): what `git branch -d` and
+# `git push --delete` each take. Classification read the remote side as the qualified
+# "$remote/$b"; neither delete verb ever does. $category is 1, 2, 3 or 4 — the one confirmed.
+lstate=out-of-scope; rstate=out-of-scope; via=
+
+# 1. Record the tip on EACH side first. Both go in the report, and each is that side's own
+#    restore argument. No SHA on a side means no branch on that side; no SHA on either means
+#    the name does not resolve at all, so nothing is deleted anywhere.
+lsha=$(git rev-parse --verify --quiet --short "refs/heads/$b") || lsha=
+rsha=$(git rev-parse --verify --quiet --short "refs/remotes/$remote/$b") || rsha=
+[ -n "$lsha$rsha" ] || echo "held $b — neither side resolves; nothing to delete or restore"
+
+# 2. What may override a `git branch -d` refusal — recorded either way and printed beside the
+#    branch. It gates FORCING only; the category the user confirmed is what licenses deleting.
+if [ -z "$lsha$rsha" ]; then
+  licence=                       # nothing resolves; --is-ancestor would only error here
+elif git merge-base --is-ancestor "${lsha:-$rsha}" "$baseref"; then
+  licence="contained in $baseref"          # git itself: it is all already in the base
+elif [ "$category" = 1 ]; then
+  licence="category 1 — a squash or rebase merge git cannot see"
+elif [ "$category" = 2 ] || [ "$category" = 3 ] || [ "$category" = 4 ]; then
+  licence="category $category, confirmed; tip ${lsha:-$rsha} recorded"
 else
-  proof=                                     # nothing licenses a deletion — and an errored
-fi                                           # --is-ancestor lands here too, which holds the branch
+  licence=                       # not one of the four — hold. An `undetermined` branch is in
+fi                               # no tier, so it is never confirmed and never reaches here
 
-if [ -n "$proof" ]; then
-  if git branch -d "$b" || git branch -D "$b"; then
-    deleted=yes                              # -D is unreachable without $proof
-  fi
-else
-  echo "kept $b — not contained in $baseref, and no category-1 evidence"
-fi
+# 3. Local half. `absent` is not `failed`: a branch never checked out here has no local half.
+case "$scope" in
+local | both)
+  if [ -z "$lsha" ]; then
+    lstate=absent
+  elif git branch -d "$b"; then
+    lstate=deleted; via=-d
+  elif [ -n "$licence" ]; then
+    # Read the refusal before overriding it: -d compares the branch against its upstream, or
+    # against HEAD once that upstream is [gone] — never against the integration branch.
+    if git branch -D "$b"; then lstate=deleted; via="-D, $licence"; else lstate=failed; fi
+  else
+    lstate=held; echo "held $b — git refused -d and nothing licenses -D"
+  fi ;;
+esac
 
-if [ "$deleted" = yes ]; then
-  git push "$remote" --delete "$b"           # only what the local side actually gave up
-fi
+# 4. Remote half — skipped only where the local half FAILED or was HELD. `absent` proceeds:
+#    a branch that lives only on the remote is the common case, not an error.
+case "$scope" in
+remote | both)
+  case "$lstate" in
+  failed | held) echo "$remote/$b held — the local half came back $lstate" ;;
+  *) if [ -z "$rsha" ]; then
+       rstate=absent             # already gone from the remote — category 2's normal shape
+     elif git push "$remote" --delete "$b"; then
+       rstate=deleted
+     else
+       rstate=failed
+     fi ;;
+  esac ;;
+esac
 ```
 
 ```sh
 git fetch --prune "$remote"                  # once, after the whole batch
 ```
 
-A `remote`-scoped run has no local half to consult, so it deletes the remote ref on the plan's evidence alone — which is why a remote deletion prints its SHA and its restore line just as loudly.
+**Each side reports its own outcome** — `deleted`, `absent`, `failed`, `held` or `out-of-scope` — and the report carries both. Only a local half that **failed** or was **held** stops the remote deletion: that is the plan having been wrong. An **absent** local half is not, so a `remote`-scoped run and a both-sides run over a branch nobody checked out locally take the same path and delete the remote ref on the plan's evidence alone — which is why a remote deletion prints its SHA and its restore line just as loudly.
+
+Verified by running the block above verbatim against a bare upstream plus a clone, `dev` the integration branch, at `scope=both`, `local` and `remote`:
+
+```text
+branch                       cat   local                         remote
+feat/ancestor                 1    deleted  -d                   deleted
+feat/squash                   1    deleted  -d                   deleted
+feat/rebase                   1    deleted  -d                   deleted
+feat/remote-merged            1    absent   never checked out    deleted
+feat/gone                     2    deleted  -D, cat 2 confirmed  absent  already gone
+feat/closed                   3    deleted  -d                   deleted
+feat/stale                    4    deleted  -d                   deleted
+feat/local-only               4    deleted  -D, cat 4 confirmed  absent  never pushed
+feat/remote-only              3    absent   never checked out    deleted
+feat/nonexistent              1    held     neither side resolves        held
+feat/gone                undeterm. held     -d refused, no licence       held
+feat/stale (2nd worktree)     4    failed   -d and -D both refused       held
+(base=origin/nope)                 the block stops before any branch; nothing deleted
+```
+
+Under `scope=local` the same rows delete the local half and leave every remote ref; under `scope=remote` they delete the remote half and leave every local branch, including the two whose remote is already gone.
+
+`feat/gone` and `feat/local-only` are the two shapes where `-d` refuses: an upstream that is `[gone]`, and no upstream at all. Both fall back to `HEAD`, and both are deletable only through the licence. `feat/gone` also appears with `undetermined` in place of a category — the row that proves the licence fails closed on anything outside 1–4.
 
 ## Presentation
 
@@ -258,7 +326,7 @@ remote (delete)
 
 ## Deletion mechanics and recovery
 
-- **`git branch -d` is not the second opinion it looks like.** It requires the branch to be fully merged **into its upstream** when one is set, and into `HEAD` otherwise — neither of which is the integration branch. A tracking branch that merely matches its remote counterpart is therefore deleted with a _warning_ and exit `0`, unmerged work included:
+- **`git branch -d`'s _success_ is not the second opinion it looks like.** It requires the branch to be fully merged **into its upstream** when one is set and still resolves, and into `HEAD` otherwise — neither of which is the integration branch. A tracking branch that merely matches its remote counterpart is therefore deleted with a _warning_ and exit `0`, unmerged work included:
 
   ```text
   warning: deleting branch 'feat/live' that has been merged to
@@ -267,9 +335,10 @@ remote (delete)
 
   Since almost every candidate here is a tracking branch, treating `-d`'s success as proof the work landed would ratify the classification instead of testing it.
 
-- **The real second opinion is `git merge-base --is-ancestor "$b" "$baseref"`** — an explicit question about the integration branch, asked before either delete verb runs. It exits non-zero for a branch that is not contained, and for a ref it cannot resolve, so both hold the branch.
-- **`-D` is for a squash or rebase merge git cannot see**, and only with category 1's evidence recorded in the report. With neither containment nor that evidence, the classification was wrong — skip the branch, and skip its remote counterpart with it.
-- **A remote deletion is one push of one refspec.** `git push <remote> --delete <branch>`; never `--force`, never a wildcard refspec, never a second remote.
+- **And its _refusal_ is not the veto it looks like.** Once the upstream is `[gone]` there is no ref left to compare against, so `-d` falls back to `HEAD` and refuses — which is **every category-2 branch**, the category whose entire point is that the remote half is already deleted. A branch that was never pushed at all refuses for the same reason. Read as a verdict, that refusal makes the default deletion set unreachable. It is a signal about which verb to use, not about whether to act.
+- **Two questions, and they must not be collapsed.** _May this branch be deleted?_ — answered by the category the user confirmed, with the tip SHA recorded and printed. _May the deletion be forced past git's refusal?_ — answered by `git merge-base --is-ancestor "$b" "$remote/$base"`, by category 1's own evidence, or by the confirmed category with its SHA on record. Making containment the gate on the **first** question makes categories 2, 3 and 4 undeletable: a branch reaches those categories by failing category 1's merge test, so containment is false for them by construction, and confirming the default set would delete category 1 alone.
+- **`-D` is reached only through a `-d` refusal**, never as the line below it, and only on a licence the report names. The one case that deletes nothing at all is a name that resolves on **neither** side: no SHA is no restore argument, and no branch to delete.
+- **A remote deletion is one push of one refspec.** `git push <remote> --delete <branch>` — the **short** name, never the qualified `<remote>/<branch>` classification used; never `--force`, never a wildcard refspec, never a second remote.
 - **Recovery, per side:**
 
   ```sh
@@ -290,8 +359,12 @@ remote (delete)
 - ❌ Letting "stale by age" ride along on the merged tier's confirmation.
 - ❌ Treating a failed protected-branch read as "no protected branches", and deleting on a protection set nobody could read.
 - ❌ Deleting the head branch of an open PR because its last commit is old.
-- ❌ Reaching for `-D` on the first `-d` refusal instead of reading the refusal.
+- ❌ Reaching for `-D` without reading the refusal first, or writing it as the line below `-d` where it can be run on its own.
 - ❌ Reading `git branch -d`'s success as "the work landed" — with an upstream set it compares against the remote counterpart, not the integration branch.
+- ❌ Reading `git branch -d`'s refusal as a verdict, so every category-2 branch — the one whose upstream is already `[gone]`, which is why `-d` fell back to `HEAD` — becomes undeletable.
+- ❌ Gating the deletion itself on containment, so categories 2, 3 and 4 can never be deleted: a branch reaches them by failing that very test.
+- ❌ Reaching the remote deletion only through a successful local one, so a branch that lives only on the remote — never checked out here — survives a both-sides run.
+- ❌ Handing `git branch -d` or `git push --delete` the qualified `origin/feature/x`; that is classification's name for the remote side, not the delete verbs'.
 - ❌ Deleting a branch on a fork or a second remote because the name matched.
 - ❌ Reporting a count instead of the branches, their evidence and their SHAs.
 
@@ -311,6 +384,9 @@ The issue that specified this skill settled its shape; what it left open, and wh
 - **No forge, no run.** Two of four categories and half the protection come from the forge; a git-only fallback would quietly report a smaller, less trustworthy answer that looks exactly like a complete one. Stopping is the same choice `merge-deps` and `release` make, for the same reason.
 - **An unreadable protection set ends the run at the report — it does not merely un-preselect.** `branches?protected=true` needs plain read access, so a failure is an access or availability problem, never evidence of a repo without rules. The two candidate answers were "fall back to the names and proceed, flagged incomplete" and "list everything, delete nothing", and the second wins because the first is a green light drawn from an unreadable fact — the exact thing the guardrails forbid. Preselecting nothing is not enough either: the branch a rule protects is by definition the one the report cannot name, so it is also the one a human would tick by hand in good faith. The report itself is safe and still worth producing, so the run is not aborted, only disarmed — the same trade as "no forge, no run", one notch milder.
 - **An errored merge test is `undetermined`, never `landed`.** `git cherry` reports failure on stderr and exits non-zero while printing nothing on stdout, so any test that reads only its output classifies a broken ref as merged — into the _default deletion set_, where neither backstop catches it: locally the false "merged" is itself the evidence that licenses `-D` over a `-d` refusal, and remotely `git push --delete` has no second opinion at all. The exit status is therefore part of the test, and a base that does not resolve stops the run in step 1 rather than being rediscovered once per branch.
+- **The confirmed category licenses the deletion; containment licenses only the forcing.** Making containment the gate on the deletion itself is self-defeating and was tried: a branch reaches category 2, 3 or 4 by failing category 1's merge test, and an ancestor of the base passes that test, so `--is-ancestor` is false for those three categories **by construction** — confirming the default set would have deleted category 1 alone, and confirming the second tier nothing at all. The category-2 case makes it plainest: `[gone]` means the remote half is already deleted, so the local leftover _is_ the category. The two questions are therefore kept apart, and what makes categories 2–4 safe is not a merge test they cannot pass but the tip SHA recorded on each side before either verb runs, printed with its restore line.
+- **`git branch -d` is run first anyway, and its refusal is read rather than obeyed.** It is free, and it is the right verb wherever git agrees. But it answers a question about the _upstream_ — and about `HEAD` once that upstream is `[gone]` — so its refusal is not evidence about the integration branch. Keeping `-D` behind that refusal, and behind a named licence, keeps the property the structure was built for: `-D` is never a line someone can run on its own after a `-d` that said no.
+- **A missing tip SHA, not a missing merge, is the hard gate.** A ref that does not resolve yields no SHA on either side, which means no restore argument and no branch to delete — so the branch is held. That is what keeps an unresolvable name out of the deletion set, and it holds independently of how the branch was classified.
 - **Deletion is confirmation-gated, not config-gated.** `merge-deps.merge` and `release.promote` default to off because those skills can act unattended; this one asks every time, on every branch, in every mode. An opt-in key would be a second yes buying no safety, and a repo that does not want branches pruned does not invoke the skill — or sets `pruneBranches: false`.
 - **Two config keys, and no more.** The categories, the tiers, the remote and the protection floor are the skill's judgement, not a repo's preference. What genuinely varies per repo is how long "quiet" is and which extra names are sacred — `age` and `protect`.
 - **Not a mode of `release` or `merge-deps`.** Branch cleanup is tied neither to shipping a release nor to the dependency queue, so folding it in would make it fire at the wrong moment — and it would put "never delete a branch" inside a skill whose job is merging PRs that delete branches.
