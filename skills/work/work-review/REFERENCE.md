@@ -30,21 +30,32 @@ Eligible = the issues this loop reviews. Self-select (one) and drain (all, order
 - **repo scope / team** — Linear only, as in the [implement selection](../work-implement/REFERENCE.md#selection-query).
 - **order** — by priority (Linear native; GitHub `work.priorityLabels`), then creation order. **No dependency re-sort** — review order is priority only (unlike the implement loop, review has no accumulation to order for).
 
+**Resolve the label before you query with it** ([reading the config](../../README.md#reading-the-config)) — an unresolved substitution reaching `--label` is the failure mode this loop is most exposed to, because `gh` **drops an empty `--label` silently** and returns every open issue instead of none:
+
 ```bash
+# label-or-off: false is "mechanic off", absent/unreadable is "use the default"
+review=$(jq -er '.work.labels.review | select(. != null) | tostring' "$config" 2>/dev/null) || review=
+[ -n "$review" ] || review='ai: review'
+[ "$review" = 'false' ] && review=
+
 # GitHub — issues awaiting review
-gh issue list --state open --label "$(jq -r '.work.labels.review' "$config")" --json number,title,labels,createdAt
+test -n "$review" && gh issue list --state open --label "$review" --json number,title,labels,createdAt
 ```
+
+**Never pass `--label "$review"` unguarded.** With `labels.review: false` the label mechanic is off and [the PR's existence is the signal](../work-implement/REFERENCE.md#config) — select on that instead; do **not** fall through to a label query with an empty value.
 
 ## Round count
 
 The round number is **derived from the tracker's own events**, never a stored counter — one round = one `working → review` transition = one `review` label addition.
 
 ```bash
-# GitHub — how many times this issue has entered review
+# GitHub — how many times this issue has entered review ($review resolved as above)
 gh api "repos/$owner/$repo/issues/$n/timeline" --paginate \
   --jq '[.[] | select(.event=="labeled" and .label.name==$review)] | length' \
-  --arg review "$(jq -r '.work.labels.review' "$config")"
+  --arg review "$review"
 ```
+
+An empty `$review` here fails **closed** rather than open — every round counts as 0, so `maxRounds` never triggers and the loop keeps returning `changes-requested` instead of escalating. Same resolution, same reason.
 
 **Linear** — read the issue's history/activity and count the state/label changes onto the `review` state. Before deciding `changes-requested`, compare the count to `work.review.maxRounds`: at or above it, escalate to `needs human` instead — with a comment summarising the still-unresolved feedback.
 

@@ -177,12 +177,24 @@ Eligible = matches **all** configured filters. Self-select (one issue) and drain
 - **status** — Linear: state ∈ `work.linear.statuses`. GitHub: `--state open`.
 - **order** — by priority. Linear native priority field; GitHub by `work.priorityLabels` (highest first), then creation order. Under `branch:<name>` this order is then re-sorted so prerequisites come first — [dependency ordering](#dependency-ordering).
 
+**Resolve every label before it reaches the query** ([reading the config](../../README.md#reading-the-config)) — a bare `$(jq …)` inside the search string yields `label:"",""` when `jq` is missing, which matches nothing and drains an empty queue in silence:
+
 ```bash
+# label-or-off: false is "mechanic off", absent/unreadable is "use the default"
+ready=$(jq -er '.work.labels.ready | select(. != null) | tostring' "$config" 2>/dev/null) || ready=
+[ -n "$ready" ] || ready='ai: ready'
+[ "$ready" = 'false' ] && ready=
+chreq=$(jq -er '.work.labels.changesRequested | select(. != null) | tostring' "$config" 2>/dev/null) || chreq=
+[ -n "$chreq" ] || chreq='ai: changes requested'
+[ "$chreq" = 'false' ] && chreq=
+
 # GitHub — implement-loop inputs (ready OR changes-requested); comma = OR within a search qualifier
 gh issue list --state open \
-  --search "label:\"$(jq -r '.work.labels.ready' "$config")\",\"$(jq -r '.work.labels.changesRequested' "$config")\"" \
+  --search "label:\"$ready\",\"$chreq\"" \
   --json number,title,labels,createdAt
 ```
+
+Both inputs empty means **no eligible query exists** — report that as a config problem, never as an empty queue. Skip a label that is `false` and build the search from the remaining one.
 
 **Ready-gate off** (`labels.ready: false`): the query above can't filter by a ready label — list open issues and instead **exclude** the in-flight ones (`--search "-label:<working> -label:<blocked>"`), so "never already `working`/`blocked`" still holds without a gate to lean on.
 
