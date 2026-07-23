@@ -9,6 +9,7 @@
       "handoff",
       "issue",
       "merge-deps",
+      "prune-branches",
       "prune-comments",
       "pull-request",
       "release",

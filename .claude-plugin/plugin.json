@@ -12,6 +12,7 @@
   "skills": [
     "./skills/repo/atomic-commit",
     "./skills/repo/merge-deps",
+    "./skills/repo/prune-branches",
     "./skills/repo/prune-comments",
     "./skills/repo/pull-request",
     "./skills/repo/release",

@@ -69,7 +69,7 @@ describe('the generated config block is self-contained', () => {
   test('it is present in the skills that read config, and nowhere else by accident', () => {
     assert.equal(
       withConfigBlock.length,
-      14,
+      15,
       `found: ${withConfigBlock.join(', ')}`
     );
   });

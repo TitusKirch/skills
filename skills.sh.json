@@ -6,6 +6,7 @@
       "skills": [
         "atomic-commit",
         "merge-deps",
+        "prune-branches",
         "prune-comments",
         "pull-request",
         "release",

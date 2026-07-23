@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
   "title": "TitusKirch skills config",
-  "description": "Optional, committed config shared by the TitusKirch skills (atomic-commit, pull-request, issue, release, merge-deps, work-issue, work-queue, write-docs; update-deps and handoff read shared keys only). Place at the repo root as .tituskirch-skills.json. Absent → skills behave on detection/native defaults only. Resolution per setting: config → native → built-in default.",
+  "description": "Optional, committed config shared by the TitusKirch skills (atomic-commit, pull-request, issue, release, merge-deps, prune-branches, work-issue, work-queue, write-docs; update-deps and handoff read shared keys only). Place at the repo root as .tituskirch-skills.json. Absent → skills behave on detection/native defaults only. Resolution per setting: config → native → built-in default.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -67,6 +67,17 @@
       "oneOf": [
         {
           "$ref": "#/$defs/mergeDepsShape"
+        },
+        {
+          "const": false
+        }
+      ]
+    },
+    "pruneBranches": {
+      "description": "prune-branches skill settings, or false to disable the prune-branches skill for the repo. Absent is not disabled — it means the built-in defaults, since the skill deletes nothing without an explicit per-run confirmation. Scope is fixed to the integration branch's own remote, and the built-in protected set is fixed too; pruneBranches.protect only ever adds to it.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/pruneBranchesShape"
         },
         {
           "const": false
@@ -365,6 +376,29 @@
           "minimum": 1,
           "default": 5,
           "description": "Max PRs merged per run. Default: 5."
+        }
+      }
+    },
+    "pruneBranchesShape": {
+      "description": "Shape of the pruneBranches section: properties and types only, with no required keys and no cross-key constraints. Referenced twice — by the root section, which composes it with its constraints, and by a profile, where a fragment must stay valid on its own. Never referenced directly by a config.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "age": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 90,
+          "description": "Days without a commit after which a branch counts as stale by age — the skill's fourth category, measured from the tip commit's committer date. That category is always listed and never preselected, so this threshold widens or narrows what is reported, never what is deleted unasked. Default: 90."
+        },
+        "protect": {
+          "type": "array",
+          "default": [],
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Extra protected-branch glob patterns (e.g. \"release/*\", \"legacy-*\"), matched against a branch's short name on both the local and the remote side. Additive only, the way issue.labels.exclude adds to a label catalog: it is appended to the built-in protected set — the forge's default branch, the integration branch (pr.base), any branch checked out in a worktree, any branch the forge itself marks protected, the head of an open pull request, and the name fallback main/master/dev/develop/stage/staging/prod/production/next — and can never shrink it, so no config value can unprotect the default branch. release/* is deliberately absent from the built-in set (it is the shape of release-please's own throwaway branches), which is what this key is for in a repo that genuinely ships from it. Default: []."
         }
       }
     },
@@ -681,6 +715,17 @@
           "oneOf": [
             {
               "$ref": "#/$defs/mergeDepsShape"
+            },
+            {
+              "const": false
+            }
+          ]
+        },
+        "pruneBranches": {
+          "description": "prune-branches skill settings, or false to disable the prune-branches skill for the repo. Absent is not disabled — it means the built-in defaults, since the skill deletes nothing without an explicit per-run confirmation. Scope is fixed to the integration branch's own remote, and the built-in protected set is fixed too; pruneBranches.protect only ever adds to it.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/pruneBranchesShape"
             },
             {
               "const": false
