@@ -32,6 +32,7 @@
     "format:fix": "oxfmt .",
     "check": "pnpm lint && pnpm format",
     "check:fix": "pnpm lint:fix && pnpm format:fix",
+    "test": "node --test 'test/*.test.ts'",
     "taze": "taze",
     "taze:w": "taze -w",
     "skills:list": "bash scripts/list-skills.sh",

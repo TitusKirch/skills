@@ -42,3 +42,6 @@ jobs:
 
       - name: Skills registry in sync
         run: pnpm skills:check
+
+      - name: Test
+        run: pnpm test

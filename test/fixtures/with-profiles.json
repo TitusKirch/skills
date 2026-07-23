@@ -1,0 +1,26 @@
+{
+  "language": "en",
+  "verify": "pnpm check",
+  "commit": { "scopeVocab": ["alpha", "beta"] },
+  "pr": { "base": "dev" },
+  "release": { "promote": "auto" },
+  "work": {
+    "branch": "branch:dev",
+    "cap": 10,
+    "labels": {
+      "ready": "ai: ready",
+      "review": "ai: review",
+      "done": "ai: done"
+    }
+  },
+  "profiles": {
+    "ci": {
+      "work": { "branch": "worktree", "labels": { "ready": "ci: queued" } },
+      "release": false
+    },
+    "audit": {
+      "commit": { "scopeVocab": ["only-this"] },
+      "verify": null
+    }
+  }
+}
