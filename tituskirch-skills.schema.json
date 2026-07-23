@@ -400,7 +400,7 @@
         },
         "template": {
           "type": ["string", "null"],
-          "description": "Forces one issue template, as a repo-relative path to the file under .github/ISSUE_TEMPLATE/ (a .md template or a .yml form). Unset is the normal case and does not mean \"no template\": the skill then chooses per issue by reading the templates' own description (.yml) / about (.md), so this key exists to override that choice, not to supply a default for it. Applies on both trackers: a committed template states how the repo writes issues, which the tracker receiving them does not change, so the same files are read on Linear as on GitHub. The skill reads the file and composes the body itself, so this is a path and not a template name: `gh issue create --template` takes the name: from a template's frontmatter, is rejected alongside --body/--body-file, and cannot see .yml forms at all."
+          "description": "Forces one issue template, as a repo-relative path to the file under .github/ISSUE_TEMPLATE/ (a .md template or a .yml form). Unset is the normal case and does not mean \"no template\": the skill then chooses per issue by reading the templates' own description (.yml) / about (.md), so this key exists to override that choice, not to supply a default for it. An explicit null means the same thing — no forced template — but it is terminal: it does not fall back to the deprecated issue.github.template, so a profile can clear a forced template without resurrecting the old key. Only an absent issue.template reaches that fallback, so presence must be tested before the value is read. Applies on both trackers: a committed template states how the repo writes issues, which the tracker receiving them does not change, so the same files are read on Linear as on GitHub. The skill reads the file and composes the body itself, so this is a path and not a template name: `gh issue create --template` takes the name: from a template's frontmatter, is rejected alongside --body/--body-file, and cannot see .yml forms at all."
         },
         "github": {
           "type": "object",
@@ -410,7 +410,7 @@
             "template": {
               "type": ["string", "null"],
               "deprecated": true,
-              "description": "Deprecated — use issue.template, which applies on both trackers. Still read as a fallback when issue.template is unset, so existing configs keep working; setup writes the new key."
+              "description": "Deprecated — use issue.template, which applies on both trackers. Still read as a fallback when issue.template is absent, so existing configs keep working; setup writes the new key. An explicit null on issue.template means \"no forced template\" and ends the lookup — it does not reach this key."
             }
           }
         },

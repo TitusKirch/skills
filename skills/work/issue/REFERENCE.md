@@ -24,26 +24,39 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two trackers (GitHub
 }
 ```
 
-| Key                                            | Effect                                                                                                                                                                                          |
-| :--------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `issue.tracker`                                | `github` or `linear` — the active tracker (set by setup, never guessed silently)                                                                                                                |
-| `issue.language`                               | title/body language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`                                                                                       |
-| `issue.title.convention`                       | `plain` (default — most trackers) or `conventional` (`type: subject`)                                                                                                                           |
-| `issue.instructions`                           | free-text wording guidance for the title/body — additive, never overrides tracker rules or guardrails                                                                                           |
-| `issue.linear.team`                            | **required to create on Linear** (schema-enforced when `issue.tracker` is `linear`) — a human name/key (e.g. `"ENG"`); resolved to the team id via the cache                                    |
-| `issue.linear.{project,priority,defaultState}` | optional Linear defaults (`priority`: none/low/medium/high/urgent)                                                                                                                              |
-| `issue.template`                               | forces one issue template on **either tracker** — a repo-relative **path** to the file, not a template name; unset, the skill chooses by reading them (see [Issue templates](#issue-templates)) |
-| `issue.labels.exclude`                         | glob patterns (e.g. `stack:*`, `autorelease:*`, `dependencies`) for catalog labels the agent must never apply                                                                                   |
+| Key                                            | Effect                                                                                                                                                                                                                     |
+| :--------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `issue.tracker`                                | `github` or `linear` — the active tracker (set by setup, never guessed silently)                                                                                                                                           |
+| `issue.language`                               | title/body language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`                                                                                                                  |
+| `issue.title.convention`                       | `plain` (default — most trackers) or `conventional` (`type: subject`)                                                                                                                                                      |
+| `issue.instructions`                           | free-text wording guidance for the title/body — additive, never overrides tracker rules or guardrails                                                                                                                      |
+| `issue.linear.team`                            | **required to create on Linear** (schema-enforced when `issue.tracker` is `linear`) — a human name/key (e.g. `"ENG"`); resolved to the team id via the cache                                                               |
+| `issue.linear.{project,priority,defaultState}` | optional Linear defaults (`priority`: none/low/medium/high/urgent)                                                                                                                                                         |
+| `issue.template`                               | forces one issue template on **either tracker** — a repo-relative **path** to the file, not a template name; absent **or** an explicit `null`, the skill chooses by reading them (see [Issue templates](#issue-templates)) |
+| `issue.labels.exclude`                         | glob patterns (e.g. `stack:*`, `autorelease:*`, `dependencies`) for catalog labels the agent must never apply                                                                                                              |
 
-`issue.template` sits at the `issue.*` level, not under `issue.github`, because the templates it points at are read on **both** trackers ([Issue templates](#issue-templates)). `issue.github.template` is the older location and is still read as a fallback when `issue.template` is unset, so an existing config keeps working; it is deprecated, GitHub-only by its nesting, and setup writes the new key.
+`issue.template` sits at the `issue.*` level, not under `issue.github`, because the templates it points at are read on **both** trackers ([Issue templates](#issue-templates)). `issue.github.template` is the older location and is still read as a fallback when `issue.template` is **absent**, so an existing config keeps working; it is deprecated, GitHub-only by its nesting, and setup writes the new key.
+
+**An explicit `null` is not the same as absent, and it is terminal.** `"template": null` means _no forced template_ — the skill chooses per issue by reading the templates — and it **ends the lookup**: it does not fall through to `issue.github.template`. Only an **absent** `issue.template` reaches that fallback. This is the merge rule ([Reading the config](#reading-the-config)) applied here — "an explicit `null` sets null rather than deleting a key" — so a profile can clear a forced template the base config sets, and clearing it must not resurrect the deprecated key it was migrated away from.
 
 `language` is a shared root key; `issue.*` is this skill's section (`commit.*`/`pr.*` belong to the other skills). `issue.instructions` mirrors `commit.instructions` / `pr.instructions` — additive wording guidance that never overrides the tracker rules, template, or guardrails. On Linear it also reads the cross-skill key `work.labels.repo` to pin a repo-scope tag on create. Full schema: the repo-root `tituskirch-skills.schema.json`.
+
+The `null`-versus-absent distinction above has to survive the read, and `// empty` destroys it — that collapses both into the same empty string. **Ask whether the key is there before reading its value:**
 
 ```bash
 # $resolved comes from the resolver — see "Reading the config" in this file.
 tracker=$(printf '%s' "$resolved" | jq -er '.issue.tracker // empty' 2>/dev/null) || tracker=
 team=$(printf '%s' "$resolved" | jq -er '.issue.linear.team // empty' 2>/dev/null) || team=
 instructions=$(printf '%s' "$resolved" | jq -er '.issue.instructions // empty' 2>/dev/null) || instructions=
+
+# Forced template — `null` is a value, so presence is asked for before the value is read.
+if printf '%s' "$resolved" | jq -e '(.issue // {}) | has("template")' >/dev/null 2>&1; then
+  # present: a string forces that template, `null` forces none — either way, no fallback
+  template=$(printf '%s' "$resolved" | jq -r '.issue.template // empty' 2>/dev/null) || template=
+else
+  # absent: the deprecated GitHub-only key is the only fallback
+  template=$(printf '%s' "$resolved" | jq -er '.issue.github.template // empty' 2>/dev/null) || template=
+fi
 ```
 
 <skills-config>
