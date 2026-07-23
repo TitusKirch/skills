@@ -91,13 +91,17 @@ test -n "$review" && gh issue list --state open --label "$review" --json number,
 The round number is **derived from the tracker's own events**, never a stored counter — one round = one `working → review` transition = one `review` label addition.
 
 ```bash
-# GitHub — how many times this issue has entered review ($review resolved as above)
-gh api "repos/$owner/$repo/issues/$n/timeline" --paginate \
-  --jq '[.[] | select(.event=="labeled" and .label.name==$review)] | length' \
-  --arg review "$review"
+# GitHub — how many times this issue has entered review ($review resolved as above).
+# gh api has no --arg, so the label is embedded in the filter; --paginate runs --jq
+# once per page, so the per-page counts are summed rather than read off the first line.
+test -n "$review" && gh api "repos/$owner/$repo/issues/$n/timeline" --paginate \
+  --jq "[.[] | select(.event==\"labeled\" and .label.name==\"$review\")] | length" \
+  | awk '{ n += $1 } END { print n + 0 }'
 ```
 
-An empty `$review` here fails **closed** rather than open — every round counts as 0, so `maxRounds` never triggers and the loop keeps returning `changes-requested` instead of escalating. Same resolution, same reason.
+**Two traps sit in that one command.** `gh api` has **no `--arg` flag** — passing one aborts with `unknown flag: --arg` before the request is ever made, so the resolved label must be interpolated into a double-quoted filter string. And `--paginate` applies `--jq` **per page**, printing one number per page; reading only the first line undercounts a timeline past page one, which fails **open** — exactly the direction `maxRounds` exists to guard. `--slurp` cannot rescue it: `gh` rejects `--slurp` together with `--jq`.
+
+The `test -n "$review"` guard means an unresolved label yields **no count at all** rather than a count of `0`. Never read a missing number as zero rounds — that never trips `maxRounds`, and the loop keeps returning `changes-requested` instead of escalating. With `labels.review: false` the mechanic is deliberately off: count the reviewer's `changes-requested` verdicts on the artifact instead, and escalate to `needs human` when neither signal is countable.
 
 **Linear** — read the issue's history/activity and count the state/label changes onto the `review` state. Before deciding `changes-requested`, compare the count to `work.review.maxRounds`: at or above it, escalate to `needs human` instead — with a comment summarising the still-unresolved feedback.
 
