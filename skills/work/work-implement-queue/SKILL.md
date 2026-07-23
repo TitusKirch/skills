@@ -56,6 +56,8 @@ Release the lock. Summarise each issue and its outcome (handed to `review` / `bl
 
 Issues now in `review` are the drain's hand-off — the [`work-review-queue`](../work-review-queue/SKILL.md) picks them up. Name the count.
 
+## Config
+
 <skills-config>
 
 ### Reading the config

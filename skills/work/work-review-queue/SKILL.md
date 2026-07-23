@@ -55,6 +55,8 @@ Release the lock. Summarise each issue and its verdict, what the reconcile close
 - **`needs human`** — the drain's **actual ask**: each wants a human verdict (via `/work-review <n>`) to reach `done` or go back for changes.
 - **`blocked`** — need a human call.
 
+## Config
+
 <skills-config>
 
 ### Reading the config

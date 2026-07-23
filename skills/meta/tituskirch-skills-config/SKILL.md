@@ -95,6 +95,8 @@ Desired-state, idempotent — a `--fix` linter for the config. **check** is the 
    - **Report only** — a key written to its own default (suggest dropping it — resolution order makes it a no-op); never auto-remove one that documents deliberate intent.
 3. Show the **plan + diff**; on confirm, write **only** config keys. **check** stops here — it never writes.
 
+## Config
+
 <skills-config>
 
 ### Reading the config

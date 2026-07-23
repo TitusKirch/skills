@@ -310,12 +310,26 @@ function configBody(): string {
   return raw.slice(at + marker.length).trim();
 }
 
+// The mirrored block opens with a level-3 heading, so it belongs under "## Config".
+// Placed anywhere else it silently reads as part of the preceding section — a queue
+// skill's block landed under "## Workflow" and became its last step. Rewriting the
+// block cannot fix where it sits, so placement is asserted rather than repaired.
+function assertPlacement(content: string, from: number, where: string): void {
+  const headings = content.slice(0, from).match(/^## .*$/gm);
+  const under = headings ? headings[headings.length - 1] : null;
+  if (under !== '## Config') {
+    throw new Error(
+      `${where}: <skills-config> sits under ${under ?? 'no heading'} — move it under a "## Config" heading`
+    );
+  }
+}
+
 function syncConfigContract(skills: Skill[], check: boolean): string[] {
   const stale: string[] = [];
   const expected = `${CONFIG_OPEN}\n\n${configBody()}\n\n${CONFIG_END}`;
   const resolver = readFileSync(RESOLVER, 'utf8');
   // Compare on collapsed whitespace so oxfmt's wrapping never reads as drift.
-  const norm = (s) => s.replace(/\s+/g, ' ').trim();
+  const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
 
   for (const skill of skills) {
     const dir = join(SKILLS_DIR, skill.path);
@@ -332,7 +346,8 @@ function syncConfigContract(skills: Skill[], check: boolean): string[] {
       const opening = current.match(CONFIG_OPEN_RE);
       const to = current.indexOf(CONFIG_END);
       if (!opening || to === -1) continue;
-      const from = opening.index;
+      const from = opening.index as number;
+      assertPlacement(current, from, `skills/${skill.path}/${name}`);
       hosts += 1;
       const next =
         current.slice(0, from) +
