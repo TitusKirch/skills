@@ -19,21 +19,23 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two trackers (GitHub
       "priority": null,
       "defaultState": null
     },
-    "github": { "template": ".github/ISSUE_TEMPLATE/bug_report.yml" }
+    "template": ".github/ISSUE_TEMPLATE/bug_report.yml"
   }
 }
 ```
 
-| Key                                            | Effect                                                                                                                                                                    |
-| :--------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `issue.tracker`                                | `github` or `linear` — the active tracker (set by setup, never guessed silently)                                                                                          |
-| `issue.language`                               | title/body language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`                                                                 |
-| `issue.title.convention`                       | `plain` (default — most trackers) or `conventional` (`type: subject`)                                                                                                     |
-| `issue.instructions`                           | free-text wording guidance for the title/body — additive, never overrides tracker rules or guardrails                                                                     |
-| `issue.linear.team`                            | **required to create on Linear** (schema-enforced when `issue.tracker` is `linear`) — a human name/key (e.g. `"ENG"`); resolved to the team id via the cache              |
-| `issue.linear.{project,priority,defaultState}` | optional Linear defaults (`priority`: none/low/medium/high/urgent)                                                                                                        |
-| `issue.github.template`                        | forces one issue template — a repo-relative **path** to the file, not a template name; unset, the skill chooses by reading them (see [Issue templates](#issue-templates)) |
-| `issue.labels.exclude`                         | glob patterns (e.g. `stack:*`, `autorelease:*`, `dependencies`) for catalog labels the agent must never apply                                                             |
+| Key                                            | Effect                                                                                                                                                                                          |
+| :--------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `issue.tracker`                                | `github` or `linear` — the active tracker (set by setup, never guessed silently)                                                                                                                |
+| `issue.language`                               | title/body language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`                                                                                       |
+| `issue.title.convention`                       | `plain` (default — most trackers) or `conventional` (`type: subject`)                                                                                                                           |
+| `issue.instructions`                           | free-text wording guidance for the title/body — additive, never overrides tracker rules or guardrails                                                                                           |
+| `issue.linear.team`                            | **required to create on Linear** (schema-enforced when `issue.tracker` is `linear`) — a human name/key (e.g. `"ENG"`); resolved to the team id via the cache                                    |
+| `issue.linear.{project,priority,defaultState}` | optional Linear defaults (`priority`: none/low/medium/high/urgent)                                                                                                                              |
+| `issue.template`                               | forces one issue template on **either tracker** — a repo-relative **path** to the file, not a template name; unset, the skill chooses by reading them (see [Issue templates](#issue-templates)) |
+| `issue.labels.exclude`                         | glob patterns (e.g. `stack:*`, `autorelease:*`, `dependencies`) for catalog labels the agent must never apply                                                                                   |
+
+`issue.template` sits at the `issue.*` level, not under `issue.github`, because the templates it points at are read on **both** trackers ([Issue templates](#issue-templates)). `issue.github.template` is the older location and is still read as a fallback when `issue.template` is unset, so an existing config keeps working; it is deprecated, GitHub-only by its nesting, and setup writes the new key.
 
 `language` is a shared root key; `issue.*` is this skill's section (`commit.*`/`pr.*` belong to the other skills). `issue.instructions` mirrors `commit.instructions` / `pr.instructions` — additive wording guidance that never overrides the tracker rules, template, or guardrails. On Linear it also reads the cross-skill key `work.labels.repo` to pin a repo-scope tag on create. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
@@ -120,8 +122,45 @@ Triggered when the config is missing/incomplete or the user runs `/issue setup`.
 3. **Title convention** — `plain` (default) or `conventional`.
 4. **Tracker defaults (only what's needed):**
    - **Linear** — check the MCP is authenticated **first** (if not, send the user to authenticate, then continue). List teams from the catalog and have the user **pick `team`** (the one required field). `project`/`priority`/`defaultState` stay optional config keys — not asked here.
-   - **GitHub** — optionally **force** one issue template, given as a path under `.github/ISSUE_TEMPLATE/`. Leave it unset (the normal case) and the skill picks per issue by reading the templates' own descriptions.
-5. **Write the config** and **populate the cache** initially.
+   - **GitHub** — nothing required; the tracker needs no defaults of its own.
+5. **Issue template (optional, either tracker)** — the repo may **force** one template via `issue.template`, given as a path under `.github/ISSUE_TEMPLATE/`. Ask only when the repo ships templates, and leave it unset in the normal case: the skill then picks per issue by reading the templates' own descriptions. Not a GitHub question — the same files are used on Linear.
+6. **Write the config** and **populate the cache** initially.
+
+## Issue templates
+
+**A template is a repo statement, not a tracker feature.** `.github/ISSUE_TEMPLATE/` says how _this project_ writes issues, and that stays true whichever tracker receives them — so the same files are read on **GitHub and Linear alike**. The tracker decides **where** an issue is filed; it does not decide **what shape** the body has. Nothing extra is needed to make that work: the skill composes the body itself on both trackers, a `.md` template is plain markdown, and only `.yml` forms need turning into headings — work the GitHub path already does. The directory name is a repo convention that GitHub happens to also render; it is not a reason to drop the structure on Linear.
+
+`issue.template` is a **repo-relative path** to the file (`.github/ISSUE_TEMPLATE/bug_report.yml`), not a template name. A path stays a single identifier across both formats and both trackers, which a name cannot be.
+
+**Why a path and not a name — the GitHub mechanics.** The skill reads the file and composes the body itself, then writes it with `--body-file`; **`gh issue create --template` is never used**, so gh's name-based lookup does not constrain the value. Two independent reasons, both verified against `gh` 2.92:
+
+- `--template` is refused outright alongside a body — it errors with "`--template` is not supported when using `--body` or `--body-file`" before doing anything — and this skill always sends the body it drafted.
+- `--template` matches only the `name:` of a template that GitHub's GraphQL `repository.issueTemplates` returns, and that field lists **`.md` templates only**. A repo whose templates are all `.yml` forms reports an empty list, so no value of any shape reaches them. This repo is exactly that case.
+
+The two formats are different kinds of file and are filled differently — the same way on either tracker, since the body is composed before it is sent:
+
+| File    | What it is                                                                    | How the body is produced                                                                                                                                                                                                           |
+| :------ | :---------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `*.md`  | a body, optionally preceded by `name`/`about`/`labels` frontmatter            | drop the frontmatter, keep the markdown, fill its sections                                                                                                                                                                         |
+| `*.yml` | a **form definition** GitHub renders in its web UI — the file is never a body | the API stores whatever markdown it is sent, so reproduce each field's `label` as an `##` heading and answer it; keep `validations.required` fields, and skip `type: markdown` blocks — those are web-UI instructions, not content |
+
+**Choosing one — read the templates, don't map them.** `issue.template` forces a template and ends the choice. With no forced value the skill picks one itself, exactly as it picks labels from the catalog:
+
+1. Enumerate `.github/ISSUE_TEMPLATE/*.md` and `*.yml`, skipping `config.yml`.
+2. Read each one's own selection rule — `name` + `description` (`.yml` forms), `name` + `about` (`.md` frontmatter). That text states **when the template applies**; it is structurally the same job a skill's `description` does when Claude picks between skills.
+3. Match the drafted intent against it and take the best fit. No fit → fall back to a clean drafted body, unless blank issues are disabled (below).
+
+A `"bug" → "🐛 Bug report"` table in the config would be a **second copy** of what the templates already say, drifting the moment one is renamed. There is deliberately no such key: force one template, or none.
+
+**`blank_issues_enabled: false` is binding — on both trackers.** `.github/ISSUE_TEMPLATE/config.yml` is the chooser's own config, not a template — never treat it as one — but it **is** read:
+
+- `blank_issues_enabled: false` — the repo refuses template-less issues. GitHub's web UI enforces that; **no API does**, so the skill must, and it is the repo talking rather than GitHub, so it binds on Linear too. A template is then mandatory: pick one, and if none fits, say so in the plan and let the human choose rather than filing a blank issue.
+- `blank_issues_enabled: true`, or the file absent — a template-less body is fine when nothing fits.
+- `contact_links` are external destinations, not templates — never select one.
+
+**With a template, labels reverse direction.** Without one the skill picks labels from the catalog and then writes a body. With one, the template's `labels:` are **already decided** — the repo's own declaration, taken as-is — and the skill only **adds** what they don't already cover. `issue.labels.exclude` governs those additions; it does not strip what the template itself declares. They stay fields on the create call either way, never body text. **On Linear, match them against the team's label catalog first**: labels are team-scoped there, so a name a template declares may not exist. Apply the ones that resolve, and **name the ones that don't in the plan** — never create a Linear label to satisfy a template.
+
+**The preview is the safety net.** Name the chosen template in the [plan](#plan-output) beside title, body and labels, with how it was chosen (forced by config / matched on its description). The match need not be perfect automatically — it needs to be **visible before the write**, so a human can redirect it.
 
 ## Tracker — GitHub (`gh`)
 
@@ -130,39 +169,7 @@ Triggered when the config is missing/incomplete or the user runs `/issue setup`.
 - **Update** — `gh issue edit <n> [--title …] [--body-file …] [--add-label …] [--milestone …]`; close with `gh issue close <n>`.
 - **Search/list** — `gh issue list --search <q> --state <s>` or `gh search issues <q>`.
 - **Catalogs** — `gh label list --json name,description,color`; milestones/projects via `gh api` / `gh project list`.
-- **Issue templates** — detect `.github/ISSUE_TEMPLATE/*.md` **and** `*.yml` (forms), **choose** between them by their own `description`/`about`, and fill them per [Issue templates](#issue-templates) — the two formats are **not** filled the same way.
-
-### Issue templates
-
-`issue.github.template` is a **repo-relative path** to the file (`.github/ISSUE_TEMPLATE/bug_report.yml`), not a template name. The skill reads the file and composes the body itself, then writes it with `--body-file`; **`gh issue create --template` is never used**, so gh's name-based lookup does not constrain the value. Two independent reasons, both verified against `gh` 2.92:
-
-- `--template` is refused outright alongside a body — it errors with "`--template` is not supported when using `--body` or `--body-file`" before doing anything — and this skill always sends the body it drafted.
-- `--template` matches only the `name:` of a template that GitHub's GraphQL `repository.issueTemplates` returns, and that field lists **`.md` templates only**. A repo whose templates are all `.yml` forms reports an empty list, so no value of any shape reaches them. This repo is exactly that case.
-
-A path also stays a single identifier across both formats, which a name cannot be. The two formats are different kinds of file and are filled differently:
-
-| File    | What it is                                                                    | How the body is produced                                                                                                                                                                                                           |
-| :------ | :---------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `*.md`  | a body, optionally preceded by `name`/`about`/`labels` frontmatter            | drop the frontmatter, keep the markdown, fill its sections                                                                                                                                                                         |
-| `*.yml` | a **form definition** GitHub renders in its web UI — the file is never a body | the API stores whatever markdown it is sent, so reproduce each field's `label` as an `##` heading and answer it; keep `validations.required` fields, and skip `type: markdown` blocks — those are web-UI instructions, not content |
-
-**Choosing one — read the templates, don't map them.** `issue.github.template` forces a template and ends the choice. With no forced value the skill picks one itself, exactly as it picks labels from the catalog:
-
-1. Enumerate `.github/ISSUE_TEMPLATE/*.md` and `*.yml`, skipping `config.yml`.
-2. Read each one's own selection rule — `name` + `description` (`.yml` forms), `name` + `about` (`.md` frontmatter). That text states **when the template applies**; it is structurally the same job a skill's `description` does when Claude picks between skills.
-3. Match the drafted intent against it and take the best fit. No fit → fall back to a clean drafted body, unless blank issues are disabled (below).
-
-A `"bug" → "🐛 Bug report"` table in the config would be a **second copy** of what the templates already say, drifting the moment one is renamed. There is deliberately no such key: force one template, or none.
-
-**`blank_issues_enabled: false` is binding.** `.github/ISSUE_TEMPLATE/config.yml` is the chooser's own config, not a template — never treat it as one — but it **is** read:
-
-- `blank_issues_enabled: false` — the repo refuses template-less issues. GitHub's web UI enforces that; the **API does not**, so the skill must. A template is then mandatory: pick one, and if none fits, say so in the plan and let the human choose rather than filing a blank issue.
-- `blank_issues_enabled: true`, or the file absent — a template-less body is fine when nothing fits.
-- `contact_links` are external destinations, not templates — never select one.
-
-**With a template, labels reverse direction.** Without one the skill picks labels from the catalog and then writes a body. With one, the template's `labels:` are **already decided** — the repo's own declaration, taken as-is — and the skill only **adds** what they don't already cover. `issue.labels.exclude` governs those additions; it does not strip what the template itself declares. They stay fields on the create call either way, never body text.
-
-**The preview is the safety net.** Name the chosen template in the [plan](#plan-output) beside title, body and labels, with how it was chosen (forced by config / matched on its description). The match need not be perfect automatically — it needs to be **visible before the write**, so a human can redirect it.
+- **Issue templates** — detect `.github/ISSUE_TEMPLATE/*.md` **and** `*.yml` (forms) and fill them per [Issue templates](#issue-templates), which is tracker-neutral — nothing in it is GitHub-only except the `--template` note.
 
 ### Sub-issues
 
@@ -189,7 +196,9 @@ The Linear MCP server's registered name varies per setup (`mcp__claude_ai_Linear
 - **Tools (generic names)** — `list_teams`, `list_projects`, `list_issue_labels`, `list_issue_statuses`, `create_issue`, `update_issue`, search/`list_issues`.
 - **Team is required** to create — resolve `issue.linear.team` (name/key) to its id via the cached `teams`.
 - **Repo-scope label** — when `work.labels.repo` is a string, apply it on **every** create (alongside the contextual labels) so [`work-implement-queue`](../work-implement-queue/SKILL.md) can scope this repo's issues on a shared Linear team; GitHub needs none (repo-local).
-- **No repo templates** — unlike GitHub, Linear has no in-repo issue templates (`issue.github.template` is GitHub-only). Linear's templates live server-side per team; if the MCP exposes them, offer one, otherwise **draft a clean default body** from the description + session context (the same fallback `pull-request` uses for a missing PR template).
+- **Repo templates apply here too** — the repo's `.github/ISSUE_TEMPLATE/` files are read on Linear exactly as on GitHub ([Issue templates](#issue-templates)); that directory is a repo convention, not a GitHub feature, and the tracker does not get to change the body's shape. Nothing is filed template-less on Linear that would have used a template on GitHub.
+- **Linear's own server-side templates are not reached** — deliberately. The MCP exposes none: there is no listing tool, and `save_issue` (the only create path) takes no template parameter, so no code path can request one. Reproducing that structure over Linear's GraphQL API was considered and rejected — a new API surface for something the repo already states in a file both trackers can read.
+- **A team's default template does not overwrite what the API sends.** A Linear default template is a **composer pre-fill**: it puts the template's text into the description field _before_ the issue is submitted — that is how Linear's docs describe it for the in-app composer and for the Slack integration ("that template's text will appear in the description field"). An API-created issue arrives with `description` already set and no composer in the path, so there is nothing to pre-fill and the repo template's body is what is stored. A default template can still apply team-level **properties** (status, labels, priority) server-side; that is a fields effect, not a body one, and it does not collide with the template body. If a stored body ever does come back altered, the repo template is authoritative — report the discrepancy instead of re-drafting to match Linear.
 - **Sub-issues** — set `parentId` on the child create call. Catalogs (teams/projects/labels/states) → cache.
 
 > **`allowed-tools` note.** This skill declares `Bash, Read, Grep, Glob` only — no MCP entry. `allowed-tools` accepts exact names only (no wildcards) and does **not** restrict which tools are callable; it only pre-approves the listed ones. The Linear MCP tools therefore remain fully callable, governed by the user's permission settings (they may prompt). Because the server name varies, it cannot be listed reliably anyway — omitting it is correct.
@@ -215,7 +224,7 @@ Run: gh issue create --title "Login fails on expired session" --label bug,triage
 
 **Fields, not prose** — labels, milestone, project, assignee and state live in the plan header and are applied via flags / MCP params; never write them into the body, and omit any that are unset (no `No milestone` / `Labels: none` lines).
 
-**Show the template line whenever the tracker is GitHub** — the path plus how it was chosen (`forced by config` / `matched: "<description>"` / `none — no template fits`). It is the one drafting decision a human can only correct if they see it. Omit the line on Linear, which has no in-repo templates.
+**Show the template line on both trackers** — the path plus how it was chosen (`forced by config` / `matched: "<description>"` / `none — no template fits`). It is the one drafting decision a human can only correct if they see it, and the repo's templates are read on Linear too, so the line is never tracker-conditional. Omit it only where the repo ships no templates at all.
 
 For bulk, list each drafted issue (and parent/child links) under one plan. For plan-only mode, follow the plan with the exact command(s) / MCP call(s) and stop.
 
