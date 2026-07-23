@@ -52,7 +52,7 @@ You are the skeptic. Judge, in this order:
 
 ### 6. Verdict — one label move + a comment
 
-Count the review rounds first — the number of times this issue has entered `review` ([recipe](REFERENCE.md#round-count)) — and compare to `work.review.maxRounds`. Then:
+Count the review rounds first — the number of times this issue has entered `review` ([recipe](REFERENCE.md#round-count)) — and compare to `work.review.maxRounds`. A count that could not be read is **not** zero rounds: escalate to `needs human` rather than let the loop run uncapped. Then:
 
 | Verdict                 | When                                                                                                           | Action                                                                                                                                                                                      |
 | :---------------------- | :------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

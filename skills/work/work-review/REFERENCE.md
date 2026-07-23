@@ -93,15 +93,20 @@ The round number is **derived from the tracker's own events**, never a stored co
 ```bash
 # GitHub — how many times this issue has entered review ($review resolved as above).
 # gh api has no --arg, so the label is embedded in the filter; --paginate runs --jq
-# once per page, so the per-page counts are summed rather than read off the first line.
-test -n "$review" && gh api "repos/$owner/$repo/issues/$n/timeline" --paginate \
-  --jq "[.[] | select(.event==\"labeled\" and .label.name==\"$review\")] | length" \
-  | awk '{ n += $1 } END { print n + 0 }'
+# once per page, so the per-page counts are summed. Capture before summing: gh prints
+# its error body on stdout, and a command left of a pipe loses its exit status.
+rounds=
+if [ -n "$review" ]; then
+  raw=$(gh api "repos/$owner/$repo/issues/$n/timeline" --paginate \
+    --jq "[.[] | select(.event==\"labeled\" and .label.name==\"$review\")] | length") || raw=
+  rounds=$(printf '%s\n' "$raw" | awk '/^[0-9]+$/ { n += $1; seen = 1 } END { if (seen) print n }')
+fi
+[ -n "$rounds" ] || echo 'round count unreadable — escalate to needs human'
 ```
 
-**Two traps sit in that one command.** `gh api` has **no `--arg` flag** — passing one aborts with `unknown flag: --arg` before the request is ever made, so the resolved label must be interpolated into a double-quoted filter string. And `--paginate` applies `--jq` **per page**, printing one number per page; reading only the first line undercounts a timeline past page one, which fails **open** — exactly the direction `maxRounds` exists to guard. `--slurp` cannot rescue it: `gh` rejects `--slurp` together with `--jq`.
+**Three traps sit in that one request.** `gh api` has **no `--arg` flag** — passing one aborts with `unknown flag: --arg` before the request is ever made, so the resolved label must be interpolated into a double-quoted filter string. `--paginate` applies `--jq` **per page**, printing one number per page; reading only the first line undercounts a timeline past page one. And a failed request is not silence: `gh` writes its **error body to stdout**, bypassing `--jq`, and on the left of a pipe its exit status is discarded (`pipefail` is not POSIX) — so summing straight out of the pipe coerces `{"message":"Not Found",…}` to `0`. Hence: capture into a variable so the exit status is visible, then sum only the lines that are actually numbers. All three fail **open** — exactly the direction `maxRounds` exists to guard. `--slurp` cannot rescue the pagination either: `gh` rejects `--slurp` together with `--jq`.
 
-The `test -n "$review"` guard means an unresolved label yields **no count at all** rather than a count of `0`. Never read a missing number as zero rounds — that never trips `maxRounds`, and the loop keeps returning `changes-requested` instead of escalating. With `labels.review: false` the mechanic is deliberately off: count the reviewer's `changes-requested` verdicts on the artifact instead, and escalate to `needs human` when neither signal is countable.
+`$rounds` is therefore **empty whenever the count could not be read** — an unresolved label (the guard is never entered), or an unreachable timeline (404, 401, rate limit, transient 5xx) — and holds `0` only when the tracker genuinely answered zero. Never read a missing number as zero rounds — that never trips `maxRounds`, and the loop keeps returning `changes-requested` instead of escalating; an unreadable count escalates to `needs human` instead. With `labels.review: false` the mechanic is deliberately off: count the reviewer's `changes-requested` verdicts on the artifact instead, and escalate to `needs human` when neither signal is countable.
 
 **Linear** — read the issue's history/activity and count the state/label changes onto the `review` state. Before deciding `changes-requested`, compare the count to `work.review.maxRounds`: at or above it, escalate to `needs human` instead — with a comment summarising the still-unresolved feedback.
 
