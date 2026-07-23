@@ -13,7 +13,11 @@
 #
 # Exit codes:
 #   0  resolved config on stdout, or no output because there is no config file
-#   2  jq is unavailable — read the file directly and merge by the rules below
+#  10  jq is unavailable — read the file directly and merge by the rules below
+#
+# 10 rather than a low number because a shell reports its own failures there:
+# `sh missing-file.sh` exits 2, so a mistyped path would otherwise be
+# indistinguishable from a missing jq — and silently treated as one.
 #
 # The merge is jq's `*`: objects merge recursively at any depth, arrays and
 # scalars are replaced rather than concatenated, and an explicit null sets null
@@ -29,7 +33,7 @@ else
 fi
 
 [ -f "$config" ] || exit 0
-command -v jq >/dev/null 2>&1 || exit 2
+command -v jq >/dev/null 2>&1 || exit 10
 
 # CI=false is a non-empty value, so test for truthy words rather than presence.
 case "${CI:-}" in
