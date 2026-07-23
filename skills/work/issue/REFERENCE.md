@@ -158,7 +158,11 @@ A `"bug" → "🐛 Bug report"` table in the config would be a **second copy** o
 - `blank_issues_enabled: true`, or the file absent — a template-less body is fine when nothing fits.
 - `contact_links` are external destinations, not templates — never select one.
 
-**With a template, labels reverse direction.** Without one the skill picks labels from the catalog and then writes a body. With one, the template's `labels:` are **already decided** — the repo's own declaration, taken as-is — and the skill only **adds** what they don't already cover. `issue.labels.exclude` governs those additions; it does not strip what the template itself declares. They stay fields on the create call either way, never body text. **On Linear, match them against the team's label catalog first**: labels are team-scoped there, so a name a template declares may not exist. Apply the ones that resolve, and **name the ones that don't in the plan** — never create a Linear label to satisfy a template.
+**With a template, labels reverse direction.** Without one the skill picks labels from the catalog and then writes a body. With one, the template's `labels:` are **already decided** — the repo's own declaration, taken as-is — and the skill only **adds** what they don't already cover. `issue.labels.exclude` governs those additions; it does not strip what the template itself declares. They stay fields on the create call either way, never body text.
+
+**Resolve a template's labels against the catalog before the write — on both trackers.** A template _names_ labels; it does not create them, and a name it declares may not exist in the repo at all. Match every declared name against the cached catalog first, apply the ones that resolve, **name the ones that don't in the plan**, and never create a label to satisfy a template.
+
+This is not a nicety on GitHub — it is the difference between filing the issue and losing it. `gh` resolves each `--label` to a label id before the write and **aborts the entire call** on an unknown name, after the human has already approved the plan: `gh issue edit <n> --add-label zzz` answers `'zzz' not found` and changes nothing (verified against `gh` 2.92; `--label` on create goes through the same metadata resolution). This repo is the live example — its three templates declare `triage` and `enhancement`, neither of which is in its label catalog. On Linear labels are additionally **team-scoped**, so resolve against the team's catalog rather than the repo's.
 
 **The preview is the safety net.** Name the chosen template in the [plan](#plan-output) beside title, body and labels, with how it was chosen (forced by config / matched on its description). The match need not be perfect automatically — it needs to be **visible before the write**, so a human can redirect it.
 
@@ -234,15 +238,18 @@ issue plan
   catalogs: cached, 2d ago
   template: .github/ISSUE_TEMPLATE/bug_report.yml   (matched: "A skill isn't working as expected")
   title   : Login fails on expired session
-  labels  : bug, triage           (from template)
+  labels  : bug                   (from template)
           + area:auth             (from catalog)
+          ! triage                (declared by the template, not in the catalog — skipped)
   body ▼
     ## Summary
     …
-Run: gh issue create --title "Login fails on expired session" --label bug,triage,area:auth --body-file <tmp>
+Run: gh issue create --title "Login fails on expired session" --label bug,area:auth --body-file <tmp>
 ```
 
 **Fields, not prose** — labels, milestone, project, assignee and state live in the plan header and are applied via flags / MCP params; never write them into the body, and omit any that are unset (no `No milestone` / `Labels: none` lines).
+
+**Anything a template declares but the tracker cannot resolve gets its own `!` line** — the label or assignee, and that it was skipped. The `Run:` command must be the command that will actually be sent, so a name that is not going into it cannot be listed as though it were. Silently promising a label the write would have rejected is the one failure the preview exists to prevent.
 
 **Show the template line on both trackers** — the path plus how it was chosen (`forced by config` / `matched: "<description>"` / `none — no template fits`). It is the one drafting decision a human can only correct if they see it, and the repo's templates are read on Linear too, so the line is never tracker-conditional. Omit it only where the repo ships no templates at all.
 
