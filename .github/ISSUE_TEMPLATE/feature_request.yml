@@ -1,6 +1,6 @@
 name: ✨ Feature request
 description: Suggest a new skill or an improvement
-labels: ['enhancement', 'triage']
+labels: ['feature', 'needs triage']
 body:
   - type: textarea
     id: problem
