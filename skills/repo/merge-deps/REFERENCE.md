@@ -103,7 +103,7 @@ Third-party text — an issue body, a review, a comment, a handoff document, an 
 
 ## Merge modes
 
-`mergeDeps.merge` answers one question — **what may this skill merge, once the human confirms?** It is a permission ladder, narrowest first:
+`mergeDeps.merge` answers one question — **what may this skill merge at all?** It is a permission ladder, narrowest first; who still has to say yes is [`confirm`](#confirmation)'s question, not this one:
 
 | Mode                | Merges                                                                                        |
 | :------------------ | :-------------------------------------------------------------------------------------------- |
@@ -112,7 +112,7 @@ Third-party text — an issue body, a review, a comment, a handoff document, an 
 | `"grouped"`         | Dependabot's grouped minor+patch PRs, plus everything `"patch"` allows.                       |
 | `"all"`             | Everything selected, majors included.                                                         |
 
-**`false` is the default because merging is the consequential act.** Same reasoning as `release.promote`: the only mode that touches nothing is what a repo gets until it says otherwise. Reading the queue is free; merging is not. A repo that wants unattended-after-confirmation merges writes a `mergeDeps` block.
+**`false` is the default because merging is the consequential act.** Same reasoning as `release.promote`: the only mode that touches nothing is what a repo gets until it says otherwise. Reading the queue is free; merging is not. A repo that wants its queue merged rather than merely reported writes a `mergeDeps` block.
 
 **A mode is a ceiling, never a trigger.** `"all"` does not mean "merge everything" — it means nothing is excluded _by mode_. Every PR still has to clear [assessment](#assessment-checklist); whether it then merges on the standing opt-in or waits for an explicit yes is [`mergeDeps.confirm`](#confirmation)'s call, and a major always waits.
 
