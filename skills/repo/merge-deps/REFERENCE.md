@@ -29,8 +29,13 @@ Also reads the shared root `language` (report wording).
 **`mergeDeps.verify` falls back to the root `verify`.** Both answer the same question — "does this repo still pass its own checks?" — and a repo that has already written one should not write it twice. A repo needing a different command for dependency updates (a full install, an audit) sets `mergeDeps.verify` explicitly.
 
 ```bash
-verify=$(jq -er '.mergeDeps.verify // .verify // empty' "$config" 2>/dev/null) || verify=
+if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
+  verify=$(jq -er '.mergeDeps.verify // .verify // empty' "$config" 2>/dev/null) || verify=
+fi
+[ -n "$verify" ] || verify=   # no command configured or config unreadable → detect, or skip the gate
 ```
+
+`jq` is not guaranteed to exist ([reading the config](../../README.md#reading-the-config)); an unreadable config resolves the same as an absent one.
 
 ## Merge modes
 

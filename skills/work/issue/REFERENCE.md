@@ -46,6 +46,8 @@ if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
 fi
 ```
 
+Where `jq` is unavailable the guard falls through to the defaults, which silently discards what the repo actually configured. **Read the config with `Read` and parse the JSON directly instead** — the values are still there, and no extra tooling is needed ([reading the config](../../README.md#reading-the-config)).
+
 ## Catalog cache
 
 Enumerable tracker data, fetched once and reused so the agent can pick labels/state/team contextually.

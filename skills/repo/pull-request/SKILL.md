@@ -13,7 +13,7 @@ allowed-tools:
 
 Turn the current branch into a pull request that follows the repo's own conventions — an umbrella Conventional-Commits title and a body filled from the repo's PR template — then create it after your confirmation, update your _own_ existing PR, or just show the exact command. The forge is chosen by the root `forge` key; **GitHub (via `gh`) is the only forge implemented in v1**.
 
-**Opted out?** If the repo config sets `pr` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the pull-request skill is turned off in `.tituskirch-skills.json`. An _absent_ `pr` block is **not** disabled. Check `jq -e '.pr == false'` before any action.
+**Opted out?** If the repo config sets `pr` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the pull-request skill is turned off in `.tituskirch-skills.json`. An _absent_ `pr` block is **not** disabled. Check `jq -e '.pr == false'` before any action. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
 ## Workflow
 

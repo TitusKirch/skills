@@ -86,6 +86,30 @@ Resolution per setting: **config → native/detected → built-in default** — 
 
 Auto-detected data (commit conventions, issue catalogs) is cached separately under `tituskirch-skills/` in the git common dir — never committed, TTL-disposable.
 
+## Reading the config
+
+The contract every skill's config recipe follows. Each skill still spells the pattern out in its own `REFERENCE.md` — a skill travels without this file, so it cannot lean on it.
+
+**`jq` may not be there.** It ships preinstalled on none of Windows, macOS or Linux, and `gh`'s built-in `--jq` is no substitute — that filters API responses, it cannot read a local file. So every read is guarded, and a missing `jq` resolves exactly like a missing config: to the documented default.
+
+```bash
+config="$(git rev-parse --show-toplevel)/.tituskirch-skills.json"
+if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
+  base=$(jq -er '.pr.base // empty' "$config" 2>/dev/null) || base=
+fi
+[ -n "$base" ] || base=<documented default>
+```
+
+**Never let an unresolved substitution reach a command flag.** `--label "$(jq -r …)"` is the shape to avoid: `jq -r` prints the literal string `null` for a missing key, and `gh` **drops an empty `--label` silently**, returning every open issue rather than none. Resolve into a variable, apply the default, then use it.
+
+**Distinguish "off" from "absent".** A `false` value means the mechanic is turned off; an absent key means use the default. `// empty` collapses both, so where a key is `labelOrOff` use `select(. != null) | tostring` and test for the string `false` afterwards.
+
+**The opt-out check fails open by construction.** `jq -e '.commit == false'` exits non-zero when `jq` is absent, when the file is absent, and when the value simply is not `false` — three causes, one outcome. That outcome is correct (absent config is not opt-out), but it is not evidence the config was read. Never report "the skill is enabled" as a finding from it.
+
+**The fallback for no `jq` is the agent, not another tool.** `Read` the config and parse the JSON directly. Node is unavailable in the PHP and Rust repos these skills run in, and Python is no safer.
+
+**Snippets are POSIX `sh`.** No `[[ ]]`, no arrays, no `<<<`, no `mapfile`, and nothing that differs between GNU and BSD coreutils (`date +%s` is fine; `sed -i` and `stat -c` are not). The shell is whatever the user runs — often `zsh`, where an unquoted glob in an argument is expanded rather than passed through.
+
 ## Adding a new skill
 
 Create `<category>/<skill-name>/SKILL.md` per the frontmatter contract above (use an existing skill as a structural reference), then run `pnpm skills:sync` to regenerate the root [`README.md`](../README.md) skills table, the category's `README.md`, the `skills` array in [`.claude-plugin/plugin.json`](../.claude-plugin/plugin.json) and the groupings in [`skills.sh.json`](../skills.sh.json) — never hand-edit any of them. Full workflow: [`CONTRIBUTING.md`](../CONTRIBUTING.md).

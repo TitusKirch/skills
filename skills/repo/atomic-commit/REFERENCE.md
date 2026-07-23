@@ -130,6 +130,8 @@ if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
 fi
 ```
 
+Where `jq` is unavailable the guard falls through to the defaults, which silently discards what the repo actually configured. **Read the config with `Read` and parse the JSON directly instead** — the values are still there, and no extra tooling is needed ([reading the config](../../README.md#reading-the-config)).
+
 **commitlint stays on top.** `commit.scopes` / `commit.scopeVocab` are _soft_ preferences that only fill a detection gap (thin history, an intended-but-unused vocabulary). They never override a commitlint rule the `commit-msg` hook enforces: if `scope-enum` exists, drop any `commit.scopeVocab` entry not in it; if `scope-empty` forbids/requires scopes, it beats `commit.scopes`. Format rules the hook owns — `header-max-length`, `body-max-line-length`, `subject-case` — have **no** config key on purpose: duplicating them here would create a second source of truth that can diverge from the hook. Set those in commitlint. `commit.instructions` is likewise additive — it shapes wording, never the guardrails.
 
 `language` is a shared root key (it also drives `pull-request` and `issue`); `commit.language` overrides it for commit messages, mirroring `pr.language` / `issue.language`. `commit.instructions` mirrors `pr.instructions` / `issue.instructions`. Full schema: the repo-root `tituskirch-skills.schema.json`.

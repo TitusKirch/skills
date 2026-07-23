@@ -87,6 +87,8 @@ if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
 fi
 ```
 
+Where `jq` is unavailable the guard falls through to the defaults, which silently discards what the repo actually configured. **Read the config with `Read` and parse the JSON directly instead** — the values are still there, and no extra tooling is needed ([reading the config](../../README.md#reading-the-config)).
+
 `language` is a shared root key; `pr.*` are this skill's section. `pr.language` overrides the root `language` for the PR title/body, mirroring `commit.language` / `issue.language`. `pr.instructions` mirrors `commit.instructions` / `issue.instructions` — additive wording guidance that never overrides the template, detection, or guardrails. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
 ## Title derivation (umbrella)

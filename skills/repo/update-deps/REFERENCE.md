@@ -12,8 +12,13 @@ Mechanics for the [`update-deps`](SKILL.md) skill. Scope is **Node** (npm / pnpm
 | `language`        | report wording (shared root key).                                                     |
 
 ```bash
-verify=$(jq -er '.verify // empty' "$config" 2>/dev/null) || verify=
+if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
+  verify=$(jq -er '.verify // empty' "$config" 2>/dev/null) || verify=
+fi
+[ -n "$verify" ] || verify=   # absent or unreadable → detect from the repo
 ```
+
+`jq` is not guaranteed to exist ([reading the config](../../README.md#reading-the-config)); an unreadable config resolves the same as an absent one.
 
 Per-package policy belongs in the **repo's own updater config**, where the repo's own `pnpm taze` will honour it too — `taze.config.ts` (`exclude`, `packageMode` per package), the declared range or constraint itself, and `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`.
 

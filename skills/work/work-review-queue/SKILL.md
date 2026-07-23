@@ -14,7 +14,7 @@ allowed-tools:
 
 Drain the repo's queue of issues **awaiting review** — every issue in `review` — and give each a verdict by delegating to [`work-review`](../work-review/SKILL.md). The **review half** of the two-loop workflow: it consumes what [`work-implement-queue`](../work-implement-queue/SKILL.md) pushed, and each issue leaves as `done`, `changes-requested` (back to the implement loop), `needs human`, or `blocked`. Each issue is reviewed by a **fresh worker** — a different agent than the one that built it. Run it under `/loop work-review-queue` for continuous operation, alongside the implement loop.
 
-**Opted out?** If the repo config sets `work` to `false`, all `work-*` skills are **disabled** — stop and tell the user they are turned off in `.tituskirch-skills.json`. Check `jq -e '.work == false'` before acquiring the lock or building the queue.
+**Opted out?** If the repo config sets `work` to `false`, all `work-*` skills are **disabled** — stop and tell the user they are turned off in `.tituskirch-skills.json`. Check `jq -e '.work == false'` before acquiring the lock or building the queue. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
 ## Workflow
 
