@@ -15,7 +15,7 @@ allowed-tools:
 
 The TitusKirch **docs format** — one opinionated, stack-agnostic convention for a project's `docs/` tree, the same in every repo (including client projects). This skill owns the convention; the page mechanics live in [REFERENCE.md](REFERENCE.md), the skeletons in [`templates/`](templates/). Pages are plain Markdown with `title` + `description` frontmatter and numeric-prefixed paths — a clean tree any file-based docs generator can render, index, and feed to an LLM.
 
-**Opted out?** If the repo config sets `docs` to `false`, this skill is disabled for the repo — **stop immediately** (including the proactive trigger) and tell the user docs are turned off in `.tituskirch-skills.json`. An _absent_ `docs` block is **not** disabled — that falls back to defaults/detection. Check this before any job.
+**Opted out?** If the repo config sets `docs` to `false`, this skill is disabled for the repo — **stop immediately** (including the proactive trigger) and tell the user docs are turned off in `.tituskirch-skills.json`. An _absent_ `docs` block is **not** disabled — that falls back to defaults/detection. Check `.docs == false` on the resolved config before any job — and before indexing `.docs.*`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
 ## Jobs — pick by repo state + intent
 
