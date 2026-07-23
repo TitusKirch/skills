@@ -216,7 +216,7 @@ Not doing this is not a silent risk — it is the ordinary case. A queue of thre
 
 ## Assessment checklist
 
-The skill **gathers**; the human **decides**. Every row is a fact to show in the plan, not a gate to auto-clear:
+**Every row is a fact the plan must show**, in every mode. A gap in any of them holds the PR; who says yes to a _clean_ assessment is [`confirm`](#confirmation)'s question, not this section's:
 
 | Check       | Fact to show                                                                       |
 | :---------- | :--------------------------------------------------------------------------------- |
