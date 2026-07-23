@@ -20,7 +20,7 @@ skills/
 | `docs/`  | Documentation, READMEs, terminal demos.                  |
 | `meta/`  | Configuring the skills themselves.                       |
 
-Categories are a **display and navigation** device, not a namespace: a skill's `name` is still globally unique and unprefixed, and `pnpm skills:link` flattens them back into `~/.claude/skills/`. Category membership comes from the filesystem; each category's title and description live in `CATEGORIES` in [`scripts/gen-skills.mjs`](../scripts/gen-skills.mjs) — adding a category means one entry there, or `pnpm skills:sync` fails loudly rather than silently dropping the folder.
+Categories are a **display and navigation** device, not a namespace: a skill's `name` is still globally unique and unprefixed, and `pnpm skills:link` flattens them back into `~/.claude/skills/`. Category membership comes from the filesystem; each category's title and description live in `CATEGORIES` in [`scripts/gen-skills.ts`](../scripts/gen-skills.ts) — adding a category means one entry there, or `pnpm skills:sync` fails loudly rather than silently dropping the folder.
 
 ## `SKILL.md` frontmatter
 

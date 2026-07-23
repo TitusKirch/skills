@@ -37,8 +37,8 @@
     "skills:list": "bash scripts/list-skills.sh",
     "skills:link": "bash scripts/link-skills.sh",
     "skills:unlink": "bash scripts/unlink-skills.sh",
-    "skills:sync": "node scripts/gen-skills.mjs",
-    "skills:check": "node scripts/gen-skills.mjs --check",
+    "skills:sync": "node scripts/gen-skills.ts",
+    "skills:check": "node scripts/gen-skills.ts --check",
     "prepare": "husky"
   },
   "devDependencies": {

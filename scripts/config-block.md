@@ -1,4 +1,4 @@
-Canonical text mirrored into every skill that reads the config. `scripts/gen-skills.mjs`
+Canonical text mirrored into every skill that reads the config. `scripts/gen-skills.ts`
 writes it inside each skill's `<skills-config>` element; `pnpm skills:check` fails if a copy
 drifts. Edit it here, never in a skill.
 

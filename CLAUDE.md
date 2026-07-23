@@ -15,7 +15,7 @@ Every file named below is the source of truth for what it configures. Read it ra
 | `pnpm skills:check` | The CI guard for the above. Fails if any of the four drifted.                     |
 | `pnpm skills:link`  | Symlinks every skill into `~/.claude/skills/` for live local testing.             |
 
-**Four files are generated — never hand-edit them:** the root `README.md` skills table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, and `skills.sh.json`'s groupings. A new category also needs an entry in `CATEGORIES` in `scripts/gen-skills.mjs`, or the sync fails loudly.
+**Four files are generated — never hand-edit them:** the root `README.md` skills table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, and `skills.sh.json`'s groupings. A new category also needs an entry in `CATEGORIES` in `scripts/gen-skills.ts`, or the sync fails loudly.
 
 ## Non-obvious tooling
 

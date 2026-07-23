@@ -5,9 +5,9 @@
 // skills/<category>/README.md, .claude-plugin/plugin.json, skills.sh.json, and
 // the config contract mirrored into every skill that reads the config.
 //
-//   node scripts/gen-skills.mjs           # rewrite whichever have drifted
-//   node scripts/gen-skills.mjs --check   # exit 1 if any is stale (CI)
-//   node scripts/gen-skills.mjs --paths   # list SKILL.md paths (for scripts)
+//   node scripts/gen-skills.ts           # rewrite whichever have drifted
+//   node scripts/gen-skills.ts --check   # exit 1 if any is stale (CI)
+//   node scripts/gen-skills.ts --paths   # list SKILL.md paths (for scripts)
 
 import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -35,9 +35,29 @@ const CONFIG_OPEN = '<skills-config>';
 const CONFIG_OPEN_RE = /<skills-config\b[^>]*>/;
 const CONFIG_END = '</skills-config>';
 
-function parseFrontmatter(raw) {
+// Node runs this file directly by erasing the types, so only erasable syntax is
+// available here: no enums, no namespaces, no parameter properties.
+type Category = 'repo' | 'work' | 'docs' | 'meta';
+
+interface Skill {
+  category: Category;
+  dir: string;
+  path: string;
+  name: string;
+  summary: string;
+  frontmatter: { summary?: string; description?: string };
+}
+
+interface Group {
+  category: Category;
+  title: string;
+  description: string;
+  skills: Skill[];
+}
+
+function parseFrontmatter(raw: string): Record<string, string> {
   const match = raw.match(/^---\n([\s\S]*?)\n---/);
-  const out = {};
+  const out: Record<string, string> = {};
   if (!match) return out;
   for (const line of match[1].split('\n')) {
     const field = line.match(/^([A-Za-z][\w-]*):\s?(.*)$/);
@@ -47,7 +67,7 @@ function parseFrontmatter(raw) {
 }
 
 // Fallback when a skill has no `summary`: the first clause of `description`.
-function deriveSummary(description) {
+function deriveSummary(description: string): string {
   const dash = description.search(/\s[—–]\s/);
   const period = description.search(/\.\s/);
   const stops = [dash, period === -1 ? -1 : period + 1].filter((i) => i > 0);
@@ -65,7 +85,7 @@ function deriveSummary(description) {
 // filesystem owns membership — which skill sits in which category — and this
 // table owns each category's display metadata and its order. Adding a skill
 // means creating a directory; adding a category means one entry here.
-const CATEGORIES = {
+const CATEGORIES: Record<Category, { title: string; description: string }> = {
   repo: {
     title: 'Repository & release',
     description:
@@ -87,7 +107,7 @@ const CATEGORIES = {
   }
 };
 
-function discoverSkills() {
+function discoverSkills(): Skill[] {
   const categories = readdirSync(SKILLS_DIR, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name);
@@ -95,19 +115,19 @@ function discoverSkills() {
   const unknown = categories.filter((c) => !(c in CATEGORIES));
   if (unknown.length) {
     throw new Error(
-      `skills/${unknown.join(', skills/')}: not a known category — add it to CATEGORIES in scripts/gen-skills.mjs`
+      `skills/${unknown.join(', skills/')}: not a known category — add it to CATEGORIES in scripts/gen-skills.ts`
     );
   }
 
   // Category order comes from CATEGORIES; skills sort alphabetically within one.
-  return Object.keys(CATEGORIES)
+  return (Object.keys(CATEGORIES) as Category[])
     .filter((category) => categories.includes(category))
     .flatMap((category) =>
       readdirSync(join(SKILLS_DIR, category), { withFileTypes: true })
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name)
         .sort()
-        .map((dir) => {
+        .map((dir): Skill | null => {
           let raw;
           try {
             raw = readFileSync(
@@ -132,8 +152,10 @@ function discoverSkills() {
 }
 
 // [{ category, title, description, skills: [...] }] in CATEGORIES order.
-function byCategory(skills) {
-  return Object.entries(CATEGORIES)
+function byCategory(skills: Skill[]): Group[] {
+  return (
+    Object.entries(CATEGORIES) as [Category, (typeof CATEGORIES)[Category]][]
+  )
     .map(([category, meta]) => ({
       category,
       ...meta,
@@ -142,7 +164,7 @@ function byCategory(skills) {
     .filter((group) => group.skills.length > 0);
 }
 
-function renderTable(groups) {
+function renderTable(groups: Group[]): string {
   const sections = groups.flatMap((group) => [
     '',
     `### ${group.title}`,
@@ -161,8 +183,8 @@ function renderTable(groups) {
 // Parse the committed block semantically so oxfmt's column alignment and its
 // table-padding never trip the drift check. Headings and rows both matter —
 // a skill silently moving category has to register as drift.
-function parseTable(block) {
-  const tokens = [];
+function parseTable(block: string): string[] {
+  const tokens: string[] = [];
   for (const line of block.split('\n')) {
     const heading = line.match(/^###\s+(.*?)\s*$/);
     if (heading) {
@@ -177,7 +199,7 @@ function parseTable(block) {
   return tokens;
 }
 
-function expectedTableTokens(groups) {
+function expectedTableTokens(groups: Group[]): string[] {
   return groups.flatMap((group) => [
     `h\t${group.title}`,
     ...group.skills.map(
@@ -186,7 +208,7 @@ function expectedTableTokens(groups) {
   ]);
 }
 
-function syncReadme(groups, check) {
+function syncReadme(groups: Group[], check: boolean): boolean {
   const content = readFileSync(README, 'utf8');
   const from = content.indexOf(START);
   const to = content.indexOf(END);
@@ -205,7 +227,7 @@ function syncReadme(groups, check) {
 
 // One README per category — the section landing a reader hits when they open
 // skills/<category>/. Fully generated; edit skill frontmatter, not these.
-function renderCategoryReadme(group) {
+function renderCategoryReadme(group: Group): string {
   return `${[
     `<!-- Generated by \`pnpm skills:sync\` — edit skill frontmatter, not this file. -->`,
     '',
@@ -221,8 +243,8 @@ function renderCategoryReadme(group) {
   ].join('\n')}\n`;
 }
 
-function syncCategoryReadmes(groups, check) {
-  const stale = [];
+function syncCategoryReadmes(groups: Group[], check: boolean): string[] {
+  const stale: string[] = [];
   for (const group of groups) {
     const file = join(SKILLS_DIR, group.category, 'README.md');
     const expected = renderCategoryReadme(group);
@@ -244,7 +266,7 @@ function syncCategoryReadmes(groups, check) {
 
 // skills.sh.json drives how skills.sh displays the collection. Projected from
 // the same categories so the website grouping can never drift from the folders.
-function syncSkillsSh(groups, check) {
+function syncSkillsSh(groups: Group[], check: boolean): boolean {
   const content = readFileSync(SKILLS_SH, 'utf8');
   const data = JSON.parse(content);
   const expected = groups.map((group) => ({
@@ -261,7 +283,7 @@ function syncSkillsSh(groups, check) {
   return drift;
 }
 
-function syncPlugin(skills, check) {
+function syncPlugin(skills: Skill[], check: boolean): boolean {
   const content = readFileSync(PLUGIN, 'utf8');
   const data = JSON.parse(content);
   const expected = skills.map((s) => `./skills/${s.path}`);
@@ -278,7 +300,7 @@ function syncPlugin(skills, check) {
 // shared is therefore mirrored *into* each skill and kept identical from here: the
 // config contract as text between markers, and the resolver as a real file the skill
 // can execute. A skill opts in by carrying the markers.
-function configBody() {
+function configBody(): string {
   const raw = readFileSync(CONFIG_BLOCK, 'utf8');
   const marker = '<!-- config:body -->';
   const at = raw.indexOf(marker);
@@ -288,8 +310,8 @@ function configBody() {
   return raw.slice(at + marker.length).trim();
 }
 
-function syncConfigContract(skills, check) {
-  const stale = [];
+function syncConfigContract(skills: Skill[], check: boolean): string[] {
+  const stale: string[] = [];
   const expected = `${CONFIG_OPEN}\n\n${configBody()}\n\n${CONFIG_END}`;
   const resolver = readFileSync(RESOLVER, 'utf8');
   // Compare on collapsed whitespace so oxfmt's wrapping never reads as drift.
@@ -345,8 +367,8 @@ function syncConfigContract(skills, check) {
 // skills.sh parses real YAML: an unquoted `summary`/`description` must not contain
 // ": " (colon+space) or " #" (space+hash), or its parser drops the whole skill — and
 // our loose frontmatter regex above would not otherwise catch it.
-function lintFrontmatter(skills) {
-  const problems = [];
+function lintFrontmatter(skills: Skill[]): string[] {
+  const problems: string[] = [];
   for (const skill of skills) {
     for (const field of ['summary', 'description']) {
       const value = skill.frontmatter[field];
@@ -385,7 +407,7 @@ if (mode === '--paths') {
     process.exit(1);
   }
 
-  const stale = [];
+  const stale: string[] = [];
   if (syncReadme(groups, check)) stale.push('README.md table');
   if (syncPlugin(skills, check)) stale.push('plugin.json skills array');
   if (syncSkillsSh(groups, check)) stale.push('skills.sh.json groupings');
