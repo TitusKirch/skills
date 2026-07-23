@@ -19,6 +19,7 @@ Title should follow Conventional Commits (e.g. "feat(skill-name): add support fo
 ## Checklist
 
 - [ ] `pnpm check` passes locally
+- [ ] Tests added or updated — or not applicable
 - [ ] Affected skill's `SKILL.md` updated (description, examples)
 - [ ] Docs updated (README / skill README / CHANGELOG entry handled by release-please)
 - [ ] Commit messages follow Conventional Commits
