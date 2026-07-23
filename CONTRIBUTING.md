@@ -10,7 +10,7 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 - **Bugs**: open a [Bug report](https://github.com/TitusKirch/skills/issues/new?template=bug_report.yml).
 - **Feature requests / new skills**: open a [Feature request](https://github.com/TitusKirch/skills/issues/new?template=feature_request.yml).
-- **Questions**: open a [Question](https://github.com/TitusKirch/skills/issues/new?template=question.yml).
+- **Questions & ideas, or something that might be a bug**: start in the [Discord forum](https://discord.kirch.dev/) — that's where the low-friction, unconfirmed stuff lives.
 - **Security vulnerabilities**: **do not** open a public issue. Follow [SECURITY.md](SECURITY.md).
 
 ## Development setup
