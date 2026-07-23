@@ -405,7 +405,7 @@
           "properties": {
             "template": {
               "type": ["string", "null"],
-              "description": "Default issue template path under .github/ISSUE_TEMPLATE/."
+              "description": "Default issue template, as a repo-relative path to the file under .github/ISSUE_TEMPLATE/ (a .md template or a .yml form). The skill reads the file and composes the body itself, so this is a path and not a template name: `gh issue create --template` takes the name: from a template's frontmatter, is rejected alongside --body/--body-file, and cannot see .yml forms at all."
             }
           }
         },
