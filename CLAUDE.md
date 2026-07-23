@@ -8,13 +8,14 @@ Every file named below is the source of truth for what it configures. Read it ra
 
 `package.json` has the full list. The ones with non-obvious behaviour:
 
-| Command             | Why it needs saying                                                                                 |
-| :------------------ | :-------------------------------------------------------------------------------------------------- |
-| `pnpm check`        | Lint + format check. `pnpm check:fix` applies both fixers. CI runs this, `skills:check` and `test`. |
-| `pnpm skills:sync`  | Regenerates five artifacts from the skill folders. **Run after touching any skill.**                |
-| `pnpm skills:check` | The CI guard for the above. Fails if any of the five drifted.                                       |
-| `pnpm test`         | `node --test` over `test/` — covers `resolve-config.sh`, the one shipped script.                    |
-| `pnpm skills:link`  | Symlinks every skill into `~/.claude/skills/` for live local testing.                               |
+| Command             | Why it needs saying                                                                                             |
+| :------------------ | :-------------------------------------------------------------------------------------------------------------- |
+| `pnpm check`        | Lint + format check. `pnpm check:fix` applies both fixers. CI also runs `skills:check`, `typecheck` and `test`. |
+| `pnpm skills:sync`  | Regenerates five artifacts from the skill folders. **Run after touching any skill.**                            |
+| `pnpm skills:check` | The CI guard for the above. Fails if any of the five drifted.                                                   |
+| `pnpm typecheck`    | `tsc --noEmit`. `erasableSyntaxOnly` is on, so an enum fails here, not at runtime.                              |
+| `pnpm test`         | `node --test` over `test/` — the resolver, the schema, and skill self-containment.                              |
+| `pnpm skills:link`  | Symlinks every skill into `~/.claude/skills/` for live local testing.                                           |
 
 **Five artifacts are generated — never hand-edit them:** the root `README.md` skills table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, `skills.sh.json`'s groupings, and the `<skills-config>` block plus `templates/resolve-config.sh` mirrored into each config-reading skill (source: `scripts/config-block.md` and `scripts/resolve-config.sh`). A new category also needs an entry in `CATEGORIES` in `scripts/gen-skills.ts`, or the sync fails loudly.
 

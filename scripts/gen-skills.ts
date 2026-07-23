@@ -58,10 +58,11 @@ interface Group {
 function parseFrontmatter(raw: string): Record<string, string> {
   const match = raw.match(/^---\n([\s\S]*?)\n---/);
   const out: Record<string, string> = {};
-  if (!match) return out;
+  if (!match?.[1]) return out;
   for (const line of match[1].split('\n')) {
     const field = line.match(/^([A-Za-z][\w-]*):\s?(.*)$/);
-    if (field && field[2] !== '') out[field[1]] = field[2].trim();
+    const [, key, value] = field ?? [];
+    if (key && value) out[key] = value.trim();
   }
   return out;
 }
@@ -255,7 +256,7 @@ function syncCategoryReadmes(groups: Group[], check: boolean): string[] {
       current = '';
     }
     // Compare on collapsed whitespace so oxfmt's wrapping never reads as drift.
-    const norm = (s) => s.replace(/\s+/g, ' ').trim();
+    const norm = (text: string) => text.replace(/\s+/g, ' ').trim();
     if (norm(current) !== norm(expected)) {
       stale.push(`skills/${group.category}/README.md`);
       if (!check) writeFileSync(file, expected);
@@ -385,7 +386,7 @@ function syncConfigContract(skills: Skill[], check: boolean): string[] {
 function lintFrontmatter(skills: Skill[]): string[] {
   const problems: string[] = [];
   for (const skill of skills) {
-    for (const field of ['summary', 'description']) {
+    for (const field of ['summary', 'description'] as const) {
       const value = skill.frontmatter[field];
       if (!value || /^['"]/.test(value.trim())) continue;
       if (value.includes(': ')) {

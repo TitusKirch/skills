@@ -98,7 +98,11 @@ describe('merge semantics', () => {
 
   test('profiles never appear in the resolved output', () => {
     const box = open('with-profiles.json');
-    for (const env of [{}, { TITUSKIRCH_SKILLS_PROFILE: 'ci' }]) {
+    const envs: Record<string, string>[] = [
+      {},
+      { TITUSKIRCH_SKILLS_PROFILE: 'ci' }
+    ];
+    for (const env of envs) {
       assert.equal('profiles' in parse(resolve(box, env).stdout), false);
     }
   });
@@ -159,8 +163,10 @@ describe('installed in isolation', () => {
     const results = paths.map(
       (p) => resolve(open('with-profiles.json', p), { CI: 'true' }).stdout
     );
+    const first = results[0];
+    assert.ok(first, 'at least one skill must resolve');
     for (const out of results) {
-      assert.deepEqual(parse(out), parse(results[0]), 'copies must not drift');
+      assert.deepEqual(parse(out), parse(first), 'copies must not drift');
     }
   });
 });

@@ -43,8 +43,11 @@ function relativeLinks(file: string): string[] {
     .replace(/```[\s\S]*?```/g, '')
     .replace(/`[^`\n]*`/g, '');
   return [...body.matchAll(/\]\(([^)]+)\)/g)]
-    .map((m) => m[1].split('#')[0])
-    .filter((t) => t && !/^[a-z]+:/i.test(t) && !t.startsWith('/'));
+    .flatMap((m) => {
+      const target = m[1]?.split('#')[0];
+      return target ? [target] : [];
+    })
+    .filter((t) => !/^[a-z]+:/i.test(t) && !t.startsWith('/'));
 }
 
 const withConfigBlock = allSkills().filter((p) =>
@@ -92,8 +95,11 @@ describe('the generated config block is self-contained', () => {
       body.indexOf('</skills-config>')
     );
     const targets = [...block.matchAll(/\]\(([^)]+)\)/g)]
-      .map((m) => m[1].split('#')[0])
-      .filter((t) => t && !/^[a-z]+:/i.test(t));
+      .flatMap((m) => {
+        const target = m[1]?.split('#')[0];
+        return target ? [target] : [];
+      })
+      .filter((t) => !/^[a-z]+:/i.test(t));
     assert.ok(targets.length > 0, 'the block should reference the resolver');
     for (const target of targets) {
       assert.ok(
