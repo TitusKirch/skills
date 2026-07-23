@@ -146,7 +146,7 @@ gh pr review "$n" --request-changes --body "…what to change and why…"
 gh issue comment "$n" --body "AI review — changes requested (commit <sha>): …"
 ```
 
-Then move the label to `work.labels.changesRequested`. For `done`/`needs human`/`blocked`, move the label and comment the reasoning. **Linear** — post the comment via the MCP and set the label (plus the mapped `work.linear.states` state when configured), in one `update_issue` call where possible.
+Then move the label to `work.labels.changesRequested`. For `done`/`needs human`/`blocked`, move the label and comment the reasoning. **Linear** — post the comment via the MCP and set the label (plus the mapped `work.linear.states` state when configured), in one `save_issue` call where possible (create and update are one tool, keyed on the issue `id` — there is no separate `update_issue`).
 
 **De-dupe on re-review.** Because review is idempotent, before posting feedback check whether an equivalent comment from a prior crashed run already exists; update or skip rather than double-post.
 

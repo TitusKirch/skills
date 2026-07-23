@@ -72,7 +72,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 | :--------------------------- | :-------------------------------------------------------------------------------- |
 | `states` omitted             | no state writes at all — the **lifecycle label alone** carries the issue          |
 | a step omitted from `states` | that transition writes the label only and **leaves the workflow state untouched** |
-| a step mapped                | the state is written **with** the label, in the same `update_issue` call          |
+| a step mapped                | the state is written **with** the label, in the same `save_issue` call            |
 
 Leaving the state untouched is a defined outcome, not a degraded one — the label is [operative for eligibility](#label-vs-body-precedence), so the lifecycle is correct either way; the repo just forgoes the Linear board reflecting it. **Guessing a state name is never correct**, with or without a mapping.
 
@@ -333,7 +333,7 @@ A dependency cycle (A → B → A) has no valid order and is a **tracker-data er
 
 Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — discover the tools at runtime, do not hardcode.
 
-- **Lifecycle** — `update_issue` to set the lifecycle label + assignee, plus that step's `work.linear.states` state when one is mapped — **one atomic call**, so label and state never drift. Step unmapped, or no `states` at all → write the label + assignee and **leave the state alone**. Never invent a state name: the map is the only source, and `statuses` is an eligibility filter, not a mapping.
+- **Lifecycle** — `save_issue` with the issue's `id` (create and update are one tool, keyed on the `id`) to set the lifecycle label + assignee, plus that step's `work.linear.states` state when one is mapped — **one atomic call**, so label and state never drift. Step unmapped, or no `states` at all → write the label + assignee and **leave the state alone**. Never invent a state name: the map is the only source, and `statuses` is an eligibility filter, not a mapping.
 - **Eligible** — `list_issues` by team + `labels.ready` + `labels.repo` + `work.linear.statuses`; order by native priority.
 - **Dependencies** — `list_issues` returns no relations; fan out `get_issue(includeRelations: true)` (see [dependency ordering](#dependency-ordering)).
 - **Which steps write a state** — the **implement loop** writes `states.working` on the lease and `states.review` after the push. The **review loop** writes `states.done` / `states.changesRequested` / `states.needsHuman` on its verdict; the implement reconcile writes `states.ready` when it reclaims a pre-push orphan. Linear's integration may also move the issue on a default-branch merge — a bonus, never the signal waited on. `states.ready` is otherwise not written by the worker — it records where a human parks a startable issue, the anchor `statuses` should contain. The `blocked` side-exit is carried by `labels.blocked`.
