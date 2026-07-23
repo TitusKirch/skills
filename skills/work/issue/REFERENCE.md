@@ -209,7 +209,7 @@ The rest of the body rules apply unchanged: the configured language, `issue.inst
 - **Create** — `gh issue create --title <t> --body-file <f> [--label <l>] [--assignee <a>] [--milestone <m>] [--project <p>]`.
 - **Update** — `gh issue edit <n> [--title …] [--body-file …] [--add-label …] [--milestone …]`; close with `gh issue close <n>`.
 - **Search/list** — `gh issue list --search <q> --state <s>` or `gh search issues <q>`.
-- **Catalogs** — `gh label list --json name,description,color`; milestones/projects via `gh api` / `gh project list`.
+- **Catalogs** — `gh label list --limit 1000 --json name,description,color` (or `gh api repos/{owner}/{repo}/labels --paginate`), **not** the bare `gh label list`: it caps at 30 (`-L, --limit` defaults to 30, and `--json` does not lift it), so a repo past 30 labels silently caches a truncated catalog — and every real label past the cutoff then reads as unresolvable when a template's `labels:` are checked against it. Milestones/projects via `gh api` / `gh project list`.
 - **Issue templates** — detect `.github/ISSUE_TEMPLATE/*.md` **and** `*.yml` (forms) and fill them per [Issue templates](#issue-templates), which is tracker-neutral — nothing in it is GitHub-only except the `--template` note.
 
 ### Sub-issues
