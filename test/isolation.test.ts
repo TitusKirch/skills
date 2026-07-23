@@ -1,6 +1,6 @@
 // A skill is installable on its own, so nothing it ships may point outside its own
-// folder. These tests enforce that on the parts the generator owns, and measure the
-// parts that predate the rule.
+// folder — not the generated config block, and not a hand-written "see also" into a
+// sibling skill. These tests enforce that, and that what stays inside still resolves.
 
 import { test, describe, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -139,25 +139,23 @@ describe('the generated config block is self-contained', () => {
   });
 });
 
-describe('links that predate the rule', () => {
-  test(
-    'no skill links outside its own folder',
-    {
-      todo: 'tracked in #73 — the two work loops reference each other by design'
-    },
-    () => {
-      const offenders: string[] = [];
-      for (const path of allSkills()) {
-        const dir = join(ROOT, 'skills', path);
-        for (const file of docsOf(dir)) {
-          for (const target of relativeLinks(file)) {
-            if (target.startsWith('..')) offenders.push(`${path}: ${target}`);
-          }
+describe('nothing a skill ships points out of its folder', () => {
+  test('no skill links outside its own folder', () => {
+    const offenders: string[] = [];
+    for (const path of allSkills()) {
+      const dir = join(ROOT, 'skills', path);
+      for (const file of docsOf(dir)) {
+        for (const target of relativeLinks(file)) {
+          if (target.startsWith('..')) offenders.push(`${path}: ${target}`);
         }
       }
-      assert.deepEqual(offenders, []);
     }
-  );
+    assert.deepEqual(
+      offenders,
+      [],
+      'a cross-skill link dangles on an installed copy — name the skill instead'
+    );
+  });
 
   test('a link that stays inside a skill actually resolves', () => {
     const broken: string[] = [];
