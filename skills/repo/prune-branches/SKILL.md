@@ -27,6 +27,7 @@ Its one principle, from which the rest follows:
 - **Integration branch** — `pr.base`, else the repo's default branch. **Never hardcode `main` or `dev`.**
 - **Remote** — the integration branch's own remote (`git config branch.<base>.remote`), else `origin`. **One remote per run.** Forks, mirrors and any second remote are neither read nor written ([why](REFERENCE.md#decisions)).
 - **Refresh before reading anything** — `git fetch --prune <remote>`. Every category depends on current refs: `[gone]` means nothing against a stale remote-tracking set, and a branch merged an hour ago still looks unmerged. `--prune` removes **remote-tracking refs only** — it deletes no branch, on neither side. Fetch fails → stop; a stale answer here is worse than none.
+- **Then prove the integration branch resolves** — `git rev-parse --verify "<remote>/<base>^{commit}"`. A `pr.base` naming a branch this remote does not carry (renamed, copied from another repo, absent from a shallow clone) makes **every** merge test error out at once, so it is checked once here rather than rediscovered per branch. Does not resolve → **stop**, naming the ref. Never classify against a base that was never proven.
 - **Scope** — the optional argument: `local`, `remote`, or absent for both. It narrows which side is _offered_, never which side is _read_ — a local branch is classified against the remote picture either way.
 - **Config** — `.tituskirch-skills.json` at the repo root (optional, committed). Keys: [REFERENCE.md](REFERENCE.md#config).
 
@@ -46,7 +47,7 @@ Before a single branch is classified, collect everything that must not be delete
 
 - **Protection is a filter, not a warning.** A protected branch leaves the run entirely: not preselected, not listed as a candidate, not mentioned as "skipped because protected but you could". The count is worth reporting; the branches are not candidates.
 - **The name fallback is a floor, not the mechanism.** A repo with real branch protection gets it from the forge; the names exist so a repo that declares no rules is still safe. Both apply, always — the fallback is never switched off by the forge answering.
-- **The forge read failing is not "nothing is protected."** No `security`/`administration` access, an API error, a rate limit — say the protected-branch list could not be read, fall back to the names, and **do not present the run as complete**.
+- **The forge read failing is not "nothing is protected" — it is an _unknown_ list, and it ends the run at the report.** An API error, a rate limit, missing access: every other source still applies and every branch is still classified and listed with its evidence, but the run **offers no deletions at all** — nothing preselected, nothing confirmable, nothing deleted. Name the call that failed and say the run is a report only. Un-preselecting is not enough: the branch a rule protects is the one the report cannot identify ([why](REFERENCE.md#decisions)).
 - **An open PR's head is untouchable.** Deleting it closes someone's live review, and a long-running PR is exactly the branch that trips category 4.
 - **`release/*` is deliberately not protected** — that is the shape of release-please's own throwaway branches ([why](REFERENCE.md#decisions)). A repo that ships from `release/*` adds it via `pruneBranches.protect`.
 
@@ -68,6 +69,8 @@ Each branch lands in **exactly one** category, tested in this order. Overlap is 
 
 **Neither test says "probably".** A branch that fails both is not merged, and it belongs in category 3 or 4 or nowhere — never in category 1 with a caveat.
 
+**Read the exit status, not the output alone.** `git cherry` writes its fatals to stderr and prints **nothing** on stdout, so a test that only greps the output reads every error as "no unmerged commits" — i.e. **merged**, the default deletion set. A test that could not run is `undetermined`: hold the branch, report it under _Unreadable_, and never let it reach category 1. A failure here is not one branch's problem — the usual cause is a base that resolves for none of them, which is why step 1 proves it first.
+
 **Category 4 is a smell, not a verdict.** Age says nobody has committed, not that nobody wants it. It catches abandoned spikes and it also catches the branch someone will return to next quarter, which is exactly why it is never preselected. Measure from the tip's **committer** date, and read it per side — a local branch and its remote counterpart can differ.
 
 ### 4. Plan — grouped, local and remote apart, before anything is deleted
@@ -76,13 +79,15 @@ Each branch lands in **exactly one** category, tested in this order. Overlap is 
 - **Every branch shows its evidence and its tip SHA** — the PR number, `squash-merged`, `[gone]`, or the last-commit date. A name alone is not reviewable, and the SHA is what makes the deletion undoable ([recovery](REFERENCE.md#deletion-mechanics-and-recovery)).
 - **Two tiers of consent.** Categories 1 and 2 are the **default set** — the work demonstrably landed, or the branch it tracked is already gone. Categories 3 and 4 are listed **unselected**, and taking them needs its own explicit yes; approving the default set never carries them along.
 - **Individual branches can be dropped** from either tier before the confirmation. Then **one confirmation for what remains** — not one prompt per branch.
+- **An `undetermined` branch is never in a tier.** It is listed under _Unreadable_ with what failed, and it cannot be confirmed into the plan by hand.
+- **A run whose protected-branch read failed has no tiers at all** — it prints the same grouped report, states that the protection set is unknown, and offers nothing to confirm.
 - **Never present a count alone.** "23 stale branches" is not something anyone can approve.
 
 ### 5. Delete — only what came back confirmed
 
 - **Record the tip SHA first**, per branch, on both sides. It goes in the report, and it is the whole recovery story.
-- **Local: try `git branch -d` first.** It refuses anything git can still see unlanded commits on, and that refusal is information. Force with `-D` **only** where category 1's evidence explains it — a squash or rebase merge git cannot see — and say so in the report. A `-d` refusal with **no** such evidence means the classification was wrong: skip the branch and report it.
-- **Remote: `git push <remote> --delete <branch>`**, on the run's single remote. Never `--force` anything, never delete a tag, never touch a second remote.
+- **Local: prove containment first — `git branch -d` is not the guard it looks like.** With an upstream set, `-d` checks the branch against its **remote counterpart**, not against the integration branch, so a tracking branch that merely matches `origin/<name>` is deleted with a warning and exit `0`, unmerged work and all. Ask the real question yourself: `git merge-base --is-ancestor <branch> <remote>/<base>`. That, or category 1's own evidence for a squash or rebase merge git cannot see, is what licenses the deletion — and the report says which one applied. **`-D` is reached only inside that guard**, never as the line after `-d` ([recipe](REFERENCE.md#git--gh-recipes)). Neither → skip the branch and report it.
+- **Remote: `git push <remote> --delete <branch>`**, on the run's single remote. In a run covering both sides, the remote deletion follows only where the local one succeeded — a branch the local half kept is a branch the plan got wrong. Never `--force` anything, never delete a tag, never touch a second remote.
 - **Local first, then remote, then `git fetch --prune`** so the tracking refs match reality when the run ends.
 - **A failed deletion stops nothing and hides nothing** — a protected-branch rejection from the forge, a race with someone else's push: report it per branch and carry on with the rest.
 - **Stop at the deletions.** No commit, no push of anything but the deletion refspec, no PR, no branch created.
@@ -92,7 +97,7 @@ Each branch lands in **exactly one** category, tested in this order. Overlap is 
 - **Deleted** — per side, per category, with each tip SHA and the one-line restore command.
 - **Kept** — what was dropped from the plan, and the never-preselected tier that was not taken.
 - **Protected** — the count, and which source protected them (forge rules, worktree, config globs). Not a list of names to reconsider.
-- **Unreadable** — anything the run could not establish: a protected-branch list it could not fetch, a branch whose merge state neither the forge nor patch comparison settled.
+- **Unreadable** — anything the run could not establish, and **what it cost**: a protected-branch list it could not fetch (so the run deleted nothing), a branch whose merge state neither the forge nor patch comparison settled (so that branch was held). Name the call or the ref that failed, not just the fact that something did.
 
 ## Guardrails
 
@@ -103,7 +108,7 @@ Each branch lands in **exactly one** category, tested in this order. Overlap is 
 - **The default set is categories 1 and 2 only.** A closed PR or plain age is never preselected and never rides along on someone else's yes.
 - **One remote — the integration branch's.** Forks and mirrors are never written to, in any mode.
 - **Never `git push --force`, never delete a tag, never rewrite history.** This skill deletes refs it was told to delete and nothing else.
-- **An unreadable fact is never a green light.** A failed protected-branch read, an undeterminable merge state, a fetch that did not run → report it and hold the branch.
+- **An unreadable fact is never a green light**, and each unreadable fact has one settled answer: a fetch that did not run or an integration branch that does not resolve → **stop**; a merge state neither the forge nor patch comparison settles → **hold that branch**, `undetermined`, never category 1; a failed protected-branch read → **report every branch and delete none**.
 - **Never commit, push work, or open a PR.**
 - **Attribution-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in anything it writes.
 - **GitHub forge (v1).** No GitHub remote / `gh` unavailable → stop; never fall back to a git-only run that quietly loses two categories.

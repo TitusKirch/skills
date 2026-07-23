@@ -104,22 +104,37 @@ Filter out `isCrossRepository` PRs — a fork's head branch is not a branch in t
 **Then compare patches, not hashes.** For a branch with no PR, or when the forge could not be read, `git cherry` prefixes a commit with `-` when an equivalent patch already exists in the base:
 
 ```sh
-base=origin/dev          # the integration branch on the run's remote
+remote=origin              # the run's single remote
+base=dev                   # the integration branch, short name — pr.base or the default branch
+baseref="$remote/$base"    # …as a remote-tracking ref: what every test below compares against
 branch=feature/x
 
 # Rebase merge (or plain ancestor) — nothing left that the base does not have.
-git cherry "$base" "$branch" | grep -q '^+' || echo "landed"
+# Test the exit status, never the output alone: git cherry writes its fatals to
+# stderr and prints nothing on stdout, so `| grep -q '^+' || echo landed` turns
+# every error into "landed" — the default deletion set.
+if out=$(git cherry "$baseref" "$branch"); then
+  printf '%s\n' "$out" | grep -q '^+' || echo "landed"
+else
+  echo "undetermined"      # hold the branch; never category 1
+fi
 
 # Squash merge — collapse the branch into one commit on top of the merge base
 # and ask the same question of that single patch.
-mb=$(git merge-base "$base" "$branch")
+mb=$(git merge-base "$baseref" "$branch")
 squashed=$(git commit-tree "$branch^{tree}" -p "$mb" -m _)
-git cherry "$base" "$squashed" | grep -q '^-' && echo "squash-merged"
+git cherry "$baseref" "$squashed" | grep -q '^-' && echo "squash-merged"
 ```
 
 `git commit-tree` writes a dangling commit object and nothing else — no ref, no branch, no change to the working tree. It is garbage-collected on its own.
 
+**The two tests fail in opposite directions, which is why they are written differently.** The squash test's `&&` fails **closed**: a broken ref leaves `mb` or `squashed` empty, the last `git cherry` errors, `grep` matches nothing, and the branch is simply not flagged — which holds it. The rebase test's `||` fails **open**: the same empty stdout satisfies "no `+` lines" and the branch is announced as landed. Hence the `if`. Never rewrite the squash test's `&&` into an `||`, and never collapse the rebase test back into a one-liner.
+
+Verified against four fixtures on a real clone — genuinely unmerged → not landed; fast-forward ancestor merge → landed; a cherry-pick onto the base with a **different** hash → landed; an unresolvable base or branch → **undetermined** (the one-liner said "landed" for both).
+
 **Where patch comparison fails, and why the forge comes first:** a squash merge whose conflicts were resolved during the merge produces a **different** patch, and `git cherry` will correctly say it is not there. So a branch that fails both tests is reported as **unmerged**, not as "probably fine" — and the PR state is what catches the conflict-resolved case.
+
+**An unresolvable base breaks every branch at once**, which is why step 1 checks it before classification begins rather than letting each test discover it: a `pr.base` naming a branch the run's remote does not carry — renamed, copied from another repo, absent from a shallow clone — would otherwise make the whole branch list undetermined, or, before this was fixed, the whole branch list "merged".
 
 ## Protection
 
@@ -137,7 +152,7 @@ Six sources, all applied, every run. A branch matching any of them is removed fr
 Plus `pruneBranches.protect`, which is added to the union — never subtracted from it.
 
 - **`branches?protected=true` reports rules, not intent.** It covers classic branch protection and rulesets alike, needs only plain read access, and returns nothing for a repo that declares no rules — which is exactly the repo the name fallback exists for. The two are complementary, so neither switches the other off.
-- **A read failure is not an empty list.** If the call errors, the run says the forge's protected branches could not be read, keeps the name fallback, and reports the run as incomplete rather than proceeding as though nothing were protected.
+- **A read failure is not an empty list — it is an _unknown_ list, and it ends the run at the report.** If the call errors, every other source still applies and every branch is still classified and listed with its evidence, but the run **offers no deletions at all**: nothing preselected, nothing confirmable, nothing deleted. It names the call that failed and says the run is a report only. Preselecting nothing would not be enough — the branch a rule protects is precisely the one the report cannot identify, so it is also the one a human could tick by hand ([why](#decisions)).
 - **A checked-out branch is protected on both sides.** `git branch -d` refuses it anyway, but the remote counterpart has no such guard, and deleting the remote out from under an active worktree is the same accident one step removed.
 
 ## git / gh recipes
@@ -147,6 +162,15 @@ Plus `pruneBranches.protect`, which is added to the union — never subtracted f
 ```sh
 git fetch --prune "$remote"     # deletes remote-tracking refs; no branch, on neither side
 ```
+
+**Then prove the integration branch resolves, before classifying anything:**
+
+```sh
+git rev-parse --verify --quiet "$remote/$base^{commit}" >/dev/null \
+  || { echo "integration branch $remote/$base does not resolve — stopping" >&2; exit 1; }
+```
+
+`$base` is the **short** name throughout (`dev`), and every comparison uses `"$remote/$base"`. Keeping the qualification in one place is what stops a block that already holds `origin/dev` from being handed to a block that adds the remote again.
 
 **The local picture in one pass** — name, tip, age and upstream state together:
 
@@ -171,15 +195,39 @@ git for-each-ref "refs/remotes/$remote" \
 git branch --merged "$remote/$base" --format='%(refname:short)'
 ```
 
-**Delete — local first, then remote, then re-prune:**
+**Delete — local first, then remote, then re-prune.** Containment is proven _before_ either verb runs, and `-D` is reached only inside that guard — never by running the line below `-d`:
 
 ```sh
-sha=$(git rev-parse --short "$b")        # record before, always
-git branch -d "$b"                       # refuses unlanded work — that refusal is a finding
-git branch -D "$b"                       # only with category 1 evidence for a squash/rebase merge
-git push "$remote" --delete "$b"
-git fetch --prune "$remote"
+# per confirmed branch $b, with $category its classification
+sha=$(git rev-parse --short "$b")            # record before, always — it is the restore argument
+deleted=no
+
+if git merge-base --is-ancestor "$b" "$baseref"; then
+  proof="contained in $baseref"              # git itself: every commit is already in the base
+elif [ "$category" = merged ]; then
+  proof="category 1: $category"              # squash/rebase merge git cannot see; it is in the report
+else
+  proof=                                     # nothing licenses a deletion — and an errored
+fi                                           # --is-ancestor lands here too, which holds the branch
+
+if [ -n "$proof" ]; then
+  if git branch -d "$b" || git branch -D "$b"; then
+    deleted=yes                              # -D is unreachable without $proof
+  fi
+else
+  echo "kept $b — not contained in $baseref, and no category-1 evidence"
+fi
+
+if [ "$deleted" = yes ]; then
+  git push "$remote" --delete "$b"           # only what the local side actually gave up
+fi
 ```
+
+```sh
+git fetch --prune "$remote"                  # once, after the whole batch
+```
+
+A `remote`-scoped run has no local half to consult, so it deletes the remote ref on the plan's evidence alone — which is why a remote deletion prints its SHA and its restore line just as loudly.
 
 ## Presentation
 
@@ -210,8 +258,17 @@ remote (delete)
 
 ## Deletion mechanics and recovery
 
-- **`git branch -d` first, always.** It succeeds for a true ancestor merge and refuses everything else, which makes it a free second opinion on the classification.
-- **`-D` is for a squash or rebase merge git cannot see**, and only with category 1's evidence recorded in the report. A `-d` refusal on a branch with no such evidence means the classification was wrong — skip it.
+- **`git branch -d` is not the second opinion it looks like.** It requires the branch to be fully merged **into its upstream** when one is set, and into `HEAD` otherwise — neither of which is the integration branch. A tracking branch that merely matches its remote counterpart is therefore deleted with a _warning_ and exit `0`, unmerged work included:
+
+  ```text
+  warning: deleting branch 'feat/live' that has been merged to
+           'refs/remotes/origin/feat/live', but not yet merged to HEAD.
+  ```
+
+  Since almost every candidate here is a tracking branch, treating `-d`'s success as proof the work landed would ratify the classification instead of testing it.
+
+- **The real second opinion is `git merge-base --is-ancestor "$b" "$baseref"`** — an explicit question about the integration branch, asked before either delete verb runs. It exits non-zero for a branch that is not contained, and for a ref it cannot resolve, so both hold the branch.
+- **`-D` is for a squash or rebase merge git cannot see**, and only with category 1's evidence recorded in the report. With neither containment nor that evidence, the classification was wrong — skip the branch, and skip its remote counterpart with it.
 - **A remote deletion is one push of one refspec.** `git push <remote> --delete <branch>`; never `--force`, never a wildcard refspec, never a second remote.
 - **Recovery, per side:**
 
@@ -225,13 +282,16 @@ remote (delete)
 ## Common mistakes
 
 - ❌ Trusting `git branch --merged` and reporting every squash-merged branch as unmerged (or worse, not reporting it at all).
+- ❌ Reading `git cherry`'s output without its exit status, so a fatal on stderr and an empty stdout read as "merged".
+- ❌ Classifying against a `pr.base` that was never checked to resolve, so one bad ref mis-classifies the entire branch list.
 - ❌ Classifying before fetching, so `[gone]` reflects last week's remote.
 - ❌ Reading `gh pr list` at its default `--limit 30` and calling the missing rows "no PR".
 - ❌ Folding the local and remote lists into one, so one yes deletes two things.
 - ❌ Letting "stale by age" ride along on the merged tier's confirmation.
-- ❌ Treating a failed protected-branch read as "no protected branches".
+- ❌ Treating a failed protected-branch read as "no protected branches", and deleting on a protection set nobody could read.
 - ❌ Deleting the head branch of an open PR because its last commit is old.
 - ❌ Reaching for `-D` on the first `-d` refusal instead of reading the refusal.
+- ❌ Reading `git branch -d`'s success as "the work landed" — with an upstream set it compares against the remote counterpart, not the integration branch.
 - ❌ Deleting a branch on a fork or a second remote because the name matched.
 - ❌ Reporting a count instead of the branches, their evidence and their SHAs.
 
@@ -249,6 +309,8 @@ The issue that specified this skill settled its shape; what it left open, and wh
 - **The head of an open PR is protected**, which the issue did not list. It follows from having a "closed PR" category at all: if a closed PR makes a branch a candidate, an open one must make it untouchable, or a long-running review is one age threshold away from having its branch deleted underneath it.
 - **90 days, and it is the only threshold.** It is long enough that a branch crossing it has genuinely gone quiet and short enough to catch a quarter's abandoned spikes. It is a category-4 boundary only — no category is _skipped_ by age, and a merged branch is offered on day one.
 - **No forge, no run.** Two of four categories and half the protection come from the forge; a git-only fallback would quietly report a smaller, less trustworthy answer that looks exactly like a complete one. Stopping is the same choice `merge-deps` and `release` make, for the same reason.
+- **An unreadable protection set ends the run at the report — it does not merely un-preselect.** `branches?protected=true` needs plain read access, so a failure is an access or availability problem, never evidence of a repo without rules. The two candidate answers were "fall back to the names and proceed, flagged incomplete" and "list everything, delete nothing", and the second wins because the first is a green light drawn from an unreadable fact — the exact thing the guardrails forbid. Preselecting nothing is not enough either: the branch a rule protects is by definition the one the report cannot name, so it is also the one a human would tick by hand in good faith. The report itself is safe and still worth producing, so the run is not aborted, only disarmed — the same trade as "no forge, no run", one notch milder.
+- **An errored merge test is `undetermined`, never `landed`.** `git cherry` reports failure on stderr and exits non-zero while printing nothing on stdout, so any test that reads only its output classifies a broken ref as merged — into the _default deletion set_, where neither backstop catches it: locally the false "merged" is itself the evidence that licenses `-D` over a `-d` refusal, and remotely `git push --delete` has no second opinion at all. The exit status is therefore part of the test, and a base that does not resolve stops the run in step 1 rather than being rediscovered once per branch.
 - **Deletion is confirmation-gated, not config-gated.** `merge-deps.merge` and `release.promote` default to off because those skills can act unattended; this one asks every time, on every branch, in every mode. An opt-in key would be a second yes buying no safety, and a repo that does not want branches pruned does not invoke the skill — or sets `pruneBranches: false`.
 - **Two config keys, and no more.** The categories, the tiers, the remote and the protection floor are the skill's judgement, not a repo's preference. What genuinely varies per repo is how long "quiet" is and which extra names are sacred — `age` and `protect`.
 - **Not a mode of `release` or `merge-deps`.** Branch cleanup is tied neither to shipping a release nor to the dependency queue, so folding it in would make it fire at the wrong moment — and it would put "never delete a branch" inside a skill whose job is merging PRs that delete branches.
