@@ -50,11 +50,20 @@ function relativeLinks(file: string): string[] {
     .filter((t) => !/^[a-z]+:/i.test(t) && !t.startsWith('/'));
 }
 
-const withConfigBlock = allSkills().filter((p) =>
-  docsOf(join(ROOT, 'skills', p)).some((f) =>
-    readFileSync(f, 'utf8').includes('<skills-config>')
-  )
-);
+/** Skills whose shipped markdown contains `tag` (an opening block marker). */
+function skillsWithTag(tag: string): string[] {
+  return allSkills().filter((p) =>
+    docsOf(join(ROOT, 'skills', p)).some((f) =>
+      readFileSync(f, 'utf8').includes(tag)
+    )
+  );
+}
+
+const withConfigBlock = skillsWithTag('<skills-config>');
+// `<skills-authority>` is a strict prefix of `<skills-authority-reduced>` only up to
+// the `-`, so the trailing `>` in each literal keeps the two sets from overlapping.
+const withAuthorityFull = skillsWithTag('<skills-authority>');
+const withAuthorityReduced = skillsWithTag('<skills-authority-reduced>');
 
 describe('the generated config block is self-contained', () => {
   test('it is present in the skills that read config, and nowhere else by accident', () => {
@@ -135,6 +144,69 @@ describe('the generated config block is self-contained', () => {
         canonical,
         `${path} drifted from scripts/resolve-config.sh`
       );
+    }
+  });
+});
+
+describe('the author-authority block is mirrored into the right skills', () => {
+  test('the full rule reaches exactly the skills that act on third-party text', () => {
+    assert.deepEqual(withAuthorityFull.sort(), [
+      'repo/merge-deps',
+      'work/handoff',
+      'work/issue',
+      'work/work-implement',
+      'work/work-review'
+    ]);
+  });
+
+  test('the reduced rule reaches exactly the narrower-exposure skills', () => {
+    assert.deepEqual(withAuthorityReduced.sort(), [
+      'repo/release',
+      'repo/update-deps',
+      'work/work-implement-queue',
+      'work/work-review-queue'
+    ]);
+  });
+
+  test('no skill carries both variants', () => {
+    const both = withAuthorityFull.filter((p) =>
+      withAuthorityReduced.includes(p)
+    );
+    assert.deepEqual(both, [], 'a skill has both the full and reduced block');
+  });
+
+  test('every authority-carrier also carries the config block, so it ships the resolver it needs to read trustedBots', () => {
+    for (const path of [...withAuthorityFull, ...withAuthorityReduced]) {
+      assert.ok(
+        withConfigBlock.includes(path),
+        `${path} carries the authority block but not the config block/resolver`
+      );
+    }
+  });
+
+  test('no link inside either authority block leaves the skill folder', () => {
+    const pairs = [
+      ['<skills-authority>', '</skills-authority>'],
+      ['<skills-authority-reduced>', '</skills-authority-reduced>']
+    ] as const;
+    for (const path of [...withAuthorityFull, ...withAuthorityReduced]) {
+      const dir = join(ROOT, 'skills', path);
+      for (const file of docsOf(dir)) {
+        const body = readFileSync(file, 'utf8');
+        for (const [open, close] of pairs) {
+          const from = body.indexOf(open);
+          if (from === -1) continue;
+          const block = body.slice(from, body.indexOf(close));
+          for (const target of relativeLinks(file).filter((t) =>
+            block.includes(`(${t}`)
+          )) {
+            assert.ok(
+              !target.startsWith('..'),
+              `${path}: authority block links out of the skill via "${target}"`
+            );
+          }
+        }
+      }
     }
   });
 });

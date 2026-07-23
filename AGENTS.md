@@ -23,13 +23,13 @@ Retyping a change is exactly how the two drift; one reflowed line or reworded cl
 | Command             | Why it needs saying                                                                                             |
 | :------------------ | :-------------------------------------------------------------------------------------------------------------- |
 | `pnpm check`        | Lint + format check. `pnpm check:fix` applies both fixers. CI also runs `skills:check`, `typecheck` and `test`. |
-| `pnpm skills:sync`  | Regenerates five artifacts from the skill folders. **Run after touching any skill.**                            |
-| `pnpm skills:check` | The CI guard for the above. Fails if any of the five drifted.                                                   |
+| `pnpm skills:sync`  | Regenerates six artifacts from the skill folders. **Run after touching any skill.**                             |
+| `pnpm skills:check` | The CI guard for the above. Fails if any of the six drifted.                                                    |
 | `pnpm typecheck`    | `tsc --noEmit`. `erasableSyntaxOnly` is on, so an enum fails here, not at runtime.                              |
 | `pnpm test`         | `node --test` over `test/` — the resolver, the schema, and skill self-containment.                              |
 | `pnpm skills:link`  | Symlinks every skill into `~/.claude/skills/` for live local testing.                                           |
 
-**Five artifacts are generated — never hand-edit them:** the root `README.md` skills table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, `skills.sh.json`'s groupings, and the `<skills-config>` block plus `templates/resolve-config.sh` mirrored into each config-reading skill (source: `scripts/config-block.md` and `scripts/resolve-config.sh`). A new category also needs an entry in `CATEGORIES` in `scripts/gen-skills.ts`, or the sync fails loudly.
+**Six artifacts are generated — never hand-edit them:** the root `README.md` skills table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, `skills.sh.json`'s groupings, the `<skills-config>` block plus `templates/resolve-config.sh` mirrored into each config-reading skill (source: `scripts/config-block.md` and `scripts/resolve-config.sh`), and the `<skills-authority>` / `<skills-authority-reduced>` author-authority block mirrored into each skill that reads third-party text (source: `scripts/authority-block.md`). A new category also needs an entry in `CATEGORIES` in `scripts/gen-skills.ts`, or the sync fails loudly.
 
 ## Non-obvious tooling
 

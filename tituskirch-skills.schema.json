@@ -25,6 +25,10 @@
       "minLength": 1,
       "description": "The command this repo runs to check itself (tests / lint / build) — a repo-level fact, shared by every skill that needs to know the repo still passes. work-implement runs it before pushing, update-deps after updating, merge-deps against a dependency PR's own head (overridable via mergeDeps.verify). null or absent → each skill detects it from the repo. It lives at the root, not inside a skill section, so disabling a skill never withdraws it."
     },
+    "trustedBots": {
+      "$ref": "#/$defs/trustedBots",
+      "description": "Allowlist of automated authors (apps and bots) the third-party-reading skills may treat as authoritative — a repo-level trust fact, empty by default. Lives at the root, not in a skill section, because several skills share it and it must not be withdrawn by disabling one of them."
+    },
     "commit": {
       "description": "atomic-commit settings, or false to disable the atomic-commit skill for the repo.",
       "oneOf": [
@@ -178,6 +182,28 @@
           "const": false
         }
       ]
+    },
+    "trustedBots": {
+      "type": "array",
+      "default": [],
+      "uniqueItems": true,
+      "description": "Allowlist of automated authors (apps and bots) whose third-party text the skills that read it may treat as authoritative — empty by default, so no bot is trusted until a repo names it, the way merge-deps names app/dependabot. A human author is never listed here (repo write/maintain/admin permission is checked live instead); this list exists because an app's write access is not readable with a normal token. On Linear an OAuth app is the equivalent case and belongs here too, recognised by its @oauthapp.linear.app email. Read by work-implement, work-review, handoff, merge-deps and issue; the queue, update-deps and release skills read it in their reduced form.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "login"],
+        "properties": {
+          "id": {
+            "type": ["integer", "string"],
+            "description": "The author's immutable account id — what the match is actually made on. On GitHub this is user.id (an integer, present for humans and bots alike) or the app id from performed_via_github_app. Immutable across renames, unlike the login, which is why it is the identifier that matters."
+          },
+          "login": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The author's login/handle (e.g. \"dependabot[bot]\") — present so the list is human-readable, not used for matching. A login is reusable once an account is renamed or deleted, so a login that disagrees with its id is the rename signal: report it, never silently trust it."
+          }
+        }
+      }
     },
     "language": {
       "description": "A language code or name (e.g. \"en\", \"de\", \"fr\", \"pt-BR\"), or \"match\" to mirror the repo/source language. A scalar applies to both title and body; the object form sets them separately.",
@@ -607,6 +633,10 @@
           "type": ["string", "null"],
           "minLength": 1,
           "description": "The command this repo runs to check itself (tests / lint / build) — a repo-level fact, shared by every skill that needs to know the repo still passes. work-implement runs it before pushing, update-deps after updating, merge-deps against a dependency PR's own head (overridable via mergeDeps.verify). null or absent → each skill detects it from the repo. It lives at the root, not inside a skill section, so disabling a skill never withdraws it."
+        },
+        "trustedBots": {
+          "$ref": "#/$defs/trustedBots",
+          "description": "Allowlist of automated authors the third-party-reading skills may treat as authoritative, overlaid for this execution context. Replaces the base array wholesale (arrays are replaced, not concatenated, on profile merge)."
         },
         "commit": {
           "description": "atomic-commit settings, or false to disable the atomic-commit skill for the repo.",

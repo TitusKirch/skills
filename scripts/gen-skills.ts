@@ -20,6 +20,7 @@ const README = join(ROOT, 'README.md');
 const PLUGIN = join(ROOT, '.claude-plugin', 'plugin.json');
 const SKILLS_SH = join(ROOT, 'skills.sh.json');
 const CONFIG_BLOCK = join(ROOT, 'scripts', 'config-block.md');
+const AUTHORITY_BLOCK = join(ROOT, 'scripts', 'authority-block.md');
 const RESOLVER = join(ROOT, 'scripts', 'resolve-config.sh');
 
 const START = '<!-- skills:start -->';
@@ -34,6 +35,16 @@ const NOTE =
 const CONFIG_OPEN = '<skills-config>';
 const CONFIG_OPEN_RE = /<skills-config\b[^>]*>/;
 const CONFIG_END = '</skills-config>';
+
+// The author-authority rule is the second thing mirrored into skills. It follows the
+// config block's mechanic — one source, drift-checked — but in two variants: the full
+// rule for skills that read third-party text and act on it, a reduced form for the
+// narrower-exposure skills. Matched by exact literal tag (with the closing `>`), so
+// `<skills-authority>` never accidentally captures `<skills-authority-reduced>`.
+const AUTHORITY_FULL_OPEN = '<skills-authority>';
+const AUTHORITY_FULL_END = '</skills-authority>';
+const AUTHORITY_REDUCED_OPEN = '<skills-authority-reduced>';
+const AUTHORITY_REDUCED_END = '</skills-authority-reduced>';
 
 // Node runs this file directly by erasing the types, so only erasable syntax is
 // available here: no enums, no namespaces, no parameter properties.
@@ -311,6 +322,25 @@ function configBody(): string {
   return raw.slice(at + marker.length).trim();
 }
 
+// The authority source holds both variants, split by markers: the full body runs from
+// `<!-- authority:full -->` to `<!-- authority:reduced -->`, the reduced body from there
+// to the end. Each is trimmed and mirrored verbatim into its own tag.
+function authorityBody(variant: 'full' | 'reduced'): string {
+  const raw = readFileSync(AUTHORITY_BLOCK, 'utf8');
+  const fullMarker = '<!-- authority:full -->';
+  const reducedMarker = '<!-- authority:reduced -->';
+  const fullAt = raw.indexOf(fullMarker);
+  const reducedAt = raw.indexOf(reducedMarker);
+  if (fullAt === -1 || reducedAt === -1 || reducedAt < fullAt) {
+    throw new Error(
+      `${AUTHORITY_BLOCK}: missing or misordered ${fullMarker} / ${reducedMarker}`
+    );
+  }
+  return variant === 'full'
+    ? raw.slice(fullAt + fullMarker.length, reducedAt).trim()
+    : raw.slice(reducedAt + reducedMarker.length).trim();
+}
+
 // The mirrored block opens with a level-3 heading, so it belongs under "## Config".
 // Placed anywhere else it silently reads as part of the preceding section — a queue
 // skill's block landed under "## Workflow" and became its last step. Rewriting the
@@ -380,6 +410,58 @@ function syncConfigContract(skills: Skill[], check: boolean): string[] {
   return stale;
 }
 
+// Mirror the author-authority rule the same way as the config block: one source, two
+// variants, drift-checked. A skill opts in by carrying the tag — `<skills-authority>`
+// for the full rule, `<skills-authority-reduced>` for the narrower form — and the rule
+// itself is a `## ` section, self-delimiting, so no placement check is needed. Every
+// authority-carrying skill is also a config-carrying one, so the resolver it needs to
+// read `trustedBots` is already shipped by syncConfigContract above.
+function syncAuthorityContract(skills: Skill[], check: boolean): string[] {
+  const stale: string[] = [];
+  const variants = [
+    {
+      open: AUTHORITY_FULL_OPEN,
+      end: AUTHORITY_FULL_END,
+      block: `${AUTHORITY_FULL_OPEN}\n\n${authorityBody('full')}\n\n${AUTHORITY_FULL_END}`
+    },
+    {
+      open: AUTHORITY_REDUCED_OPEN,
+      end: AUTHORITY_REDUCED_END,
+      block: `${AUTHORITY_REDUCED_OPEN}\n\n${authorityBody('reduced')}\n\n${AUTHORITY_REDUCED_END}`
+    }
+  ];
+  // Compare on collapsed whitespace so oxfmt's wrapping never reads as drift.
+  const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
+
+  for (const skill of skills) {
+    const dir = join(SKILLS_DIR, skill.path);
+    for (const name of ['SKILL.md', 'REFERENCE.md']) {
+      const file = join(dir, name);
+      let current = '';
+      try {
+        current = readFileSync(file, 'utf8');
+      } catch {
+        continue;
+      }
+      for (const variant of variants) {
+        const from = current.indexOf(variant.open);
+        const to = current.indexOf(variant.end);
+        if (from === -1 || to === -1) continue;
+        const next =
+          current.slice(0, from) +
+          variant.block +
+          current.slice(to + variant.end.length);
+        if (norm(next) !== norm(current)) {
+          stale.push(`skills/${skill.path}/${name} authority block`);
+          if (!check) writeFileSync(file, next);
+        }
+        current = next;
+      }
+    }
+  }
+  return stale;
+}
+
 // skills.sh parses real YAML: an unquoted `summary`/`description` must not contain
 // ": " (colon+space) or " #" (space+hash), or its parser drops the whole skill — and
 // our loose frontmatter regex above would not otherwise catch it.
@@ -429,6 +511,7 @@ if (mode === '--paths') {
   if (syncSkillsSh(groups, check)) stale.push('skills.sh.json groupings');
   stale.push(...syncCategoryReadmes(groups, check));
   stale.push(...syncConfigContract(skills, check));
+  stale.push(...syncAuthorityContract(skills, check));
 
   if (check && stale.length) {
     process.stderr.write(

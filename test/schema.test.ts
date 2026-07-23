@@ -130,6 +130,38 @@ describe('profiles do not become an escape hatch', () => {
   });
 });
 
+describe('the trustedBots allowlist', () => {
+  test('accepts an empty list and entries carrying an id and a login', () => {
+    accepts({ trustedBots: [] }, 'empty allowlist');
+    accepts(
+      { trustedBots: [{ id: 49699333, login: 'dependabot[bot]' }] },
+      'integer id (GitHub user.id)'
+    );
+    accepts(
+      { trustedBots: [{ id: 'app_123', login: 'kirchdev-release[bot]' }] },
+      'string id'
+    );
+  });
+
+  test('an entry must carry both the id and the login, and nothing else', () => {
+    rejects({ trustedBots: [{ id: 1 }] }, 'login missing');
+    rejects({ trustedBots: [{ login: 'x' }] }, 'id missing');
+    rejects(
+      { trustedBots: [{ id: 1, login: 'x', note: 'extra' }] },
+      'unknown key in an entry'
+    );
+    rejects({ trustedBots: [{ id: 1, login: '' }] }, 'empty login');
+    rejects({ trustedBots: {} }, 'not an array');
+  });
+
+  test('it can be overlaid in a profile', () => {
+    accepts(
+      { profiles: { ci: { trustedBots: [{ id: 1, login: 'x' }] } } },
+      'profile trustedBots fragment'
+    );
+  });
+});
+
 describe('nothing about existing configs changed', () => {
   test('a config with no profiles key is still valid', () => {
     accepts({ language: 'en', pr: { base: 'dev' } }, 'plain config');
