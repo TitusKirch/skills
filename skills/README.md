@@ -47,7 +47,7 @@ Instructions for Claude when this skill is invoked. Be specific about:
 ### Field notes
 
 - **`name`** — kebab-case, matches the folder name. Used as the invocation slug.
-- **`summary`** _(optional)_ — short one-liner for the root README skills table; falls back to the first clause of `description`. Five artifacts are generated from the skill folders via `pnpm skills:sync` (CI runs `pnpm skills:check`), so none is hand-edited: the root README table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, `skills.sh.json`'s groupings, and the [mirrored config contract](#reading-the-config--mirrored-not-linked).
+- **`summary`** _(optional)_ — short one-liner for the root README skills table; falls back to the first clause of `description`. Six artifacts are generated from the skill folders via `pnpm skills:sync` (CI runs `pnpm skills:check`), so none is hand-edited: the root README table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, `skills.sh.json`'s groupings, the [mirrored config contract](#reading-the-config--mirrored-not-linked), and the [author-authority block](../scripts/authority-block.md) mirrored into each skill that reads third-party text.
 - **`description`** — kept tight; the better the description, the more reliably Claude picks the right skill.
 - **`allowed-tools`** _(optional)_ — restrict the skill to a subset of tools. Omit to inherit the caller's toolset.
 
