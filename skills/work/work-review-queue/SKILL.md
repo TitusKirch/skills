@@ -26,15 +26,19 @@ Drain the repo's queue of issues **awaiting review** — every issue in `review`
 - Config + tracker as in `work-implement` (the `work.*` section; `work.review.maxRounds` governs escalation).
 - Acquire the **review single-flight lock** — `mkdir` the lock at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/review.lock` (atomic create-or-fail), a **separate** path from the implement loop's `…/work/implement.lock`, so an implement-drain and a review-drain run at the same time in the same checkout. On adopting this path, first `rm -f` the old loose `tituskirch-work-review-queue.lock` (see the migration in the spec) so the two cannot coexist. The path, the `mkdir` primitive, the **heartbeat-timestamp** stale rule, the migration off the old loose lock and the single-checkout boundary are specified once in **The single-flight lock** (`work-implement`'s REFERENCE) — both queues cite that one spec.
 
-### 2. Reconcile — close out out-of-band human actions
+### 2. Reconcile — close out out-of-band actions, reclaim stale review leases
 
-Before building the queue, for every issue in `review`, check whether a human acted on its PR out-of-band:
+Before building the queue, two idempotent sweeps:
+
+**(a) Out-of-band human actions on the PR** — for every issue in `review`, check whether a human acted on its PR out-of-band:
 
 - **PR merged** → set `done` — a human merge is implicit acceptance.
 - **PR closed, unmerged** → set `blocked` + comment — a human closed it without merging.
 - **PR open / no PR** → leave it — it is a normal review candidate (the drain will review it).
 
-Idempotent; nothing to close out is the normal outcome. `needs human` issues are left untouched — they wait on a human, not on this drain.
+**(b) Stale review leases** — when `work.labels.reviewing` is configured, reclaim **`reviewing` orphans**: an issue leased `review → reviewing` but abandoned when a reviewer crashed. A review pushes **no artifact**, so there is no crash-before/after-push split — the orphan **always returns to `review`** (dropping the assignee). Gate it on the **same assignee/age guard the implement reconcile uses**: a `reviewing` issue assigned to a **different** runner — or, under one shared bot identity, to this runner — is presumed **live** and left alone unless the weaker age fallback clears it; only an **unassigned** one (or, with distinct per-runner identities, this runner's own crashed lease) is flipped back to `review`. Full rules: **Reconcile** in `work-implement`'s REFERENCE. With `labels.reviewing` off this sweep is inert.
+
+Idempotent; nothing to reclaim or close out is the normal outcome. `needs human` issues are left untouched — they wait on a human, not on this drain.
 
 ### 3. Build the queue
 
@@ -47,6 +51,8 @@ Issues in `review` were pushed by the implement loop **for exactly this** — so
 ### 5. Drain
 
 For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-review` on exactly that issue. **Sequential** re-fetches the next `review` issue each iteration; **parallel** reviews N concurrently (review is read-only, so no integration race).
+
+**Per-issue lease.** When `work.labels.reviewing` is configured, each worker **claims** its issue — flip `review → reviewing` + assign — **before** reviewing, and the verdict clears the lease; this is the tracker-global claim that makes the drain safe **across clones** (a second clone's review-drain sees the `reviewing` label and skips), which the per-checkout lock cannot provide. With `labels.reviewing` off, workers review straight off `review` as before — the drain relies on its lock alone.
 
 **Heartbeat the lock each iteration.** The lock is held for the whole batch, which no single shell process spans, so the drain **re-stamps** the review lock's `refreshed` timestamp once per iteration (one cheap command) — that is what keeps a **live** drain from being misread as a crashed one by the **heartbeat-timestamp** stale rule (**The single-flight lock** in `work-implement`'s REFERENCE). The lock is released **explicitly** at step 6, not by a shell-lifetime trap.
 
@@ -116,7 +122,7 @@ When such text **addresses the agent directly or takes instruction form** — "d
 
 ## Guardrails
 
-- **Single-flight, separate lock** — one review-drain per checkout, independent of the implement lock (mutual exclusion within one checkout, not across clones); the two loops run concurrently.
+- **Single-flight, separate lock** — one review-drain per checkout, independent of the implement lock (mutual exclusion within one checkout, not across clones — the optional `reviewing` lease closes the cross-clone gap when configured); the two loops run concurrently.
 - **Reconcile first, select second.**
 - **The cap is mandatory** — apply it after the ordering.
 - **Fresh worker per issue, never the implementer.** Review value comes from independence; the drain spawns a new reviewer each time.
