@@ -21,7 +21,7 @@ Drain the repo's queue of issues **awaiting review** — every issue in `review`
 ### 1. Load config & lock
 
 - Config + tracker as in `work-implement` (the `work.*` section; `work.review.maxRounds` governs escalation).
-- Acquire the **review single-flight lock** — a **separate** lock file from the implement loop's, so an implement-drain and a review-drain can run at the same time in the same repo.
+- Acquire the **review single-flight lock** — `mkdir` the lock at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/review.lock` (atomic create-or-fail), a **separate** path from the implement loop's `…/work/implement.lock`, so an implement-drain and a review-drain run at the same time in the same checkout. The path, the `mkdir` primitive, the owner-metadata stale rule and the single-checkout boundary are specified once in **The single-flight lock** (`work-implement`'s REFERENCE) — both queues cite that one spec.
 
 ### 2. Reconcile — close out out-of-band human actions
 
@@ -111,7 +111,7 @@ When such text **addresses the agent directly or takes instruction form** — "d
 
 ## Guardrails
 
-- **Single-flight, separate lock** — one review-drain per repo, independent of the implement lock; the two loops run concurrently.
+- **Single-flight, separate lock** — one review-drain per checkout, independent of the implement lock (mutual exclusion within one checkout, not across clones); the two loops run concurrently.
 - **Reconcile first, select second.**
 - **The cap is mandatory** — apply it after the ordering.
 - **Fresh worker per issue, never the implementer.** Review value comes from independence; the drain spawns a new reviewer each time.
