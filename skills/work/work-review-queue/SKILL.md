@@ -9,6 +9,8 @@ allowed-tools:
   - Grep
   - Glob
   - Agent
+disallowed-tools:
+  - AskUserQuestion
 ---
 
 # work-review-queue
