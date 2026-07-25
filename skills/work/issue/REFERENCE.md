@@ -166,6 +166,24 @@ Triggered when the config is missing/incomplete or the user runs `/issue setup`.
 5. **Issue template (optional, either tracker)** — the repo may **force** one template via `issue.template`, given as a path under `.github/ISSUE_TEMPLATE/`. Ask only when the repo ships templates, and leave it unset in the normal case: the skill then picks per issue by reading the templates' own descriptions. Not a GitHub question — the same files are used on Linear.
 6. **Write the config** and **populate the cache** initially.
 
+## Sharpening the request (grilling)
+
+Step 4 drafts from the free-text description plus session context. When that input is **thin or ambiguous**, drafting means guessing — the skill infers a scope, fills sections from assumption, or defers the clarification entirely by filing a `needs triage` rough draft the human corrects after the fact. The confirmation gate ([Plan output](#plan-output)) catches a _wrong_ draft; it never produces the missing requirements. The `grilling` skill closes that gap: a relentless, one-question-at-a-time interview that walks the decision tree, resolves dependent decisions in order, and offers a recommended answer per question — run **before** the draft hardens, so the clarification happens up front instead of after the gate. Its answers **feed the draft**; the pass does **not** replace the single plan preview — the confirm gate is unchanged, grilling only feeds it better input.
+
+**Auto-engaged, proportional.** The skill decides for itself, per request, rather than waiting for a flag:
+
+- **Thin / ambiguous → engage.** Signals: the scope is a guess; a decision the body would have to state is unresolved; a default-structure section (`## Wanted`, `## Open questions`) would be filled by inference rather than by what the human said; a one-line request whose subject clearly has several open choices. Offer the pass, run it on assent, then draft from the sharpened input.
+- **Clear / complete → skip.** A request that already carries its scope and decisions drafts exactly as before — no interrogation. Grilling is the exception for under-specified input, not a gate every issue passes through.
+
+**Overrides.**
+
+- **`--grill` / "grill me first" forces it** even on a request that looks complete — the manual override for when the human knows there is more to pull out than the request shows.
+- **Always skippable.** The human may decline the offered pass or cut it short and let the skill draft from what it has. Grilling never blocks a draft.
+
+**Target `grilling`, never `grill-me`.** `grilling` is the reusable interview _engine_ a skill can invoke. `grill-me` is the user-facing on-ramp to the same interview and declares `disable-model-invocation: true`, so a skill cannot drive it — there is no code path that invokes it. Drive `grilling`.
+
+**Graceful when absent.** `grilling` is a separate skill, not shipped by this repo, so it may not be installed. Treat it as **optional**: invoke it when it is available, and when it is not, **skip the pass and draft as today**. A missing `grilling` degrades to the status-quo behaviour — draft from free-text plus session context and let the confirm gate catch a wrong draft — it never fails the `issue` run.
+
 ## Issue templates
 
 **A template is a repo statement, not a tracker feature.** `.github/ISSUE_TEMPLATE/` says how _this project_ writes issues, and that stays true whichever tracker receives them — so the same files are read on **GitHub and Linear alike**. The tracker decides **where** an issue is filed; it does not decide **what shape** the body has. Nothing extra is needed to make that work: the skill composes the body itself on both trackers, a `.md` template is plain markdown, and only `.yml` forms need turning into headings — work the GitHub path already does. The directory name is a repo convention that GitHub happens to also render; it is not a reason to drop the structure on Linear.
@@ -307,3 +325,4 @@ For bulk, list each drafted issue (and parent/child links) under one plan. For p
 - **Create (GitHub)** — "open an issue for the expired-session bug we just found." Tracker `github`; action create; draft title+body from the session; pick `bug` + `area:auth` from the cached labels; preview; on confirm `gh issue create …`; report the URL.
 - **Bulk sub-issues (Linear)** — "split this epic into 3 sub-issues." Tracker `linear`; resolve `team` `ENG` → id; **choose a template per issue from `.github/ISSUE_TEMPLATE/` just as on GitHub** — the repo's templates are read on Linear too, so each of the four bodies takes a template's shape (or the [default structure](#default-body-structure) where none fits), and each template's `labels:`/`title:`/`assignees:` are resolved against the **team's** catalog first; draft parent + 3 children; one bundled preview naming every chosen template; on confirm create the parent, then each child with `parentId`; report the ids.
 - **Search before create** — "is there already a ticket about flaky CI?" Action search; `gh issue list --search "flaky CI"` (or Linear `list_issues`); report matches; offer to create only if none fit.
+- **Sharpen a thin request (grilling)** — "open an issue to add caching." One line, scope and decisions wide open. Before drafting, `issue` engages a [`grilling`](#sharpening-the-request-grilling) pass — what to cache, invalidation, where it lives — one question at a time, each with a recommended answer; the human answers or skips. The sharpened answers feed the draft, then the usual single plan preview and confirm. A complete request would have skipped straight to the preview; `--grill` would have forced the pass even so.
