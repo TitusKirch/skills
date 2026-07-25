@@ -35,14 +35,20 @@ skill_has_dev_artifacts() {
 # Usage: skill_install_entries <skill-dir>
 skill_install_entries() {
   local dir="$1" path name excl excluded
-  for path in "$dir"/*; do
-    [ -e "$path" ] || continue
-    name="$(basename "$path")"
-    excluded=false
-    for excl in "${SKILL_DEV_ARTIFACT_DIRS[@]}"; do
-      [ "$name" = "$excl" ] && excluded=true && break
+  # dotglob so a root dotfile (e.g. .npmignore) is carried like every other entry;
+  # without it "$dir"/* skips dotfiles and the per-entry link tree would silently
+  # drop what a whole-folder symlink keeps. Scoped to the subshell so it can't leak.
+  (
+    shopt -s dotglob
+    for path in "$dir"/*; do
+      [ -e "$path" ] || continue
+      name="$(basename "$path")"
+      excluded=false
+      for excl in "${SKILL_DEV_ARTIFACT_DIRS[@]}"; do
+        [ "$name" = "$excl" ] && excluded=true && break
+      done
+      [ "$excluded" = true ] && continue
+      printf '%s\n' "$name"
     done
-    [ "$excluded" = true ] && continue
-    printf '%s\n' "$name"
-  done
+  )
 }
