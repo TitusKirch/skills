@@ -91,10 +91,13 @@ Resolution per setting: **config → native/detected → built-in default** — 
 - [`prune-comments`](repo/prune-comments/REFERENCE.md#config) — `language`, `verify`, `pr.base` (owns no section of its own)
 - [`handoff`](work/handoff/REFERENCE.md#config) — `language` (owns no section of its own)
 - [`write-docs`](docs/write-docs/REFERENCE.md#config) — `language`, `docs.*`
+- [`compact-readme`](docs/compact-readme/REFERENCE.md#config) — `docs` (owns no section of its own)
 - [`work-implement`](work/work-implement/REFERENCE.md#config) — `language`, `work.*`, `pr.base`
 - [`work-implement-queue`](work/work-implement/REFERENCE.md#config) — shares `work-implement`'s `work.*` config
 - [`work-review`](work/work-review/REFERENCE.md#config) — `language`, `work.*`, `work.review.*`
 - [`work-review-queue`](work/work-review/REFERENCE.md#config) — shares `work-review`'s config
+
+`tituskirch-skills-config` also carries the mirrored config block and resolver, but as the config's **author** rather than a consumer — it manages the file (block in its `SKILL.md`, no `REFERENCE.md`), so it sits outside this reader list.
 
 Auto-detected data (commit conventions, issue catalogs) is cached separately under `tituskirch-skills/` in the git common dir — never committed, TTL-disposable.
 
