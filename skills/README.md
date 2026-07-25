@@ -28,10 +28,10 @@ Categories are a **display and navigation** device, not a namespace: a skill's `
 ---
 name: skill-name
 summary: Short one-liner shown in the root README skills table.
-description: One-line summary used by Claude to decide when to invoke this skill.
+description: What the skill does and when to invoke it — imperative, keyword-rich, a short paragraph, ≤ 1024 chars.
 allowed-tools:
+  - Bash(git:*)
   - Read
-  - Bash
 ---
 
 # Skill body
@@ -46,10 +46,18 @@ Instructions for Claude when this skill is invoked. Be specific about:
 
 ### Field notes
 
-- **`name`** — kebab-case, matches the folder name. Used as the invocation slug.
-- **`summary`** _(optional)_ — short one-liner for the root README skills table; falls back to the first clause of `description`. Six artifacts are generated from the skill folders via `pnpm skills:sync` (CI runs `pnpm skills:check`), so none is hand-edited: the root README table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, `skills.sh.json`'s groupings, the [mirrored config contract](#reading-the-config--mirrored-not-linked), and the [author-authority block](../scripts/authority-block.md) mirrored into each skill that reads third-party text.
-- **`description`** — kept tight; the better the description, the more reliably Claude picks the right skill.
-- **`allowed-tools`** _(optional)_ — restrict the skill to a subset of tools. Omit to inherit the caller's toolset.
+These skills track the [Agent Skills open standard](https://agentskills.io/specification); Claude Code layers its own extensions on top (its [frontmatter reference](https://code.claude.com/docs/en/skills)). Each field below is tagged **[standard]**, **[Claude Code]**, or **[house]** so an author can tell portable from Claude-only at a glance. What this repo publishes today is the standard core plus one house field, `summary`.
+
+- **`name`** _(required)_ **[standard]** — 1–64 characters, lowercase `a-z`, `0-9` and single hyphens (no leading, trailing, or consecutive hyphen); must match the folder name. Used as the invocation slug.
+- **`description`** _(required)_ **[standard]** — **capped at 1024 characters**, non-empty. This is the text Claude reads to decide _when_ to invoke the skill, so write it as _when to act_, not _what the skill is_: imperative, keyword-rich, key use case first, a few sentences to a short paragraph — and include the trigger phrases (with their other-language variants) a user would actually say. Descriptions tend to grow past what helps; the standard's [optimizing descriptions](https://agentskills.io/skill-creation/optimizing-descriptions) is the guide. (Claude Code adds a second, softer budget: it truncates the combined `description` + `when_to_use` at 1,536 characters in the skill listing.)
+- **`summary`** _(optional)_ **[house]** — this repo's own field, not part of the standard: the one-liner shown in the root README skills table, falling back to the first clause of `description`. It is read only by `pnpm skills:sync` when the artifacts are built — no agent ever sees it. The standard's conforming home for a client-specific field like this is `metadata.summary` (`metadata` exists for exactly this); today it sits at the top level. Six artifacts are generated from the skill folders via `pnpm skills:sync` (CI runs `pnpm skills:check`), so none is hand-edited: the root README table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, `skills.sh.json`'s groupings, the [mirrored config contract](#reading-the-config--mirrored-not-linked), and the [author-authority block](../scripts/authority-block.md) mirrored into each skill that reads third-party text.
+- **`allowed-tools`** _(optional)_ **[standard]** — **pre-approval, not restriction.** The tools Claude may use **without stopping to ask permission** during the turn that invokes the skill; the grant clears on your next message. It does **not** narrow the toolset — every tool stays callable, and your permission settings still govern anything unlisted. Scope it the way `.claude/settings.json` rules do: `allowed-tools: Bash(git:*) Bash(gh:*) Read` pre-approves exactly those, not a blanket `Bash`. These skills carry it because they drive `git`, `gh` and `pnpm` unattended (e.g. under `/loop`), where the first command would otherwise stall on a permission prompt. The standard writes it as a space-separated string; Claude Code also accepts a comma-separated string or a YAML list (the form these skills use).
+- **`disallowed-tools`** _(optional)_ **[Claude Code]** — the field that **actually restricts**: tools **removed from Claude's pool** while the skill is active (cleared on your next message). This is the real "keep the skill away from X" control — e.g. `AskUserQuestion` on an unattended queue skill, where a question nobody answers would hang the run. Where a tool is named in both, `disallowed-tools` wins. Not part of the open standard.
+- **`license`** _(optional)_ **[standard]** — the license applied to the skill: a license name, or a reference to a bundled license file.
+- **`compatibility`** _(optional)_ **[standard]** — up to 500 characters stating environment requirements (intended product, required system packages, network access). Most skills omit it.
+- **`metadata`** _(optional)_ **[standard]** — a string-to-string map for properties the standard does not define; the conforming home for a house field such as `summary`.
+
+Claude Code defines further frontmatter beyond `disallowed-tools` — `when_to_use`, `disable-model-invocation`, `arguments`, `model`, subagent `context` — none of which these skills use today. Reach for one only where it earns its place, and know it is Claude-only; the [Claude Code frontmatter reference](https://code.claude.com/docs/en/skills) is the list.
 
 ## Naming
 
