@@ -40,7 +40,7 @@ The lifecycle label decides what this run does — this skill is a **state machi
 - **fresh** (`ready`) → claim and implement from the body (steps 4–8).
 - **re-work** (`changes-requested`) → claim and implement from the body **plus the review feedback** (the reviewer's PR review / issue comment) — steps 4–8.
 - **resume** (`working`) → a previous run leased it and crashed; continue where it left off (re-assert a clean tree first).
-- **not ours** (`review` / `needs human` / `done`) → nothing to do here; `review` and `needs human` belong to `work-review` and the human. `blocked` → leave it unless the user explicitly re-runs it; report why it was blocked.
+- **not ours** (`review` / `reviewing` / `needs human` / `done`) → nothing to do here; `review`, `reviewing` and `needs human` belong to `work-review` and the human. `blocked` → leave it unless the user explicitly re-runs it; report why it was blocked.
 
 ### 4. Claim the issue (lease) — before any work
 
