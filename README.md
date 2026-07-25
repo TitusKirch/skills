@@ -76,9 +76,10 @@ Generate and maintain project documentation, READMEs and terminal demos in the h
 
 Configure the skills themselves, per repo.
 
-| Skill                                                                       | Description                                                                                                        |
-| :-------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------- |
-| [`tituskirch-skills-config`](skills/meta/tituskirch-skills-config/SKILL.md) | Sets up, reconciles, and drift-checks .tituskirch-skills.json, the shared config the other TitusKirch skills read. |
+| Skill                                                                       | Description                                                                                                            |
+| :-------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------- |
+| [`tituskirch-skills-config`](skills/meta/tituskirch-skills-config/SKILL.md) | Sets up, reconciles, and drift-checks .tituskirch-skills.json, the shared config the other TitusKirch skills read.     |
+| [`validate-skills`](skills/meta/validate-skills/SKILL.md)                   | Validates skills against the Agent Skills spec via skills-ref, separating spec violations from house-style deviations. |
 
 <!-- skills:end -->
 

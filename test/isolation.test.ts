@@ -208,6 +208,11 @@ const authorityClass: Record<
     tier: 'none',
     reason: "the repo's own config and signals — no third-party text"
   },
+  'meta/validate-skills': {
+    tier: 'none',
+    reason:
+      "the repo's own skill files, read as data to validate — the spec and house verdicts come from tools, not the agent reading the text"
+  },
   'repo/atomic-commit': {
     tier: 'none',
     reason: "the session's own working-tree diff — no third-party text"

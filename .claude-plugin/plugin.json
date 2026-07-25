@@ -27,6 +27,7 @@
     "./skills/docs/vhs-demo",
     "./skills/docs/write-docs",
     "./skills/docs/write-readme",
-    "./skills/meta/tituskirch-skills-config"
+    "./skills/meta/tituskirch-skills-config",
+    "./skills/meta/validate-skills"
   ]
 }

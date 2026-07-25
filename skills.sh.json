@@ -33,7 +33,7 @@
     {
       "title": "Meta",
       "description": "Configure the skills themselves, per repo.",
-      "skills": ["tituskirch-skills-config"]
+      "skills": ["tituskirch-skills-config", "validate-skills"]
     }
   ],
   "notGrouped": "bottom"
