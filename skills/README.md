@@ -11,7 +11,7 @@ skills/
       REFERENCE.md    # optional — mechanics, recipes, config tables
       DESIGN.md       # optional — why the skill is shaped this way
       templates/      # optional — templates, prompts, scripts the skill ships with
-      evals/          # optional — dev-only eval fixtures; never shipped or linked
+      evals/          # optional — dev-only eval fixtures; stripped by skill-creator packaging & skills:link
 ```
 
 | Category | Holds                                                    |
@@ -150,4 +150,4 @@ Output-quality cases live in an **`evals/` directory inside the skill folder**, 
 }
 ```
 
-`evals/` is a **development artifact, not part of the installed skill** — a fixture the agent never reads at runtime. So it is left behind when a skill is delivered: `skill-creator`'s `package_skill.py` drops it when packaging, and for the same reason `pnpm skills:link` excludes it when it links a skill into `~/.claude/skills/` — a linked skill carries no more than a published one would. The excluded dirs are named in one place, [`scripts/skills-lib.sh`](../scripts/skills-lib.sh). [`skills/docs/write-readme/evals/`](docs/write-readme/evals/evals.json) is a seed example; which skills to evaluate, how many cases, and how many iterations is left to whoever runs the tool.
+`evals/` is a **development artifact, not part of the installed skill** — a fixture the agent never reads at runtime. Two delivery paths strip it: `skill-creator`'s `package_skill.py` drops it when packaging, and for the same reason `pnpm skills:link` excludes it when it links a skill into `~/.claude/skills/` — a linked skill carries no more than a packaged one would, and the excluded dirs are named in one place, [`scripts/skills-lib.sh`](../scripts/skills-lib.sh). The repo's copy-based install paths make no such promise: the `skills.sh` CLI installs from [`skills.sh.json`](../skills.sh.json) and a hand-copy of the folder both take `evals/` along, and [`.claude-plugin/plugin.json`](../.claude-plugin/plugin.json) points at the whole folder — so it is packaging and linking that leave the fixture behind, not every path. [`skills/docs/write-readme/evals/`](docs/write-readme/evals/evals.json) is a seed example; which skills to evaluate, how many cases, and how many iterations is left to whoever runs the tool.

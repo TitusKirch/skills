@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This repo publishes reusable [Claude Code agent skills](https://docs.claude.com/en/docs/claude-code/skills). Skills live at `skills/<category>/<skill>/` — categories are `repo/`, `work/`, `docs/`, `meta/` — each self-contained: a `SKILL.md` (YAML frontmatter + body) plus optional assets. **No runtime code ships** except one file: `scripts/resolve-config.sh`, mirrored into every skill that reads the config. That is what `test/` covers — there is no suite for the skill prose, and none is wanted.
+This repo publishes reusable [Claude Code agent skills](https://docs.claude.com/en/docs/claude-code/skills). Skills live at `skills/<category>/<skill>/` — categories are `repo/`, `work/`, `docs/`, `meta/` — each self-contained: a `SKILL.md` (YAML frontmatter + body) plus optional assets. **No runtime code ships** except one file: `scripts/resolve-config.sh`, mirrored into every skill that reads the config. That is what `test/` covers — the skill prose has no `test/` suite, and none is wanted there. Skill quality is measured out of band instead, by the `evals/` convention ([`skills/README.md`](skills/README.md#evaluating-a-skill)): per-skill, with/without-baseline fixtures that are inert dev-only data a development tool runs, never `test/` and never shipped.
 
 Every file named below is the source of truth for what it configures. Read it rather than trusting a summary here — this file carries only what no file states outright.
 
@@ -20,14 +20,14 @@ Retyping a change is exactly how the two drift; one reflowed line or reworded cl
 
 `package.json` has the full list. The ones with non-obvious behaviour:
 
-| Command             | Why it needs saying                                                                                             |
-| :------------------ | :-------------------------------------------------------------------------------------------------------------- |
-| `pnpm check`        | Lint + format check. `pnpm check:fix` applies both fixers. CI also runs `skills:check`, `typecheck` and `test`. |
-| `pnpm skills:sync`  | Regenerates six artifacts from the skill folders. **Run after touching any skill.**                             |
-| `pnpm skills:check` | The CI guard for the above. Fails if any of the six drifted.                                                    |
-| `pnpm typecheck`    | `tsc --noEmit`. `erasableSyntaxOnly` is on, so an enum fails here, not at runtime.                              |
-| `pnpm test`         | `node --test` over `test/` — the resolver, the schema, and skill self-containment.                              |
-| `pnpm skills:link`  | Symlinks every skill into `~/.claude/skills/` for live local testing.                                           |
+| Command             | Why it needs saying                                                                                                                                                                       |
+| :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm check`        | Lint + format check. `pnpm check:fix` applies both fixers. CI also runs `skills:check`, `typecheck` and `test`.                                                                           |
+| `pnpm skills:sync`  | Regenerates six artifacts from the skill folders. **Run after touching any skill.**                                                                                                       |
+| `pnpm skills:check` | The CI guard for the above. Fails if any of the six drifted.                                                                                                                              |
+| `pnpm typecheck`    | `tsc --noEmit`. `erasableSyntaxOnly` is on, so an enum fails here, not at runtime.                                                                                                        |
+| `pnpm test`         | `node --test` over `test/` — the resolver, the schema, and skill self-containment.                                                                                                        |
+| `pnpm skills:link`  | Symlinks every skill into `~/.claude/skills/` for live local testing — whole-folder, except a skill carrying a dev-artifact dir (`evals/`) links entry by entry to leave the fixture out. |
 
 **Six artifacts are generated — never hand-edit them:** the root `README.md` skills table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, `skills.sh.json`'s groupings, the `<skills-config>` block plus `templates/resolve-config.sh` mirrored into each config-reading skill (source: `scripts/config-block.md` and `scripts/resolve-config.sh`), and the `<skills-authority>` / `<skills-authority-reduced>` author-authority block mirrored into each skill that reads third-party text (source: `scripts/authority-block.md`). A new category also needs an entry in `CATEGORIES` in `scripts/gen-skills.ts`, or the sync fails loudly.
 
