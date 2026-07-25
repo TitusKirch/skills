@@ -190,12 +190,14 @@ Thick edges are the path a healthy issue takes; everything thin is an exception.
 
 Each loop's drain reconciles its own orphans **first**, before building its queue — drains run anyway, so no separate trigger is needed. There are **two**:
 
-**Implement reconcile** (this loop, `work-implement-queue` step 2) — reclaim **`working` orphans**: an issue leased `ready → working` but abandoned when a worker crashed **before its push**. The [single-flight lock](#lease--race-rules) guarantees no live worker holds it at reconcile time, so check for a **pushed artifact** (a PR / pushed commit for the issue):
+**Implement reconcile** (this loop, `work-implement-queue` step 2) — reclaim **`working` orphans**: an issue leased `ready → working` but abandoned when a worker crashed **before its push**. The [single-flight lock](#the-single-flight-lock) proves no live worker holds it **in this checkout** — but that is not proof the work is abandoned, only that _this_ clone is not doing it; a second clone's live worker holds _its own_ lock, invisible here. So the reconcile must **not** rest on the free lock alone (see the guard below); it checks for a **pushed artifact** (a PR / pushed commit for the issue) to tell a crash-before-push from a crash-after-push:
 
 | Pushed artifact? | Meaning                                           | Action                                                                                                         |
 | :--------------- | :------------------------------------------------ | :------------------------------------------------------------------------------------------------------------- |
 | **none**         | crashed **before** the push                       | flip back to `ready`, drop the assignee → re-worked fresh; `blocked` if it left an unrecoverable partial state |
 | **present**      | crashed **after** the push, before the label flip | advance to `review` — the work is already reviewable; finish the interrupted hand-off, don't redo it           |
+
+**The assignee guards the reclaim.** The destructive path is the **no-artifact → `ready`** row: redoing work a second clone's worker is _live_ on. So gate exactly that row on the **assignee** the [claim](#lease--race-rules) already set — a signal sharper than any age number, because it needs no tuned threshold and is written the moment work begins. A `working`, no-artifact issue **still assigned to a different runner** is **presumed live** — leave it, unless a **weaker age fallback** (older than any legitimate run) says the lease is truly abandoned. Reclaim on the artifact check alone only when the assignee agrees it is an orphan: the issue is **unassigned**, or assigned to **this** runner while this checkout's lock is free (so this runner is demonstrably _not_ on it — a genuine local crash). The **present-artifact → `review`** row needs no such guard: advancing an already-pushed issue is idempotent. **Caveat:** when every runner authenticates as the **same bot identity**, the assignee cannot separate "this runner's crashed lease" from "another live runner's active lease", so its discriminating power collapses back to the age fallback — and cross-clone/host coordination stays [out of scope](#the-single-flight-lock).
 
 Without this, a `working` orphan carries neither `ready` nor `review`, so nothing would ever reclaim it — the hole that would contradict the [resume-instead-of-restart principle](#principle).
 
@@ -269,10 +271,47 @@ Linear: `list_issues` filtered by team + label(s) + states; order by the native 
 
 - **Claim before work** — flip `ready → working` + assign, _then_ implement. A second consumer sees "not ready" and skips.
 - **Fresh fetch each iteration** — a drain re-queries the next eligible issue every loop; it never snapshots the whole queue (stale `ready` states would be re-worked). [Dependency ordering](#dependency-ordering) plans the _sequence_ up front but does not exempt an issue from that re-check.
-- **Single-flight lock** — `work-implement-queue` takes a lock file in the git common dir; a second drain in the same repo exits. This (not the label flip, which is not a true compare-and-swap) is what makes multi-consumer safe **within a repo**; cross-repo isolation on a shared Linear team comes from [repo scope](#repo-scope).
+- **Single-flight lock** — `work-implement-queue` takes a lock at a specified path in the git common dir ([the single-flight lock](#the-single-flight-lock)); a second implement-drain in the same checkout exits. This (not the label flip, which is not a true compare-and-swap) is what makes multi-consumer safe **within one checkout**; two clones each take their own lock and do not see each other ([the boundary](#the-single-flight-lock)). Cross-repo isolation on a shared Linear team comes from [repo scope](#repo-scope).
 - **Direct invocation honours the lock too.** The lock is created by `work-implement-queue` for the whole batch, and a drain's workers run under it (they do not re-take it). A **directly-invoked** `work-implement` (`/work-implement 42`) runs outside a drain, so it must itself honour the lock: if a drain holds it, **stop and report** (the drain will reach the issue); otherwise take the lock for the run and release it after. This closes the race where a direct run and a drain both read `ready` and lease the same issue, and it stops the drain's [reconcile](#reconcile) from mistaking a live direct run's `working` issue for a crashed orphan.
 - **Clean-tree assert** between issues; a worker that left the tree dirty halts the drain rather than stacking onto uncommitted work.
 - **Git's `index.lock`** is the last-resort backstop; concurrency is made _impossible by construction_ (one live worker per tree), not merely locked.
+
+### The single-flight lock
+
+Both drains rest their within-checkout mutual exclusion on a lock, and the two loops run **concurrently** — so each has its **own**, at a **visibly distinct** path under the owner-namespaced directory in the git common dir (the home the [catalog cache](#catalog-cache) already uses). This supersedes the earlier ad-hoc `implement.lock` written loose in the common dir: one specified path per loop, both citing this spec.
+
+| Loop                   | Lock path                                                                 |
+| :--------------------- | :------------------------------------------------------------------------ |
+| `work-implement-queue` | `$(git rev-parse --git-common-dir)/tituskirch-skills/work/implement.lock` |
+| `work-review-queue`    | `$(git rev-parse --git-common-dir)/tituskirch-skills/work/review.lock`    |
+
+**The acquire primitive is `mkdir`** — a single create-or-fail syscall, atomic on every POSIX filesystem and identical across GNU and BSD, so the test-and-set is **one** operation with no window. It is the **canonical primitive both queues cite**; never substitute a `[ -e "$lock" ] && …` test-then-create, which re-opens the very race the lock closes. (A `set -C` noclobber redirect — `( set -C; : > "$lock" )` — is the equally-atomic alternative; the skills standardise on `mkdir` so there is one idiom to reason about, and because a lock **directory** gives the owner record below a natural home.)
+
+```sh
+# Acquire — implement loop; the review loop is identical with review.lock.
+lock="$(git rev-parse --git-common-dir)/tituskirch-skills/work/implement.lock"
+mkdir -p "$(dirname "$lock")"
+if mkdir "$lock" 2>/dev/null; then
+  # won the race — record owner metadata for the stale check, then arm release
+  printf 'host=%s\npid=%s\n' "$(uname -n)" "$$" > "$lock/owner"
+  trap 'rm -rf "$lock"' EXIT INT TERM   # released when the batch ends
+else
+  # held — decide live vs stale (below) before touching anything
+  :
+fi
+```
+
+**Stale rule — owner metadata first, age only as a fallback.** A legitimate implement run can be long, so a plain age TTL would evict a live one mid-flight. The lock therefore records its **owner** — `host` (`uname -n`) and `pid` (`$$`) — and the holder is judged by that, not by the clock:
+
+| What the `owner` record says                             | Judgement                                                   |
+| :------------------------------------------------------- | :---------------------------------------------------------- |
+| **same host, process alive** (`kill -0 "$pid"` succeeds) | a live drain holds it → **stop and report**; never break it |
+| **same host, process gone** (`kill -0` fails)            | the holder crashed → **stale**: `rm -rf` it and retake      |
+| **different host, or `owner` unreadable**                | liveness **unknowable** here → fall back to **age**         |
+
+The **age fallback** applies only in the last row: treat the lock as stale only once it is older than a threshold **longer than any legitimate run** (hours, not minutes), so a slow-but-live run on another host is not evicted. The tradeoff is a **more complex lock format** than an empty file — two fields to write and parse — bought deliberately to make eviction owner-aware rather than clock-driven.
+
+**The boundary, stated plainly.** This mutual exclusion holds **within one checkout** — one clone's git common dir, one host, one pid space. It is exactly as local as the CAS concession above: two clones (or two hosts sharing neither a filesystem nor a pid space) each `mkdir` _their own_ lock and never see each other's. Cross-host coordination needs a central arbiter and is **out of scope for skill prose**; the [reconcile guard](#reconcile), not the lock, is what keeps a second clone from destroying a first clone's live work.
 
 ## Branch strategy
 
