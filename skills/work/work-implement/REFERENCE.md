@@ -197,7 +197,13 @@ Each loop's drain reconciles its own orphans **first**, before building its queu
 | **none**         | crashed **before** the push                       | flip back to `ready`, drop the assignee → re-worked fresh; `blocked` if it left an unrecoverable partial state |
 | **present**      | crashed **after** the push, before the label flip | advance to `review` — the work is already reviewable; finish the interrupted hand-off, don't redo it           |
 
-**The assignee guards the reclaim.** The destructive path is the **no-artifact → `ready`** row: redoing work a second clone's worker is _live_ on. So gate exactly that row on the **assignee** the [claim](#lease--race-rules) already set — a signal sharper than any age number, because it needs no tuned threshold and is written the moment work begins. A `working`, no-artifact issue **still assigned to a different runner** is **presumed live** — leave it, unless a **weaker age fallback** (older than any legitimate run) says the lease is truly abandoned. Reclaim on the artifact check alone only when the assignee agrees it is an orphan: the issue is **unassigned**, or assigned to **this** runner while this checkout's lock is free (so this runner is demonstrably _not_ on it — a genuine local crash). The **present-artifact → `review`** row needs no such guard: advancing an already-pushed issue is idempotent. **Caveat:** when every runner authenticates as the **same bot identity**, the assignee cannot separate "this runner's crashed lease" from "another live runner's active lease", so its discriminating power collapses back to the age fallback — and cross-clone/host coordination stays [out of scope](#the-single-flight-lock).
+**The assignee guards the reclaim.** The destructive path is the **no-artifact → `ready`** row: redoing work a second clone's worker is _live_ on. So gate exactly that row on the **assignee** the [claim](#lease--race-rules) already set — where runners have **distinct identities** it is a signal sharper than any age number, needing no tuned threshold and written the moment work begins. The reconcile runs **while this runner holds the implement lock** (step 1 took it), which proves no _other_ drain is live **in this checkout** — but says nothing about another **clone**, whose live worker holds _its own_ lock, invisible here. Judge each `working`, no-artifact issue by its assignee:
+
+- **A different runner** → presumed **live** in another clone: **leave it**, unless a **weaker age fallback** (older than any legitimate run) says the lease is truly abandoned.
+- **Unassigned** → nobody holds it: an orphan — **reclaim** on the artifact check alone.
+- **This runner** → this runner holds the lock, so no drain in this checkout is live on it. With **distinct per-runner identities** that leaves one reading — this runner's **own crashed lease** from an earlier run — so **reclaim**. But when every runner authenticates as the **same bot identity** (the normal deployment: the claim assigns to the runner's own account, and a second clone authenticates as that _same_ account), another clone's **live** work _also_ reads as "assigned to this runner", and the lock does not cover that clone — so the assignee can no longer separate "my own crash" from "another clone's live lease". There, do **not** reclaim on the assignee alone: require the same **weaker age fallback** (older than any legitimate run) first, exactly as for a different runner.
+
+The **present-artifact → `review`** row needs no such guard: advancing an already-pushed issue is idempotent. Coordination beyond this age fallback — across clones or hosts that share neither a filesystem nor a pid space — needs a central arbiter and stays [out of scope](#the-single-flight-lock).
 
 Without this, a `working` orphan carries neither `ready` nor `review`, so nothing would ever reclaim it — the hole that would contradict the [resume-instead-of-restart principle](#principle).
 
@@ -278,7 +284,7 @@ Linear: `list_issues` filtered by team + label(s) + states; order by the native 
 
 ### The single-flight lock
 
-Both drains rest their within-checkout mutual exclusion on a lock, and the two loops run **concurrently** — so each has its **own**, at a **visibly distinct** path under the owner-namespaced directory in the git common dir (the home the [catalog cache](#catalog-cache) already uses). This supersedes the earlier ad-hoc `implement.lock` written loose in the common dir: one specified path per loop, both citing this spec.
+Both drains rest their within-checkout mutual exclusion on a lock, and the two loops run **concurrently** — so each has its **own**, at a **visibly distinct** path under the owner-namespaced directory in the git common dir (the home the [catalog cache](#catalog-cache) already uses). This replaces the earlier ad-hoc locks written **loose** in the common dir under different names — one specified path per loop, both citing this spec; retiring the old ones is a **migration step, not a note** (below), because for a lock two names live at once means two drains running at once.
 
 | Loop                   | Lock path                                                                 |
 | :--------------------- | :------------------------------------------------------------------------ |
@@ -289,8 +295,10 @@ Both drains rest their within-checkout mutual exclusion on a lock, and the two l
 
 ```sh
 # Acquire — implement loop; the review loop is identical with review.lock.
-lock="$(git rev-parse --git-common-dir)/tituskirch-skills/work/implement.lock"
+common=$(git rev-parse --git-common-dir)
+lock="$common/tituskirch-skills/work/implement.lock"
 mkdir -p "$(dirname "$lock")"
+rm -f "$common/implement.lock"   # migration: retire the old loose lock (review loop: rm -f "$common/tituskirch-work-review-queue.lock")
 if mkdir "$lock" 2>/dev/null; then
   # won the race — record owner metadata for the stale check, then arm release
   printf 'host=%s\npid=%s\n' "$(uname -n)" "$$" > "$lock/owner"
@@ -301,15 +309,18 @@ else
 fi
 ```
 
+**Migrate off the old loose locks.** Earlier runs wrote each loop's lock **loose** in the common dir under an ad-hoc name — the implement loop's `$(git rev-parse --git-common-dir)/implement.lock` and the review loop's `$(git rev-parse --git-common-dir)/tituskirch-work-review-queue.lock`, neither under `tituskirch-skills/work/`. For a **cache** a changeover is harmless — `atomic-commit`'s REFERENCE just re-detects into the new path and `rm -f`s the old file. For a **lock** it is not: while both names are live, an old-spec drain holding the loose file and a new-spec drain that `mkdir`s the path above **never see each other and both run**. So on adopting the new path **actively retire the old one** — `rm -f` the loop's own old loose lock **before** the `mkdir` (the line in the snippet above), so the two idioms cannot coexist. This is the one-line migration `atomic-commit`'s REFERENCE already models for its cache, made mandatory here because a lock, unlike a cache, must never be double-held during the changeover.
+
 **Stale rule — owner metadata first, age only as a fallback.** A legitimate implement run can be long, so a plain age TTL would evict a live one mid-flight. The lock therefore records its **owner** — `host` (`uname -n`) and `pid` (`$$`) — and the holder is judged by that, not by the clock:
 
-| What the `owner` record says                             | Judgement                                                   |
-| :------------------------------------------------------- | :---------------------------------------------------------- |
-| **same host, process alive** (`kill -0 "$pid"` succeeds) | a live drain holds it → **stop and report**; never break it |
-| **same host, process gone** (`kill -0` fails)            | the holder crashed → **stale**: `rm -rf` it and retake      |
-| **different host, or `owner` unreadable**                | liveness **unknowable** here → fall back to **age**         |
+| What the `owner` record says                                                      | Judgement                                                                                                                                                                                                                                                         |
+| :-------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **same host, `kill -0 "$pid"` succeeds** (a process by that pid runs)             | presumed a **live drain** → **stop and report**, never break it — **unless** the lock is **impossibly old** (past the age threshold below), meaning the pid was **reused** by an unrelated process, not the original holder → then **stale**: `rm -rf` and retake |
+| **same host, `kill -0` fails, no such process** (`ESRCH`)                         | the holder **crashed** → **stale**: `rm -rf` it and retake                                                                                                                                                                                                        |
+| **same host, `kill -0` denied** (`EPERM`)                                         | the pid **exists** but is another user's process — **not** gone: liveness **ambiguous** → fall back to **age**, never stale on the failed probe alone                                                                                                             |
+| **different host, `owner` unreadable, or the failure reason can't be told apart** | liveness **unknowable** here → fall back to **age**                                                                                                                                                                                                               |
 
-The **age fallback** applies only in the last row: treat the lock as stale only once it is older than a threshold **longer than any legitimate run** (hours, not minutes), so a slow-but-live run on another host is not evicted. The tradeoff is a **more complex lock format** than an empty file — two fields to write and parse — bought deliberately to make eviction owner-aware rather than clock-driven.
+The **age fallback** is what the rows that cannot settle liveness by the pid lean on — the `EPERM` row (the pid exists but is not ours to probe), the different-host / unreadable / indistinguishable-failure row, **and** the alive-but-**impossibly-old** case, where a matching pid long past any real run is a **reused** pid rather than the original holder. In each, treat the lock as stale only once it is older than a threshold **longer than any legitimate run** (hours, not minutes), so a slow-but-live run — on this host or another — is never evicted. Where portable `sh` cannot separate `ESRCH` (gone) from `EPERM` (alive, another user) — the failure reason is not always recoverable — treat the failed probe as **ambiguous → age**, never as "gone": breaking a live lock is the worse error. The tradeoff is a **more complex lock format** than an empty file — two fields to write and parse — bought deliberately to make eviction owner-aware rather than clock-driven.
 
 **The boundary, stated plainly.** This mutual exclusion holds **within one checkout** — one clone's git common dir, one host, one pid space. It is exactly as local as the CAS concession above: two clones (or two hosts sharing neither a filesystem nor a pid space) each `mkdir` _their own_ lock and never see each other's. Cross-host coordination needs a central arbiter and is **out of scope for skill prose**; the [reconcile guard](#reconcile), not the lock, is what keeps a second clone from destroying a first clone's live work.
 
