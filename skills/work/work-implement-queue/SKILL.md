@@ -24,7 +24,7 @@ Drain the repo's queue of **implementable** issues — every `ready` issue plus 
 ### 1. Load config & lock
 
 - Config + tracker as in `work-implement` (the `work.*` section; its REFERENCE's **Config**).
-- Acquire the **implement single-flight lock** — `mkdir` the lock at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/implement.lock` (atomic create-or-fail); a second implement-drain in the same checkout sees it held and exits. On adopting this path, first `rm -f` the old loose `implement.lock` (see the migration in the spec) so the two cannot coexist. The review loop uses a **separate** lock (`…/work/review.lock`), so implement and review drains run concurrently. The path, the `mkdir` primitive, the owner-metadata stale rule, the migration off the old loose lock and the single-checkout boundary are specified once in **The single-flight lock** (`work-implement`'s REFERENCE) — both queues cite that one spec.
+- Acquire the **implement single-flight lock** — `mkdir` the lock at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/implement.lock` (atomic create-or-fail); a second implement-drain in the same checkout sees it held and exits. On adopting this path, first `rm -f` the old loose `implement.lock` (see the migration in the spec) so the two cannot coexist. The review loop uses a **separate** lock (`…/work/review.lock`), so implement and review drains run concurrently. The path, the `mkdir` primitive, the **heartbeat-timestamp** stale rule, the migration off the old loose lock and the single-checkout boundary are specified once in **The single-flight lock** (`work-implement`'s REFERENCE) — both queues cite that one spec.
 
 ### 2. Reconcile — reclaim crashed implementations
 
@@ -50,6 +50,8 @@ For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-imple
 
 - **sequential** (`parallel: false`) — one worker at a time; **re-fetch** the next eligible issue each iteration.
 - **parallel** (`parallel: true`) — N workers in isolated git worktrees; for a `branch:<name>` target, pushes are integrated **serialized**; dependent issues never run concurrently. Mechanics: **Branch strategy** in `work-implement`'s REFERENCE.
+
+**Heartbeat the lock each iteration.** The lock is held for the whole batch, which no single shell process spans, so the drain **re-stamps** the implement lock's `refreshed` timestamp once per iteration (one cheap command) — that is what keeps a **live** drain from being misread as a crashed one by the **heartbeat-timestamp** stale rule (**The single-flight lock** in `work-implement`'s REFERENCE). The lock is released **explicitly** at step 6, not by a shell-lifetime trap.
 
 Each worker returns `review` (pushed, handed to the review loop — the normal outcome), `blocked`, or an error. **`review`/`blocked` → continue** to the next issue; only a **hard error** (git broken, tracker down) stops the drain, releases the lock, and reports.
 
