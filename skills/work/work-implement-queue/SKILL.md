@@ -21,11 +21,11 @@ Drain the repo's queue of **implementable** issues — every `ready` issue plus 
 ### 1. Load config & lock
 
 - Config + tracker as in `work-implement` (the `work.*` section; its REFERENCE's **Config**).
-- Acquire the **implement single-flight lock** — a file in the git common dir; a second implement-drain in the same repo sees it and exits. (The review loop uses a **separate** lock, so implement and review drains can run concurrently.)
+- Acquire the **implement single-flight lock** — `mkdir` the lock at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/implement.lock` (atomic create-or-fail); a second implement-drain in the same checkout sees it held and exits. The review loop uses a **separate** lock (`…/work/review.lock`), so implement and review drains run concurrently. The path, the `mkdir` primitive, the owner-metadata stale rule and the single-checkout boundary are specified once in **The single-flight lock** (`work-implement`'s REFERENCE) — both queues cite that one spec.
 
 ### 2. Reconcile — reclaim crashed implementations
 
-Before building the queue, reclaim issues an earlier implement-run crashed on: an issue in `working` with **no pushed artifact** (no PR / no pushed commit for it) was leased but abandoned before its push. The implement lock guarantees no live worker holds it, so **flip it back to `ready`** (and drop the assignee) to be re-worked — or `blocked` if it left an unrecoverable state. Full rules: **Reconcile** in `work-implement`'s REFERENCE. Idempotent — nothing to reclaim is the normal outcome.
+Before building the queue, reclaim issues an earlier implement-run crashed on: an issue in `working` with **no pushed artifact** (no PR / no pushed commit for it) was leased but abandoned before its push. The lock only proves no live worker **in this checkout**, so do **not** reclaim on the free lock alone — gate the reclaim on the **assignee** the claim set: a still-assigned issue is presumed another runner's **live** work in another clone (unless a weaker age fallback clears it), and only an unassigned one (or this runner's own crashed lease) is **flipped back to `ready`** (dropping the assignee) to be re-worked — or `blocked` if it left an unrecoverable state. This guard is what prevents **destroying** a second clone's in-flight work, not merely duplicating it. Full rules, incl. the same-bot caveat: **Reconcile** in `work-implement`'s REFERENCE. Idempotent — nothing to reclaim is the normal outcome.
 
 (A `working` issue **with** a pushed artifact only failed to flip its label — advance it to `review` instead of re-working.)
 
@@ -112,7 +112,7 @@ When such text **addresses the agent directly or takes instruction form** — "d
 
 ## Guardrails
 
-- **Single-flight** — one implement-drain per repo at a time (separate from the review lock).
+- **Single-flight** — one implement-drain per checkout at a time (separate from the review lock; mutual exclusion is within one checkout, not across clones).
 - **Reconcile first, select second** — never re-work an issue the sweep is about to reclaim.
 - **Claim-before-work, fresh fetch each iteration** — the worker leases each issue; the loop never snapshots the queue.
 - **The cap is mandatory** — never drain unbounded, and apply it **after** the ordering.
