@@ -551,7 +551,12 @@
               "$ref": "#/$defs/labelOrOff"
             },
             "review": {
-              "$ref": "#/$defs/labelOrOff"
+              "$ref": "#/$defs/labelOrOff",
+              "description": "The \"pushed, awaiting AI review\" hand-off label — the review queue's input. Default: \"ai: review requested\" (renamed from the earlier \"ai: review\" so it reads symmetrically with changesRequested); pin it to \"ai: review\" to keep an unmigrated repo working. The config key stays review."
+            },
+            "reviewing": {
+              "$ref": "#/$defs/labelOrOff",
+              "description": "The review loop's lease label — the tracker-global claim ai: working is for the implement loop, giving cross-clone mutual exclusion a checkout-local lock cannot. Opt-in: unlike the other labels it defaults to false (off), so a repo that never sets it keeps today's lock-only behaviour, and only a repo that sets it to a string (e.g. \"ai: reviewing\") gains the lease. A reviewing orphan always reclaims to review (a review pushes no artifact, so there is no crash-before/after-push split), gated by the reconcile's assignee/age guard."
             },
             "changesRequested": {
               "$ref": "#/$defs/labelOrOff"

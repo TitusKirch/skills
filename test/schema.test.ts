@@ -162,6 +162,25 @@ describe('the trustedBots allowlist', () => {
   });
 });
 
+describe('the reviewing lease label (opt-in review-loop lease)', () => {
+  test('accepts a label string or false, like the other lifecycle labels', () => {
+    accepts(
+      { work: { labels: { reviewing: 'ai: reviewing' } } },
+      'reviewing as a label string'
+    );
+    accepts(
+      { work: { labels: { reviewing: false } } },
+      'reviewing switched off'
+    );
+  });
+
+  test('rejects a value that is neither a non-empty string nor false', () => {
+    rejects({ work: { labels: { reviewing: '' } } }, 'empty reviewing label');
+    rejects({ work: { labels: { reviewing: 1 } } }, 'numeric reviewing label');
+    rejects({ work: { labels: { reviewing: true } } }, 'reviewing set true');
+  });
+});
+
 describe('nothing about existing configs changed', () => {
   test('a config with no profiles key is still valid', () => {
     accepts({ language: 'en', pr: { base: 'dev' } }, 'plain config');
