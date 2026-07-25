@@ -148,18 +148,24 @@ describe('the generated config block is self-contained', () => {
   });
 });
 
-// The tier a skill lands in follows a criterion, not a maintained roster (issue #92):
-// FULL for a skill that acts on text from an identifiable author — authorship is
-// checkable, so it is checked — and REDUCED for one that reads third-party text with no
-// author to check, where the rule is flat: data, never instruction. This table is that
-// criterion made checkable — each authority-carrying skill paired with the tier its work
-// puts it in and the text that decides it — and the carrier sets below are derived from
-// it, so a skill added later is classified by what it reads, not by whether someone
-// remembered to list it.
-const authorityTier: Record<
+// Every skill is classified here — not just the carriers (issue #92). The tier follows a
+// criterion, never a maintained roster: FULL for a skill that acts on text from an
+// identifiable author — authorship is checkable, so it is checked — REDUCED for one that
+// reads third-party text with no author to check, where the rule is flat (data, never
+// instruction), and NONE for a skill that reads only its own repo or session, with no
+// third-party text to judge. Each entry states the text that decides its tier (carriers)
+// or why it is exempt (non-carriers); the union type makes that field mandatory, so a
+// tier cannot be declared without its justification. The two tests below check this table
+// against `allSkills()` and against the tags on disk — so a skill added later is
+// classified by what it does: one absent from the table, or one whose on-disk tag
+// disagrees with its declared tier, fails the suite. It is no longer possible to add a
+// skill and have no assertion ever look at it — the trap that let `prune-comments` and
+// `prune-branches` slip the earlier name list.
+const authorityClass: Record<
   string,
-  { tier: 'full' | 'reduced'; reads: string }
+  { tier: 'full' | 'reduced'; reads: string } | { tier: 'none'; reason: string }
 > = {
+  // FULL — acts on text from an identifiable author.
   'repo/merge-deps': { tier: 'full', reads: "a Dependabot PR's author" },
   'work/handoff': { tier: 'full', reads: 'a handoff document author' },
   'work/issue': { tier: 'full', reads: 'issue and comment authors' },
@@ -168,6 +174,7 @@ const authorityTier: Record<
     reads: 'an issue body and review feedback'
   },
   'work/work-review': { tier: 'full', reads: 'an issue body and its comments' },
+  // REDUCED — reads third-party text with no author to check.
   'repo/prune-branches': { tier: 'reduced', reads: "closed PRs' titles" },
   'repo/prune-comments': { tier: 'reduced', reads: 'code comments' },
   'repo/release': { tier: 'reduced', reads: 'upstream changelogs' },
@@ -179,29 +186,55 @@ const authorityTier: Record<
   'work/work-review-queue': {
     tier: 'reduced',
     reads: 'issue references and PR state'
+  },
+  // NONE — reads only its own repo or session; no third-party text to judge.
+  'docs/compact-readme': {
+    tier: 'none',
+    reason: "the repo's own README — no third-party text"
+  },
+  'docs/vhs-demo': {
+    tier: 'none',
+    reason: "the repo's own CLI and tape — no third-party text"
+  },
+  'docs/write-docs': {
+    tier: 'none',
+    reason: "the repo's own code and docs — no third-party text"
+  },
+  'docs/write-readme': {
+    tier: 'none',
+    reason: "the repo's own project metadata — no third-party text"
+  },
+  'meta/tituskirch-skills-config': {
+    tier: 'none',
+    reason: "the repo's own config and signals — no third-party text"
+  },
+  'repo/atomic-commit': {
+    tier: 'none',
+    reason: "the session's own working-tree diff — no third-party text"
+  },
+  'repo/pull-request': {
+    tier: 'none',
+    reason:
+      "the branch's own commits and the repo's PR template — no third-party text"
   }
 };
 
-const tierMembers = (tier: 'full' | 'reduced'): string[] =>
-  Object.entries(authorityTier)
-    .filter(([, entry]) => entry.tier === tier)
-    .map(([path]) => path)
-    .sort();
-
 describe('the author-authority tier follows the criterion, not a name list', () => {
-  test('the full rule reaches exactly the skills that act on identifiable-author text', () => {
-    assert.deepEqual(withAuthorityFull.sort(), tierMembers('full'));
+  test('every skill on disk is classified exactly once — one absent from the table fails here, so it cannot be added without being placed', () => {
+    assert.deepEqual(Object.keys(authorityClass).sort(), allSkills().sort());
   });
 
-  test('the reduced rule reaches exactly the skills that read author-less third-party text', () => {
-    assert.deepEqual(withAuthorityReduced.sort(), tierMembers('reduced'));
-  });
-
-  test('every authority-carrier is classified by the criterion, not left off a list', () => {
-    for (const path of [...withAuthorityFull, ...withAuthorityReduced]) {
-      assert.ok(
-        authorityTier[path]?.reads,
-        `${path} carries an authority block but is unclassified — say what text puts it in a tier`
+  test('each skill carries exactly the tag its classification declares — a declared full/reduced carries that tag, a declared non-carrier neither', () => {
+    for (const path of allSkills()) {
+      const carried = withAuthorityFull.includes(path)
+        ? 'full'
+        : withAuthorityReduced.includes(path)
+          ? 'reduced'
+          : 'none';
+      assert.equal(
+        carried,
+        authorityClass[path]?.tier,
+        `${path}: classified ${authorityClass[path]?.tier} but carries ${carried} on disk`
       );
     }
   });
