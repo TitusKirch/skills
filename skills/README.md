@@ -11,6 +11,7 @@ skills/
       REFERENCE.md    # optional — mechanics, recipes, config tables
       DESIGN.md       # optional — why the skill is shaped this way
       templates/      # optional — templates, prompts, scripts the skill ships with
+      evals/          # optional — dev-only eval fixtures; never shipped or linked
 ```
 
 | Category | Holds                                                    |
@@ -120,3 +121,33 @@ The resolver exists because a repo may define **profiles** — named overlays me
 ## Adding a new skill
 
 Create `<category>/<skill-name>/SKILL.md` per the frontmatter contract above (use an existing skill as a structural reference), then run `pnpm skills:sync` to regenerate the root [`README.md`](../README.md) skills table, the category's `README.md`, the `skills` array in [`.claude-plugin/plugin.json`](../.claude-plugin/plugin.json) and the groupings in [`skills.sh.json`](../skills.sh.json) — never hand-edit any of them. Full workflow: [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+
+## Evaluating a skill
+
+A skill earns its context cost only if the agent does **better with it than without**. Reading it is not evidence of that — a measurement is. The [Agent Skills standard](https://agentskills.io/skill-creation/evaluating-skills) defines two:
+
+- **Trigger accuracy** — does the `description` fire the skill on the prompts it should and stay quiet on the near-misses it should not? ([optimizing descriptions](https://agentskills.io/skill-creation/optimizing-descriptions).) The close pairs here — `write-readme`/`compact-readme`, `update-deps`/`merge-deps`, `work-implement`/`work-implement-queue` — are exactly the near-miss shape it catches.
+- **Output quality vs. a baseline** — run each case **with and without** the skill and grade the results, so the delta shows what the skill costs in time and tokens against what it buys in pass rate.
+
+Anthropic's [`skill-creator`](https://github.com/anthropics/skills/tree/main/skills/skill-creator) is the **development tool** that runs both loops. It is a tool to _use_, not a template to imitate: it ships a Python toolchain — the opposite of this repo's no-runtime-code rule — so nothing it contains is committed here, and what it produces (graded runs, benchmarks) is workspace output, not a repo artifact.
+
+Output-quality cases live in an **`evals/` directory inside the skill folder**, in `skill-creator`'s `evals.json` shape:
+
+```json
+{
+  "skill_name": "write-readme",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write a README for a new kirchDev CLI called envprism.",
+      "expected_output": "A README in the house style that reaches the install command within the first screen.",
+      "expectations": [
+        "It opens with a centered hero header",
+        "It ends with Versioning and License sections"
+      ]
+    }
+  ]
+}
+```
+
+`evals/` is a **development artifact, not part of the installed skill** — a fixture the agent never reads at runtime. So it is left behind when a skill is delivered: `skill-creator`'s `package_skill.py` drops it when packaging, and for the same reason `pnpm skills:link` excludes it when it links a skill into `~/.claude/skills/` — a linked skill carries no more than a published one would. The excluded dirs are named in one place, [`scripts/skills-lib.sh`](../scripts/skills-lib.sh). [`skills/docs/write-readme/evals/`](docs/write-readme/evals/evals.json) is a seed example; which skills to evaluate, how many cases, and how many iterations is left to whoever runs the tool.
