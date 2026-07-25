@@ -24,7 +24,7 @@ Drain the repo's queue of issues **awaiting review** — every issue in `review`
 ### 1. Load config & lock
 
 - Config + tracker as in `work-implement` (the `work.*` section; `work.review.maxRounds` governs escalation).
-- Acquire the **review single-flight lock** — `mkdir` the lock at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/review.lock` (atomic create-or-fail), a **separate** path from the implement loop's `…/work/implement.lock`, so an implement-drain and a review-drain run at the same time in the same checkout. On adopting this path, first `rm -f` the old loose `tituskirch-work-review-queue.lock` (see the migration in the spec) so the two cannot coexist. The path, the `mkdir` primitive, the owner-metadata stale rule, the migration off the old loose lock and the single-checkout boundary are specified once in **The single-flight lock** (`work-implement`'s REFERENCE) — both queues cite that one spec.
+- Acquire the **review single-flight lock** — `mkdir` the lock at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/review.lock` (atomic create-or-fail), a **separate** path from the implement loop's `…/work/implement.lock`, so an implement-drain and a review-drain run at the same time in the same checkout. On adopting this path, first `rm -f` the old loose `tituskirch-work-review-queue.lock` (see the migration in the spec) so the two cannot coexist. The path, the `mkdir` primitive, the **heartbeat-timestamp** stale rule, the migration off the old loose lock and the single-checkout boundary are specified once in **The single-flight lock** (`work-implement`'s REFERENCE) — both queues cite that one spec.
 
 ### 2. Reconcile — close out out-of-band human actions
 
@@ -47,6 +47,8 @@ Issues in `review` were pushed by the implement loop **for exactly this** — so
 ### 5. Drain
 
 For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-review` on exactly that issue. **Sequential** re-fetches the next `review` issue each iteration; **parallel** reviews N concurrently (review is read-only, so no integration race).
+
+**Heartbeat the lock each iteration.** The lock is held for the whole batch, which no single shell process spans, so the drain **re-stamps** the review lock's `refreshed` timestamp once per iteration (one cheap command) — that is what keeps a **live** drain from being misread as a crashed one by the **heartbeat-timestamp** stale rule (**The single-flight lock** in `work-implement`'s REFERENCE). The lock is released **explicitly** at step 6, not by a shell-lifetime trap.
 
 Each worker returns a verdict — `done`, `changes-requested`, `needs human`, or `blocked` — or an error. Any verdict → **continue**; only a **hard error** (git broken, tracker down) stops the drain, releases the lock, and reports.
 
