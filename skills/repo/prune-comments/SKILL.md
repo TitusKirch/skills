@@ -1,6 +1,7 @@
 ---
 name: prune-comments
-summary: Reports comments that only restate the code, and removes them after confirmation.
+metadata:
+  summary: Reports comments that only restate the code, and removes them after confirmation.
 description: Finds comments made redundant by the code beneath them — plain restatements, name echoes, section banners, signature echoes — and reports them as removal candidates with the code line each one sits on. The judgement is semantic, made by reading the comment and the code together, never by pattern-matching the comment alone. Comments that carry what the code cannot state are protected and never proposed — the why behind a decision, non-obvious rationale, workarounds and invariants, TODO/FIXME/HACK, license and generated-file headers, and tool directives such as eslint-disable, @ts-expect-error or noqa that are comments only in syntax. Defaults to the working diff, takes a whole path when one is named, and never scans a whole repo unasked. Presents the candidates first and removes nothing without confirmation; it edits comments only, never code, and never commits or pushes. Use when the user wants to prune, clean up, audit or remove redundant, obvious, noisy or superfluous comments, asks which comments a file no longer needs, or says things like "clean up the comments", "remove the pointless comments", "Kommentare aufräumen", "überflüssige Kommentare entfernen".
 allowed-tools:
   - Bash

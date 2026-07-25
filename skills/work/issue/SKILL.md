@@ -1,6 +1,7 @@
 ---
 name: issue
-summary: Creates/updates/searches issues across GitHub (gh) or Linear (MCP), tracker chosen by config.
+metadata:
+  summary: Creates/updates/searches issues across GitHub (gh) or Linear (MCP), tracker chosen by config.
 description: Manages issues — create, update, search/list, and bulk — across GitHub (gh CLI) or Linear (MCP), with the active tracker chosen per-repo by a committed config (.tituskirch-skills.json). Drafts title and body from a free-text description plus session context, previews once, and creates only after confirmation; switches to plan-only when asked. Use when the user wants to create, open, update, or find an issue or ticket, mentions GitHub issues or Linear, or says things like "open an issue", "create a ticket", "find the issue about X", "Issue erstellen", "Ticket anlegen".
 allowed-tools:
   - Bash

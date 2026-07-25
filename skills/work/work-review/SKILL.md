@@ -1,6 +1,7 @@
 ---
 name: work-review
-summary: Reviews one issue's pushed work as an independent agent — verdict routes to done, changes, needs-human, or blocked.
+metadata:
+  summary: Reviews one issue's pushed work as an independent agent — verdict routes to done, changes, needs-human, or blocked.
 description: Reviews a single tracked issue's pushed implementation across GitHub (gh) or Linear (MCP) as a fresh, independent agent — reads the issue's requirements and the pushed diff, adversarially checks whether the work is correct and complete, and writes a verdict that routes the issue to done (accepted), changes-requested (feedback, back to the implement loop), needs-human (escalation), or blocked. It never implements or fixes anything — review only. It also applies a human's verdict on a needs-human issue. Tracker, labels and the round cap come from the committed config (.tituskirch-skills.json). Use when the user wants to review, check, or sign off one specific issue's AI work, mentions an issue awaiting review, or says things like "review issue 42", "check the work on issue 42", "reviewe Issue 42", or gives a verdict on an escalated issue.
 allowed-tools:
   - Bash

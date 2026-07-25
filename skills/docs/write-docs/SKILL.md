@@ -1,6 +1,7 @@
 ---
 name: write-docs
-summary: Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format.
+metadata:
+  summary: Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format.
 description: Scaffolds, extends, and reconciles a project's `docs/` tree in the TitusKirch docs format — one opinionated, stack-agnostic documentation convention shared across all repos, including the ADR format (append-only architecture decision records in their own `docs/99.adr/` section). Routes by state — scaffolds when `docs/` is missing, adds to the right section when it exists, reconciles existing pages to the convention when asked (never rewriting prose). Always previews a plan and writes only after confirmation. Use when the user wants to write, add, scaffold, or update documentation, set up a docs/ tree, document a feature, record or supersede an architecture decision, or says things like "write the docs", "add a docs page", "document this", "reconcile the docs", "write an ADR", "record this decision", "Doku schreiben", "docs aktualisieren". Also trigger proactively, without an explicit request, once a feature has cleared every review and reached final approval — when the work is settled, not the moment implementation finishes — to document the shipped result.
 allowed-tools:
   - Read

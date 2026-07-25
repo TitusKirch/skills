@@ -1,6 +1,7 @@
 ---
 name: prune-branches
-summary: Reports a repo's stale branches grouped by why they are stale, and deletes the ones confirmed.
+metadata:
+  summary: Reports a repo's stale branches grouped by why they are stale, and deletes the ones confirmed.
 description: Reports a repo's stale branches grouped by why they are stale — merged into the integration branch (squash and rebase merges included, which git branch --merged cannot see), upstream gone, a closed pull request that never merged, and no commits for 90 days — then deletes only what a human confirms. Local and remote branches are listed separately so it is always clear which side a deletion touches, and an optional scope argument restricts a run to one side. Two tiers of consent — merged and upstream-gone are the default deletion set, while a closed PR and plain age are always listed and never preselected. Protected branches are never offered at all — the forge's default branch, the integration branch, anything checked out in a worktree, anything the forge marks protected, and a name-based fallback that config adds to rather than replaces. The remote side touches the integration branch's own remote only, so forks and mirrors are never written to. Forge chosen per-repo by config (root forge key); v1 is GitHub via the gh CLI. Invoke manually only — this skill never fires proactively and never deletes without an explicit yes. Use when the user wants to prune, clean up or list stale, merged or dead branches, asks which branches are safe to delete, or says things like "clean up the branches", "delete the merged branches", "Branches aufräumen", "alte Branches löschen".
 allowed-tools:
   - Bash

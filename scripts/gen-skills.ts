@@ -71,15 +71,31 @@ function parseFrontmatter(raw: string): Record<string, string> {
   const match = raw.match(/^---\n([\s\S]*?)\n---/);
   const out: Record<string, string> = {};
   if (!match?.[1]) return out;
+  // One level of nesting is understood: a key with no inline value (e.g.
+  // `metadata:`) becomes the parent of the indented `child: value` lines that
+  // follow, flattened to `metadata.child` — where the house `summary` now lives.
+  let parent = '';
   for (const line of match[1].split('\n')) {
+    let nested: RegExpMatchArray | null = null;
+    if (parent) nested = line.match(/^\s+([A-Za-z][\w-]*):\s?(.*)$/);
+    if (nested?.[2]) {
+      out[`${parent}.${nested[1]}`] = nested[2].trim();
+      continue;
+    }
     const field = line.match(/^([A-Za-z][\w-]*):\s?(.*)$/);
     const [, key, value] = field ?? [];
-    if (key && value) out[key] = value.trim();
+    if (!key) continue;
+    if (value) {
+      out[key] = value.trim();
+      parent = '';
+    } else {
+      parent = key;
+    }
   }
   return out;
 }
 
-// Fallback when a skill has no `summary`: the first clause of `description`.
+// Fallback when a skill has no `metadata.summary`: the first clause of `description`.
 function deriveSummary(description: string): string {
   const dash = description.search(/\s[—–]\s/);
   const period = description.search(/\.\s/);
@@ -151,13 +167,14 @@ function discoverSkills(): Skill[] {
             return null;
           }
           const fm = parseFrontmatter(raw);
+          const summary = fm['metadata.summary'];
           return {
             category,
             dir,
             path: `${category}/${dir}`,
             name: fm.name ?? dir,
-            summary: fm.summary ?? deriveSummary(fm.description ?? ''),
-            frontmatter: { summary: fm.summary, description: fm.description }
+            summary: summary ?? deriveSummary(fm.description ?? ''),
+            frontmatter: { summary, description: fm.description }
           };
         })
         .filter((skill) => skill !== null)

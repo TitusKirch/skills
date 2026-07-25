@@ -1,6 +1,7 @@
 ---
 name: compact-readme
-summary: Slims down an existing overstuffed README without losing information.
+metadata:
+  summary: Slims down an existing overstuffed README without losing information.
 description: Compacts an existing, overstuffed README so the landing view reaches the install/run command in ~30 seconds without losing any information — detail moves into <details> blocks, sections merge, duplication is deduped, and the kirchDev house style is preserved. The complement to write-readme (which scaffolds a new README from scratch). Use when a README is too long/dense/repetitive and the user wants it tightened, condensed, decluttered, or made scannable. Do not use to create a new README.
 allowed-tools:
   - Read
