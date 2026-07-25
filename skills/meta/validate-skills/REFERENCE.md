@@ -18,7 +18,9 @@ A skill is a **directory** whose only required member is `SKILL.md`. Optional, s
 
 ### Frontmatter fields
 
-`SKILL.md` opens with YAML frontmatter, then Markdown body.
+`SKILL.md` opens with YAML frontmatter, then Markdown body. The settled frontmatter contract (`skills/README.md`, from the landed contract issue) tags every field **[standard]** (the open Agent Skills spec), **[Claude Code]** (a client extension the spec does not define), or **[house]** (a consuming repo's own field) — and that tag **is** the tier a stray key lands in: a **[standard]** breach is a **spec violation**, a **[Claude Code]** key is a **client extension (non-portable)**, a **[house]** field is **house style**.
+
+**Standard fields [standard]** — the six the open standard defines; `skills-ref` enforces exactly these:
 
 | Field           | Required | Spec constraint                                                                                                                                    | Tier of a breach                                                     |
 | :-------------- | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------- |
@@ -29,10 +31,25 @@ A skill is a **directory** whose only required member is `SKILL.md`. Optional, s
 | `metadata`      | No       | Map of **string keys to string values**; the conforming home for client-specific fields                                                            | **spec violation** if not a string map                               |
 | `allowed-tools` | No       | Space-separated string of pre-approved tools; **Experimental** — support varies between agents                                                     | rarely a hard breach; note portability                               |
 
+**Claude Code extensions [Claude Code]** — valid in Claude Code, **absent from the open standard**. A skill using one loads in Claude Code but **not** in a conformant client, so each is a **client extension (non-portable)** finding, never a spec violation. `skills-ref` does not know them — its allowlist is the six above — so it fails each as an `Unexpected fields in frontmatter` line, which the [re-tiering rule](#getting-and-running-skills-ref) moves into this tier:
+
+| Field                      | Tier                                |
+| :------------------------- | :---------------------------------- |
+| `disallowed-tools`         | **client extension** (non-portable) |
+| `when_to_use`              | **client extension** (non-portable) |
+| `disable-model-invocation` | **client extension** (non-portable) |
+| `arguments`                | **client extension** (non-portable) |
+| `model`                    | **client extension** (non-portable) |
+| subagent `context`         | **client extension** (non-portable) |
+
+This is the **whole** known set — a top-level key outside both tables above is genuinely unrecognised and stays a **spec violation**.
+
+**House fields [house]** — a consuming repo's own keys, carried **inside** `metadata` so the standard's string-map contract is never broken. This repo's is `metadata.summary`; its absence is a [house-style](#the-house-style-tier) finding, never a spec breach.
+
 Two field notes that catch people out:
 
 - **`name` must equal the folder name.** `skills-ref` checks this, and it is a real portability bug (a client keys the skill by its directory), so it is a **spec violation**, not house style.
-- **`metadata` is a string→string map.** A nested non-string value (an object, a number) is a spec breach. This is why a house field like `summary` lives at `metadata.summary` **as a string** — the standard's sanctioned way to carry a client-specific field without violating the map contract.
+- **`metadata` is a string→string map.** A nested non-string value (an object, a number) is a spec breach. This is why a house field like `summary` lives at `metadata.summary` **as a string** — the standard's sanctioned way to carry a client-specific field without violating the map contract. A `[Claude Code]` extension is the other way to carry a client-specific field — as a **top-level** key the client defines, which is exactly why `skills-ref` rejects it and why it is non-portable rather than a spec breach.
 
 ### Body and progressive disclosure — advisory
 
@@ -44,11 +61,11 @@ The spec places **no format restriction** on the body, but **recommends**: keep 
 - **A whole repo** — a skill is any directory containing a `SKILL.md`. Enumerate portably:
 
 ```sh
-# every skill directory in the repo, one per line
-find . -name SKILL.md -not -path '*/node_modules/*' -printf '%h\n' | sort
+# every skill directory in the repo, one per line — portable (no GNU-only -printf)
+find . -name SKILL.md -not -path '*/node_modules/*' | sed 's|/SKILL\.md$||' | sort
 ```
 
-This repo nests skills at `skills/<category>/<name>/SKILL.md` (categories `repo/`, `work/`, `docs/`, `meta/`), and already exposes the canonical list via `node scripts/gen-skills.ts --paths` — prefer a repo's own enumerator when it has one, since it encodes what that repo counts as a skill; fall back to the `find` above otherwise. Do **not** treat a `references/`, `scripts/`, `assets/`, `templates/` or `evals/` subdirectory as a skill — only a directory that directly contains a `SKILL.md`.
+This repo nests skills at `skills/<category>/<name>/SKILL.md` (categories `repo/`, `work/`, `docs/`, `meta/`), and already exposes the canonical list via `node scripts/gen-skills.ts --paths` — prefer a repo's own enumerator when it has one, since it encodes what that repo counts as a skill; fall back to the `find` above otherwise. Note that `--paths` prints `SKILL.md` **file** paths, not directories, so apply the same parent-directory normalisation as the "One named skill" bullet above before handing each to `skills-ref validate`, which takes a skill **directory** (the `find … | sed` snippet already emits directories; `--paths` does not). Do **not** treat a `references/`, `scripts/`, `assets/`, `templates/` or `evals/` subdirectory as a skill — only a directory that directly contains a `SKILL.md`.
 
 ## Getting and running skills-ref
 
@@ -83,9 +100,24 @@ If the quick recipes fail, the **authoritative** install steps are in `skills-re
 **`validate` output and exit codes** — parse these, do not re-judge them:
 
 - **Exit `0`** — valid. Prints `Valid skill: <path>` to **stdout**.
-- **Exit `1`** — invalid. Prints `Validation failed for <path>:` to **stderr**, then one line per problem, each indented and bulleted with a hyphen. Each such line is a **spec violation**; carry it into the report verbatim, attributed to the skill's `SKILL.md`.
+- **Exit `1`** — invalid. Prints `Validation failed for <path>:` to **stderr**, then one line per problem, each indented and bulleted with a hyphen. Each such line is a **spec violation**; carry it into the report verbatim, attributed to the skill's `SKILL.md` — with the **one** exception below.
 
 Run it once per skill directory so each skill gets its own verdict; a whole-repo run loops and tallies pass/fail.
+
+### The one re-tiered line — `Unexpected fields in frontmatter`
+
+`skills-ref` carries a fixed allowlist — its `validator.py` defines `ALLOWED_FIELDS` as exactly `{name, description, license, allowed-tools, metadata, compatibility}` — and `_validate_metadata_fields()` fails the **whole skill** for any top-level key outside it:
+
+```
+Unexpected fields in frontmatter: <keys>. Only [...] are allowed.
+```
+
+Because the [Claude Code extensions](#frontmatter-fields) are top-level keys the open standard does not define, this is the line they trip. So it is the **one** `skills-ref` line the run does **not** carry verbatim — split it by key:
+
+- **A known Claude Code extension** — `disallowed-tools`, `when_to_use`, `disable-model-invocation`, `arguments`, `model`, subagent `context` — is re-tiered to the **client-extension (non-portable)** tier: valid in Claude Code, will not load in a conformant client.
+- **Any other key** stays a **spec violation**, carried verbatim (a real unrecognised field, a typo like `descriptoin`).
+
+**Why this is not a contradiction of [principle 1](#principle).** Re-tiering is not re-judging: `skills-ref`'s verdict — "this key is not in the open standard" — is accepted in full and **unchanged**. The re-tier only records _why_ the standard rejects a known extension (a named client defines it), turning "malformed" into "non-portable," which is the [distinction this skill exists to draw](SKILL.md). This is the **sole** place the run overrides `skills-ref`'s tiering, and it is called out here precisely so it never masquerades as a general licence to second-guess the tool. Run it over this repo and it is what keeps `work-implement-queue` and `work-review-queue` — whose deliberate, [documented](#the-house-style-tier) `disallowed-tools` key is a real Claude Code extension — off the spec-violation list where the verbatim rule would wrongly put them.
 
 ## When skills-ref is unavailable
 
