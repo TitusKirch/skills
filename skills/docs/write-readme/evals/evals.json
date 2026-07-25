@@ -1,0 +1,18 @@
+{
+  "_comment": "SEED / EXAMPLE — one illustrative output-quality case, here to demonstrate the evals/ dev-artifact convention (see skills/README.md), not a populated suite. Its expectations are grounded in write-readme's own documented house style; expected_output is a description of success, not a captured README. Choosing which skills to evaluate, how many cases, and running each case with and without the skill for the baseline delta (via Anthropic's skill-creator) is a workspace activity, left to whoever runs it — nothing here is committed as a benchmark result.",
+  "skill_name": "write-readme",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write a README for a new kirchDev CLI called envprism that manages per-environment configuration profiles.",
+      "expected_output": "A README.md in the kirchDev house style: a centered hero header, a one-line usage hook, feature bullets, and the standard closing sections — good enough that a reader reaches the install/run command within the first screen.",
+      "expectations": [
+        "The output is a Markdown README, not prose describing one.",
+        "It opens with a centered hero header carrying an emoji and a bold tagline.",
+        "A one-liner code-snippet hook appears near the top.",
+        "Feature bullets use the house style's prescribed section emojis.",
+        "It ends with the standardized Versioning and License sections."
+      ]
+    }
+  ]
+}
