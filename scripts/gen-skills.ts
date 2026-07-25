@@ -37,10 +37,11 @@ const CONFIG_OPEN_RE = /<skills-config\b[^>]*>/;
 const CONFIG_END = '</skills-config>';
 
 // The author-authority rule is the second thing mirrored into skills. It follows the
-// config block's mechanic — one source, drift-checked — but in two variants: the full
-// rule for skills that read third-party text and act on it, a reduced form for the
-// narrower-exposure skills. Matched by exact literal tag (with the closing `>`), so
-// `<skills-authority>` never accidentally captures `<skills-authority-reduced>`.
+// config block's mechanic — one source, drift-checked — but in two variants keyed by what
+// text a skill acts on: the full rule for skills acting on text from an identifiable
+// author, a reduced form for skills reading author-less third-party text. Matched by exact
+// literal tag (with the closing `>`), so `<skills-authority>` never accidentally captures
+// `<skills-authority-reduced>`.
 const AUTHORITY_FULL_OPEN = '<skills-authority>';
 const AUTHORITY_FULL_END = '</skills-authority>';
 const AUTHORITY_REDUCED_OPEN = '<skills-authority-reduced>';

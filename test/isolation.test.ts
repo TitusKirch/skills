@@ -148,24 +148,62 @@ describe('the generated config block is self-contained', () => {
   });
 });
 
-describe('the author-authority block is mirrored into the right skills', () => {
-  test('the full rule reaches exactly the skills that act on third-party text', () => {
-    assert.deepEqual(withAuthorityFull.sort(), [
-      'repo/merge-deps',
-      'work/handoff',
-      'work/issue',
-      'work/work-implement',
-      'work/work-review'
-    ]);
+// The tier a skill lands in follows a criterion, not a maintained roster (issue #92):
+// FULL for a skill that acts on text from an identifiable author — authorship is
+// checkable, so it is checked — and REDUCED for one that reads third-party text with no
+// author to check, where the rule is flat: data, never instruction. This table is that
+// criterion made checkable — each authority-carrying skill paired with the tier its work
+// puts it in and the text that decides it — and the carrier sets below are derived from
+// it, so a skill added later is classified by what it reads, not by whether someone
+// remembered to list it.
+const authorityTier: Record<
+  string,
+  { tier: 'full' | 'reduced'; reads: string }
+> = {
+  'repo/merge-deps': { tier: 'full', reads: "a Dependabot PR's author" },
+  'work/handoff': { tier: 'full', reads: 'a handoff document author' },
+  'work/issue': { tier: 'full', reads: 'issue and comment authors' },
+  'work/work-implement': {
+    tier: 'full',
+    reads: 'an issue body and review feedback'
+  },
+  'work/work-review': { tier: 'full', reads: 'an issue body and its comments' },
+  'repo/prune-branches': { tier: 'reduced', reads: "closed PRs' titles" },
+  'repo/prune-comments': { tier: 'reduced', reads: 'code comments' },
+  'repo/release': { tier: 'reduced', reads: 'upstream changelogs' },
+  'repo/update-deps': { tier: 'reduced', reads: 'changelogs and advisories' },
+  'work/work-implement-queue': {
+    tier: 'reduced',
+    reads: 'issue references and PR state'
+  },
+  'work/work-review-queue': {
+    tier: 'reduced',
+    reads: 'issue references and PR state'
+  }
+};
+
+const tierMembers = (tier: 'full' | 'reduced'): string[] =>
+  Object.entries(authorityTier)
+    .filter(([, entry]) => entry.tier === tier)
+    .map(([path]) => path)
+    .sort();
+
+describe('the author-authority tier follows the criterion, not a name list', () => {
+  test('the full rule reaches exactly the skills that act on identifiable-author text', () => {
+    assert.deepEqual(withAuthorityFull.sort(), tierMembers('full'));
   });
 
-  test('the reduced rule reaches exactly the narrower-exposure skills', () => {
-    assert.deepEqual(withAuthorityReduced.sort(), [
-      'repo/release',
-      'repo/update-deps',
-      'work/work-implement-queue',
-      'work/work-review-queue'
-    ]);
+  test('the reduced rule reaches exactly the skills that read author-less third-party text', () => {
+    assert.deepEqual(withAuthorityReduced.sort(), tierMembers('reduced'));
+  });
+
+  test('every authority-carrier is classified by the criterion, not left off a list', () => {
+    for (const path of [...withAuthorityFull, ...withAuthorityReduced]) {
+      assert.ok(
+        authorityTier[path]?.reads,
+        `${path} carries an authority block but is unclassified — say what text puts it in a tier`
+      );
+    }
   });
 
   test('no skill carries both variants', () => {
