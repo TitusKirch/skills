@@ -492,7 +492,7 @@
       "properties": {
         "preset": {
           "type": "string",
-          "enum": ["library", "cli", "app", "infra", "ai-tool"],
+          "enum": ["library", "cli", "app", "infra"],
           "description": "Project type — selects which sections beyond the core (getting-started, reference) to scaffold. Falls back to repo detection, then asks."
         },
         "language": {

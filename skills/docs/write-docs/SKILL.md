@@ -65,7 +65,7 @@ A real feature usually spans several types: how-it-works (`concepts`) + usage (`
 
 ## Scaffold — `docs/` is missing
 
-1. **Resolve the preset** — `docs.preset` config → detect from the repo (bin/CLI → `cli`, library manifest → `library`, app/server → `app`, IaC → `infra`, agent/skill → `ai-tool`) → ask. Preset = which sections beyond the core.
+1. **Resolve the preset** — `docs.preset` config → detect from the repo (bin/CLI → `cli`, library manifest or a published agent/skill set → `library`, app/server → `app`, IaC → `infra`) → ask. Preset = which sections beyond the core.
 2. **Resolve the language** — `docs.language` → root `language` → existing docs/repo language → `en` (see [REFERENCE.md#config](REFERENCE.md#config)). When set, `docs.instructions` shapes the generated-docs wording (tone, house conventions) — additive only, never overriding the docs format or guardrails.
 3. **Plan the tree** — core (`getting-started`, `reference`) + the preset's sections; show it.
 4. **Drop any section that would only redirect.** For each planned section ask: does this repo have a page's worth of material that is **not** already canonical somewhere else — a README that covers install and first run, a committed schema that _is_ the config reference, per-module docs that ship with their module? If not, the section's `index.md` can only say "the real thing is over there", which costs a click and returns nothing. Leave it out, name it in the plan with the reason, and let **route/add** create it later when it has a page of its own. This applies to the core sections too: core is the default, not an obligation.

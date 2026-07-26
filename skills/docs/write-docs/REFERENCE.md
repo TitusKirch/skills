@@ -56,7 +56,6 @@ Which sections to scaffold beyond the core, by project type. Core (`getting-star
 | `cli`     | `guides`                           |
 | `app`     | `concepts`, `guides`, `operations` |
 | `infra`   | `concepts`, `operations`           |
-| `ai-tool` | `concepts`, `guides`               |
 
 Add `contributing`/`conventions` when the repo accepts external contributions or carries non-obvious project rules. Presets are a starting point, not a cage — sections can be added or dropped per use case. `adr` belongs to no preset — the section is created when the first ADR is written, never scaffolded empty.
 
@@ -174,7 +173,7 @@ Read the whole tree fresh every run — it is live state and is **never cached**
 
 | Key                 | Effect                                                                                                                                               |
 | :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs.preset`       | `library` / `cli` / `app` / `infra` / `ai-tool` — which sections to scaffold; falls back to repo detection, then asks                                |
+| `docs.preset`       | `library` / `cli` / `app` / `infra` — which sections to scaffold; falls back to repo detection, then asks                                            |
 | `docs.language`     | docs language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`, then the existing docs/repo language, then `en` |
 | `docs.instructions` | free-text guidance for generated docs (tone, house conventions) — additive preference only, never overrides the docs format or guardrails            |
 
