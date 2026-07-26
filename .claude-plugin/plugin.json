@@ -1,6 +1,6 @@
 {
   "name": "tituskirch-skills",
-  "description": "Agent skills by Titus Kirch — installable via skills.sh in Claude Code, Cursor, Windsurf and friends.",
+  "description": "Agent skills by Titus Kirch — installable via skills.sh in Claude Code, Codex, Cursor, OpenCode and friends.",
   "version": "0.1.0",
   "author": {
     "name": "Titus Kirch",
