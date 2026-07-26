@@ -4,8 +4,14 @@
   "language": "en",
   "verify": "pnpm verify",
   "trustedBots": [
-    { "id": 287319172, "login": "kirchdev-release[bot]" },
-    { "id": 49699333, "login": "dependabot[bot]" }
+    {
+      "id": 287319172,
+      "login": "kirchdev-release[bot]"
+    },
+    {
+      "id": 49699333,
+      "login": "dependabot[bot]"
+    }
   ],
   "commit": {
     "language": "en",
@@ -40,7 +46,6 @@
   },
   "pr": {
     "base": "dev",
-    "language": "en",
     "title": {
       "convention": "conventional"
     }
@@ -62,17 +67,18 @@
   },
   "issue": {
     "tracker": "github",
-    "language": "en",
     "title": {
       "convention": "plain"
     },
     "labels": {
       "exclude": ["stack:*", "autorelease:*", "dependencies"]
+    },
+    "github": {
+      "template": null
     }
   },
   "docs": {
     "preset": "ai-tool",
-    "language": "en",
     "instructions": "Skills are self-documenting in place (SKILL.md / REFERENCE.md / DESIGN.md per skill); reserve docs/ for cross-cutting guides and ADRs — concise and example-first."
   },
   "work": {
