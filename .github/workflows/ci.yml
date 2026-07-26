@@ -18,8 +18,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  lint:
-    name: Lint & Format
+  verify:
+    name: Verify
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     steps:
@@ -35,17 +35,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint
-
-      - name: Format check
-        run: pnpm format
-
-      - name: Skills registry in sync
-        run: pnpm skills:check
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Test
-        run: pnpm test
+      # The whole gate is one script, so CI and the root `verify` key in
+      # .tituskirch-skills.json cannot drift apart — see package.json.
+      - name: Verify
+        run: pnpm verify

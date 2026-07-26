@@ -33,18 +33,19 @@ pnpm install   # wires husky hooks
 1. Pick a category — `repo/`, `work/`, `docs/` or `meta/` (see [`skills/README.md`](skills/README.md)) — and create `skills/<category>/<skill-name>/SKILL.md`: YAML frontmatter (`name`, `summary`, `description`, optional `allowed-tools`) followed by the skill body. Use an existing skill (e.g. [`skills/docs/write-readme/`](skills/docs/write-readme/)) as a reference.
 2. Keep any bundled resources (templates, scripts) inside the same folder.
 3. Run `pnpm skills:sync` — it regenerates the root [`README.md`](README.md) skills table, the category's `README.md`, [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) and [`skills.sh.json`](skills.sh.json)'s groupings from your frontmatter. **Don't hand-edit any of them** (CI runs `pnpm skills:check`).
-4. Run `pnpm skills:link` to try it locally, then `pnpm check` before pushing.
+4. Run `pnpm skills:link` to try it locally, then `pnpm verify` before pushing.
 5. Commit as `feat(<skill-name>): add skill`.
 
 ## Running the suite
 
-| Command          | What it does            |
-| :--------------- | :---------------------- |
-| `pnpm check`     | oxlint + oxfmt.         |
-| `pnpm check:fix` | Auto-fix the above.     |
-| `pnpm taze`      | Check dependency drift. |
+| Command          | What it does                                                    |
+| :--------------- | :-------------------------------------------------------------- |
+| `pnpm verify`    | The full gate: `check` + `skills:check` + `typecheck` + `test`. |
+| `pnpm check`     | oxlint + oxfmt only — part of the gate, not all of it.          |
+| `pnpm check:fix` | Auto-fix the above.                                             |
+| `pnpm taze`      | Check dependency drift.                                         |
 
-The same commands run in CI — keep them green before you push.
+CI runs `pnpm verify` — the same script, not a parallel list — so keeping it green locally is keeping CI green.
 
 ## Branching & PRs
 

@@ -22,7 +22,8 @@ Retyping a change is exactly how the two drift; one reflowed line or reworded cl
 
 | Command             | Why it needs saying                                                                                                                                                                       |
 | :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm check`        | Lint + format check. `pnpm check:fix` applies both fixers. CI also runs `skills:check`, `typecheck` and `test`.                                                                           |
+| `pnpm verify`       | **The repo's gate** — `check` + `skills:check` + `typecheck` + `test`, in CI's order. CI runs this exact script, and it is the root `verify` key, so the two cannot drift.                |
+| `pnpm check`        | Lint + format check only — a subset of the gate, not the gate. `pnpm check:fix` applies both fixers.                                                                                      |
 | `pnpm skills:sync`  | Regenerates six artifacts from the skill folders. **Run after touching any skill.**                                                                                                       |
 | `pnpm skills:check` | The CI guard for the above. Fails if any of the six drifted.                                                                                                                              |
 | `pnpm typecheck`    | `tsc --noEmit`. `erasableSyntaxOnly` is on, so an enum fails here, not at runtime.                                                                                                        |
@@ -44,8 +45,9 @@ Retyping a change is exactly how the two drift; one reflowed line or reworded cl
 
 ## CI gotchas
 
-`.github/workflows/` is authoritative. Two behaviours that mislead if unknown:
+`.github/workflows/` is authoritative. Three behaviours that mislead if unknown:
 
+- **CI runs `on: pull_request` only, so a commit pushed straight to `dev` is never checked by CI.** The AI work loop is configured `branch:dev` — it commits to the shared branch with no PR — which makes `pnpm verify`, run locally before the push, the _only_ automated gate between such a change and the release branch. That is why the root `verify` key is the full gate and not just lint plus format: nothing downstream would catch a broken test, a type error, or a drifted generated artifact until the rollup PR.
 - **CI skips draft PRs** — a draft's empty check list is not a pass.
 - **CodeQL only fires on `**/*.{js,ts,mjs,cjs}` or workflow changes** — it will not run on a markdown-only PR, which is most PRs here.
 

@@ -34,6 +34,7 @@
     "check:fix": "pnpm lint:fix && pnpm format:fix",
     "typecheck": "tsc",
     "test": "node --test 'test/*.test.ts'",
+    "verify": "pnpm check && pnpm skills:check && pnpm typecheck && pnpm test",
     "taze": "taze",
     "taze:w": "taze -w",
     "skills:list": "bash scripts/list-skills.sh",
