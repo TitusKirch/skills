@@ -119,9 +119,34 @@ So the config contract is written once in [`scripts/config-block.md`](../scripts
 Two consequences worth knowing before editing a skill:
 
 - **Never edit a mirrored block or a skill's `resolve-config.sh`** — edit the source in `scripts/` and re-run the sync, exactly as with the generated tables.
-- **Reaching for a cross-skill link is the signal** that the content belongs in the mirrored block instead. Where it is genuinely a "see also", **name the skill and drop the link** — `` `work-review` ``, not a path into its folder. An agent that has the skill installed can open it; one that does not gains nothing from a dangling path. This holds for the two work loops too: `work-implement-queue` reads `work-implement`'s `REFERENCE.md`, and says so by name and heading rather than by link. `test/isolation.test.ts` enforces it.
+- **Reaching for a cross-skill link is the signal** that the content belongs in the mirrored block instead. Where it is genuinely a "see also", the rule is [name the skill, never a path](#referring-to-another-skill) — the mirrored block is what a shared _contract_ costs, and a bare name is what a shared _pointer_ costs.
 
 The resolver exists because a repo may define **profiles** — named overlays merged onto the base config for an execution context, so a remote runner can open pull requests where a local session commits directly. Every skill running the same script is what makes them agree on the result.
+
+## Referring to another skill
+
+Every skill installs **on its own**, so a reference to a sibling is the one place a skill assumes something about its install environment — the referenced skill may simply not be there. Two rules follow, one about the **form** of the reference and one about its **kind**. Both are house rules: the open standard says nothing about either, so `validate-skills` reports a breach as a **house-style** finding, never a spec violation.
+
+### Name the skill, never a path
+
+**A path is a path whether or not it is a link.** All three of these name a file that does not exist on an installed copy:
+
+| Form                                 | Example                                     |
+| :----------------------------------- | :------------------------------------------ |
+| A relative link out of the folder    | `[…](../work-review/REFERENCE.md)`          |
+| An absolute install path             | `~/.claude/skills/work-review/REFERENCE.md` |
+| A bare path in prose, no link at all | `` `work-review/REFERENCE.md` ``            |
+
+So **name the skill and drop the path** — `` `work-review` ``, not a pointer into its folder. An agent that has the skill installed can open it; one that does not gains nothing from a dangling path. Where a specific document is meant, name it by skill and heading in prose rather than by path. `test/isolation.test.ts` enforces the first form only — it reads `](…)` targets, so the prose path in the third row slips past it, and that repo-local test does not travel to repos consuming these skills at all. `validate-skills` covers what the test cannot.
+
+### A call declares required or optional
+
+A reference that is a **call** — the run hands work to that skill, or depends on it to proceed — states **which kind it is** and **what happens when the skill is absent**:
+
+- **Required** → the run **stops**, naming the missing skill and why it cannot continue. A required call that says nothing fails somewhere mid-run instead of up front.
+- **Optional** → the **fallback** is stated: what the run does instead — degrade, skip that pass, carry on. `issue` → `grilling` is the model to copy: "If the `grilling` skill is not installed, skip this pass and draft as today."
+
+A reference that is only a **mention** — naming another skill as whose job something is ("committing is `atomic-commit`'s job", "the complement to `write-readme`") — is **not** a call and needs no declaration. What decides it is whether the run _hands over work_, not whether the name appears: adding a required/optional declaration to a mention is as wrong as omitting one from a call.
 
 ## Adding a new skill
 
