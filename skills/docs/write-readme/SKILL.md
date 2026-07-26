@@ -78,6 +78,13 @@ If everything was covered, say so: `Gap report: no gaps — every section and ba
 
 **Only report; do not edit REFERENCE.md or this skill yourself.** The user decides whether to fold the gaps back in.
 
+## Guardrails
+
+- **Plan first; write only after confirmation** — the draft and its optional sections are agreed before the file lands (Workflow step 3).
+- **Keep the generated README attribution-free** — no agent self-naming, no `Generated with`/🤖 line, no session URL. A README is the project's front door, not a record of who wrote it.
+- **No secrets** — the hook is real, copy-pasteable code: scan it for tokens, keys and `.env` values, and show a placeholder rather than a live one.
+- **Only the requested action** — this skill owns `README.md`. It never edits the files the README links to, and never commits.
+
 ## Reference
 
 - Section emoji catalogue, badge templates and color palette: see [REFERENCE.md](REFERENCE.md).
