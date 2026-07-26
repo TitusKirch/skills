@@ -45,7 +45,7 @@ pnpm install   # wires husky hooks
 | `pnpm check:fix` | Auto-fix the above.                                             |
 | `pnpm taze`      | Check dependency drift.                                         |
 
-CI runs `pnpm verify` — the same script, not a parallel list — so keeping it green locally is keeping CI green.
+CI runs the same commands, one step per command, so a single run reports every failure rather than stopping at the first. A test (`test/ci-gate.test.ts`) asserts CI's step list still matches what `verify` composes, so keeping `pnpm verify` green locally is keeping CI green.
 
 ## Branching & PRs
 

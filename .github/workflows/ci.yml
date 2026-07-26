@@ -35,7 +35,29 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # The whole gate is one script, so CI and the root `verify` key in
-      # .tituskirch-skills.json cannot drift apart — see package.json.
-      - name: Verify
-        run: pnpm verify
+      # One step per command in `pnpm verify`, which is the gate run locally
+      # (the root `verify` key in .tituskirch-skills.json). `!cancelled()` is
+      # what stops a failing step from suppressing the ones after it, so one
+      # run reports every failure and names each in the job's step list.
+      #
+      # The two lists have to stay in step: test/ci-gate.test.ts fails if a
+      # command is added to `verify` without a step here, or the reverse.
+      - name: Lint
+        if: ${{ !cancelled() }}
+        run: pnpm lint
+
+      - name: Format
+        if: ${{ !cancelled() }}
+        run: pnpm format
+
+      - name: Skills in sync
+        if: ${{ !cancelled() }}
+        run: pnpm skills:check
+
+      - name: Typecheck
+        if: ${{ !cancelled() }}
+        run: pnpm typecheck
+
+      - name: Test
+        if: ${{ !cancelled() }}
+        run: pnpm test
