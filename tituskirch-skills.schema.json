@@ -550,13 +550,13 @@
             "working": {
               "$ref": "#/$defs/labelOrOff"
             },
-            "review": {
+            "reviewRequested": {
               "$ref": "#/$defs/labelOrOff",
               "description": "The \"pushed, awaiting AI review\" hand-off label — the review queue's input, written by the implement loop and consumed by the review loop. Default: \"ai: review requested\", which reads symmetrically with changesRequested. A repo whose tracker labels this state differently pins its own string here; the label must already exist on the tracker before a skill copy adopts it, because a label query answers a missing label with an empty result rather than an error."
             },
             "reviewing": {
               "$ref": "#/$defs/labelOrOff",
-              "description": "The review loop's lease label — the tracker-global claim ai: working is for the implement loop, giving cross-clone mutual exclusion a checkout-local lock cannot. Opt-in: unlike the other labels it defaults to false (off), so a repo that never sets it keeps today's lock-only behaviour, and only a repo that sets it to a string (e.g. \"ai: reviewing\") gains the lease. A reviewing orphan always reclaims to review (a review pushes no artifact, so there is no crash-before/after-push split), gated by the reconcile's assignee/age guard."
+              "description": "The review loop's lease label — the tracker-global claim ai: working is for the implement loop, giving cross-clone mutual exclusion a checkout-local lock cannot. Opt-in: unlike the other labels it defaults to false (off), so a repo that never sets it keeps today's lock-only behaviour, and only a repo that sets it to a string (e.g. \"ai: reviewing\") gains the lease. A reviewing orphan always reclaims to reviewRequested (a review pushes no artifact, so there is no crash-before/after-push split), gated by the reconcile's assignee/age guard."
             },
             "changesRequested": {
               "$ref": "#/$defs/labelOrOff"
@@ -631,7 +631,7 @@
                   "minLength": 1,
                   "description": "Set on the lease (ready to working), e.g. \"In Progress\"."
                 },
-                "review": {
+                "reviewRequested": {
                   "type": "string",
                   "minLength": 1,
                   "description": "Set when the work is pushed and awaits AI review, e.g. \"In Review\"."

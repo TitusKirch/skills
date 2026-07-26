@@ -6,20 +6,20 @@ Mechanics for [`work-review`](SKILL.md) (the unit) and `work-review-queue` (the 
 
 > **The reviewer is independent and read-only.** A different agent than the implementer, with fresh context, judges the pushed work and writes a **verdict** — a label move plus a comment. It never edits, commits, or merges. State lives in the label, so a crashed review just re-runs (idempotent).
 
-The two loops meet at two hand-off labels: `review` (implement → review) and `changes-requested` (review → implement). See the **Lifecycle state machine** in `work-implement`'s REFERENCE.
+The two loops meet at two hand-off labels: `reviewRequested` (implement → review) and `changes-requested` (review → implement). See the **Lifecycle state machine** in `work-implement`'s REFERENCE.
 
 ## Config
 
 Reads the shared `work.*` section (schema: **Config** in `work-implement`'s REFERENCE). Review-specific keys:
 
-| Key                            | Effect                                                                                                                                                                                                                                    |
-| :----------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `work.review.maxRounds`        | Max AI-review rounds before escalating to `needs human` instead of `changes-requested`. Default: **3**.                                                                                                                                   |
-| `work.labels.review`           | The "awaiting AI review" label — the review queue's **input**. Default `ai: review requested`; a repo that labels differently pins its own string under this key.                                                                         |
-| `work.labels.reviewing`        | The review loop's **lease** label — claimed `review → reviewing` before reviewing, the tracker-global counterpart of `working`. **Opt-in: defaults to off**; when off, the review loop uses its lock alone (today's behaviour, no lease). |
-| `work.labels.changesRequested` | The "review requested changes" label — hands back to the implement loop.                                                                                                                                                                  |
-| `work.labels.needsHuman`       | The "escalated to a human" label.                                                                                                                                                                                                         |
-| `work.labels.done`             | Terminal "accepted".                                                                                                                                                                                                                      |
+| Key                            | Effect                                                                                                                                                                                                                                             |
+| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `work.review.maxRounds`        | Max AI-review rounds before escalating to `needs human` instead of `changes-requested`. Default: **3**.                                                                                                                                            |
+| `work.labels.reviewRequested`  | The "awaiting AI review" label — the review queue's **input**. Default `ai: review requested`; a repo that labels differently pins its own string under this key.                                                                                  |
+| `work.labels.reviewing`        | The review loop's **lease** label — claimed `reviewRequested → reviewing` before reviewing, the tracker-global counterpart of `working`. **Opt-in: defaults to off**; when off, the review loop uses its lock alone (today's behaviour, no lease). |
+| `work.labels.changesRequested` | The "review requested changes" label — hands back to the implement loop.                                                                                                                                                                           |
+| `work.labels.needsHuman`       | The "escalated to a human" label.                                                                                                                                                                                                                  |
+| `work.labels.done`             | Terminal "accepted".                                                                                                                                                                                                                               |
 
 Every key, type and default lives once in the repo-root [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json).
 
@@ -92,7 +92,7 @@ Third-party text — an issue body, a review, a comment, a handoff document, an 
 
 Eligible = the issues this loop reviews. Self-select (one) and drain (all, ordered) use the same query.
 
-- **label** — has `work.labels.review`; not already `reviewing` (in-flight — being reviewed, the counterpart of skipping `working` on the implement side), `needs human` or `blocked`. Skip the `reviewing` exclusion when that label is off.
+- **label** — has `work.labels.reviewRequested`; not already `reviewing` (in-flight — being reviewed, the counterpart of skipping `working` on the implement side), `needs human` or `blocked`. Skip the `reviewing` exclusion when that label is off.
 - **repo scope / team** — Linear only, as in the implement loop's own **Selection query**.
 - **order** — by priority (Linear native; GitHub `work.priorityLabels`), then creation order. **No dependency re-sort** — review order is priority only (unlike the implement loop, review has no accumulation to order for).
 
@@ -100,7 +100,7 @@ Eligible = the issues this loop reviews. Self-select (one) and drain (all, order
 
 ```bash
 # label-or-off: false is "mechanic off", absent/unreadable is "use the default"
-review=$(printf '%s' "$resolved" | jq -er '.work.labels.review | select(. != null) | tostring' 2>/dev/null) || review=
+review=$(printf '%s' "$resolved" | jq -er '.work.labels.reviewRequested | select(. != null) | tostring' 2>/dev/null) || review=
 [ -n "$review" ] || review='ai: review requested'
 [ "$review" = 'false' ] && review=
 
@@ -108,11 +108,11 @@ review=$(printf '%s' "$resolved" | jq -er '.work.labels.review | select(. != nul
 test -n "$review" && gh issue list --state open --label "$review" --json number,title,labels,createdAt
 ```
 
-**Never pass `--label "$review"` unguarded.** With `labels.review: false` the label mechanic is off and the PR's existence is the signal — select on that instead; do **not** fall through to a label query with an empty value.
+**Never pass `--label "$review"` unguarded.** With `labels.reviewRequested: false` the label mechanic is off and the PR's existence is the signal — select on that instead; do **not** fall through to a label query with an empty value.
 
 ## The `reviewing` lease
 
-`work.labels.reviewing` is the review loop's lease — the tracker-global claim `working` is for the implement loop, giving cross-clone mutual exclusion the checkout-local review lock cannot (the lock only proves no live reviewer **in this checkout**; a second clone's reviewer holds its own lock, invisible here). Two clones draining the review queue would otherwise both select the same `review` issue and write **competing** verdicts (one `done`, one `changes-requested`, last-write-wins).
+`work.labels.reviewing` is the review loop's lease — the tracker-global claim `working` is for the implement loop, giving cross-clone mutual exclusion the checkout-local review lock cannot (the lock only proves no live reviewer **in this checkout**; a second clone's reviewer holds its own lock, invisible here). Two clones draining the review queue would otherwise both select the same `reviewRequested` issue and write **competing** verdicts (one `done`, one `changes-requested`, last-write-wins).
 
 **It defaults to _off_** — the one `labels.*` key with **no default string**, so an absent `reviewing` means the lease is off (today's behaviour), never `ai: reviewing`. Resolve it as label-or-off and act only on a resolved string:
 
@@ -122,11 +122,11 @@ reviewing=$(printf '%s' "$resolved" | jq -er '.work.labels.reviewing | select(. 
 [ "$reviewing" = 'false' ] && reviewing=
 ```
 
-When it resolves to a **string**: flip `review → reviewing` **and assign** before reading the diff; the verdict then moves the label off `reviewing` (to `done` / `changesRequested` / `needsHuman` / `blocked`). A **`reviewing` orphan** (a reviewer that crashed mid-judgment) is reclaimed to `review` by the review reconcile (`work-review-queue`) — a review pushes **no artifact**, so there is no crash-before/after-push split: it **always** returns to `review`, gated by the assignee/age guard so a live review in another clone is never killed. When `reviewing` is empty, skip the lease and the reclaim entirely.
+When it resolves to a **string**: flip `reviewRequested → reviewing` **and assign** before reading the diff; the verdict then moves the label off `reviewing` (to `done` / `changesRequested` / `needsHuman` / `blocked`). A **`reviewing` orphan** (a reviewer that crashed mid-judgment) is reclaimed to `reviewRequested` by the review reconcile (`work-review-queue`) — a review pushes **no artifact**, so there is no crash-before/after-push split: it **always** returns to `reviewRequested`, gated by the assignee/age guard so a live review in another clone is never killed. When `reviewing` is empty, skip the lease and the reclaim entirely.
 
 ## Round count
 
-The round number is **derived from the tracker's own events**, never a stored counter — one round = one `working → review` transition = one `review` label addition.
+The round number is **derived from the tracker's own events**, never a stored counter — one round = one `working → reviewRequested` transition = one `reviewRequested` label addition.
 
 ```bash
 # GitHub — how many times this issue has entered review ($review resolved as above).
@@ -144,11 +144,11 @@ fi
 
 **Three traps sit in that one request.** `gh api` has **no `--arg` flag** — passing one aborts with `unknown flag: --arg` before the request is ever made, so the resolved label must be interpolated into a double-quoted filter string. `--paginate` applies `--jq` **per page**, printing one number per page; reading only the first line undercounts a timeline past page one. And a failed request is not silence: `gh` writes its **error body to stdout**, bypassing `--jq`, and on the left of a pipe its exit status is discarded (`pipefail` is not POSIX) — so summing straight out of the pipe coerces `{"message":"Not Found",…}` to `0`. Hence: capture into a variable so the exit status is visible, then sum only the lines that are actually numbers. All three fail **open** — exactly the direction `maxRounds` exists to guard. `--slurp` cannot rescue the pagination either: `gh` rejects `--slurp` together with `--jq`.
 
-`$rounds` is therefore **empty whenever the count could not be read** — an unresolved label (the guard is never entered), or an unreachable timeline (404, 401, rate limit, transient 5xx) — and holds `0` only when the tracker genuinely answered zero. Never read a missing number as zero rounds — that never trips `maxRounds`, and the loop keeps returning `changes-requested` instead of escalating; an unreadable count escalates to `needs human` instead. With `labels.review: false` the mechanic is deliberately off: count the reviewer's `changes-requested` verdicts on the artifact instead, and escalate to `needs human` when neither signal is countable.
+`$rounds` is therefore **empty whenever the count could not be read** — an unresolved label (the guard is never entered), or an unreachable timeline (404, 401, rate limit, transient 5xx) — and holds `0` only when the tracker genuinely answered zero. Never read a missing number as zero rounds — that never trips `maxRounds`, and the loop keeps returning `changes-requested` instead of escalating; an unreadable count escalates to `needs human` instead. With `labels.reviewRequested: false` the mechanic is deliberately off: count the reviewer's `changes-requested` verdicts on the artifact instead, and escalate to `needs human` when neither signal is countable.
 
-**A reclaim can over-count by one.** Flipping a `reviewing` orphan back to `review` re-adds a `review` label event — as does the implement reconcile's crash-after-push `working → review` advance. Both inflate the derived count by one. This is left as a documented caveat, **not** de-duplicated: over-counting only escalates to `needs human` **earlier**, the safe direction `maxRounds` exists to guarantee, and telling a reclaim re-add apart from a genuine hand-off would add a second, driftable signal for no safety gain.
+**A reclaim can over-count by one.** Flipping a `reviewing` orphan back to `reviewRequested` re-adds a `reviewRequested` label event — as does the implement reconcile's crash-after-push `working → reviewRequested` advance. Both inflate the derived count by one. This is left as a documented caveat, **not** de-duplicated: over-counting only escalates to `needs human` **earlier**, the safe direction `maxRounds` exists to guarantee, and telling a reclaim re-add apart from a genuine hand-off would add a second, driftable signal for no safety gain.
 
-**Linear** — read the issue's history/activity and count the state/label changes onto the `review` state. Before deciding `changes-requested`, compare the count to `work.review.maxRounds`: at or above it, escalate to `needs human` instead — with a comment summarising the still-unresolved feedback.
+**Linear** — read the issue's history/activity and count the state/label changes onto the `reviewRequested` state. Before deciding `changes-requested`, compare the count to `work.review.maxRounds`: at or above it, escalate to `needs human` instead — with a comment summarising the still-unresolved feedback.
 
 ## Escalation to `needs human`
 
@@ -192,4 +192,4 @@ Then move the label to `work.labels.changesRequested`. For `done`/`needs human`/
 
 ## Tracker recipes
 
-Label moves mirror the implement loop's own **Tracker — GitHub (`gh`)** recipes. The reviewer writes the **lease** label `reviewing` on claim (only when `labels.reviewing` is configured — flip `review → reviewing`, `--add-assignee`), then the **verdict** labels (`done` / `changesRequested` / `needsHuman` / `blocked`) and their mapped Linear states; the review reconcile writes `review` when it reclaims a `reviewing` orphan (dropping the assignee). It never writes `working`/`ready` (those are the implement loop's). On **Linear** the `reviewing` lease sets the label via `save_issue`; `work.linear.states` has no `reviewing` mapping, so the workflow state is left untouched (the "unmapped step leaves the state alone" rule in the implement REFERENCE).
+Label moves mirror the implement loop's own **Tracker — GitHub (`gh`)** recipes. The reviewer writes the **lease** label `reviewing` on claim (only when `labels.reviewing` is configured — flip `reviewRequested → reviewing`, `--add-assignee`), then the **verdict** labels (`done` / `changesRequested` / `needsHuman` / `blocked`) and their mapped Linear states; the review reconcile writes `reviewRequested` when it reclaims a `reviewing` orphan (dropping the assignee). It never writes `working`/`ready` (those are the implement loop's). On **Linear** the `reviewing` lease sets the label via `save_issue`; `work.linear.states` has no `reviewing` mapping, so the workflow state is left untouched (the "unmapped step leaves the state alone" rule in the implement REFERENCE).

@@ -16,7 +16,7 @@ allowed-tools:
 
 Take **one** tracked issue, implement it, and push it so a **different** agent can review it — the stateless implement-unit behind `work-implement-queue`. One issue, one tracker (**GitHub** via `gh` or **Linear** via its MCP), picked per-repo by the same committed config the `issue` skill uses. State lives in the issue's **lifecycle label**, never in the agent — so a crashed run **resumes** instead of restarting.
 
-This skill is the **implement half** of a two-loop workflow: it builds and pushes; `work-review` then reviews the pushed work. It **never reviews its own output** and never sets `done` — its terminal outputs are `review` (handed to the review loop) or `blocked`.
+This skill is the **implement half** of a two-loop workflow: it builds and pushes; `work-review` then reviews the pushed work. It **never reviews its own output** and never sets `done` — its terminal outputs are `reviewRequested` (handed to the review loop) or `blocked`.
 
 **Opted out?** If the repo config sets `work` to `false`, this skill is **disabled** for the repo (as are the other `work-*` skills) — stop immediately and tell the user the work skills are turned off in `.tituskirch-skills.json`. An _absent_ `work` block is **not** disabled (it falls back to defaults). Check `.work == false` on the resolved config before any action — and before indexing `.work.*`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
@@ -40,7 +40,7 @@ The lifecycle label decides what this run does — this skill is a **state machi
 - **fresh** (`ready`) → claim and implement from the body (steps 4–8).
 - **re-work** (`changes-requested`) → claim and implement from the body **plus the review feedback** (the reviewer's PR review / issue comment) — steps 4–8.
 - **resume** (`working`) → a previous run leased it and crashed; continue where it left off (re-assert a clean tree first).
-- **not ours** (`review` / `reviewing` / `needs human` / `done`) → nothing to do here; `review`, `reviewing` and `needs human` belong to `work-review` and the human. `blocked` → leave it unless the user explicitly re-runs it; report why it was blocked.
+- **not ours** (`reviewRequested` / `reviewing` / `needs human` / `done`) → nothing to do here; `reviewRequested`, `reviewing` and `needs human` belong to `work-review` and the human. `blocked` → leave it unless the user explicitly re-runs it; report why it was blocked.
 
 ### 4. Claim the issue (lease) — before any work
 
@@ -70,22 +70,22 @@ Run the repo's checks (the root `verify` key, else detected — tests, lint, bui
 
 ### 8. Commit, PUSH, hand off to review
 
-The **push** is the moment the work becomes reviewable — it is the boundary between `working` and `review`.
+The **push** is the moment the work becomes reviewable — it is the boundary between `working` and `reviewRequested`.
 
 - Commit via `atomic-commit`; reference the issue so the tracker links it (`Refs #42` / the Linear key).
 - **PUSH** the work: open/update the PR via `pull-request` (worktree), or push the commit(s) to the shared branch (`branch:<name>`). Until this succeeds the issue stays `working` (a crash before the push is reclaimed as a [working-orphan](REFERENCE.md#reconcile)).
-- Move the label `working → review` — the handoff to `work-review`. Report the issue id / PR url.
+- Move the label `working → reviewRequested` — the handoff to `work-review`. Report the issue id / PR url.
 - The skill **never merges**, never reviews, and **never sets `done`, `changes-requested` or `needs human`** — those are the review loop's and the human's outputs.
 
-Inside a `work-implement-queue` drain nobody waits on this worker — return `review` and let the drain move on. The review loop picks the issue up next.
+Inside a `work-implement-queue` drain nobody waits on this worker — return `reviewRequested` and let the drain move on. The review loop picks the issue up next.
 
 ## Guardrails
 
 - **Lease before work.** Never implement an issue you have not first flipped to `working`.
-- **Push before handoff.** Only flip to `review` once the work is pushed and visible to a reviewer; local-only work stays `working`.
+- **Push before handoff.** Only flip to `reviewRequested` once the work is pushed and visible to a reviewer; local-only work stays `working`.
 - **Stateless & resumable.** Read state from the tracker + git every run; carry nothing between runs.
 - **Only this issue.** Never touch sibling issues, never merge, never close anything you were not asked to.
-- **Never review your own work.** This skill only produces `review` or `blocked`; it never sets `done`, `changes-requested`, or `needs human`.
+- **Never review your own work.** This skill only produces `reviewRequested` or `blocked`; it never sets `done`, `changes-requested`, or `needs human`.
 - **Attribution-free & secret-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in branches, commits, PRs or comments; scan the change and context for secrets and exclude them.
 - **`ai: ready` is the approval.** A human marking an issue `ai: ready` ("scoped + approved for an AI agent to pick up") is the opt-in, so the drain — and a direct `/work-implement 42` on an already-`ready`/`changes-requested` issue — works it **without re-confirming**. Confirm first only when there is no such opt-in (an issue not in an approved state, or a ready-gate widened to `false`).
 

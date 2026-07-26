@@ -15,7 +15,7 @@ disallowed-tools:
 
 # work-review-queue
 
-Drain the repo's queue of issues **awaiting review** — every issue in `review` — and give each a verdict by delegating to `work-review`. The **review half** of the two-loop workflow: it consumes what `work-implement-queue` pushed, and each issue leaves as `done`, `changes-requested` (back to the implement loop), `needs human`, or `blocked`. Each issue is reviewed by a **fresh worker** — a different agent than the one that built it. Run it under `/loop work-review-queue` for continuous operation, alongside the implement loop.
+Drain the repo's queue of issues **awaiting review** — every issue in `reviewRequested` — and give each a verdict by delegating to `work-review`. The **review half** of the two-loop workflow: it consumes what `work-implement-queue` pushed, and each issue leaves as `done`, `changes-requested` (back to the implement loop), `needs human`, or `blocked`. Each issue is reviewed by a **fresh worker** — a different agent than the one that built it. Run it under `/loop work-review-queue` for continuous operation, alongside the implement loop.
 
 **Opted out?** If the repo config sets `work` to `false`, all `work-*` skills are **disabled** — stop and tell the user they are turned off in `.tituskirch-skills.json`. Check `.work == false` on the resolved config before acquiring the lock or building the queue. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
@@ -30,29 +30,29 @@ Drain the repo's queue of issues **awaiting review** — every issue in `review`
 
 Before building the queue, two idempotent sweeps:
 
-**(a) Out-of-band human actions on the PR** — for every issue in `review`, check whether a human acted on its PR out-of-band:
+**(a) Out-of-band human actions on the PR** — for every issue in `reviewRequested`, check whether a human acted on its PR out-of-band:
 
 - **PR merged** → set `done` — a human merge is implicit acceptance.
 - **PR closed, unmerged** → set `blocked` + comment — a human closed it without merging.
 - **PR open / no PR** → leave it — it is a normal review candidate (the drain will review it).
 
-**(b) Stale review leases** — when `work.labels.reviewing` is configured, reclaim **`reviewing` orphans**: an issue leased `review → reviewing` but abandoned when a reviewer crashed. A review pushes **no artifact**, so there is no crash-before/after-push split — the orphan **always returns to `review`** (dropping the assignee). Gate it on the **same assignee/age guard the implement reconcile uses**: a `reviewing` issue assigned to a **different** runner — or, under one shared bot identity, to this runner — is presumed **live** and left alone unless the weaker age fallback clears it; only an **unassigned** one (or, with distinct per-runner identities, this runner's own crashed lease) is flipped back to `review`. Full rules: **Reconcile** in `work-implement`'s REFERENCE. With `labels.reviewing` off this sweep is inert.
+**(b) Stale review leases** — when `work.labels.reviewing` is configured, reclaim **`reviewing` orphans**: an issue leased `reviewRequested → reviewing` but abandoned when a reviewer crashed. A review pushes **no artifact**, so there is no crash-before/after-push split — the orphan **always returns to `reviewRequested`** (dropping the assignee). Gate it on the **same assignee/age guard the implement reconcile uses**: a `reviewing` issue assigned to a **different** runner — or, under one shared bot identity, to this runner — is presumed **live** and left alone unless the weaker age fallback clears it; only an **unassigned** one (or, with distinct per-runner identities, this runner's own crashed lease) is flipped back to `reviewRequested`. Full rules: **Reconcile** in `work-implement`'s REFERENCE. With `labels.reviewing` off this sweep is inert.
 
 Idempotent; nothing to reclaim or close out is the normal outcome. `needs human` issues are left untouched — they wait on a human, not on this drain.
 
 ### 3. Build the queue
 
-The **selection query** (`work-review`'s REFERENCE) → every issue in `review` → ordered by priority (Linear native priority; GitHub `work.priorityLabels`). No dependency re-sort — review order is priority only.
+The **selection query** (`work-review`'s REFERENCE) → every issue in `reviewRequested` → ordered by priority (Linear native priority; GitHub `work.priorityLabels`). No dependency re-sort — review order is priority only.
 
 ### 4. Announce the batch — then drain
 
-Issues in `review` were pushed by the implement loop **for exactly this** — so the review drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, then drain (unattended under `/loop`). **Plan-only triggers** ("nur den plan", "dry run", "don't run") still stop after the plan.
+Issues in `reviewRequested` were pushed by the implement loop **for exactly this** — so the review drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, then drain (unattended under `/loop`). **Plan-only triggers** ("nur den plan", "dry run", "don't run") still stop after the plan.
 
 ### 5. Drain
 
-For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-review` on exactly that issue. **Sequential** re-fetches the next `review` issue each iteration; **parallel** reviews N concurrently (review is read-only, so no integration race).
+For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-review` on exactly that issue. **Sequential** re-fetches the next `reviewRequested` issue each iteration; **parallel** reviews N concurrently (review is read-only, so no integration race).
 
-**Per-issue lease.** When `work.labels.reviewing` is configured, each worker **claims** its issue — flip `review → reviewing` + assign — **before** reviewing, and the verdict clears the lease; this is the tracker-global claim that makes the drain safe **across clones** (a second clone's review-drain sees the `reviewing` label and skips), which the per-checkout lock cannot provide. With `labels.reviewing` off, workers review straight off `review` as before — the drain relies on its lock alone.
+**Per-issue lease.** When `work.labels.reviewing` is configured, each worker **claims** its issue — flip `reviewRequested → reviewing` + assign — **before** reviewing, and the verdict clears the lease; this is the tracker-global claim that makes the drain safe **across clones** (a second clone's review-drain sees the `reviewing` label and skips), which the per-checkout lock cannot provide. With `labels.reviewing` off, workers review straight off `reviewRequested` as before — the drain relies on its lock alone.
 
 **Heartbeat the lock each iteration.** The lock is held for the whole batch, which no single shell process spans, so the drain **re-stamps** the review lock's `refreshed` timestamp once per iteration (one cheap command) — that is what keeps a **live** drain from being misread as a crashed one by the **heartbeat-timestamp** stale rule (**The single-flight lock** in `work-implement`'s REFERENCE). The lock is released **explicitly** at step 6, not by a shell-lifetime trap.
 

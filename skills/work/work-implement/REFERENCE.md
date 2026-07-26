@@ -6,9 +6,9 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 
 > The **queue is the tracker**, the **worker is stateless.** Each issue's state lives in its lifecycle label — `ready → working → review → reviewing → {changes-requested → working | needs human | blocked | done}` — not in the agent. Every run reads state fresh from tracker + git, so a crashed run **resumes** instead of restarting and a repeated run is **idempotent**.
 
-**Config key vs label string.** The states are keyed by their config names — `review`, `reviewing`, `changesRequested` — while the label _strings_ default to `ai: review requested`, `ai: reviewing`, `ai: changes requested`. This file names states by their **config key**; the human-facing diagrams below use the readable label. A repo that labels its issues differently pins its own string under `work.labels.<key>` — the key is what every rule below reasons about, never the string.
+**Config key vs label string.** The states are keyed by their config names — `reviewRequested`, `reviewing`, `changesRequested` — while the label _strings_ default to `ai: review requested`, `ai: reviewing`, `ai: changes requested`. This file names states by their **config key**; the human-facing diagrams below use the readable label. A repo that labels its issues differently pins its own string under `work.labels.<key>` — the key is what every rule below reasons about, never the string.
 
-**Two loops share this lifecycle.** The **implement loop** ([`work-implement`](SKILL.md) / `work-implement-queue`) owns `ready`/`changes-requested → working → review`; the **review loop** (`work-review` / `work-review-queue`) owns `review → reviewing → {done | changes-requested | needs human | blocked}`, reviewed by a **different** agent. `review` (implement → review) and `changes-requested` (review → implement) are the two hand-off labels; `reviewing` is the review loop's **lease** — the tracker-global claim `working` is for the implement loop, giving cross-clone mutual exclusion the checkout-local lock cannot. **`reviewing` is opt-in** (`labels.reviewing` defaults to **off**): with it off, the review loop acts straight off `review` exactly as before — lock only, no lease. This file documents the shared mechanics and the implement side; the review side lives in `work-review/REFERENCE.md`.
+**Two loops share this lifecycle.** The **implement loop** ([`work-implement`](SKILL.md) / `work-implement-queue`) owns `ready`/`changes-requested → working → reviewRequested`; the **review loop** (`work-review` / `work-review-queue`) owns `reviewRequested → reviewing → {done | changes-requested | needs human | blocked}`, reviewed by a **different** agent. `reviewRequested` (implement → review) and `changes-requested` (review → implement) are the two hand-off labels; `reviewing` is the review loop's **lease** — the tracker-global claim `working` is for the implement loop, giving cross-clone mutual exclusion the checkout-local lock cannot. **`reviewing` is opt-in** (`labels.reviewing` defaults to **off**): with it off, the review loop acts straight off `reviewRequested` exactly as before — lock only, no lease. This file documents the shared mechanics and the implement side; the review side lives in `work-review/REFERENCE.md`.
 
 ## Config
 
@@ -26,7 +26,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
     "labels": {
       "ready": "ai: ready",
       "working": "ai: working",
-      "review": "ai: review requested",
+      "reviewRequested": "ai: review requested",
       "reviewing": false,
       "changesRequested": "ai: changes requested",
       "needsHuman": "ai: needs human",
@@ -35,14 +35,14 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
       "repo": false
     },
     "priorityLabels": ["urgent", "high", "medium", "low"],
-    "review": { "maxRounds": 3 },
+    "reviewRequested": { "maxRounds": 3 },
     "linear": {
       "team": "Engineering",
       "statuses": ["Todo", "In Progress"],
       "states": {
         "ready": "Todo",
         "working": "In Progress",
-        "review": "In Review",
+        "reviewRequested": "In Review",
         "changesRequested": "Changes Requested",
         "needsHuman": "Needs Human",
         "done": "Done"
@@ -59,7 +59,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 | `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)        |
 | `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))            |
 | `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                 |
-| `work.labels.review`                        | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                       |
+| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                       |
 | `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review |
 | `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"   |
 | `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                       |
@@ -69,7 +69,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 | `work.linear.statuses`                      | Linear workflow states that count as startable                                                                        |
 | `work.linear.states`                        | lifecycle step → Linear workflow state name; **no default** — see below                                               |
 
-**`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.review: false` → the PR's existence is the signal; `labels.reviewing: false` → **no review lease** — the review loop relies on its lock alone, with no cross-clone claim (this is the **default**, so an unset `reviewing` keeps today's behaviour); `labels.blocked: false` → comment only / Linear state; `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
+**`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.reviewRequested: false` → the PR's existence is the signal; `labels.reviewing: false` → **no review lease** — the review loop relies on its lock alone, with no cross-clone claim (this is the **default**, so an unset `reviewing` keeps today's behaviour); `labels.blocked: false` → comment only / Linear state; `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
 
 **`reviewing` is the one label that defaults _off_, not to a string.** Every other `labels.*` key has a default string, so absent means "use the default"; `reviewing` defaults to **off**, so a repo gains the review lease only by setting it to a label string (`ai: reviewing`). This keeps every existing adopter's review loop unchanged until it opts in.
 
@@ -177,26 +177,26 @@ flowchart LR
 
 Thick edges are the path a healthy issue takes; everything thin is an exception. A rectangle is a state one of the loops will act on by itself, the hexagon waits on a person, and a rounded box is terminal. Which loop owns which transition is the table below.
 
-| Transition                                | Loop / Who                                                                                        |
-| :---------------------------------------- | :------------------------------------------------------------------------------------------------ |
-| `ready → working`                         | implement — lease, **before** any work                                                            |
-| `changes-requested → working`             | implement — lease for re-work; reads the review feedback                                          |
-| `working → review`                        | implement — after commit + **push** (the artifact is now reviewable)                              |
-| `working → blocked`                       | implement — checks unfixable or a genuine human call                                              |
-| `review → reviewing`                      | review — **lease** before reviewing, when `labels.reviewing` is set (opt-in)                      |
-| `reviewing → done`                        | review — AI approve (low-risk), **or** a human "looks good" via `needs human`                     |
-| `reviewing → changes-requested`           | review — AI requests changes, round < `maxRounds` (feedback posted)                               |
-| `reviewing → needs human`                 | review — approve-but-risky, can't judge, or round ≥ `maxRounds`                                   |
-| `reviewing → blocked`                     | review — broken beyond a fixable change                                                           |
-| `reviewing → review`                      | review reconcile — **orphan reclaim**: a crashed review returns to `review`, assignee/age-guarded |
-| `needs human → done \| changes-requested` | the human's verdict, applied by `work-review`                                                     |
+| Transition                                | Loop / Who                                                                                                 |
+| :---------------------------------------- | :--------------------------------------------------------------------------------------------------------- |
+| `ready → working`                         | implement — lease, **before** any work                                                                     |
+| `changes-requested → working`             | implement — lease for re-work; reads the review feedback                                                   |
+| `working → reviewRequested`               | implement — after commit + **push** (the artifact is now reviewable)                                       |
+| `working → blocked`                       | implement — checks unfixable or a genuine human call                                                       |
+| `reviewRequested → reviewing`             | review — **lease** before reviewing, when `labels.reviewing` is set (opt-in)                               |
+| `reviewing → done`                        | review — AI approve (low-risk), **or** a human "looks good" via `needs human`                              |
+| `reviewing → changes-requested`           | review — AI requests changes, round < `maxRounds` (feedback posted)                                        |
+| `reviewing → needs human`                 | review — approve-but-risky, can't judge, or round ≥ `maxRounds`                                            |
+| `reviewing → blocked`                     | review — broken beyond a fixable change                                                                    |
+| `reviewing → reviewRequested`             | review reconcile — **orphan reclaim**: a crashed review returns to `reviewRequested`, assignee/age-guarded |
+| `needs human → done \| changes-requested` | the human's verdict, applied by `work-review`                                                              |
 
-**When `labels.reviewing` is off (the default)** there is no `review → reviewing` lease and no `reviewing → review` reclaim: the review verdicts (`done` / `changes-requested` / `needs human` / `blocked`) come **straight off `review`**, exactly as before this label existed. The transitions above then read with `review` in `reviewing`'s place.
+**When `labels.reviewing` is off (the default)** there is no `reviewRequested → reviewing` lease and no `reviewing → reviewRequested` reclaim: the review verdicts (`done` / `changes-requested` / `needs human` / `blocked`) come **straight off `reviewRequested`**, exactly as before this label existed. The transitions above then read with `reviewRequested` in `reviewing`'s place.
 
-### Terminal `done`, and what `review` / `reviewing` mean now
+### Terminal `done`, and what `reviewRequested` / `reviewing` mean now
 
-- **`review` = awaiting AI review** by a **different** agent — not "awaiting a human". The `work-review` loop consumes it and writes the verdict. Its default label reads `ai: review requested`.
-- **`reviewing` = a reviewer holds the review lease** and is mid-judgment — the review loop's in-flight state, the counterpart of `working`. It exists only when `labels.reviewing` is configured; the reviewer flips `review → reviewing` (and assigns) before reading the diff, and the verdict label move (`done` / `changes-requested` / `needs human` / `blocked`) clears it. A `reviewing` orphan is reclaimed to `review` (below).
+- **`reviewRequested` = awaiting AI review** by a **different** agent — not "awaiting a human". The `work-review` loop consumes it and writes the verdict. Its default label reads `ai: review requested`.
+- **`reviewing` = a reviewer holds the review lease** and is mid-judgment — the review loop's in-flight state, the counterpart of `working`. It exists only when `labels.reviewing` is configured; the reviewer flips `reviewRequested → reviewing` (and assigns) before reading the diff, and the verdict label move (`done` / `changes-requested` / `needs human` / `blocked`) clears it. A `reviewing` orphan is reclaimed to `reviewRequested` (below).
 - **`done` = AI-reviewed and accepted** (low-risk), or accepted by a human via `needs human`. It does **not** mean "merged": GitHub's `Closes #<n>` and Linear's integration fire only on a **default-branch** merge, which a non-default `pr.base` (e.g. `dev`) never triggers — so shipping is the rollup merge's business, not the queue's.
 - **`review-after-land`** — under `branch:<name>` the commit lands on the branch **before** review; the issue is still not `done` until review passes, and a `changes-requested` verdict is fixed **forward** (more commits), never reverted. Details: `work-review`.
 
@@ -209,7 +209,7 @@ Each loop's drain reconciles its own orphans **first**, before building its queu
 | Pushed artifact? | Meaning                                           | Action                                                                                                         |
 | :--------------- | :------------------------------------------------ | :------------------------------------------------------------------------------------------------------------- |
 | **none**         | crashed **before** the push                       | flip back to `ready`, drop the assignee → re-worked fresh; `blocked` if it left an unrecoverable partial state |
-| **present**      | crashed **after** the push, before the label flip | advance to `review` — the work is already reviewable; finish the interrupted hand-off, don't redo it           |
+| **present**      | crashed **after** the push, before the label flip | advance to `reviewRequested` — the work is already reviewable; finish the interrupted hand-off, don't redo it  |
 
 **The assignee guards the reclaim.** The destructive path is the **no-artifact → `ready`** row: redoing work a second clone's worker is _live_ on. So gate exactly that row on the **assignee** the [claim](#lease--race-rules) already set — where runners have **distinct identities** it is a signal sharper than any age number, needing no tuned threshold and written the moment work begins. The reconcile runs **while this runner holds the implement lock** (step 1 took it), which proves no _other_ drain is live **in this checkout** — but says nothing about another **clone**, whose live worker holds _its own_ lock, invisible here. Judge each `working`, no-artifact issue by its assignee:
 
@@ -217,18 +217,18 @@ Each loop's drain reconciles its own orphans **first**, before building its queu
 - **Unassigned** → nobody holds it: an orphan — **reclaim** on the artifact check alone.
 - **This runner** → this runner holds the lock, so no drain in this checkout is live on it. With **distinct per-runner identities** that leaves one reading — this runner's **own crashed lease** from an earlier run — so **reclaim**. But when every runner authenticates as the **same bot identity** (the normal deployment: the claim assigns to the runner's own account, and a second clone authenticates as that _same_ account), another clone's **live** work _also_ reads as "assigned to this runner", and the lock does not cover that clone — so the assignee can no longer separate "my own crash" from "another clone's live lease". There, do **not** reclaim on the assignee alone: require the same **weaker age fallback** (older than any legitimate run) first, exactly as for a different runner. **Which regime is in force is not something the agent can read off the tracker**, so **default to shared**: absent positive evidence that runners carry **distinct** per-runner identities, treat identity as shared/ambiguous and take the **age-gated** (non-destructive) path — never the bare-assignee reclaim.
 
-The **present-artifact → `review`** row needs no such guard: advancing an already-pushed issue is idempotent. Coordination beyond this age fallback — across clones or hosts that do not share the filesystem holding the lock — needs a central arbiter and stays [out of scope](#the-single-flight-lock).
+The **present-artifact → `reviewRequested`** row needs no such guard: advancing an already-pushed issue is idempotent. Coordination beyond this age fallback — across clones or hosts that do not share the filesystem holding the lock — needs a central arbiter and stays [out of scope](#the-single-flight-lock).
 
-Without this, a `working` orphan carries neither `ready` nor `review`, so nothing would ever reclaim it — the hole that would contradict the [resume-instead-of-restart principle](#principle).
+Without this, a `working` orphan carries neither `ready` nor `reviewRequested`, so nothing would ever reclaim it — the hole that would contradict the [resume-instead-of-restart principle](#principle).
 
-**Review reconcile** (the `work-review-queue` loop) — two idempotent jobs. **(a)** For issues in `review`, close out **out-of-band human actions on the PR**: merged → `done` (implicit acceptance), closed-unmerged → `blocked`. **(b)** When `labels.reviewing` is configured, reclaim **`reviewing` orphans** — a review leased `review → reviewing` but abandoned when a reviewer crashed. **A `reviewing` orphan has no crash-before/after-push split** — a review pushes no artifact whose existence could be queried, so it **always returns to `review`** (never advances to a verdict), the one thing that makes this reclaim simpler than the implement one:
+**Review reconcile** (the `work-review-queue` loop) — two idempotent jobs. **(a)** For issues in `reviewRequested`, close out **out-of-band human actions on the PR**: merged → `done` (implicit acceptance), closed-unmerged → `blocked`. **(b)** When `labels.reviewing` is configured, reclaim **`reviewing` orphans** — a review leased `reviewRequested → reviewing` but abandoned when a reviewer crashed. **A `reviewing` orphan has no crash-before/after-push split** — a review pushes no artifact whose existence could be queried, so it **always returns to `reviewRequested`** (never advances to a verdict), the one thing that makes this reclaim simpler than the implement one:
 
-| Orphan            | Meaning                         | Action                                                       |
-| :---------------- | :------------------------------ | :----------------------------------------------------------- |
-| `reviewing`, live | another clone is mid-review     | **leave it** — the assignee/age guard below                  |
-| `reviewing`, dead | a reviewer crashed mid-judgment | flip back to `review`, drop the assignee → re-reviewed fresh |
+| Orphan            | Meaning                         | Action                                                                |
+| :---------------- | :------------------------------ | :-------------------------------------------------------------------- |
+| `reviewing`, live | another clone is mid-review     | **leave it** — the assignee/age guard below                           |
+| `reviewing`, dead | a reviewer crashed mid-judgment | flip back to `reviewRequested`, drop the assignee → re-reviewed fresh |
 
-The reclaim is gated by the **same assignee/age guard as the implement reconcile** (above), so one clone never kills another clone's **live** review: a `reviewing` issue assigned to a **different** runner — or, under one **shared bot identity**, to this runner — is presumed **live** and left alone unless the **weaker age fallback** clears it; only an **unassigned** one, or (with **distinct per-runner identities**) this runner's **own crashed lease**, is flipped back to `review`. With `labels.reviewing` off there are no `reviewing` orphans and this job is inert. Full rules: `work-review-queue`.
+The reclaim is gated by the **same assignee/age guard as the implement reconcile** (above), so one clone never kills another clone's **live** review: a `reviewing` issue assigned to a **different** runner — or, under one **shared bot identity**, to this runner — is presumed **live** and left alone unless the **weaker age fallback** clears it; only an **unassigned** one, or (with **distinct per-runner identities**) this runner's **own crashed lease**, is flipped back to `reviewRequested`. With `labels.reviewing` off there are no `reviewing` orphans and this job is inert. Full rules: `work-review-queue`.
 
 Both move **labels only**, never branches, and are **idempotent** — nothing to reclaim is the normal result.
 
@@ -265,7 +265,7 @@ This does not disarm the `blocked` side-exit: work whose **requirements** are ge
 
 Eligible = matches **all** configured filters. Self-select (one issue) and drain (all, ordered) use the same query.
 
-- **labels** — the implement loop selects issues with `labels.ready` **or** `labels.changesRequested` (its two inputs; skip a label that is `false`); never already `working`/`blocked` by someone else. Labels are the **only** eligibility input — issue text is never read for consent ([label vs body](#label-vs-body-precedence)). (The review loop's input is `labels.review` — see `work-review`.)
+- **labels** — the implement loop selects issues with `labels.ready` **or** `labels.changesRequested` (its two inputs; skip a label that is `false`); never already `working`/`blocked` by someone else. Labels are the **only** eligibility input — issue text is never read for consent ([label vs body](#label-vs-body-precedence)). (The review loop's input is `labels.reviewRequested` — see `work-review`.)
 - **repo scope** — Linear only: has `labels.repo` (unless `false`). Skipped on GitHub (repo-local by nature).
 - **team** — Linear only: `work.linear.team`.
 - **status** — Linear: state ∈ `work.linear.statuses`. GitHub: `--state open`.
@@ -340,7 +340,7 @@ rm -rf "$lock"
 
 **Migrate off the old loose locks.** Earlier runs wrote each loop's lock **loose** in the common dir under an ad-hoc name — the implement loop's `$(git rev-parse --git-common-dir)/implement.lock` and the review loop's `$(git rev-parse --git-common-dir)/tituskirch-work-review-queue.lock`, neither under `tituskirch-skills/work/`. For a **cache** a changeover is harmless — `atomic-commit`'s REFERENCE just re-detects into the new path and `rm -f`s the old file. For a **lock** it is not: while both names are live, an old-spec drain holding the loose file and a new-spec drain that `mkdir`s the path above **never see each other and both run**. So on adopting the new path **actively retire the old one** — `rm -f` the loop's own old loose lock **before** the `mkdir` (the line in the snippet above), so no run reading the new spec ever finds the old file to honour. This retires the old **file**, not a still-running old-spec drain: while such a drain is still live it holds a name the new path never checks, and — the file now deleted — a second old-spec run could even re-take it. That residual gap is inherent to any changeover and closes as soon as the last old-spec drain exits; the migration guarantees only that a **new**-spec run will not resurrect the old idiom. This is the one-line migration `atomic-commit`'s REFERENCE already models for its cache, made mandatory here because a lock, unlike a cache, must never be double-held during the changeover.
 
-**A label string is a changeover too.** Changing a `work.labels.*` string — or switching a mechanic on — is the **same class of change** as the loose locks above: while a primitive lives under two names at once, it splits the very set it should partition, so the tracker and the config must move **before** the skill copies do. **The string must exist on the tracker before any copy adopts it:** `gh issue list --label '<a label the tracker lacks>'` **exits 0** on an empty result, so a queue split between an old copy's string and a new copy's stalls **silently**, with no error to notice. Create the label and relabel every open issue onto it first, or pin the old string under `work.labels.<key>` until you do — the pin covers the **steady** state, the relabel the **transition**. And **do not switch `reviewing` on until every drain runs a copy that knows it:** an unaware review drain selects the issue straight off `review`, writes a **competing verdict**, and never reclaims a `reviewing` orphan invisible to it — the lease buys nothing until the last unaware copy exits (the same residual window the lock note reasons through), and enabling it mid-rollout is worse than leaving it off.
+**A label string is a changeover too.** Changing a `work.labels.*` string — or switching a mechanic on — is the **same class of change** as the loose locks above: while a primitive lives under two names at once, it splits the very set it should partition, so the tracker and the config must move **before** the skill copies do. **The string must exist on the tracker before any copy adopts it:** `gh issue list --label '<a label the tracker lacks>'` **exits 0** on an empty result, so a queue split between an old copy's string and a new copy's stalls **silently**, with no error to notice. Create the label and relabel every open issue onto it first, or pin the old string under `work.labels.<key>` until you do — the pin covers the **steady** state, the relabel the **transition**. And **do not switch `reviewing` on until every drain runs a copy that knows it:** an unaware review drain selects the issue straight off `reviewRequested`, writes a **competing verdict**, and never reclaims a `reviewing` orphan invisible to it — the lease buys nothing until the last unaware copy exits (the same residual window the lock note reasons through), and enabling it mid-rollout is worse than leaving it off.
 
 **Stale rule — a refreshed timestamp, not a probed pid.** These skills run **each shell command in its own short-lived process** — the harness does not persist shell state between commands — so a pid captured at acquire (`$$`) names a shell that is **dead within milliseconds**, while the drain that owns the lock runs on across many separate commands for the whole batch. A recorded pid therefore cannot separate a **live** drain from a **crashed** one here: probing it reports "no such process" for a live lock exactly as it would after a real crash, so a pid-liveness rule would read a **live** lock as stale and let a second drain delete it and run alongside the first — the very double-verdict this lock exists to prevent. So the lock records **no pid and probes no process**. It is held for the **logical duration of the drain**, which no single process spans; liveness is judged instead from a **timestamp the live drain keeps refreshing**. The `owner` records the `host` and a **`refreshed` timestamp** (epoch seconds), and the drain **re-stamps** it once per iteration — each issue it works, one cheap command (the heartbeat in the snippet above). The record is **`key=value` lines**, one per line, **parsed by key** and **extensible** — the reader takes `refreshed` by its name and ignores any other field a drain may add (its own loop name, say), so the timestamp always carries a stable key rather than riding on a fixed field count. Liveness is then read from the clock:
 
@@ -439,7 +439,7 @@ Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — disco
 - **Lifecycle** — `save_issue` with the issue's `id` (create and update are one tool, keyed on the `id`) to set the lifecycle label + assignee, plus that step's `work.linear.states` state when one is mapped — **one atomic call**, so label and state never drift. Step unmapped, or no `states` at all → write the label + assignee and **leave the state alone**. Never invent a state name: the map is the only source, and `statuses` is an eligibility filter, not a mapping.
 - **Eligible** — `list_issues` by team + `labels.ready` + `labels.repo` + `work.linear.statuses`; order by native priority.
 - **Dependencies** — `list_issues` returns no relations; fan out `get_issue(includeRelations: true)` (see [dependency ordering](#dependency-ordering)).
-- **Which steps write a state** — the **implement loop** writes `states.working` on the lease and `states.review` after the push. The **review loop** writes `states.done` / `states.changesRequested` / `states.needsHuman` on its verdict; the implement reconcile writes `states.ready` when it reclaims a pre-push orphan. Linear's integration may also move the issue on a default-branch merge — a bonus, never the signal waited on. `states.ready` is otherwise not written by the worker — it records where a human parks a startable issue, the anchor `statuses` should contain. The `blocked` side-exit is carried by `labels.blocked`.
+- **Which steps write a state** — the **implement loop** writes `states.working` on the lease and `states.reviewRequested` after the push. The **review loop** writes `states.done` / `states.changesRequested` / `states.needsHuman` on its verdict; the implement reconcile writes `states.ready` when it reclaims a pre-push orphan. Linear's integration may also move the issue on a default-branch merge — a bonus, never the signal waited on. `states.ready` is otherwise not written by the worker — it records where a human parks a startable issue, the anchor `statuses` should contain. The `blocked` side-exit is carried by `labels.blocked`.
 - **PR lives on GitHub** — even for a Linear-tracked repo, the code PR is a GitHub PR. The branch name / PR carries the **Linear key** (`ENG-123`) so Linear's GitHub integration **links** it. That link is traceability: on a non-default `pr.base` the integration never moves the issue at all, so [`done`](#terminal-done) comes from the sign-off or the reconcile — never from waiting on Linear.
 - **Team is required**; resolve `work.linear.team` to its id via the cache. `states` is optional — resolve each mapped name to its id via the cache; a name that matches **no** state in the team is a config error → report it, do not fall back to a guess.
 

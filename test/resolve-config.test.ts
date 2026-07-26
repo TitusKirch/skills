@@ -73,7 +73,7 @@ describe('merge semantics', () => {
     const labels = work.labels as Record<string, unknown>;
     assert.equal(labels.ready, 'ci: queued', 'overlay wins');
     assert.equal(
-      labels.review,
+      labels.reviewRequested,
       'ai: review requested',
       'untouched sibling survives'
     );

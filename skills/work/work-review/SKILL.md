@@ -27,20 +27,20 @@ Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/
 ### 2. Resolve the target issue
 
 - **Explicit** — an id/number/key (`/work-review 42`, `ENG-123`).
-- **Self-select** — none given → the [selection query](REFERENCE.md#selection-query): the single highest-priority issue in `review`. None → say so and stop.
+- **Self-select** — none given → the [selection query](REFERENCE.md#selection-query): the single highest-priority issue in `reviewRequested`. None → say so and stop.
 
 ### 3. Read the state → pick the action
 
-- **`review`** → claim it (step 4) then review the pushed work (steps 5–7). The normal path.
+- **`reviewRequested`** → claim it (step 4) then review the pushed work (steps 5–7). The normal path.
 - **`reviewing` assigned to this runner** → a previous review leased it and crashed; **resume** — review is read-only and idempotent, so just re-run steps 5–7 (no re-claim needed). `reviewing` held by a **different** runner → in-flight elsewhere, not ours.
 - **`needs human` + a human verdict this session** → apply the human's call: "looks good" → `done`; feedback → `changes-requested` (record the feedback). This is the one place a human's word resolves an escalation.
 - **anything else** (`ready` / `working` / `changes-requested` / `done` / `blocked`) → not ours; nothing to do.
 
 ### 4. Claim the review (lease) — when `reviewing` is configured
 
-If `work.labels.reviewing` resolves to a **label string**, flip `review → reviewing` and assign the issue to the runner **before** reading the diff — the tracker-global claim that stops a second clone reviewing the same issue and writing a competing verdict (the review lock only proves no live reviewer **in this checkout**). Honour the review single-flight lock (the **Lease & race rules** and **The single-flight lock** in `work-implement`'s REFERENCE) — take it (direct run) or run under the drain's (queue).
+If `work.labels.reviewing` resolves to a **label string**, flip `reviewRequested → reviewing` and assign the issue to the runner **before** reading the diff — the tracker-global claim that stops a second clone reviewing the same issue and writing a competing verdict (the review lock only proves no live reviewer **in this checkout**). Honour the review single-flight lock (the **Lease & race rules** and **The single-flight lock** in `work-implement`'s REFERENCE) — take it (direct run) or run under the drain's (queue).
 
-**When `reviewing` is `false`/unset (the default), skip this step entirely** — there is no lease label, so the review loop behaves exactly as before: the lock alone, reviewing straight off `review`. The verdict at step 7 then moves the label off `review`; when the lease is on, it moves off `reviewing`. Either way the verdict label move clears the in-flight state.
+**When `reviewing` is `false`/unset (the default), skip this step entirely** — there is no lease label, so the review loop behaves exactly as before: the lock alone, reviewing straight off `reviewRequested`. The verdict at step 7 then moves the label off `reviewRequested`; when the lease is on, it moves off `reviewing`. Either way the verdict label move clears the in-flight state.
 
 ### 5. Gather the work
 
@@ -60,7 +60,7 @@ You are the skeptic. Judge, in this order:
 
 ### 7. Verdict — one label move + a comment
 
-Count the review rounds first — the number of times this issue has entered `review` ([recipe](REFERENCE.md#round-count)) — and compare to `work.review.maxRounds`. A count that could not be read is **not** zero rounds: escalate to `needs human` rather than let the loop run uncapped. Then:
+Count the review rounds first — the number of times this issue has entered `reviewRequested` ([recipe](REFERENCE.md#round-count)) — and compare to `work.review.maxRounds`. A count that could not be read is **not** zero rounds: escalate to `needs human` rather than let the loop run uncapped. Then:
 
 | Verdict                 | When                                                                                                           | Action                                                                                                                                                                                      |
 | :---------------------- | :------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -75,7 +75,7 @@ Report the verdict and the reasoning. Inside a `work-review-queue` drain, return
 
 - **Review only — never implement.** No `Edit`/`Write`/commit/merge/push. If the fix is obvious, describe it in the feedback; do not apply it. The implement loop applies it.
 - **A different agent than the implementer.** Review as a fresh skeptic; when in doubt, `needs human` — never rubber-stamp.
-- **Lease before review, when `reviewing` is configured.** Claim `review → reviewing` + assign before reading the diff, so a second clone cannot review the same issue and write a competing verdict — the review loop's counterpart of the implement lease. With `labels.reviewing` off (the default), the review lock alone applies: today's behaviour, unchanged.
+- **Lease before review, when `reviewing` is configured.** Claim `reviewRequested → reviewing` + assign before reading the diff, so a second clone cannot review the same issue and write a competing verdict — the review loop's counterpart of the implement lease. With `labels.reviewing` off (the default), the review lock alone applies: today's behaviour, unchanged.
 - **Read-only and idempotent.** A crashed review re-runs; posting feedback, dedupe against feedback you already left.
 - **`done` is a real acceptance**, given by AI review (low-risk) or by a human (via `needs human`). Never set `done` on a change you could not confidently review — escalate instead.
 - **The round cap is a floor for the human, not a ceiling on quality** — at `maxRounds`, escalate to `needs human`; never quietly accept unfinished work to end the loop.

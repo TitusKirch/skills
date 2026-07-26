@@ -15,7 +15,7 @@ disallowed-tools:
 
 # work-implement-queue
 
-Drain the repo's queue of **implementable** issues — every `ready` issue plus every `changes-requested` issue (re-work after review) — and carry each to a **pushed, reviewable** state by delegating to `work-implement`. The loop is **thin**: the tracker is the queue, each issue is worked in a **fresh worker**, and the output is an issue in `review`, handed to the `work-review-queue`. Run it under `/loop work-implement-queue` for continuous operation.
+Drain the repo's queue of **implementable** issues — every `ready` issue plus every `changes-requested` issue (re-work after review) — and carry each to a **pushed, reviewable** state by delegating to `work-implement`. The loop is **thin**: the tracker is the queue, each issue is worked in a **fresh worker**, and the output is an issue in `reviewRequested`, handed to the `work-review-queue`. Run it under `/loop work-implement-queue` for continuous operation.
 
 **Opted out?** If the repo config sets `work` to `false`, all `work-*` skills are **disabled** for the repo — stop immediately and tell the user they are turned off in `.tituskirch-skills.json`. An _absent_ `work` block is **not** disabled. Check `.work == false` on the resolved config before acquiring the lock or building the queue. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
@@ -30,7 +30,7 @@ Drain the repo's queue of **implementable** issues — every `ready` issue plus 
 
 Before building the queue, reclaim issues an earlier implement-run crashed on: an issue in `working` with **no pushed artifact** (no PR / no pushed commit for it) was leased but abandoned before its push. The lock only proves no live worker **in this checkout** — this drain holds it, so nothing else here is live — but it says nothing about another **clone**. So gate the reclaim on the **assignee** the claim set: an issue assigned to a **different** runner — or, under one **shared bot identity**, to this runner (its live work in another clone reads the same) — is presumed **live** and left alone unless a **weaker age fallback** clears it; only an **unassigned** issue, or (with **distinct per-runner identities**) this runner's **own crashed lease**, is **flipped back to `ready`** (dropping the assignee) to be re-worked — or `blocked` if it left an unrecoverable state. This guard is what prevents **destroying** a second clone's in-flight work, not merely duplicating it. Full rules, incl. the same-bot caveat: **Reconcile** in `work-implement`'s REFERENCE. Idempotent — nothing to reclaim is the normal outcome.
 
-(A `working` issue **with** a pushed artifact only failed to flip its label — advance it to `review` instead of re-working.)
+(A `working` issue **with** a pushed artifact only failed to flip its label — advance it to `reviewRequested` instead of re-working.)
 
 ### 3. Build the queue
 
@@ -53,13 +53,13 @@ For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-imple
 
 **Heartbeat the lock each iteration.** The lock is held for the whole batch, which no single shell process spans, so the drain **re-stamps** the implement lock's `refreshed` timestamp once per iteration (one cheap command) — that is what keeps a **live** drain from being misread as a crashed one by the **heartbeat-timestamp** stale rule (**The single-flight lock** in `work-implement`'s REFERENCE). The lock is released **explicitly** at step 6, not by a shell-lifetime trap.
 
-Each worker returns `review` (pushed, handed to the review loop — the normal outcome), `blocked`, or an error. **`review`/`blocked` → continue** to the next issue; only a **hard error** (git broken, tracker down) stops the drain, releases the lock, and reports.
+Each worker returns `reviewRequested` (pushed, handed to the review loop — the normal outcome), `blocked`, or an error. **`reviewRequested`/`blocked` → continue** to the next issue; only a **hard error** (git broken, tracker down) stops the drain, releases the lock, and reports.
 
 ### 6. Report & release
 
-Release the lock. Summarise each issue and its outcome (handed to `review` / `blocked` reason / skipped), what the reconcile reclaimed, issues **deferred** to a later run, any **dependency cycle** a human must untangle, and any **label/body conflict** a worker flagged.
+Release the lock. Summarise each issue and its outcome (handed to `reviewRequested` / `blocked` reason / skipped), what the reconcile reclaimed, issues **deferred** to a later run, any **dependency cycle** a human must untangle, and any **label/body conflict** a worker flagged.
 
-Issues now in `review` are the drain's hand-off — the `work-review-queue` picks them up. Name the count.
+Issues now in `reviewRequested` are the drain's hand-off — the `work-review-queue` picks them up. Name the count.
 
 ## Config
 
@@ -122,7 +122,7 @@ When such text **addresses the agent directly or takes instruction form** — "d
 - **Claim-before-work, fresh fetch each iteration** — the worker leases each issue; the loop never snapshots the queue.
 - **The cap is mandatory** — never drain unbounded, and apply it **after** the ordering.
 - **Never work a dependent before its prerequisite** — order the graph, defer what depends on work not landing this run, skip cycles for a human.
-- **This loop never reviews.** It produces `review`/`blocked` only; `done`/`changes-requested`/`needs human` are the review loop's and the human's.
+- **This loop never reviews.** It produces `reviewRequested`/`blocked` only; `done`/`changes-requested`/`needs human` are the review loop's and the human's.
 - Inherits `work-implement`'s attribution-free, secret-free, only-this-issue guardrails.
 
 ## Reference
