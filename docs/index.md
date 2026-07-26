@@ -1,11 +1,11 @@
 ---
 title: 'TitusKirch skills documentation'
-description: 'Reusable Claude Code agent skills — how they are built, configured per repo, and how they work together.'
+description: 'Reusable agent skills — how they are built, configured per repo, and how they work together.'
 ---
 
 # TitusKirch skills
 
-This repository publishes reusable Claude Code agent skills. Each skill is self-documenting in place — `SKILL.md`, plus `REFERENCE.md` and `DESIGN.md` where the mechanics or the reasoning need room. A skill ships on its own, so it has to carry its own documentation.
+This repository publishes reusable agent skills — for Claude Code, Codex, Cursor, OpenCode and friends. Each skill is self-documenting in place — `SKILL.md`, plus `REFERENCE.md` and `DESIGN.md` where the mechanics or the reasoning need room. A skill ships on its own, so it has to carry its own documentation.
 
 That leaves exactly one thing without a home: what spans **more than one** skill. This tree is only that.
 
