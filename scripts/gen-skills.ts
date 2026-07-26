@@ -48,6 +48,15 @@ const AUTHORITY_FULL_END = '</skills-authority>';
 const AUTHORITY_REDUCED_OPEN = '<skills-authority-reduced>';
 const AUTHORITY_REDUCED_END = '</skills-authority-reduced>';
 
+// The Agent Skills spec caps `description` at 1024 characters, and that cap is a cliff:
+// a skill one character over is non-conformant, and nothing about writing a description
+// makes its length visible. So the budget enforced here is the lower one — the house
+// budget — leaving 64 characters of shoulder above it. That is roughly one trigger phrase
+// plus its other-language variant, so the ordinary reason a description gets edited never
+// has to be length-neutral, and going over is caught while the skill is still conformant.
+const DESCRIPTION_CAP = 1024;
+const DESCRIPTION_BUDGET = 960;
+
 // Node runs this file directly by erasing the types, so only erasable syntax is
 // available here: no enums, no namespaces, no parameter properties.
 type Category = 'repo' | 'work' | 'docs' | 'meta';
@@ -481,12 +490,27 @@ function syncAuthorityContract(skills: Skill[], check: boolean): string[] {
   return stale;
 }
 
-// skills.sh parses real YAML: an unquoted `summary`/`description` must not contain
-// ": " (colon+space) or " #" (space+hash), or its parser drops the whole skill — and
-// our loose frontmatter regex above would not otherwise catch it.
+// Two frontmatter faults nothing else catches, both silent on the way in.
+//
+// Length: `description` must stay inside the house budget above — no formatter, linter or
+// test measures it otherwise, so a description can drift past the spec cap and still show
+// a green board.
+//
+// Punctuation: skills.sh parses real YAML, so an unquoted `summary`/`description` must not
+// contain ": " (colon+space) or " #" (space+hash), or its parser drops the whole skill —
+// and our loose frontmatter regex above would not otherwise catch it.
 function lintFrontmatter(skills: Skill[]): string[] {
   const problems: string[] = [];
   for (const skill of skills) {
+    // Length is checked on the raw value, quoted or not: a quoted description counts its
+    // two quotes, which errs two characters strict rather than two characters lax.
+    const description = skill.frontmatter.description;
+    if (description && description.length > DESCRIPTION_BUDGET) {
+      problems.push(
+        `${skill.path}: \`description\` is ${description.length} chars — over the ${DESCRIPTION_BUDGET} house budget (spec cap ${DESCRIPTION_CAP}); trim it, so the next edit does not have to be length-neutral`
+      );
+    }
+
     for (const field of ['summary', 'description'] as const) {
       const value = skill.frontmatter[field];
       if (!value || /^['"]/.test(value.trim())) continue;
