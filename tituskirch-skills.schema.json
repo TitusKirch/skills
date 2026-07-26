@@ -552,7 +552,7 @@
             },
             "review": {
               "$ref": "#/$defs/labelOrOff",
-              "description": "The \"pushed, awaiting AI review\" hand-off label — the review queue's input. Default: \"ai: review requested\" (renamed from the earlier \"ai: review\" so it reads symmetrically with changesRequested); pin it to \"ai: review\" to keep an unmigrated repo working. The config key stays review."
+              "description": "The \"pushed, awaiting AI review\" hand-off label — the review queue's input, written by the implement loop and consumed by the review loop. Default: \"ai: review requested\", which reads symmetrically with changesRequested. A repo whose tracker labels this state differently pins its own string here; the label must already exist on the tracker before a skill copy adopts it, because a label query answers a missing label with an empty result rather than an error."
             },
             "reviewing": {
               "$ref": "#/$defs/labelOrOff",
