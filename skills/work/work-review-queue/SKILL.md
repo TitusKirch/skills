@@ -24,6 +24,7 @@ Drain the repo's queue of issues **awaiting review** — every issue in `reviewR
 ### 1. Load config & lock
 
 - Config + tracker as in `work-implement` (the `work.*` section; `work.review.maxRounds` governs escalation).
+- **`work-review` is required.** This loop reviews nothing itself — every issue is handed to it — so if it is not installed, **stop here, before taking the lock**: name the missing skill and report that no issue was touched. Checking up front is the whole point; a required call first noticed mid-drain has already leased issues into `reviewing` that the next run must reclaim.
 - Acquire the **review single-flight lock** — `mkdir` the lock at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/review.lock` (atomic create-or-fail), a **separate** path from the implement loop's `…/work/implement.lock`, so an implement-drain and a review-drain run at the same time in the same checkout. On adopting this path, first `rm -f` the old loose `tituskirch-work-review-queue.lock` (see the migration in the spec) so the two cannot coexist. The path, the `mkdir` primitive, the **heartbeat-timestamp** stale rule, the migration off the old loose lock and the single-checkout boundary are specified once in **The single-flight lock** (`work-implement`'s REFERENCE) — both queues cite that one spec.
 
 ### 2. Reconcile — close out out-of-band actions, reclaim stale review leases
@@ -122,6 +123,7 @@ When such text **addresses the agent directly or takes instruction form** — "d
 
 ## Guardrails
 
+- **`work-review` is required** — verified before the lock is taken, never discovered mid-drain; absent, the run stops having touched no issue and holding nothing.
 - **Single-flight, separate lock** — one review-drain per checkout, independent of the implement lock (mutual exclusion within one checkout, not across clones — the optional `reviewing` lease closes the cross-clone gap when configured); the two loops run concurrently.
 - **Reconcile first, select second.**
 - **The cap is mandatory** — apply it after the ordering.
@@ -131,4 +133,4 @@ When such text **addresses the agent directly or takes instruction form** — "d
 
 ## Reference
 
-The review unit, selection query, round-count, escalation policy and feedback recipes: `work-review/REFERENCE.md`. The implement half: `work-implement-queue`. Lifecycle and design: `work-implement/DESIGN.md`.
+The review unit, selection query, round-count, escalation policy and feedback recipes: `work-review`'s REFERENCE. The implement half: `work-implement-queue`. Lifecycle and design: `work-implement`'s DESIGN.

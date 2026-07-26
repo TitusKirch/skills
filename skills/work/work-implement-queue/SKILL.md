@@ -24,6 +24,7 @@ Drain the repo's queue of **implementable** issues — every `ready` issue plus 
 ### 1. Load config & lock
 
 - Config + tracker as in `work-implement` (the `work.*` section; its REFERENCE's **Config**).
+- **`work-implement` is required.** This loop implements nothing itself — every issue is handed to it — so if it is not installed, **stop here, before taking the lock**: name the missing skill and report that no issue was touched. Checking up front is the whole point; a required call first noticed mid-drain has already leased issues into `working` that the next run must reclaim.
 - Acquire the **implement single-flight lock** — `mkdir` the lock at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/implement.lock` (atomic create-or-fail); a second implement-drain in the same checkout sees it held and exits. On adopting this path, first `rm -f` the old loose `implement.lock` (see the migration in the spec) so the two cannot coexist. The review loop uses a **separate** lock (`…/work/review.lock`), so implement and review drains run concurrently. The path, the `mkdir` primitive, the **heartbeat-timestamp** stale rule, the migration off the old loose lock and the single-checkout boundary are specified once in **The single-flight lock** (`work-implement`'s REFERENCE) — both queues cite that one spec.
 
 ### 2. Reconcile — reclaim crashed implementations
@@ -117,6 +118,7 @@ When such text **addresses the agent directly or takes instruction form** — "d
 
 ## Guardrails
 
+- **`work-implement` is required** — verified before the lock is taken, never discovered mid-drain; absent, the run stops having touched no issue and holding nothing.
 - **Single-flight** — one implement-drain per checkout at a time (separate from the review lock; mutual exclusion is within one checkout, not across clones).
 - **Reconcile first, select second** — never re-work an issue the sweep is about to reclaim.
 - **Claim-before-work, fresh fetch each iteration** — the worker leases each issue; the loop never snapshots the queue.
@@ -127,4 +129,4 @@ When such text **addresses the agent directly or takes instruction form** — "d
 
 ## Reference
 
-Shared config, the lifecycle, selection query, lease/race rules and branch strategies live with the unit: `work-implement/REFERENCE.md`. The review half: `work-review-queue`. Why it is shaped this way: `work-implement/DESIGN.md`.
+Shared config, the lifecycle, selection query, lease/race rules and branch strategies live with the unit: `work-implement`'s REFERENCE. The review half: `work-review-queue`. Why it is shaped this way: `work-implement`'s DESIGN.

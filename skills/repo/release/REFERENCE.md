@@ -102,6 +102,8 @@ gh pr merge "$n" --merge         # merge commit — never squash
 
 No such automation, so the skill may open the PR itself — delegating to `pull-request` with an explicit `base ← head` override (the inverse of that skill's usual `pr.base` default). This is the **only** PR the release skill ever opens, in any mode.
 
+**`pull-request` is optional here.** Absent, open the same PR with `gh pr create --base "$base" --head "$head"` — the CLI this skill already drives everywhere else, so this is not the raw-plumbing fallback the guardrails refuse. What degrading costs is the **inherited** behaviour: delegating brought `pull-request`'s refusal to touch a PR opened by automation along with it, so opening the PR by hand means re-asserting that guard, plus the at-most-one-open-promotion-PR rule, in this skill. Lose the helper, never the guard.
+
 Produce the same PR the automation would: a `chore: merge <head> into <base>` rollup title and a body that states the merge-commit requirement. Ready, not draft — there is no automation to hand off to, so there is nothing to wait for.
 
 ### `false` (default)

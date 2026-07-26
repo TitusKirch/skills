@@ -72,8 +72,8 @@ Run the repo's checks (the root `verify` key, else detected — tests, lint, bui
 
 The **push** is the moment the work becomes reviewable — it is the boundary between `working` and `reviewRequested`.
 
-- Commit via `atomic-commit`; reference the issue so the tracker links it (`Refs #42` / the Linear key).
-- **PUSH** the work: open/update the PR via `pull-request` (worktree), or push the commit(s) to the shared branch (`branch:<name>`). Until this succeeds the issue stays `working` (a crash before the push is reclaimed as a [working-orphan](REFERENCE.md#reconcile)).
+- Commit via `atomic-commit`; reference the issue so the tracker links it (`Refs #42` / the Linear key). **`atomic-commit` is optional** — not installed, commit directly in the repo's own Conventional Commits conventions, carrying the same reference line.
+- **PUSH** the work: open/update the PR via `pull-request` (worktree), or push the commit(s) to the shared branch (`branch:<name>`). **`pull-request` is optional too**, and only the `worktree` path reaches it at all — not installed, open the PR with the forge CLI directly, same base and head. Until this succeeds the issue stays `working` (a crash before the push is reclaimed as a [working-orphan](REFERENCE.md#reconcile)).
 - Move the label `working → reviewRequested` — the handoff to `work-review`. Report the issue id / PR url.
 - The skill **never merges**, never reviews, and **never sets `done`, `changes-requested` or `needs human`** — those are the review loop's and the human's outputs.
 
@@ -86,6 +86,7 @@ Inside a `work-implement-queue` drain nobody waits on this worker — return `re
 - **Stateless & resumable.** Read state from the tracker + git every run; carry nothing between runs.
 - **Only this issue.** Never touch sibling issues, never merge, never close anything you were not asked to.
 - **Never review your own work.** This skill only produces `reviewRequested` or `blocked`; it never sets `done`, `changes-requested`, or `needs human`.
+- **A missing hand-off helper degrades, never blocks.** `atomic-commit` and `pull-request` are **optional** calls, not preconditions: without them, commit in the repo's own conventions and open the PR with the forge CLI. Verified work is never left uncommitted or unpushed because a helper skill is absent — the push is what the lifecycle turns on.
 - **Attribution-free & secret-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in branches, commits, PRs or comments; scan the change and context for secrets and exclude them.
 - **`ai: ready` is the approval.** A human marking an issue `ai: ready` ("scoped + approved for an AI agent to pick up") is the opt-in, so the drain — and a direct `/work-implement 42` on an already-`ready`/`changes-requested` issue — works it **without re-confirming**. Confirm first only when there is no such opt-in (an issue not in an approved state, or a ready-gate widened to `false`).
 
