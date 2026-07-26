@@ -1,6 +1,6 @@
 # validate-skills — Reference
 
-Mechanics for [`validate-skills`](SKILL.md): the spec rule catalog and how each rule is tiered, discovering skills to validate, getting and running `skills-ref`, what to do when it cannot be obtained, the house-style tier, and where `skill-creator` sits.
+Mechanics for [`validate-skills`](SKILL.md): the spec rule catalog and how each rule is tiered, discovering skills to validate, getting and running `skills-ref`, what to do when it cannot be obtained, the house-style tier and its cross-skill-reference pass, and where `skill-creator` sits.
 
 ## Principle
 
@@ -139,9 +139,53 @@ Where the conventions come from is the **repo's own contract**, not this skill's
 - **Run the repo's own house lint** where it has one, and attribute its findings to tier 2.
 - A repo with **no** documented house style has **no tier-2 findings** — a clean result, not a gap to invent rules for.
 
+### Cross-skill references
+
+The one place a skill makes an assumption about its **install environment**. Every skill installs on its own, so a sibling it refers to may simply not be present — and neither half of that is something the standard speaks to, which is why both land here in tier 2 and never in the spec tier. Check it only where the repo's contract carries the rule, the same gate as every other tier-2 rule; a repo that has not adopted it gets no finding.
+
+**Rule 1 — the reference names the skill, never a path.** A path is a path whether or not it is a link, and all three forms dangle identically on an installed copy:
+
+| Form                               | Example                                     | Caught by a link lint? |
+| :--------------------------------- | :------------------------------------------ | :--------------------- |
+| Relative link out of the folder    | `[…](../work-review/REFERENCE.md)`          | yes                    |
+| Absolute install path              | `~/.claude/skills/work-review/REFERENCE.md` | no                     |
+| Bare path in prose, no link at all | `` `work-review/REFERENCE.md` ``            | **no**                 |
+
+A repo's own link lint (here `test/isolation.test.ts`) reads `](…)` targets, so it sees row 1 only — run it and fold its output into tier 2, but rows 2 and 3 are this pass's job, and the lint does not travel to a consuming repo at all.
+
+**Rule 2 — a reference that is a call declares its kind.** _Required_ → the skill states that the run **stops** when the sibling is absent, and why. _Optional_ → it states the **fallback** (degrade, skip that pass, carry on). A reference that only **mentions** another skill needs no declaration, and adding one to a mention is as much a false positive as missing an undeclared call.
+
+**The call/mention test is the verb, not the noun** — does the run _hand work over_?
+
+| Reads like                                                                                                    | Kind        | Wants a declaration |
+| :------------------------------------------------------------------------------------------------------------ | :---------- | :------------------ |
+| "delegate each issue to `work-implement`", "commit via `atomic-commit`", "open the PR through `pull-request`" | **call**    | yes                 |
+| "committing is `atomic-commit`'s job", "the complement to `write-readme`", "`work-review` reviews them next"  | **mention** | no                  |
+
+**Running the pass.** Two greps locate candidates; the verdict is the read.
+
+```sh
+# 1. the repo's skill names — the only names that count as a sibling
+find . -name SKILL.md -not -path '*/node_modules/*' | sed 's|/SKILL\.md$||;s|.*/||' | sort -u
+
+# 2. path-shaped references in one skill's shipped markdown (locator, not verdict)
+grep -rnE '(\.\./|~/\.claude/skills/|[a-z0-9-]+/)[A-Za-z0-9._-]+\.md' <skill-dir> --include='*.md'
+
+# 3. every place this skill names another one — the call/mention candidates
+#    names.txt = step 1's list, minus the skill's own name
+grep -rnwF -f names.txt <skill-dir> --include='*.md'
+```
+
+Then judge each hit:
+
+- **A path is a finding only when it leaves the skill** — `../…`, `~/.claude/skills/…`, or a first segment matching **another skill's name** from step 1. A path into the skill's own `references/`, `scripts/`, `assets/` or `templates/` is internal and correct.
+- **Attribute a name hit to the longest match.** `grep -w` treats `-` as a word boundary, so `work-implement` matches inside `work-implement-queue`; without preferring the longer name every queue skill looks like a reference to its own unit.
+- **Only enumerated names are siblings.** `skills-ref`, `skill-creator` and a repo's own CLI are tools, not skills — check hits against step 1's list, never against anything merely skill-shaped.
+- **Code spans cut both ways.** A path inside a fence or backticks may be **content the skill generates** (a badge path in a README template) — not navigation, not a finding. But a prose path in backticks _is_ a reference. What decides is what the span **is**, not that it is code, which is why stripping code wholesale — the right move for a link lint — would blind this pass to exactly the form it exists to catch.
+
 ### This repo, as the worked example
 
-For the `TitusKirch/skills` repo the contract is the frontmatter section of `skills/README.md`, and the house gate is `pnpm skills:check` (which runs `scripts/gen-skills.ts --check`). House-style expectations here — each a **tier-2** finding, none a spec violation:
+For the `TitusKirch/skills` repo the contract is `skills/README.md` — its frontmatter section and its "Referring to another skill" section — and the house gate is `pnpm skills:check` (which runs `scripts/gen-skills.ts --check`), alongside `pnpm test`, whose `test/isolation.test.ts` is the repo's link lint. House-style expectations here — each a **tier-2** finding, none a spec violation:
 
 - **`metadata.summary` present** — this repo's own field (the one-liner in the generated README table). Its absence is house style, not a spec breach; the spec is satisfied by `metadata` being a string map.
 - **`description` written as _when to act_** — imperative, keyword-rich, trigger phrases (with other-language variants), key use case first. A description that reads as _what the skill is_ is a house/advisory finding.
@@ -149,6 +193,7 @@ For the `TitusKirch/skills` repo the contract is the frontmatter section of `ski
 - **Category placement** — the skill sits under the right `skills/<category>/` folder (`repo/`, `work/`, `docs/`, `meta/`).
 - **Generated artifacts in sync** — the six artifacts `pnpm skills:sync` produces are current (`pnpm skills:check` is the gate). Drift here is a repo-integrity finding, tier 2.
 - **`skills.sh.json` YAML-safety** — an unquoted `summary`/`description` must not contain `": "` (colon-space) or `" #"` (space-hash), or the repo's own parser drops the skill. `gen-skills.ts` lints exactly this; surface it as tier 2.
+- **[Cross-skill references](#cross-skill-references)** — a sibling is named, never pathed, and a call to one declares required or optional with its behaviour on absence. This repo is a multi-skill repo whose skills are installed individually, so both halves bite; `test/isolation.test.ts` covers the link form, and the prose-path and declaration halves come from the read.
 
 Running `pnpm skills:check` and folding its output into tier 2 is the honest way to report this repo's house findings — the repo's own tool, the same way the spec tier uses the standard's own tool.
 
