@@ -9,7 +9,7 @@
     "cap": 10,
     "labels": {
       "ready": "ai: ready",
-      "review": "ai: review",
+      "review": "ai: review requested",
       "done": "ai: done"
     }
   },

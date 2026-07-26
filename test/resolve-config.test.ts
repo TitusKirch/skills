@@ -72,7 +72,11 @@ describe('merge semantics', () => {
     const work = out.work as Record<string, unknown>;
     const labels = work.labels as Record<string, unknown>;
     assert.equal(labels.ready, 'ci: queued', 'overlay wins');
-    assert.equal(labels.review, 'ai: review', 'untouched sibling survives');
+    assert.equal(
+      labels.review,
+      'ai: review requested',
+      'untouched sibling survives'
+    );
     assert.equal(labels.done, 'ai: done');
     assert.equal(work.cap, 10, 'untouched key in the same section survives');
   });
