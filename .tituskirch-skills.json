@@ -56,10 +56,7 @@
     "timeout": 600
   },
   "mergeDeps": {
-    "merge": false,
-    "confirm": "major",
-    "verify": "pnpm verify",
-    "cap": 5
+    "merge": "grouped"
   },
   "pruneBranches": {
     "age": 90,
