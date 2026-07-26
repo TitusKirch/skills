@@ -55,7 +55,10 @@ Which sections to scaffold beyond the core, by project type. Core (`getting-star
 | `package` | `guides`                           |
 | `cli`     | `guides`                           |
 | `app`     | `concepts`, `guides`, `operations` |
+| `service` | `concepts`, `operations`           |
 | `infra`   | `concepts`, `operations`           |
+
+`service` is an HTTP API or backend with no UI. It scaffolds the same set as `infra` today, but the two differ at the core: for a service, `reference` is the one place a lookup page is load-bearing rather than a redirect — an HTTP API with no published schema is the case [SKILL.md](SKILL.md#routing-matrix--what-you-changed--page-type--section) itself names as earning one, where a UI app's options are already held by a manifest or `--help`.
 
 `package` is **anything published that carries its own reference** — an npm library, a Composer package, a Nuxt module, an agent/skill set. What such a repo ships travels without `docs/`, so the tree holds only what spans the whole set; the per-artifact reference stays with the artifact. It is deliberately not named `library`: the case is the publishing, not the language or the format.
 
@@ -175,7 +178,7 @@ Read the whole tree fresh every run — it is live state and is **never cached**
 
 | Key                 | Effect                                                                                                                                               |
 | :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs.preset`       | `package` / `cli` / `app` / `infra` — which sections to scaffold; falls back to repo detection, then asks                                            |
+| `docs.preset`       | `package` / `cli` / `app` / `service` / `infra` — which sections to scaffold; falls back to repo detection, then asks                                |
 | `docs.language`     | docs language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`, then the existing docs/repo language, then `en` |
 | `docs.instructions` | free-text guidance for generated docs (tone, house conventions) — additive preference only, never overrides the docs format or guardrails            |
 
