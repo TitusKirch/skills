@@ -2,7 +2,7 @@
 
 # 🧩 skills
 
-**Agent skills by Titus Kirch — installable via [skills.sh](https://skills.sh) in [Claude Code](https://docs.claude.com/en/docs/claude-code/overview), Cursor, Windsurf and friends**
+**Agent skills by Titus Kirch — installable via [skills.sh](https://skills.sh) in [Claude Code](https://code.claude.com/docs/en/overview), [Codex](https://github.com/openai/codex), [Cursor](https://cursor.com/docs), [OpenCode](https://opencode.ai) and friends**
 
 [![skills.sh](https://skills.sh/b/TitusKirch/skills)](https://skills.sh/TitusKirch/skills)
 [![Tests](https://img.shields.io/github/actions/workflow/status/TitusKirch/skills/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/TitusKirch/skills/actions/workflows/ci.yml)
@@ -19,7 +19,7 @@ yarn dlx skills add TitusKirch/skills   # yarn
 bunx skills add TitusKirch/skills       # bun
 ```
 
-That's it. Every skill in this bundle is now discoverable inside Claude Code — no manifest editing, no symlink dance.
+That's it. Every skill in this bundle is now discoverable inside your agent — no manifest editing, no symlink dance.
 
 ## ✨ Features
 
@@ -111,7 +111,7 @@ Restart Claude Code (or run `/reload-plugins`). Because the skills live as symli
 
 ### Option C — install a single skill by hand
 
-Copy one skill folder into:
+Copy one skill folder into — paths shown for Claude Code, other clients read their own skills directory:
 
 - **User scope** — `~/.claude/skills/<skill-name>/` (available in every project).
 - **Project scope** — `.claude/skills/<skill-name>/` (committed alongside the consuming project).
@@ -124,7 +124,7 @@ Once installed, invoke a skill by name or trigger phrase. The `write-readme` ski
 /write-readme draft a README for my new Laravel package
 ```
 
-Claude Code picks the right skill based on the `description:` field in each `SKILL.md` — write that field tight and the agent will route correctly.
+Your agent picks the right skill based on the `description:` field in each `SKILL.md` — write that field tight and it will route correctly.
 
 ## ➕ Adding a new skill
 

@@ -2,17 +2,18 @@
   "$schema": "https://www.schemastore.org/package.json",
   "name": "@tituskirch/skills",
   "version": "0.15.0",
-  "description": "Agent skills by Titus Kirch — installable via skills.sh in Claude Code, Cursor, Windsurf and friends.",
+  "description": "Agent skills by Titus Kirch — installable via skills.sh in Claude Code, Codex, Cursor, OpenCode and friends.",
   "keywords": [
     "agent-skills",
     "ai-agents",
     "claude-code",
+    "codex",
     "cursor",
     "kirchdev",
     "llm",
+    "opencode",
     "prompt-engineering",
-    "skills",
-    "windsurf"
+    "skills"
   ],
   "homepage": "https://github.com/TitusKirch/skills#readme",
   "bugs": {
@@ -51,8 +52,8 @@
     "ajv": "^8.20.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.1.1",
-    "oxfmt": "0.59.0",
-    "oxlint": "1.74.0",
+    "oxfmt": "0.60.0",
+    "oxlint": "1.75.0",
     "taze": "^19.16.0",
     "typescript": "^7.0.2"
   },

@@ -29,18 +29,18 @@ docs/
 
 The recognized sections. The slug is the directory name (after its numeric prefix).
 
-| Slug              | Holds                                                       | Core |
-| :---------------- | :---------------------------------------------------------- | :--: |
-| `getting-started` | Install, first run, orientation.                            |  ✅  |
-| `guides`          | Task-oriented guides, tutorials, and "add a new X" how-tos. |      |
-| `concepts`        | How it works — architecture, models, explanation.           |      |
-| `reference`       | Lookup: config keys, CLI flags, env vars, API.              |  ✅  |
-| `operations`      | Run / deploy / maintain — jobs, schedules, backups.         |      |
-| `conventions`     | Project-specific rules and patterns.                        |      |
-| `contributing`    | How to develop and contribute.                              |      |
-| `adr`             | Architecture decision records — one decision per file.      |      |
+| Slug              | Holds                                                       |
+| :---------------- | :---------------------------------------------------------- |
+| `getting-started` | Install, first run, orientation.                            |
+| `guides`          | Task-oriented guides, tutorials, and "add a new X" how-tos. |
+| `concepts`        | How it works — architecture, models, explanation.           |
+| `reference`       | Lookup: config keys, CLI flags, env vars, API.              |
+| `operations`      | Run / deploy / maintain — jobs, schedules, backups.         |
+| `conventions`     | Project-specific rules and patterns.                        |
+| `contributing`    | How to develop and contribute.                              |
+| `adr`             | Architecture decision records — one decision per file.      |
 
-`adr` is the one slug with a **fixed prefix** (`99.adr/`) and its own page contract — see [Architecture decision records](#architecture-decision-records). **Core** marks the two sections a scaffold reaches for first — not two it must create. A section whose material is already canonical elsewhere is [dropped from the scaffold](SKILL.md#scaffold--docs-is-missing) rather than created as a redirect. The catalogue is organized by **documentation type** (intent) — every slug answers _what kind of page_, never _what subject_. A section not in this catalogue is allowed but triggers a **gap report** (see SKILL.md): only fold in a genuinely missing **type**. A **subject** section (`plugins`, `themes`, `integrations`, `billing`) is a category error — route its content through the type it fits (see the routing matrix), and nest it if it needs grouping (see below), rather than minting a top-level slug.
+`adr` is the one slug with a **fixed prefix** (`99.adr/`) and its own page contract — see [Architecture decision records](#architecture-decision-records). No section is implicit: which ones a scaffold reaches for comes entirely from the [preset](#presets), and a section whose material is already canonical elsewhere is [dropped from the scaffold](SKILL.md#scaffold--docs-is-missing) rather than created as a redirect. The catalogue is organized by **documentation type** (intent) — every slug answers _what kind of page_, never _what subject_. A section not in this catalogue is allowed but triggers a **gap report** (see SKILL.md): only fold in a genuinely missing **type**. A **subject** section (`plugins`, `themes`, `integrations`, `billing`) is a category error — route its content through the type it fits (see the routing matrix), and nest it if it needs grouping (see below), rather than minting a top-level slug.
 
 ## Nesting & subject grouping
 
@@ -48,17 +48,29 @@ Sections hold pages, but a page slot can be a **subject folder** when one topic 
 
 ## Presets
 
-Which sections to scaffold beyond the core, by project type. Core (`getting-started`, `reference`) is implicit in every preset — subject to the redirect test in [SKILL.md](SKILL.md#scaffold--docs-is-missing), which can drop either one.
+Which sections to scaffold, by project type. **No section is implicit** — each preset states its whole set, and every one of them still faces the redirect test in [SKILL.md](SKILL.md#scaffold--docs-is-missing).
 
-| Preset    | Adds                               |
-| :-------- | :--------------------------------- |
-| `library` | `guides`                           |
-| `cli`     | `guides`                           |
-| `app`     | `concepts`, `guides`, `operations` |
-| `infra`   | `concepts`, `operations`           |
-| `ai-tool` | `concepts`, `guides`               |
+| Preset    | Scaffolds                                             | Conditional    |
+| :-------- | :---------------------------------------------------- | :------------- |
+| `package` | `concepts`, `guides`                                  | `contributing` |
+| `cli`     | `getting-started`, `guides`                           | `contributing` |
+| `app`     | `getting-started`, `concepts`, `guides`, `operations` | `conventions`  |
+| `service` | `concepts`, `reference`, `operations`                 | `conventions`  |
+| `infra`   | `concepts`, `operations`                              | `conventions`  |
 
-Add `contributing`/`conventions` when the repo accepts external contributions or carries non-obvious project rules. Presets are a starting point, not a cage — sections can be added or dropped per use case. `adr` belongs to no preset — the section is created when the first ADR is written, never scaffolded empty.
+**Conditional** names the section that type most often earns, on a condition the repo has to meet: `contributing` when it accepts outside contributions, `conventions` when it carries project rules a newcomer would not guess. Either can be added to any preset — the column says which to expect, not which is allowed.
+
+Three sections are deliberately absent from most rows:
+
+- **`getting-started` only where a README cannot carry it.** A README in the house style already covers install and first run, so the section would only redirect — and a section index that redirects is an [anti-pattern](#anti-patterns). It survives for a `cli` (install varies by channel: package manager, binary, script) and an `app` (a setup chain of env, services and migrations), and is dropped everywhere else.
+- **`reference` only for a `service`.** A lookup page is [the row to challenge](SKILL.md#routing-matrix--what-you-changed--page-type--section): a manifest, a schema or `--help` usually holds the real answer and never goes stale. An HTTP API with no published schema is the one case that earns the section outright.
+- **`adr` belongs to no preset** — the section appears when the first ADR is written, never scaffolded empty.
+
+`package` is **anything published that carries its own reference** — an npm library, a Composer package, a Nuxt module, an agent/skill set. What such a repo ships travels without `docs/`, so the tree holds only what spans the whole set; the per-artifact reference stays with the artifact. It is deliberately not named `library`: the case is the publishing, not the language or the format.
+
+`service` is an HTTP API or backend with no UI — the operational surface matters more than the guides, which is what separates it from `app`.
+
+Presets are a starting point, not a cage — sections can be added or dropped per use case.
 
 ## Frontmatter contract
 
@@ -174,7 +186,7 @@ Read the whole tree fresh every run — it is live state and is **never cached**
 
 | Key                 | Effect                                                                                                                                               |
 | :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs.preset`       | `library` / `cli` / `app` / `infra` / `ai-tool` — which sections to scaffold; falls back to repo detection, then asks                                |
+| `docs.preset`       | `package` / `cli` / `app` / `service` / `infra` — which sections to scaffold; falls back to repo detection, then asks                                |
 | `docs.language`     | docs language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`, then the existing docs/repo language, then `en` |
 | `docs.instructions` | free-text guidance for generated docs (tone, house conventions) — additive preference only, never overrides the docs format or guardrails            |
 

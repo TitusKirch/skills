@@ -38,7 +38,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
     "reviewRequested": { "maxRounds": 3 },
     "linear": {
       "team": "Engineering",
-      "statuses": ["Todo", "In Progress"],
+      "statuses": ["Todo", "In Progress", "Changes Requested"],
       "states": {
         "ready": "Todo",
         "working": "In Progress",
@@ -66,7 +66,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 | `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                     |
 | `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                   |
 | `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                    |
-| `work.linear.statuses`                      | Linear workflow states that count as startable                                                                        |
+| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                      |
 | `work.linear.states`                        | lifecycle step → Linear workflow state name; **no default** — see below                                               |
 
 **`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.reviewRequested: false` → the PR's existence is the signal; `labels.reviewing: false` → **no review lease** — the review loop relies on its lock alone, with no cross-clone claim (this is the **default**, so an unset `reviewing` keeps today's behaviour); `labels.blocked: false` → comment only / Linear state; `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
@@ -82,6 +82,10 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 | a step mapped                | the state is written **with** the label, in the same `save_issue` call            |
 
 Leaving the state untouched is a defined outcome, not a degraded one — the label is [operative for eligibility](#label-vs-body-precedence), so the lifecycle is correct either way; the repo just forgoes the Linear board reflecting it. **Guessing a state name is never correct**, with or without a mapping.
+
+**`states` and `statuses` have to be read together.** They point in opposite directions — `states` is what the loop _writes_, `statuses` is what it will _select_ — and the [selection query](#selection-query) ANDs them, so a state this mapping can produce that `statuses` omits takes the issue out of the queue for good. The trap is `changesRequested`, because it is the loop's second input: map it to a state outside `statuses` and a review that requests changes hands the issue back to a queue that can no longer see it — the label is right, the board is right, and nothing ever picks it up. The same applies to whichever state an escalated issue is left in, since a human resolving `needsHuman` by hand moves the label but not the state.
+
+So: **every state an eligible issue can legitimately sit in belongs in `statuses`** — the ones `states.ready` and `states.changesRequested` name, plus wherever `reviewRequested` leaves an issue that a human may hand back. Being generous costs nothing; the label filter is what actually gates eligibility, and it already excludes `working`, `reviewing` and `blocked`. Being too narrow costs a silent stall.
 
 Reads `pr.base` (branch base) and the shared root `language` from the same file. Schema: the repo-root `tituskirch-skills.schema.json`.
 
