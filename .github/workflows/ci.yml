@@ -6,6 +6,7 @@ on:
   pull_request:
     branches:
       - main
+      - dev
     types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
@@ -17,8 +18,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  lint:
-    name: Lint & Format
+  verify:
+    name: Verify
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     steps:
@@ -34,11 +35,29 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # One step per command in `pnpm verify`, which is the gate run locally
+      # (the root `verify` key in .tituskirch-skills.json). `!cancelled()` is
+      # what stops a failing step from suppressing the ones after it, so one
+      # run reports every failure and names each in the job's step list.
+      #
+      # The two lists have to stay in step: test/ci-gate.test.ts fails if a
+      # command is added to `verify` without a step here, or the reverse.
       - name: Lint
+        if: ${{ !cancelled() }}
         run: pnpm lint
 
-      - name: Format check
+      - name: Format
+        if: ${{ !cancelled() }}
         run: pnpm format
 
-      - name: Skills registry in sync
+      - name: Skills in sync
+        if: ${{ !cancelled() }}
         run: pnpm skills:check
+
+      - name: Typecheck
+        if: ${{ !cancelled() }}
+        run: pnpm typecheck
+
+      - name: Test
+        if: ${{ !cancelled() }}
+        run: pnpm test

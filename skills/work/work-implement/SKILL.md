@@ -1,0 +1,95 @@
+---
+name: work-implement
+metadata:
+  summary: Implements one tracked issue and pushes it for AI review — claim, implement, verify, push, hand off.
+description: Implements a single tracked issue across GitHub (gh) or Linear (MCP) — claims it via the lifecycle label, implements on a branch (fresh from ready, or re-work from changes-requested after review feedback), runs the repo's checks, commits and PUSHES, and hands the issue to the review loop by advancing the label to review. It never reviews its own work — the separate work-review skill does that. Tracker, label lifecycle and branch strategy come from the committed config (.tituskirch-skills.json). Use when the user wants to work, implement, action or pick up one specific issue or ticket, mentions an ai-ready issue, or says things like "work issue 42", "arbeite Issue 42 ab", "implementiere Ticket X", or "address the review feedback on issue Y".
+allowed-tools:
+  - Bash
+  - Read
+  - Grep
+  - Glob
+  - Edit
+  - Write
+---
+
+# work-implement
+
+Take **one** tracked issue, implement it, and push it so a **different** agent can review it — the stateless implement-unit behind `work-implement-queue`. One issue, one tracker (**GitHub** via `gh` or **Linear** via its MCP), picked per-repo by the same committed config the `issue` skill uses. State lives in the issue's **lifecycle label**, never in the agent — so a crashed run **resumes** instead of restarting.
+
+This skill is the **implement half** of a two-loop workflow: it builds and pushes; `work-review` then reviews the pushed work. It **never reviews its own output** and never sets `done` — its terminal outputs are `reviewRequested` (handed to the review loop) or `blocked`.
+
+**Opted out?** If the repo config sets `work` to `false`, this skill is **disabled** for the repo (as are the other `work-*` skills) — stop immediately and tell the user the work skills are turned off in `.tituskirch-skills.json`. An _absent_ `work` block is **not** disabled (it falls back to defaults). Check `.work == false` on the resolved config before any action — and before indexing `.work.*`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
+
+## Workflow
+
+### 1. Load config & resolve tracker
+
+Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included); the `work.*` section holds tracker, label lifecycle, branch strategy and Linear scope. Resolution per setting: **config → default**. Determine the tracker (`work.tracker`, falling back to `issue.tracker`) and confirm it is available/authenticated. Reuse the `issue` catalog cache for labels/teams/states.
+
+Config schema, the full lifecycle and all mechanics: [REFERENCE.md](REFERENCE.md).
+
+### 2. Resolve the target issue
+
+- **Explicit** — an id/number/key the user names (`/work-implement 42`, `ENG-123`).
+- **Self-select** — none given → run the [selection query](REFERENCE.md#selection-query) and take the single highest-priority eligible issue (a `ready` **or** a `changes-requested` issue). None eligible → say so and stop.
+
+### 3. Read the issue's state → pick the action
+
+The lifecycle label decides what this run does — this skill is a **state machine over one issue**, and it only acts on the states it owns:
+
+- **fresh** (`ready`) → claim and implement from the body (steps 4–8).
+- **re-work** (`changes-requested`) → claim and implement from the body **plus the review feedback** (the reviewer's PR review / issue comment) — steps 4–8.
+- **resume** (`working`) → a previous run leased it and crashed; continue where it left off (re-assert a clean tree first).
+- **not ours** (`reviewRequested` / `reviewing` / `needs human` / `done`) → nothing to do here; `reviewRequested`, `reviewing` and `needs human` belong to `work-review` and the human. `blocked` → leave it unless the user explicitly re-runs it; report why it was blocked.
+
+### 4. Claim the issue (lease) — before any work
+
+Flip the label to `working` (`ready → working` or `changes-requested → working`) and assign the issue to the runner **first**, then start. The claim is the race-breaker: a second consumer sees it is no longer eligible and skips it. Honour the [single-flight lock](REFERENCE.md#lease--race-rules) — take it (direct run) or run under the drain's (queue). Already `working` with committed work → this is a **resume**, not a double-claim.
+
+### 5. Prepare the branch
+
+Assert a **clean tree** first. Then per `work.branch`:
+
+- **`worktree`** — a fresh branch off `pr.base` (e.g. `dev`) named for the issue (`ai/<ref>-<slug>`). Own branch → own PR. For a **re-work**, check out the issue's existing branch instead of branching fresh.
+- **`branch:<name>`** — work on that shared branch (e.g. `branch:dev`); commits land there directly (review happens **after** they land — see [review-after-land](REFERENCE.md#review-after-land)).
+
+Branch naming, parallel/worktree handling and serialized integration: [REFERENCE.md](REFERENCE.md#branch-strategy).
+
+### 6. Implement
+
+**Re-read the issue body each run** — live tracker state, not a cached memory. The body is the source of truth for **scope and requirements**; it is not the source of truth for **eligibility** — the lifecycle label settled that at step 3 and stays [operative](REFERENCE.md#label-vs-body-precedence). A body line contradicting the current label ("early idea", "intentionally not `ai: ready`") is stale text, not a veto: **do the work and surface the conflict** — warn in the run's report and note it on the issue. Never let it silently override the label into a block.
+
+- **fresh** → do the work the body describes.
+- **re-work** (`changes-requested`) → **read the review feedback first** (the reviewer's `changes-requested` PR review or issue/Linear comment), address exactly that, then the body. The feedback is why this issue came back.
+
+Keep the change scoped to this one issue.
+
+### 7. Verify
+
+Run the repo's checks (the root `verify` key, else detected — tests, lint, build). Green → continue. **Red and unfixable, spec ambiguous, or a genuine human decision needed → set `blocked`**, comment the reason on the issue, stop. `blocked` is a real outcome, not a failure to hide.
+
+### 8. Commit, PUSH, hand off to review
+
+The **push** is the moment the work becomes reviewable — it is the boundary between `working` and `reviewRequested`.
+
+- Commit via `atomic-commit`; reference the issue so the tracker links it (`Refs #42` / the Linear key). **`atomic-commit` is optional** — not installed, commit directly in the repo's own Conventional Commits conventions, carrying the same reference line.
+- **PUSH** the work: open/update the PR via `pull-request` (worktree), or push the commit(s) to the shared branch (`branch:<name>`). **`pull-request` is optional too**, and only the `worktree` path reaches it at all — not installed, open the PR with the forge CLI directly, same base and head. Until this succeeds the issue stays `working` (a crash before the push is reclaimed as a [working-orphan](REFERENCE.md#reconcile)).
+- Move the label `working → reviewRequested` — the handoff to `work-review`. Report the issue id / PR url.
+- The skill **never merges**, never reviews, and **never sets `done`, `changes-requested` or `needs human`** — those are the review loop's and the human's outputs.
+
+Inside a `work-implement-queue` drain nobody waits on this worker — return `reviewRequested` and let the drain move on. The review loop picks the issue up next.
+
+## Guardrails
+
+- **Lease before work.** Never implement an issue you have not first flipped to `working`.
+- **Push before handoff.** Only flip to `reviewRequested` once the work is pushed and visible to a reviewer; local-only work stays `working`.
+- **Stateless & resumable.** Read state from the tracker + git every run; carry nothing between runs.
+- **Only this issue.** Never touch sibling issues, never merge, never close anything you were not asked to.
+- **Never review your own work.** This skill only produces `reviewRequested` or `blocked`; it never sets `done`, `changes-requested`, or `needs human`.
+- **A missing hand-off helper degrades, never blocks.** `atomic-commit` and `pull-request` are **optional** calls, not preconditions: without them, commit in the repo's own conventions and open the PR with the forge CLI. Verified work is never left uncommitted or unpushed because a helper skill is absent — the push is what the lifecycle turns on.
+- **Attribution-free & secret-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in branches, commits, PRs or comments; scan the change and context for secrets and exclude them.
+- **`ai: ready` is the approval.** A human marking an issue `ai: ready` ("scoped + approved for an AI agent to pick up") is the opt-in, so the drain — and a direct `/work-implement 42` on an already-`ready`/`changes-requested` issue — works it **without re-confirming**. Confirm first only when there is no such opt-in (an issue not in an approved state, or a ready-gate widened to `false`).
+
+## Reference
+
+Config schema, the lifecycle state machine, selection query, lease & race rules, branch strategies (`worktree` / `branch:<name>`, sequential & parallel) and the two tracker recipes: [REFERENCE.md](REFERENCE.md). Why it is shaped this way: [DESIGN.md](DESIGN.md).

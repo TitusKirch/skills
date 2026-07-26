@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
   "title": "TitusKirch skills config",
-  "description": "Optional, committed config shared by the TitusKirch skills (atomic-commit, pull-request, issue, release, merge-deps, work-issue, work-queue, write-docs). Place at the repo root as .tituskirch-skills.json. Absent → skills behave on detection/native defaults only. Resolution per setting: config → native → built-in default.",
+  "description": "Optional, committed config shared by the TitusKirch skills (atomic-commit, pull-request, issue, release, merge-deps, prune-branches, work-issue, work-queue, write-docs; update-deps and handoff read shared keys only). Place at the repo root as .tituskirch-skills.json. Absent → skills behave on detection/native defaults only. Resolution per setting: config → native → built-in default.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -10,26 +10,274 @@
       "type": "string",
       "description": "Optional pointer to this schema for editor validation."
     },
+    "forge": {
+      "type": "string",
+      "enum": ["github"],
+      "default": "github",
+      "description": "Code forge for the forge-bound skills (pull-request, release, merge-deps) — where PRs and releases live. v1 supports only github; extend additively when a second forge (e.g. gitlab) docks. This is the single home for the forge axis; the issue tracker is a separate axis (issue.tracker / work.tracker)."
+    },
     "language": {
       "$ref": "#/$defs/language",
       "description": "Shared default message/title/body language for all skills. Overridable per skill section."
     },
+    "verify": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "The command this repo runs to check itself (tests / lint / build) — a repo-level fact, shared by every skill that needs to know the repo still passes. work-implement runs it before pushing, update-deps after updating, merge-deps against a dependency PR's own head (overridable via mergeDeps.verify). null or absent → each skill detects it from the repo. It lives at the root, not inside a skill section, so disabling a skill never withdraws it."
+    },
+    "trustedBots": {
+      "$ref": "#/$defs/trustedBots",
+      "description": "Allowlist of automated authors (apps and bots) the third-party-reading skills may treat as authoritative — a repo-level trust fact, empty by default. Lives at the root, not in a skill section, because several skills share it and it must not be withdrawn by disabling one of them."
+    },
     "commit": {
+      "description": "atomic-commit settings, or false to disable the atomic-commit skill for the repo.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/commitShape"
+        },
+        {
+          "const": false
+        }
+      ]
+    },
+    "pr": {
+      "description": "pull-request settings, or false to disable the pull-request skill for the repo.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/prShape"
+        },
+        {
+          "const": false
+        }
+      ]
+    },
+    "release": {
+      "description": "release skill settings, or false to disable the release skill for the repo. Drives release-please; the release tool itself is detected from the repo, never configured here.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/releaseShape"
+        },
+        {
+          "const": false
+        }
+      ]
+    },
+    "mergeDeps": {
+      "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since mergeDeps.merge defaults to false. Named mergeDeps (not deps) to disambiguate against the separate update-deps skill: this section is only ever about merging the Dependabot PR queue. Scope is fixed to pull requests authored by app/dependabot; that is a hard constraint of the skill and deliberately not configurable.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/mergeDepsShape"
+        },
+        {
+          "const": false
+        }
+      ]
+    },
+    "pruneBranches": {
+      "description": "prune-branches skill settings, or false to disable the prune-branches skill for the repo. Absent is not disabled — it means the built-in defaults, since the skill deletes nothing without an explicit per-run confirmation. Scope is fixed to the integration branch's own remote, and the built-in protected set is fixed too; pruneBranches.protect only ever adds to it.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/pruneBranchesShape"
+        },
+        {
+          "const": false
+        }
+      ]
+    },
+    "issue": {
+      "description": "issue skill settings, or false to disable the issue skill for the repo.",
+      "oneOf": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/issueShape"
+            },
+            {
+              "if": {
+                "properties": {
+                  "tracker": {
+                    "const": "linear"
+                  }
+                },
+                "required": ["tracker"]
+              },
+              "then": {
+                "required": ["linear"],
+                "properties": {
+                  "linear": {
+                    "required": ["team"]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "const": false
+        }
+      ]
+    },
+    "docs": {
+      "description": "write-docs settings, or false to opt the repo out of docs entirely.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/docsShape"
+        },
+        {
+          "const": false
+        }
+      ]
+    },
+    "work": {
+      "description": "work-issue / work-queue settings, or false to disable both skills for the repo.",
+      "oneOf": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/workShape"
+            },
+            {
+              "if": {
+                "properties": {
+                  "tracker": {
+                    "const": "linear"
+                  }
+                },
+                "required": ["tracker"]
+              },
+              "then": {
+                "required": ["tracker", "linear", "labels"],
+                "properties": {
+                  "linear": {
+                    "required": ["team", "statuses"]
+                  },
+                  "labels": {
+                    "required": ["repo"]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "const": false
+        }
+      ]
+    },
+    "profiles": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/profile"
+      },
+      "description": "Named execution-context overlays. Selected by the TITUSKIRCH_SKILLS_PROFILE environment variable, falling back to \"ci\" when CI is set to a truthy value, and to no profile otherwise. The selected profile is deep-merged onto the base config and the profiles key is dropped from the result: objects merge recursively, arrays and scalars are replaced rather than concatenated, and an explicit null sets null rather than deleting a key. An unknown or unset profile name resolves to the base config unchanged. Profiles do not nest."
+    }
+  },
+  "$defs": {
+    "instructions": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Free-text, repo-wide guidance appended to a skill's prompt (committed, so it applies for every agent). Additive preference only: it steers wording and emphasis but never overrides hard constraints — commitlint rules, schema values, forge/tracker rules, templates, or the skill's built-in guardrails."
+    },
+    "labelOrOff": {
+      "description": "A label name, or false to switch the mechanic off.",
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "const": false
+        }
+      ]
+    },
+    "trustedBots": {
+      "type": "array",
+      "default": [],
+      "uniqueItems": true,
+      "description": "Allowlist of automated authors (apps and bots) whose third-party text the skills that read it may treat as authoritative — empty by default, so no bot is trusted until a repo names it, the way merge-deps names app/dependabot. A human author is never listed here (repo write/maintain/admin permission is checked live instead); this list exists because an app's write access is not readable with a normal token. On Linear an OAuth app is the equivalent case and belongs here too, recognised by its @oauthapp.linear.app email. Read by work-implement, work-review, handoff, merge-deps and issue; the queue, update-deps and release skills read it in their reduced form.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "login"],
+        "properties": {
+          "id": {
+            "type": ["integer", "string"],
+            "description": "The author's immutable account id — what the match is actually made on. On GitHub this is user.id (an integer, present for humans and bots alike) or the app id from performed_via_github_app. Immutable across renames, unlike the login, which is why it is the identifier that matters."
+          },
+          "login": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The author's login/handle (e.g. \"dependabot[bot]\") — present so the list is human-readable, not used for matching. A login is reusable once an account is renamed or deleted, so a login that disagrees with its id is the rename signal: report it, never silently trust it."
+          }
+        }
+      }
+    },
+    "language": {
+      "description": "A language code or name (e.g. \"en\", \"de\", \"fr\", \"pt-BR\"), or \"match\" to mirror the repo/source language. A scalar applies to both title and body; the object form sets them separately.",
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "languageScalar": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A language code or name (e.g. \"en\", \"de\", \"pt-BR\"), or \"match\" to mirror the repo/source language. Scalar only — no title/body split (used where the artifact has a single body, e.g. commit messages)."
+    },
+    "titleConvention": {
       "type": "object",
       "additionalProperties": false,
-      "description": "atomic-commit settings.",
+      "description": "Title style. The referencing section sets the default (conventional for pr, plain for issue).",
+      "properties": {
+        "convention": {
+          "type": "string",
+          "enum": ["conventional", "plain"],
+          "description": "conventional (type: subject) or plain."
+        }
+      }
+    },
+    "commitShape": {
+      "description": "Shape of the commit section: properties and types only, with no required keys and no cross-key constraints. Referenced twice — by the root section, which composes it with its constraints, and by a profile, where a fragment must stay valid on its own. Never referenced directly by a config.",
+      "type": "object",
+      "additionalProperties": false,
       "properties": {
         "language": {
-          "type": "string",
-          "description": "Overrides the root language for commit messages (a language code/name, or \"match\")."
+          "$ref": "#/$defs/languageScalar",
+          "description": "Overrides the root language for commit messages (a language code/name, or \"match\"). Commits carry no title/body split, so this is a scalar only."
         },
         "scopes": {
           "enum": [true, false, "auto"],
+          "default": "auto",
           "description": "Force Conventional-Commit scope usage: true = always, false = never, \"auto\" = detect from history/commitlint. Default: \"auto\". A commitlint scope-enum / scope-empty rule still wins (hard constraint)."
         },
         "scopeVocab": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true,
           "description": "Preferred scope vocabulary, unioned with scopes detected from the git log; filtered against a commitlint scope-enum when one exists. Use when the intended scopes (e.g. monorepo packages or not-yet-committed areas) aren't all in the history yet."
         },
         "instructions": {
@@ -38,276 +286,334 @@
         }
       }
     },
-    "pr": {
-      "description": "pull-request settings, or false to disable the pull-request skill for the repo.",
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "backend": {
-              "type": "string",
-              "enum": ["github"],
-              "description": "Platform. v1 supports only github; the slot exists for a later platform-neutral rename."
-            },
-            "base": {
-              "type": "string",
-              "description": "PR base branch. Overrides the GitHub default branch (e.g. a feature → dev flow)."
-            },
-            "title": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "convention": {
-                  "type": "string",
-                  "enum": ["conventional", "plain"],
-                  "description": "PR title style. Default: conventional."
-                }
-              }
-            },
-            "language": {
-              "$ref": "#/$defs/language",
-              "description": "Overrides the root language for PR title/body."
-            },
-            "instructions": {
-              "$ref": "#/$defs/instructions",
-              "description": "Free-text guidance for the PR title/body. Additive preference only — never overrides the template, detection, or the skill's guardrails."
-            }
-          }
-        },
-        { "const": false }
-      ]
-    },
-    "release": {
-      "description": "release skill settings, or false to disable the release skill for the repo. Drives release-please; the release tool itself is detected from the repo, never configured here.",
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "backend": {
-              "type": "string",
-              "enum": ["github"],
-              "description": "Forge. v1 supports only github; the slot exists for a later platform-neutral rename (mirrors pr.backend)."
-            },
-            "promote": {
-              "enum": [false, "auto", "create"],
-              "description": "Who opens a promotion PR (for each head → base edge of the chain). false = release-only, never promote; promotion is opt-in and this is the default. \"auto\" = automation already opens it, so the skill only finds, undrafts and merges it and never creates one. \"create\" = no such automation, the skill may open it (the only PR it ever opens, in any mode). Default: false."
-            },
-            "stages": {
-              "type": "array",
-              "minItems": 1,
-              "items": { "type": "string" },
-              "description": "Ordered promotion chain: lowest integration stage first, release branch last (where release-please runs). Each consecutive pair is a promotion edge — [\"dev\",\"staging\",\"main\"] is two edges (dev → staging, staging → main). The canonical N-stage form of head/base: when present it wins over both; when absent the chain is [head, base]. A single element [\"main\"] means the release is cut directly on base with no promotion. Branches must be distinct. Default: absent (falls back to head/base)."
-            },
-            "base": {
-              "type": "string",
-              "description": "Release branch, where releases are cut — the last element of stages when that is set. Default: the repo's default branch."
-            },
-            "head": {
-              "type": "string",
-              "description": "Integration branch promoted onto base — the first element of stages when that is set, and ignored when it is. Default: pr.base, else the repo's default branch."
-            },
-            "timeout": {
-              "type": "integer",
-              "minimum": 1,
-              "description": "Seconds bounding each wait (the release PR appearing, checks finishing). Default: 600."
-            }
-          }
-        },
-        { "const": false }
-      ]
-    },
-    "deps": {
-      "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since deps.merge defaults to false. Scope is fixed to pull requests authored by app/dependabot; that is a hard constraint of the skill and deliberately not configurable.",
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "backend": {
-              "type": "string",
-              "enum": ["github"],
-              "description": "Forge. v1 supports only github; the slot exists for a later platform-neutral rename (mirrors pr.backend)."
-            },
-            "merge": {
-              "enum": [false, "patch", "grouped", "all"],
-              "description": "Ceiling on what may be merged, once the human confirms; a permission ladder, narrowest first. false = triage and report only, never comment or merge; merging is opt-in and this is the default. \"patch\" = patch-level updates only. \"grouped\" = Dependabot's grouped minor+patch PRs, plus everything \"patch\" allows. \"all\" = nothing excluded by mode, majors included. A mode is a ceiling, never a trigger: every PR must still clear assessment and confirmation. Default: false."
-            },
-            "verify": {
-              "type": "string",
-              "description": "Command run against the PR's own head before merging, in a throwaway worktree. The primary safety gate, not a fallback: a Dependabot PR into an integration branch often triggers no relevant CI at all, and an empty check list is never read as green. Default: work.verify, else nothing."
-            },
-            "cap": {
-              "type": "integer",
-              "minimum": 1,
-              "description": "Max PRs merged per run. Default: 5."
-            }
-          }
-        },
-        { "const": false }
-      ]
-    },
-    "issue": {
-      "description": "issue skill settings, or false to disable the issue skill for the repo.",
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "backend": {
-              "type": "string",
-              "enum": ["github", "linear"],
-              "description": "Active issue backend. Set by the guided setup; never guessed silently."
-            },
-            "language": {
-              "$ref": "#/$defs/language",
-              "description": "Overrides the root language for issue title/body."
-            },
-            "title": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "convention": {
-                  "type": "string",
-                  "enum": ["conventional", "plain"],
-                  "description": "Issue title style. Default: plain (most trackers)."
-                }
-              }
-            },
-            "linear": {
-              "type": "object",
-              "additionalProperties": false,
-              "description": "Linear defaults (used when backend = linear).",
-              "properties": {
-                "team": {
-                  "type": "string",
-                  "description": "Required to create on Linear. Human name/key (e.g. \"ENG\"); resolved to the team id via the catalog cache."
-                },
-                "project": {
-                  "type": ["string", "null"],
-                  "description": "Default project."
-                },
-                "priority": {
-                  "enum": ["none", "low", "medium", "high", "urgent", null],
-                  "description": "Default priority."
-                },
-                "defaultState": {
-                  "type": ["string", "null"],
-                  "description": "Default workflow state on create."
-                }
-              }
-            },
-            "labels": {
-              "type": "object",
-              "additionalProperties": false,
-              "description": "Label handling.",
-              "properties": {
-                "exclude": {
-                  "type": "array",
-                  "items": { "type": "string" },
-                  "description": "Glob patterns (e.g. \"stack:*\", \"autorelease:*\") for catalog labels the agent must never auto-apply."
-                }
-              }
-            },
-            "github": {
-              "type": "object",
-              "additionalProperties": false,
-              "description": "GitHub issue defaults (used when backend = github).",
-              "properties": {
-                "template": {
-                  "type": ["string", "null"],
-                  "description": "Default issue template path under .github/ISSUE_TEMPLATE/."
-                }
-              }
-            },
-            "instructions": {
-              "$ref": "#/$defs/instructions",
-              "description": "Free-text guidance for the issue title/body. Additive preference only — never overrides the backend rules, template, or the skill's guardrails."
-            }
-          }
-        },
-        { "const": false }
-      ]
-    },
-    "docs": {
-      "description": "write-docs settings, or false to opt the repo out of docs entirely.",
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "preset": {
-              "type": "string",
-              "enum": ["library", "cli", "app", "infra", "ai-tool"],
-              "description": "Project type — selects which sections beyond the core (getting-started, reference) to scaffold. Falls back to repo detection, then asks."
-            },
-            "language": {
-              "$ref": "#/$defs/language",
-              "description": "Overrides the root language for generated docs."
-            }
-          }
-        },
-        { "const": false }
-      ]
-    },
-    "work": {
+    "prShape": {
+      "description": "Shape of the pr section: properties and types only, with no required keys and no cross-key constraints. Referenced twice — by the root section, which composes it with its constraints, and by a profile, where a fragment must stay valid on its own. Never referenced directly by a config.",
       "type": "object",
       "additionalProperties": false,
-      "description": "work-issue / work-queue settings.",
       "properties": {
-        "backend": {
+        "base": {
           "type": "string",
-          "enum": ["github", "linear"],
-          "description": "Active backend for working issues. Falls back to issue.backend."
+          "minLength": 1,
+          "description": "PR base branch. Overrides the GitHub default branch (e.g. a feature → dev flow)."
+        },
+        "title": {
+          "$ref": "#/$defs/titleConvention",
+          "default": {
+            "convention": "conventional"
+          },
+          "description": "PR title style. Default: conventional."
+        },
+        "language": {
+          "$ref": "#/$defs/language",
+          "description": "Overrides the root language for PR title/body."
+        },
+        "instructions": {
+          "$ref": "#/$defs/instructions",
+          "description": "Free-text guidance for the PR title/body. Additive preference only — never overrides the template, detection, or the skill's guardrails."
+        }
+      }
+    },
+    "releaseShape": {
+      "description": "Shape of the release section: properties and types only, with no required keys and no cross-key constraints. Referenced twice — by the root section, which composes it with its constraints, and by a profile, where a fragment must stay valid on its own. Never referenced directly by a config.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "promote": {
+          "enum": [false, "auto", "create"],
+          "default": false,
+          "description": "Who opens a promotion PR (for each head → base edge of the chain). false = release-only, never promote; promotion is opt-in and this is the default. \"auto\" = automation already opens it, so the skill only finds, undrafts and merges it and never creates one. \"create\" = no such automation, the skill may open it (the only PR it ever opens, in any mode). Default: false."
+        },
+        "stages": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Ordered promotion chain: lowest integration stage first, release branch last (where release-please runs). Each consecutive pair is a promotion edge — [\"dev\",\"staging\",\"main\"] is two edges (dev → staging, staging → main). The canonical N-stage form of head/base: when present it wins over both; when absent the chain is [head, base]. A single element [\"main\"] means the release is cut directly on base with no promotion. Branches must be distinct (enforced). Default: absent (falls back to head/base)."
+        },
+        "base": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Release branch, where releases are cut — the last element of stages when that is set. Default: the repo's default branch."
+        },
+        "head": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Integration branch promoted onto base — the first element of stages when that is set, and ignored when it is. Default: pr.base, else the repo's default branch."
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 600,
+          "description": "Seconds bounding each wait (the release PR appearing, checks finishing). Default: 600."
+        }
+      }
+    },
+    "mergeDepsShape": {
+      "description": "Shape of the mergeDeps section: properties and types only, with no required keys and no cross-key constraints. Referenced twice — by the root section, which composes it with its constraints, and by a profile, where a fragment must stay valid on its own. Never referenced directly by a config.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "merge": {
+          "enum": [false, "patch", "grouped", "all"],
+          "default": false,
+          "description": "Ceiling on what may be merged; a permission ladder, narrowest first. false = triage and report only, never comment or merge; merging is opt-in and this is the default. \"patch\" = patch-level updates only. \"grouped\" = Dependabot's grouped minor+patch PRs, plus everything \"patch\" allows. \"all\" = nothing excluded by mode, majors included. A mode is a ceiling, never a trigger: every PR must still clear assessment, and mergeDeps.confirm decides which then wait for a human. Default: false."
+        },
+        "confirm": {
+          "enum": ["major", "always"],
+          "default": "major",
+          "description": "Once merging is opted in via merge, which merges still wait for an explicit per-PR confirmation. \"major\" (default) = only major / semver-breaking bumps; the low-risk tier the mode allows (patch, minor, grouped minor+patch) merges on the standing opt-in once it clears assessment, so an opted-in repo is not asked twice for routine updates. \"always\" = every merge waits, the strict prior behaviour. Independent of merge: merge is the ceiling on what may merge at all, confirm is which of those still need a human yes. The plan is always shown first regardless, a major never auto-merges, and confirm can neither raise the ceiling nor lower a gate — an unknown check list, a failed verify or an undeterminable update type still holds the PR. Default: \"major\"."
+        },
+        "verify": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Command run against the PR's own head before merging, in a throwaway worktree. The primary safety gate, not a fallback: a Dependabot PR into an integration branch often triggers no relevant CI at all, and an empty check list is never read as green. Default: the root verify key, else nothing."
         },
         "cap": {
           "type": "integer",
           "minimum": 1,
+          "default": 5,
+          "description": "Max PRs merged per run. Default: 5."
+        }
+      }
+    },
+    "pruneBranchesShape": {
+      "description": "Shape of the pruneBranches section: properties and types only, with no required keys and no cross-key constraints. Referenced twice — by the root section, which composes it with its constraints, and by a profile, where a fragment must stay valid on its own. Never referenced directly by a config.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "age": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 90,
+          "description": "Days without a commit after which a branch counts as stale by age — the skill's fourth category, measured from the tip commit's committer date. That category is always listed and never preselected, so this threshold widens or narrows what is reported, never what is deleted unasked. Default: 90."
+        },
+        "protect": {
+          "type": "array",
+          "default": [],
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Extra protected-branch glob patterns (e.g. \"release/*\", \"legacy-*\"), matched against a branch's short name on both the local and the remote side. Additive only, the way issue.labels.exclude adds to a label catalog: it is appended to the built-in protected set — the forge's default branch, the integration branch (pr.base), any branch checked out in a worktree, any branch the forge itself marks protected, the head of an open pull request, and the name fallback main/master/dev/develop/stage/staging/prod/production/next — and can never shrink it, so no config value can unprotect the default branch. release/* is deliberately absent from the built-in set (it is the shape of release-please's own throwaway branches), which is what this key is for in a repo that genuinely ships from it. Default: []."
+        }
+      }
+    },
+    "issueShape": {
+      "description": "Shape of the issue section: properties and types only, with no required keys and no cross-key constraints. Referenced twice — by the root section, which composes it with its constraints, and by a profile, where a fragment must stay valid on its own. Never referenced directly by a config.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tracker": {
+          "type": "string",
+          "enum": ["github", "linear"],
+          "description": "Active issue tracker (github = GitHub Issues, linear = Linear). Set by the guided setup; never guessed silently. Distinct from the forge axis (root forge), which stays GitHub even when the tracker is Linear."
+        },
+        "language": {
+          "$ref": "#/$defs/language",
+          "description": "Overrides the root language for issue title/body."
+        },
+        "title": {
+          "$ref": "#/$defs/titleConvention",
+          "default": {
+            "convention": "plain"
+          },
+          "description": "Issue title style. Default: plain (most trackers)."
+        },
+        "linear": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Linear defaults (used when tracker = linear).",
+          "properties": {
+            "team": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Required to create on Linear. Human name/key (e.g. \"ENG\"); resolved to the team id via the catalog cache."
+            },
+            "project": {
+              "type": ["string", "null"],
+              "description": "Default project."
+            },
+            "priority": {
+              "enum": ["none", "low", "medium", "high", "urgent", null],
+              "description": "Default priority, seeding Linear's native priority field on the create call. Named here, numeric there: the call takes 0 none, 1 urgent, 2 high, 3 medium, 4 low, so the word is mapped across and the scale runs opposite to it. Absent or none sends nothing (Linear stores 0 either way). Priority is a field on Linear, never a label: the priority: label group is a GitHub convention (see work.priorityLabels) and is not reproduced on Linear, so its absence from a Linear label catalog is not a finding."
+            },
+            "defaultState": {
+              "type": ["string", "null"],
+              "description": "Default workflow state on create."
+            }
+          }
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Label handling.",
+          "properties": {
+            "exclude": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "uniqueItems": true,
+              "description": "Glob patterns (e.g. \"stack:*\", \"autorelease:*\") for catalog labels the agent must never auto-apply."
+            }
+          }
+        },
+        "template": {
+          "type": ["string", "null"],
+          "description": "Forces one issue template, as a repo-relative path to the file under .github/ISSUE_TEMPLATE/ (a .md template or a .yml form). Unset is the normal case and does not mean \"no template\": the skill then chooses per issue by reading the templates' own description (.yml) / about (.md), so this key exists to override that choice, not to supply a default for it. An explicit null means the same thing — no forced template — but it is terminal: it does not fall back to the deprecated issue.github.template, so a profile can clear a forced template without resurrecting the old key. Only an absent issue.template reaches that fallback, so presence must be tested before the value is read. Applies on both trackers: a committed template states how the repo writes issues, which the tracker receiving them does not change, so the same files are read on Linear as on GitHub. The skill reads the file and composes the body itself, so this is a path and not a template name: `gh issue create --template` takes the name: from a template's frontmatter, is rejected alongside --body/--body-file, and cannot see .yml forms at all."
+        },
+        "github": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "GitHub issue defaults (used when tracker = github).",
+          "properties": {
+            "template": {
+              "type": ["string", "null"],
+              "deprecated": true,
+              "description": "Deprecated — use issue.template, which applies on both trackers. Still read as a fallback when issue.template is absent, so existing configs keep working; setup writes the new key. An explicit null on issue.template means \"no forced template\" and ends the lookup — it does not reach this key."
+            }
+          }
+        },
+        "instructions": {
+          "$ref": "#/$defs/instructions",
+          "description": "Free-text guidance for the issue title/body. Additive preference only — never overrides the tracker rules, template, or the skill's guardrails."
+        }
+      }
+    },
+    "docsShape": {
+      "description": "Shape of the docs section: properties and types only, with no required keys and no cross-key constraints. Referenced twice — by the root section, which composes it with its constraints, and by a profile, where a fragment must stay valid on its own. Never referenced directly by a config.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "preset": {
+          "type": "string",
+          "enum": ["library", "cli", "app", "infra", "ai-tool"],
+          "description": "Project type — selects which sections beyond the core (getting-started, reference) to scaffold. Falls back to repo detection, then asks."
+        },
+        "language": {
+          "$ref": "#/$defs/language",
+          "description": "Overrides the root language for generated docs."
+        },
+        "instructions": {
+          "$ref": "#/$defs/instructions",
+          "description": "Free-text guidance for generated docs (tone, house conventions). Additive preference only — never overrides the docs format or the skill's guardrails."
+        }
+      }
+    },
+    "workShape": {
+      "description": "Shape of the work section: properties and types only, with no required keys and no cross-key constraints. Referenced twice — by the root section, which composes it with its constraints, and by a profile, where a fragment must stay valid on its own. Never referenced directly by a config.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tracker": {
+          "type": "string",
+          "enum": ["github", "linear"],
+          "description": "Active tracker for working issues (github = GitHub Issues, linear = Linear). Falls back to issue.tracker."
+        },
+        "cap": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10,
           "description": "Max issues a single drain works (mandatory bound). Default: 10."
         },
         "branch": {
-          "type": "string",
+          "oneOf": [
+            {
+              "const": "worktree"
+            },
+            {
+              "type": "string",
+              "pattern": "^branch:.+"
+            }
+          ],
+          "default": "worktree",
           "description": "Where work lands: \"worktree\" (own branch + PR per issue) or \"branch:<name>\" (all issues on one shared branch, e.g. \"branch:dev\"). Default: worktree."
         },
         "parallel": {
           "type": "boolean",
+          "default": false,
           "description": "Run workers concurrently in isolated git worktrees instead of sequentially. Independent of branch. Default: false."
-        },
-        "verify": {
-          "type": ["string", "null"],
-          "description": "Check command run before opening the PR (tests/lint/build). null → detect from the repo."
         },
         "labels": {
           "type": "object",
           "additionalProperties": false,
           "description": "Lifecycle label names. Each is a label string, or false to disable that mechanic.",
           "properties": {
-            "ready": { "$ref": "#/$defs/labelOrOff" },
-            "working": { "$ref": "#/$defs/labelOrOff" },
-            "review": { "$ref": "#/$defs/labelOrOff" },
-            "done": { "$ref": "#/$defs/labelOrOff" },
-            "blocked": { "$ref": "#/$defs/labelOrOff" },
-            "repo": { "$ref": "#/$defs/labelOrOff" }
+            "ready": {
+              "$ref": "#/$defs/labelOrOff"
+            },
+            "working": {
+              "$ref": "#/$defs/labelOrOff"
+            },
+            "reviewRequested": {
+              "$ref": "#/$defs/labelOrOff",
+              "description": "The \"pushed, awaiting AI review\" hand-off label — the review queue's input, written by the implement loop and consumed by the review loop. Default: \"ai: review requested\", which reads symmetrically with changesRequested. A repo whose tracker labels this state differently pins its own string here; the label must already exist on the tracker before a skill copy adopts it, because a label query answers a missing label with an empty result rather than an error."
+            },
+            "reviewing": {
+              "$ref": "#/$defs/labelOrOff",
+              "description": "The review loop's lease label — the tracker-global claim ai: working is for the implement loop, giving cross-clone mutual exclusion a checkout-local lock cannot. Opt-in: unlike the other labels it defaults to false (off), so a repo that never sets it keeps today's lock-only behaviour, and only a repo that sets it to a string (e.g. \"ai: reviewing\") gains the lease. A reviewing orphan always reclaims to reviewRequested (a review pushes no artifact, so there is no crash-before/after-push split), gated by the reconcile's assignee/age guard."
+            },
+            "changesRequested": {
+              "$ref": "#/$defs/labelOrOff"
+            },
+            "needsHuman": {
+              "$ref": "#/$defs/labelOrOff"
+            },
+            "done": {
+              "$ref": "#/$defs/labelOrOff"
+            },
+            "blocked": {
+              "$ref": "#/$defs/labelOrOff"
+            },
+            "repo": {
+              "$ref": "#/$defs/labelOrOff"
+            }
+          }
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "AI-review-gate options (work-review / work-review-queue). Absent → defaults.",
+          "properties": {
+            "maxRounds": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 3,
+              "description": "Max AI-review rounds before the reviewer escalates to needsHuman instead of changesRequested. The round count is derived from the issue's `reviewRequested` label-transition events, not a stored counter. Default: 3."
+            }
           }
         },
         "priorityLabels": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true,
           "description": "GitHub priority labels, highest first (e.g. [\"urgent\", \"high\", \"medium\", \"low\"]). Linear uses its native priority field and ignores these."
         },
         "linear": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Linear options (used when backend = linear).",
+          "description": "Linear options (used when tracker = linear).",
           "properties": {
             "team": {
               "type": "string",
+              "minLength": 1,
               "description": "Team name/key/id, resolved via the catalog cache. Falls back to issue.linear.team."
             },
             "statuses": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "uniqueItems": true,
               "description": "Workflow states that count as startable (e.g. [\"Todo\", \"In Progress\"])."
             },
             "states": {
@@ -317,18 +623,32 @@
               "properties": {
                 "ready": {
                   "type": "string",
+                  "minLength": 1,
                   "description": "State a human parks a startable issue in; the anchor for statuses. Read as documentation, never written by the worker."
                 },
                 "working": {
                   "type": "string",
+                  "minLength": 1,
                   "description": "Set on the lease (ready to working), e.g. \"In Progress\"."
                 },
-                "review": {
+                "reviewRequested": {
                   "type": "string",
-                  "description": "Set when the PR is opened, e.g. \"In Review\"."
+                  "minLength": 1,
+                  "description": "Set when the work is pushed and awaits AI review, e.g. \"In Review\"."
+                },
+                "changesRequested": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Set when AI review requests changes and hands the issue back to the implement loop, e.g. \"Changes Requested\"."
+                },
+                "needsHuman": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Set when the reviewer escalates to a human, e.g. \"Needs Human\"."
                 },
                 "done": {
                   "type": "string",
+                  "minLength": 1,
                   "description": "Terminal state, e.g. \"Done\". Normally set by Linear's GitHub integration on merge; written by the worker only on a branch target with no PR."
                 }
               }
@@ -336,30 +656,121 @@
           }
         }
       }
-    }
-  },
-  "$defs": {
-    "instructions": {
-      "type": "string",
-      "description": "Free-text, repo-wide guidance appended to a skill's prompt (committed, so it applies for every agent). Additive preference only: it steers wording and emphasis but never overrides hard constraints — commitlint rules, schema values, backend rules, templates, or the skill's built-in guardrails."
     },
-    "labelOrOff": {
-      "description": "A label name, or false to switch the mechanic off.",
-      "oneOf": [{ "type": "string" }, { "const": false }]
-    },
-    "language": {
-      "description": "A language code or name (e.g. \"en\", \"de\", \"fr\", \"pt-BR\"), or \"match\" to mirror the repo/source language. A scalar applies to both title and body; the object form sets them separately.",
-      "oneOf": [
-        { "type": "string" },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "title": { "type": "string" },
-            "body": { "type": "string" }
-          }
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "description": "A partial config, deep-merged onto the base when its profile is selected. Sections are referenced by shape, not by their constrained form: a fragment such as {\"tracker\":\"linear\"} must be valid on its own, while the constraints (a linear tracker requiring team and labels) are satisfied by the merged result. Setting a section to false disables that skill for the profile.",
+      "properties": {
+        "forge": {
+          "type": "string",
+          "enum": ["github"],
+          "default": "github",
+          "description": "Code forge for the forge-bound skills (pull-request, release, merge-deps) — where PRs and releases live. v1 supports only github; extend additively when a second forge (e.g. gitlab) docks. This is the single home for the forge axis; the issue tracker is a separate axis (issue.tracker / work.tracker)."
+        },
+        "language": {
+          "$ref": "#/$defs/language",
+          "description": "Shared default message/title/body language for all skills. Overridable per skill section."
+        },
+        "verify": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "The command this repo runs to check itself (tests / lint / build) — a repo-level fact, shared by every skill that needs to know the repo still passes. work-implement runs it before pushing, update-deps after updating, merge-deps against a dependency PR's own head (overridable via mergeDeps.verify). null or absent → each skill detects it from the repo. It lives at the root, not inside a skill section, so disabling a skill never withdraws it."
+        },
+        "trustedBots": {
+          "$ref": "#/$defs/trustedBots",
+          "description": "Allowlist of automated authors the third-party-reading skills may treat as authoritative, overlaid for this execution context. Replaces the base array wholesale (arrays are replaced, not concatenated, on profile merge)."
+        },
+        "commit": {
+          "description": "atomic-commit settings, or false to disable the atomic-commit skill for the repo.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/commitShape"
+            },
+            {
+              "const": false
+            }
+          ]
+        },
+        "pr": {
+          "description": "pull-request settings, or false to disable the pull-request skill for the repo.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/prShape"
+            },
+            {
+              "const": false
+            }
+          ]
+        },
+        "release": {
+          "description": "release skill settings, or false to disable the release skill for the repo. Drives release-please; the release tool itself is detected from the repo, never configured here.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/releaseShape"
+            },
+            {
+              "const": false
+            }
+          ]
+        },
+        "mergeDeps": {
+          "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since mergeDeps.merge defaults to false. Named mergeDeps (not deps) to disambiguate against the separate update-deps skill: this section is only ever about merging the Dependabot PR queue. Scope is fixed to pull requests authored by app/dependabot; that is a hard constraint of the skill and deliberately not configurable.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/mergeDepsShape"
+            },
+            {
+              "const": false
+            }
+          ]
+        },
+        "pruneBranches": {
+          "description": "prune-branches skill settings, or false to disable the prune-branches skill for the repo. Absent is not disabled — it means the built-in defaults, since the skill deletes nothing without an explicit per-run confirmation. Scope is fixed to the integration branch's own remote, and the built-in protected set is fixed too; pruneBranches.protect only ever adds to it.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/pruneBranchesShape"
+            },
+            {
+              "const": false
+            }
+          ]
+        },
+        "issue": {
+          "description": "issue skill settings, or false to disable the issue skill for the repo.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/issueShape"
+            },
+            {
+              "const": false
+            }
+          ]
+        },
+        "docs": {
+          "description": "write-docs settings, or false to opt the repo out of docs entirely.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/docsShape"
+            },
+            {
+              "const": false
+            }
+          ]
+        },
+        "work": {
+          "description": "work-issue / work-queue settings, or false to disable both skills for the repo.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/workShape"
+            },
+            {
+              "const": false
+            }
+          ]
         }
-      ]
+      }
     }
   }
 }

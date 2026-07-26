@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    // Node runs these files by erasing the types — nothing is ever emitted, and
+    // erasableSyntaxOnly makes that a compile error rather than a runtime surprise:
+    // an enum or a parameter property would type-check but fail to run.
+    "noEmit": true,
+    "erasableSyntaxOnly": true,
+
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "esnext",
+    "lib": ["esnext"],
+    "types": ["node"],
+
+    // The imports carry the .ts extension because that is what Node executes.
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "skipLibCheck": true
+  },
+  "include": ["scripts/**/*.ts", "test/**/*.ts"]
+}
