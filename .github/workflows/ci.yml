@@ -27,7 +27,7 @@ jobs:
 
       - uses: pnpm/action-setup@ac6db6d3c1f721f886538a378a2d73e85697340a # v6
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
