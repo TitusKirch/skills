@@ -52,10 +52,12 @@ Which sections to scaffold beyond the core, by project type. Core (`getting-star
 
 | Preset    | Adds                               |
 | :-------- | :--------------------------------- |
-| `library` | `guides`                           |
+| `package` | `guides`                           |
 | `cli`     | `guides`                           |
 | `app`     | `concepts`, `guides`, `operations` |
 | `infra`   | `concepts`, `operations`           |
+
+`package` is **anything published that carries its own reference** — an npm library, a Composer package, a Nuxt module, an agent/skill set. What such a repo ships travels without `docs/`, so the tree holds only what spans the whole set; the per-artifact reference stays with the artifact. It is deliberately not named `library`: the case is the publishing, not the language or the format.
 
 Add `contributing`/`conventions` when the repo accepts external contributions or carries non-obvious project rules. Presets are a starting point, not a cage — sections can be added or dropped per use case. `adr` belongs to no preset — the section is created when the first ADR is written, never scaffolded empty.
 
@@ -173,7 +175,7 @@ Read the whole tree fresh every run — it is live state and is **never cached**
 
 | Key                 | Effect                                                                                                                                               |
 | :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs.preset`       | `library` / `cli` / `app` / `infra` — which sections to scaffold; falls back to repo detection, then asks                                            |
+| `docs.preset`       | `package` / `cli` / `app` / `infra` — which sections to scaffold; falls back to repo detection, then asks                                            |
 | `docs.language`     | docs language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`, then the existing docs/repo language, then `en` |
 | `docs.instructions` | free-text guidance for generated docs (tone, house conventions) — additive preference only, never overrides the docs format or guardrails            |
 
