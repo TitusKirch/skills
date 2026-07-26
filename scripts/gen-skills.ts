@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Single source of truth for the skill registry.
 // Discovers skills from the filesystem (skills/<category>/<name>/SKILL.md
-// frontmatter) and projects them into five artifacts: README.md's table, each
-// skills/<category>/README.md, .claude-plugin/plugin.json, skills.sh.json, and
-// the config contract mirrored into every skill that reads the config.
+// frontmatter) and projects them into six artifacts: README.md's table, each
+// skills/<category>/README.md, .claude-plugin/plugin.json, skills.sh.json, the
+// config contract mirrored into every skill that reads the config, and the
+// author-authority block mirrored into every skill that reads third-party text.
 //
 //   node scripts/gen-skills.ts           # rewrite whichever have drifted
 //   node scripts/gen-skills.ts --check   # exit 1 if any is stale (CI)
