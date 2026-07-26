@@ -16,7 +16,7 @@ allowed-tools:
 
 The TitusKirch **docs format** — one opinionated, stack-agnostic convention for a project's `docs/` tree, the same in every repo (including client projects). This skill owns the convention; the page mechanics live in [REFERENCE.md](REFERENCE.md), the skeletons in [`templates/`](templates/). Pages are plain Markdown with `title` + `description` frontmatter and numeric-prefixed paths — a clean tree any file-based docs generator can render, index, and feed to an LLM.
 
-**Opted out?** If the repo config sets `docs` to `false`, this skill is disabled for the repo — **stop immediately** (including the proactive trigger) and tell the user docs are turned off in `.tituskirch-skills.json`. An _absent_ `docs` block is **not** disabled — that falls back to defaults/detection. Check `.docs == false` on the resolved config before any job — and before indexing `.docs.*`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
+**Opted out?** If the repo config sets `docs` to `false`, this skill is **disabled** for the repo — **stop immediately** (including the proactive trigger) and tell the user docs are turned off in `.tituskirch-skills.json`. An _absent_ `docs` block is **not** disabled — that falls back to defaults/detection. Check `.docs == false` on the resolved config before any job — and before indexing `.docs.*`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
 ## Jobs — pick by repo state + intent
 
@@ -113,6 +113,6 @@ Desired-state, idempotent — like a `--fix` linter for the docs tree.
 - Section catalogue, core, presets, frontmatter contract, page types, status marker, ADR contract, reconcile rules, config keys: [REFERENCE.md](REFERENCE.md).
 - Page skeletons to copy: [`templates/`](templates/).
 
-## Gap report (final step)
+## Gap report (mandatory final step)
 
 If you used a section, page type, or preset not in [REFERENCE.md](REFERENCE.md), end the turn with a short note (`Gap report: section "{x}" — no catalogue entry; added ad hoc.`). Only report; don't edit REFERENCE.md yourself — the user folds gaps back in. A new _slug_ is a real gap only when it names a missing **type**; a **subject** section (`plugins`, `themes`, `integrations`) is not — route its content into the type sections (nested if it needs grouping) and report that instead. If everything matched: `Gap report: no gaps.`
