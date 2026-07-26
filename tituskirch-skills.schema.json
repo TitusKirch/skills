@@ -584,7 +584,7 @@
               "type": "integer",
               "minimum": 1,
               "default": 3,
-              "description": "Max AI-review rounds before the reviewer escalates to needsHuman instead of changesRequested. The round count is derived from the issue's `review` label-transition events, not a stored counter. Default: 3."
+              "description": "Max AI-review rounds before the reviewer escalates to needsHuman instead of changesRequested. The round count is derived from the issue's `reviewRequested` label-transition events, not a stored counter. Default: 3."
             }
           }
         },
