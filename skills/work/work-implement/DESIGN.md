@@ -1,6 +1,6 @@
 # work-implement / work-implement-queue — Design
 
-The decision record behind the work skills. The "why"; the [REFERENCE](REFERENCE.md) holds the "how". Captured from the design sessions so the rationale survives.
+The decision record behind the work skills. The "why"; `REFERENCE.md` holds the "how". Captured from the design sessions so the rationale survives.
 
 ## Core principle
 
@@ -19,7 +19,7 @@ The lifecycle is **symmetric**: each loop has a **waiting** state and an **in-fl
 
 ## Key decisions
 
-- **Concurrency is impossible by construction**, not locked — one live worker per tree, strict sequential `await`, plus a per-checkout single-flight lock (a specified path in the git common dir, acquired with an atomic `mkdir`, evicted by owner metadata rather than a raw age TTL — [the single-flight lock](REFERENCE.md#the-single-flight-lock)). Its mutual exclusion holds **within one checkout**, not across clones — a boundary stated plainly rather than papered over, with the [reconcile](REFERENCE.md#reconcile)'s assignee guard, not the lock, protecting a second clone's live work. Git's `index.lock` is only a backstop.
+- **Concurrency is impossible by construction**, not locked — one live worker per tree, strict sequential `await`, plus a per-checkout single-flight lock (a specified path in the git common dir, acquired with an atomic `mkdir`, evicted by owner metadata rather than a raw age TTL). Its mutual exclusion holds **within one checkout**, not across clones — a boundary stated plainly rather than papered over, with the reconcile's assignee guard, not the lock, protecting a second clone's live work. Git's `index.lock` is only a backstop.
 - **Lease before work** — flip `ready → working` + assign _before_ implementing. The race-breaker for two consumers grabbing one issue.
 - **The review loop leases too (`ai: reviewing`), mirroring `ai: working`.** The single-flight lock only proves no live worker holds an issue **in this checkout** — a second clone's worker holds its own lock, invisible here. The implement loop closes that gap with the `working` label plus the assignee guard; the review loop had the lock but no label, so two clones draining `work-review-queue` (CI and a laptop, say) both selected the same `reviewRequested` issues and reviewed them twice — and worse, the verdicts _compete_ (A sets `done`, B sets `changes requested`, last-write-wins). The fix is the same tracker-side claim: a `reviewing` lease both clones can see. **Justified by mutual exclusion, not crash recovery** — `working` earns its keep because there is a pushed artifact whose existence the reconcile queries; a review writes nothing, so a crash mid-review costs only tokens. **Opt-in** (`labels.reviewing` defaults to _off_): a single-clone setup has no second drain to exclude, so the lease stays off until a repo turns it on, leaving every existing adopter's behaviour unchanged. Rejected: **a cross-clone lock** — the lock lives in the git common dir and cannot observe another clone by construction; only a tracker-side label is visible to both.
 - **The label is operative for eligibility; the body governs scope.** Both are live and can disagree — a creation-time "not ready yet" note outlives the label a human flipped days later, and a run that trusts the older text hands back a decision the human already made. The label is the queue's contract and the deliberate act, so it decides _whether_ to work an issue; the body decides _what_ the work is. A contradiction is **surfaced as a warning**, never a silent self-block: flagging it lets the human fix the wrong side, whereas blocking on it buries a live decision under stale prose. Rejected: **arbitrating by timestamp** ("newer human act wins", via the tracker's timeline/history API) — an operative label never asks which side is newer, so the comparison costs an API call per issue to answer a question the rule does not pose, and re-opens as a race the thing the rule settles by construction.
@@ -39,7 +39,7 @@ The lifecycle is **symmetric**: each loop has a **waiting** state and an **in-fl
 
 ## Deferred (v2)
 
-- **Stacked branches for dependent issues (`worktree` mode)** — branch-off-parent, PR base retargeting and a revision cascade fight the stateless model; `worktree` leans on the `ready` gate instead. Only the `branch:<name>` half is implemented ([dependency ordering](REFERENCE.md#dependency-ordering)) — accumulation makes it pure ordering, with none of that machinery.
+- **Stacked branches for dependent issues (`worktree` mode)** — branch-off-parent, PR base retargeting and a revision cascade fight the stateless model; `worktree` leans on the `ready` gate instead. Only the `branch:<name>` half is implemented, as dependency ordering — accumulation makes it pure ordering, with none of that machinery.
 - **`branch` extensions** — `dev`/named-branch grammar is designed in (`branch:<name>`); richer targets later.
 - **Structured PR-feedback ingestion** (thread resolution, author trust, auto-detect) — only if conversational feedback proves insufficient.
 
