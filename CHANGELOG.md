@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.16.0](https://github.com/TitusKirch/skills/compare/v0.15.0...v0.16.0) (2026-07-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **write-docs:** docs.preset no longer accepts "library". A repo set to it renames the value to "package"; nothing else about the preset changes.
+* **write-docs:** docs.preset no longer accepts "ai-tool". A repo set to it must move to another preset — library for a published skill or agent set.
+
+### Features
+
+* **skills:** mirror the check-command contract into every gate-running skill ([f6c62f3](https://github.com/TitusKirch/skills/commit/f6c62f388f1c535a0d394851a30d9bcc04754c4f))
+* **skills:** mirror the single-flight lock spec into the work skills ([286e372](https://github.com/TitusKirch/skills/commit/286e372b10b5cf7f5d5efb20bf83df8722d72c5b))
+* **work-review:** establish green instead of inheriting it ([4e40927](https://github.com/TitusKirch/skills/commit/4e40927166aaefde417455163b5ef0567ac685f7))
+* **write-docs:** add a service preset ([10c0763](https://github.com/TitusKirch/skills/commit/10c076380deb08785398707ac5ae958c5686fc34)), closes [#122](https://github.com/TitusKirch/skills/issues/122)
+* **write-docs:** dissolve the preset core into the presets ([75e50b6](https://github.com/TitusKirch/skills/commit/75e50b65ca83d266f705ab8e035de93570570257)), closes [#123](https://github.com/TitusKirch/skills/issues/123)
+* **write-docs:** drop the ai-tool preset ([8c703e6](https://github.com/TitusKirch/skills/commit/8c703e68a63d4761e49ed23313c76e5b1d07a770)), closes [#120](https://github.com/TitusKirch/skills/issues/120)
+* **write-docs:** rename the library preset to package ([2574345](https://github.com/TitusKirch/skills/commit/2574345c220da730314f8ac61b3f2e83954fd158)), closes [#121](https://github.com/TitusKirch/skills/issues/121)
+* **write-readme:** state the guardrails the house canon expects ([ab2a72c](https://github.com/TitusKirch/skills/commit/ab2a72c5a1d5587d6544114ae13ed2b43747ba7c))
+
+
+### Bug Fixes
+
+* **ci:** assert the effective mergeDeps verify, not the explicit key ([f3c2e4f](https://github.com/TitusKirch/skills/commit/f3c2e4fe899a333c6d42c791db5e3b6da70941b5))
+* **ci:** install before verifying a dependency PR's head ([b860e31](https://github.com/TitusKirch/skills/commit/b860e3197f45666f9f79d1b56504ec899008b1b3))
+* **ci:** make the workflow reader fail loudly on what it cannot read ([e963b9f](https://github.com/TitusKirch/skills/commit/e963b9fc78fa422d8bf185bdc0b1d88ff5d86856))
+* **ci:** skip CHANGELOG.md in the lint-staged markdown task ([bcc496e](https://github.com/TitusKirch/skills/commit/bcc496e59d81a4d24462255253113babc2321977))
+* fail loudly when a SKILL.md cannot be read ([9382426](https://github.com/TitusKirch/skills/commit/93824264235b7ae96e659714a4bd07644e99b96d))
+* give skill discovery one definition ([5071953](https://github.com/TitusKirch/skills/commit/507195313eb2ea13eb676768d378731f574e795a))
+* name and link every supported client, not just Claude Code ([18c35c2](https://github.com/TitusKirch/skills/commit/18c35c2185807ac66a266e7d8d6be5aee9bfceb2))
+* **prune-branches:** stop writing the protection list twice ([ba2d038](https://github.com/TitusKirch/skills/commit/ba2d03809ced11257ea012b0662158678f095406))
+* **skills:** make the plan-only trigger vocabulary one vocabulary ([aa1e46a](https://github.com/TitusKirch/skills/commit/aa1e46af1752432fa35f4b5f0155a6d66ba089d4))
+* **work-implement:** cover the states statuses writes in the example ([c80dbb4](https://github.com/TitusKirch/skills/commit/c80dbb4d47ca89db69966be1b1580a5a07c68ff9))
+* **work-implement:** point the review reconcile at a real owner ([f3837ca](https://github.com/TitusKirch/skills/commit/f3837cabb56939e277fe7d4c740823d1071fa93a))
+* **write-docs:** align three details with the house pattern ([fb41dbe](https://github.com/TitusKirch/skills/commit/fb41dbe12a60d1ebdeba59222ffefe640cf10cfc))
+
 ## [0.15.0](https://github.com/TitusKirch/skills/compare/v0.14.0...v0.15.0) (2026-07-26)
 
 
