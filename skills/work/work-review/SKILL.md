@@ -48,7 +48,13 @@ If `work.labels.reviewing` resolves to a **label string**, flip `reviewRequested
 - **The pushed diff** — the artifact to review, scoped to _this_ issue:
   - **PR present** (`worktree`) → the PR's diff (`gh pr diff <n>`).
   - **No PR** (`branch:<name>`, e.g. `branch:dev`) → the issue's own commit range on the branch (the commits referencing this issue since it was last picked up). See [review-after-land](REFERENCE.md#review-after-land).
-- **Checks** — confirm the repo's checks are green on the pushed head; a red or missing check is a review finding, not a pass.
+- **Checks** — the pushed head must be green on the repo's **own** gate, and this review **establishes** that rather than inheriting it. Two sources, in this order:
+  - **The forge's checks**, but only where the head's base actually triggers them. Read which workflows the base runs _before_ reading their result — an empty or irrelevant check list is `unknown`, never green.
+  - **The repo's `verify`, run here.** Under `branch:<name>` there is no PR and CI commonly never ran at all, so this is the only source that exists. Run it against the pushed head in a **throwaway worktree** — the review is read-only towards the user's tree, which is not the same as running nothing ([recipe](REFERENCE.md#verifying-the-pushed-head)).
+
+  **The implementer's own green run is not a source.** It proves a tree passed _before_ the push, and on a shared branch that tree has since moved. Re-running is the whole point of a second agent: same gate, different tree, no inherited verdict.
+
+  Red, or a gate that could not be run at all → a review finding, never a pass.
 
 ### 6. Review — adversarially
 

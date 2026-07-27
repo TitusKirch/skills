@@ -18,3 +18,6 @@ A decision earns an ADR when it constrains work that comes later and its reasoni
 | [ADR-0007](0007-permit-claude-code-frontmatter-extensions.md) | Permit Claude Code frontmatter extensions, at a stated cost | accepted | 2026-07-25 |
 | [ADR-0008](0008-keep-eval-fixtures-out-of-the-package.md)     | Keep eval fixtures in the skill folder, out of the package  | accepted | 2026-07-25 |
 | [ADR-0009](0009-enforce-the-agents-md-mirror-in-the-gate.md)  | Enforce the AGENTS.md mirror in the gate                    | accepted | 2026-07-27 |
+| [ADR-0010](0010-choose-marker-syntax-by-its-reader.md)        | Choose marker syntax by its reader                          | accepted | 2026-07-27 |
+| [ADR-0011](0011-mirror-the-check-command-contract.md)         | Mirror the check-command contract                           | accepted | 2026-07-27 |
+| [ADR-0012](0012-let-the-review-establish-green.md)            | Let the review establish green                              | accepted | 2026-07-27 |

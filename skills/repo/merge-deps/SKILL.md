@@ -49,7 +49,7 @@ Per selected PR, gather facts. **Never merge on a heuristic.**
 
 > **An empty or irrelevant check list is `unknown`, never `green`.** A workflow gated on `branches: [main]` does not run for a PR into `dev`, so its absence is not a pass — there was no verdict at all. A suite that only scans source for vulnerabilities (CodeQL) says nothing about whether a lockfile still installs or the repo still lints. Counting either as "checks green" is how an unverified bump gets merged. **Never merge on `unknown`.**
 
-- **Verify locally** — this is the **primary** gate, not a fallback. Run `mergeDeps.verify` against the PR's own head in a throwaway worktree, so the user's tree is never touched ([recipe](REFERENCE.md#gh--git-recipes)). CI, where it genuinely ran, is corroboration.
+- **Verify locally** — this is the **primary** gate, not a fallback. Run `mergeDeps.verify` against the PR's own head in a throwaway worktree, so the user's tree is never touched ([recipe](REFERENCE.md#gh--git-recipes)). **Install the head's lockfile first** — an uninstalled worktree resolves the command against whatever is on `PATH`, which is green or red by accident and never touches the versions the PR pins ([how](REFERENCE.md#running-the-repos-checks)). CI, where it genuinely ran, is corroboration.
 - **Update type** — grouped / patch / minor / major, read from Dependabot's own artifacts (the group name in the head branch, the `Updates X from A to B` lines in the body). **Cannot be determined with confidence → hold the PR.** Do not guess a bump level.
 
 **No `mergeDeps.verify` configured _and_ the base's checks don't cover the change → hold and report.** The skill has no basis to call it safe, and says so rather than merging.

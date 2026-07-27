@@ -124,20 +124,11 @@ describe('the local gate stays the same gate', () => {
     assert.equal(config.verify, 'pnpm verify');
   });
 
-  // merge-deps runs its command against a Dependabot PR's own head in a throwaway
-  // worktree — a bare checkout with no node_modules, where the root key alone would
-  // fail on a missing oxlint and hold every PR in the queue on a verify that never
-  // had a chance to pass. Installing first is also the only way the gate sees the
-  // updated versions at all: a dependency PR *is* its lockfile.
-  describe('merge-deps verifies in a bare worktree', () => {
-    const effective = config.mergeDeps?.verify ?? config.verify ?? '';
-
-    test('the command installs before it runs anything', () => {
-      assert.match(effective, /^pnpm install --frozen-lockfile &&/);
-    });
-
-    test('what it then runs is the same gate, not a narrower one', () => {
-      assert.match(effective, /&& pnpm verify$/);
-    });
+  // merge-deps checks a Dependabot PR in a throwaway worktree, where nothing is
+  // installed — and installs that head's own lockfile itself before running this
+  // command. So the effective value is the gate and nothing else: prepending an
+  // install here would install twice and re-teach the pattern the skill removed.
+  test("merge-deps gets the gate alone, because the install is the skill's job", () => {
+    assert.equal(config.mergeDeps?.verify ?? config.verify, 'pnpm verify');
   });
 });

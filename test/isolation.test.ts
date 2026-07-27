@@ -64,6 +64,23 @@ const withConfigBlock = skillsWithTag('<skills-config>');
 // the `-`, so the trailing `>` in each literal keeps the two sets from overlapping.
 const withAuthorityFull = skillsWithTag('<skills-authority>');
 const withAuthorityReduced = skillsWithTag('<skills-authority-reduced>');
+// Same trailing-`>` reasoning for the check-command block's two variants.
+const withVerifyBase = skillsWithTag('<skills-verify>');
+const withVerifyIsolated = skillsWithTag('<skills-verify-isolated>');
+
+/**
+ * Which skills run the repo's gate, and in which tree.
+ *
+ * `base` runs it in the working tree; `isolated` runs it against a head that is not the
+ * working tree, so it installs that head's lockfile first. The roster lives here rather
+ * than being inferred, because both failure directions are silent on disk: a skill that
+ * starts running checks without the block re-invents detection, and a listed one that
+ * lost its block keeps the prose that promises it.
+ */
+const VERIFY_CARRIERS: Record<'base' | 'isolated', string[]> = {
+  base: ['repo/prune-comments', 'repo/update-deps', 'work/work-implement'],
+  isolated: ['repo/merge-deps', 'work/work-review']
+};
 
 describe('the generated config block is self-contained', () => {
   test('it is present in the skills that read config, and nowhere else by accident', () => {
@@ -279,6 +296,56 @@ describe('the author-authority tier follows the criterion, not a name list', () 
             assert.ok(
               !target.startsWith('..'),
               `${path}: authority block links out of the skill via "${target}"`
+            );
+          }
+        }
+      }
+    }
+  });
+});
+
+describe('the check-command contract reaches every skill that runs the gate', () => {
+  test('the tags on disk are exactly the roster, in both variants', () => {
+    assert.deepEqual(withVerifyBase.sort(), [...VERIFY_CARRIERS.base].sort());
+    assert.deepEqual(
+      withVerifyIsolated.sort(),
+      [...VERIFY_CARRIERS.isolated].sort()
+    );
+  });
+
+  test('no skill carries both variants', () => {
+    const both = withVerifyBase.filter((p) => withVerifyIsolated.includes(p));
+    assert.deepEqual(both, [], 'a skill has both the base and isolated block');
+  });
+
+  test('every verify-carrier also carries the config block, so it ships the resolver the block reads $resolved from', () => {
+    for (const path of [...withVerifyBase, ...withVerifyIsolated]) {
+      assert.ok(
+        withConfigBlock.includes(path),
+        `${path} carries the verify block but not the config block/resolver`
+      );
+    }
+  });
+
+  test('no link inside either verify block leaves the skill folder', () => {
+    const pairs = [
+      ['<skills-verify>', '</skills-verify>'],
+      ['<skills-verify-isolated>', '</skills-verify-isolated>']
+    ] as const;
+    for (const path of [...withVerifyBase, ...withVerifyIsolated]) {
+      const dir = join(ROOT, 'skills', path);
+      for (const file of docsOf(dir)) {
+        const body = readFileSync(file, 'utf8');
+        for (const [open, close] of pairs) {
+          const from = body.indexOf(open);
+          if (from === -1) continue;
+          const block = body.slice(from, body.indexOf(close));
+          for (const target of relativeLinks(file).filter((t) =>
+            block.includes(`(${t}`)
+          )) {
+            assert.ok(
+              !target.startsWith('..'),
+              `${path}: verify block links out of the skill via "${target}"`
             );
           }
         }
