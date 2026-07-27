@@ -23,7 +23,7 @@
     "verify": {
       "type": ["string", "null"],
       "minLength": 1,
-      "description": "The command this repo runs to check itself (tests / lint / build) — a repo-level fact, shared by every skill that needs to know the repo still passes. work-implement runs it before pushing, update-deps after updating, merge-deps against a dependency PR's own head (overridable via mergeDeps.verify). null or absent → each skill detects it from the repo. It lives at the root, not inside a skill section, so disabling a skill never withdraws it."
+      "description": "The command this repo runs to check itself (tests / lint / build) — a repo-level fact, shared by every skill that needs to know the repo still passes. work-implement runs it before pushing, work-review against the pushed head it is reviewing (establishing green rather than inheriting the implementer's), update-deps after updating, merge-deps against a dependency PR's own head (overridable via mergeDeps.verify). Write the check command only: a skill checking a head that is not the working tree installs that head's lockfile itself. null or absent → each skill detects it from the repo, and a command that cannot be detected is reported as unrun, never treated as green. It lives at the root, not inside a skill section, so disabling a skill never withdraws it."
     },
     "trustedBots": {
       "$ref": "#/$defs/trustedBots",
@@ -369,7 +369,7 @@
         "verify": {
           "type": "string",
           "minLength": 1,
-          "description": "Command run against the PR's own head before merging, in a throwaway worktree. The primary safety gate, not a fallback: a Dependabot PR into an integration branch often triggers no relevant CI at all, and an empty check list is never read as green. Default: the root verify key, else nothing."
+          "description": "Command run against the PR's own head before merging, in a throwaway worktree whose dependencies the skill installs from that head's own lockfile first. The primary safety gate, not a fallback: a Dependabot PR into an integration branch often triggers no relevant CI at all, and an empty check list is never read as green. Set this only for a genuinely different command (an audit, a narrower suite) — never to prepend an install, which is the skill's job and silently reports green when forgotten. Default: the root verify key, else detected."
         },
         "cap": {
           "type": "integer",
@@ -676,7 +676,7 @@
         "verify": {
           "type": ["string", "null"],
           "minLength": 1,
-          "description": "The command this repo runs to check itself (tests / lint / build) — a repo-level fact, shared by every skill that needs to know the repo still passes. work-implement runs it before pushing, update-deps after updating, merge-deps against a dependency PR's own head (overridable via mergeDeps.verify). null or absent → each skill detects it from the repo. It lives at the root, not inside a skill section, so disabling a skill never withdraws it."
+          "description": "The command this repo runs to check itself (tests / lint / build) — a repo-level fact, shared by every skill that needs to know the repo still passes. work-implement runs it before pushing, work-review against the pushed head it is reviewing (establishing green rather than inheriting the implementer's), update-deps after updating, merge-deps against a dependency PR's own head (overridable via mergeDeps.verify). Write the check command only: a skill checking a head that is not the working tree installs that head's lockfile itself. null or absent → each skill detects it from the repo, and a command that cannot be detected is reported as unrun, never treated as green. It lives at the root, not inside a skill section, so disabling a skill never withdraws it."
         },
         "trustedBots": {
           "$ref": "#/$defs/trustedBots",

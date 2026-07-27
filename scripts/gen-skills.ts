@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Single source of truth for the skill registry.
 // Discovers skills from the filesystem (skills/<category>/<name>/SKILL.md
-// frontmatter) and projects them into six artifacts: README.md's table, each
+// frontmatter) and projects them into seven artifacts: README.md's table, each
 // skills/<category>/README.md, .claude-plugin/plugin.json, skills.sh.json, the
-// config contract mirrored into every skill that reads the config, and the
-// author-authority block mirrored into every skill that reads third-party text.
+// config contract mirrored into every skill that reads the config, the
+// author-authority block mirrored into every skill that reads third-party text,
+// and the check-command contract mirrored into every skill that runs the gate.
 //
 //   node scripts/gen-skills.ts           # rewrite whichever have drifted
 //   node scripts/gen-skills.ts --check   # exit 1 if any is stale (CI)
@@ -22,6 +23,7 @@ const PLUGIN = join(ROOT, '.claude-plugin', 'plugin.json');
 const SKILLS_SH = join(ROOT, 'skills.sh.json');
 const CONFIG_BLOCK = join(ROOT, 'scripts', 'config-block.md');
 const AUTHORITY_BLOCK = join(ROOT, 'scripts', 'authority-block.md');
+const VERIFY_BLOCK = join(ROOT, 'scripts', 'verify-block.md');
 const RESOLVER = join(ROOT, 'scripts', 'resolve-config.sh');
 
 const START = '<!-- skills:start -->';
@@ -47,6 +49,16 @@ const AUTHORITY_FULL_OPEN = '<skills-authority>';
 const AUTHORITY_FULL_END = '</skills-authority>';
 const AUTHORITY_REDUCED_OPEN = '<skills-authority-reduced>';
 const AUTHORITY_REDUCED_END = '</skills-authority-reduced>';
+
+// The check command is the third mirrored contract, and the one with the most to lose from
+// drift: how a skill reaches for `verify` decides whether it runs the repo's gate or a guess
+// at it. Two variants keyed by the tree the command runs in — base for the working tree,
+// isolated for someone else's head, where nothing is installed. Same exact-literal matching
+// as above, so `<skills-verify>` never captures `<skills-verify-isolated>`.
+const VERIFY_BASE_OPEN = '<skills-verify>';
+const VERIFY_BASE_END = '</skills-verify>';
+const VERIFY_ISOLATED_OPEN = '<skills-verify-isolated>';
+const VERIFY_ISOLATED_END = '</skills-verify-isolated>';
 
 // The Agent Skills spec caps `description` at 1024 characters, and that cap is a cliff:
 // a skill one character over is non-conformant, and nothing about writing a description
@@ -369,6 +381,26 @@ function authorityBody(variant: 'full' | 'reduced'): string {
     : raw.slice(reducedAt + reducedMarker.length).trim();
 }
 
+// The verify source runs base body → `<!-- verify:isolated -->` → install section. Unlike the
+// authority variants, which are alternatives, `isolated` is base *plus* the install section:
+// composed here rather than written out twice, so the half both variants share cannot drift
+// against itself inside its own source file.
+function verifyBody(variant: 'base' | 'isolated'): string {
+  const raw = readFileSync(VERIFY_BLOCK, 'utf8');
+  const baseMarker = '<!-- verify:base -->';
+  const isolatedMarker = '<!-- verify:isolated -->';
+  const baseAt = raw.indexOf(baseMarker);
+  const isolatedAt = raw.indexOf(isolatedMarker);
+  if (baseAt === -1 || isolatedAt === -1 || isolatedAt < baseAt) {
+    throw new Error(
+      `${VERIFY_BLOCK}: missing or misordered ${baseMarker} / ${isolatedMarker}`
+    );
+  }
+  const base = raw.slice(baseAt + baseMarker.length, isolatedAt).trim();
+  if (variant === 'base') return base;
+  return `${base}\n\n${raw.slice(isolatedAt + isolatedMarker.length).trim()}`;
+}
+
 // The mirrored block opens with a level-3 heading, so it belongs under "## Config".
 // Placed anywhere else it silently reads as part of the preceding section — a queue
 // skill's block landed under "## Workflow" and became its last step. Rewriting the
@@ -438,26 +470,21 @@ function syncConfigContract(skills: Skill[], check: boolean): string[] {
   return stale;
 }
 
-// Mirror the author-authority rule the same way as the config block: one source, two
-// variants, drift-checked. A skill opts in by carrying the tag — `<skills-authority>`
-// for the full rule, `<skills-authority-reduced>` for the narrower form — and the rule
-// itself is a `## ` section, self-delimiting, so no placement check is needed. Every
-// authority-carrying skill is also a config-carrying one, so the resolver it needs to
-// read `trustedBots` is already shipped by syncConfigContract above.
-function syncAuthorityContract(skills: Skill[], check: boolean): string[] {
+// Mirror a tagged block into every skill carrying its tag: one source, drift-checked, the
+// mechanic behind both the author-authority rule and the check-command contract. A skill opts
+// in by carrying the tag, and each body is a `## ` section — self-delimiting, so unlike the
+// config block no placement check is needed. Every carrier is also a config-carrying skill, so
+// the resolver these bodies read `$resolved` from is already shipped by syncConfigContract.
+//
+// Generic rather than one function per contract: the third copy of this loop is where the
+// contracts would start disagreeing about what counts as drift.
+function syncTaggedBlock(
+  skills: Skill[],
+  check: boolean,
+  label: string,
+  variants: { open: string; end: string; body: string }[]
+): string[] {
   const stale: string[] = [];
-  const variants = [
-    {
-      open: AUTHORITY_FULL_OPEN,
-      end: AUTHORITY_FULL_END,
-      block: `${AUTHORITY_FULL_OPEN}\n\n${authorityBody('full')}\n\n${AUTHORITY_FULL_END}`
-    },
-    {
-      open: AUTHORITY_REDUCED_OPEN,
-      end: AUTHORITY_REDUCED_END,
-      block: `${AUTHORITY_REDUCED_OPEN}\n\n${authorityBody('reduced')}\n\n${AUTHORITY_REDUCED_END}`
-    }
-  ];
   // Compare on collapsed whitespace so oxfmt's wrapping never reads as drift.
   const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
 
@@ -477,10 +504,10 @@ function syncAuthorityContract(skills: Skill[], check: boolean): string[] {
         if (from === -1 || to === -1) continue;
         const next =
           current.slice(0, from) +
-          variant.block +
+          `${variant.open}\n\n${variant.body}\n\n${variant.end}` +
           current.slice(to + variant.end.length);
         if (norm(next) !== norm(current)) {
-          stale.push(`skills/${skill.path}/${name} authority block`);
+          stale.push(`skills/${skill.path}/${name} ${label} block`);
           if (!check) writeFileSync(file, next);
         }
         current = next;
@@ -554,7 +581,34 @@ if (mode === '--paths') {
   if (syncSkillsSh(groups, check)) stale.push('skills.sh.json groupings');
   stale.push(...syncCategoryReadmes(groups, check));
   stale.push(...syncConfigContract(skills, check));
-  stale.push(...syncAuthorityContract(skills, check));
+  stale.push(
+    ...syncTaggedBlock(skills, check, 'authority', [
+      {
+        open: AUTHORITY_FULL_OPEN,
+        end: AUTHORITY_FULL_END,
+        body: authorityBody('full')
+      },
+      {
+        open: AUTHORITY_REDUCED_OPEN,
+        end: AUTHORITY_REDUCED_END,
+        body: authorityBody('reduced')
+      }
+    ])
+  );
+  stale.push(
+    ...syncTaggedBlock(skills, check, 'verify', [
+      {
+        open: VERIFY_BASE_OPEN,
+        end: VERIFY_BASE_END,
+        body: verifyBody('base')
+      },
+      {
+        open: VERIFY_ISOLATED_OPEN,
+        end: VERIFY_ISOLATED_END,
+        body: verifyBody('isolated')
+      }
+    ])
+  );
 
   if (check && stale.length) {
     process.stderr.write(
