@@ -71,19 +71,31 @@ function ciSteps(): Record<string, string>[] {
       item ? raw.replace('      - ', '        ') : raw
     );
     const step = steps.at(-1);
-    if (key?.[1] && key[2] && step) step[key[1]] = key[2].trim();
+    if (key?.[1] && key[2] && step) {
+      const value = key[2].trim();
+      // The one-line assumption above, made loud. A `run: |` block would capture the
+      // indicator as the value, fail the `pnpm <script>` shape, and drop the step out
+      // of the gate set entirely — leaving this suite comparing a short list and
+      // reporting a drift that is really an unreadable file.
+      assert.ok(
+        !/^[|>]/.test(value),
+        `ci.yml: "${key[1]}:" is a block scalar — this reader only understands one-line values, so teach it or keep the value on one line`
+      );
+      step[key[1]] = value;
+    }
   }
   assert.ok(steps.length > 0, 'ci.yml should have steps');
   return steps;
 }
 
-const steps = ciSteps();
-const gateSteps = steps.filter((s) => CALL.test(s.run ?? ''));
+// Parsed inside the tests, not at module load: a malformed workflow should fail as a
+// named test with the assertion's message, not as an import error before any test runs.
+const gateSteps = () => ciSteps().filter((s) => CALL.test(s.run ?? ''));
 
 describe('the CI gate matches the verify script', () => {
   test('every command `pnpm verify` runs has its own step, in the same order', () => {
     assert.deepEqual(
-      gateSteps.map((s) => s.run),
+      gateSteps().map((s) => s.run),
       gateCommands()
     );
   });
@@ -101,7 +113,7 @@ describe('the CI gate matches the verify script', () => {
 
 describe('a failing step does not suppress the ones after it', () => {
   test('every gate step carries the !cancelled() guard', () => {
-    for (const step of gateSteps)
+    for (const step of gateSteps())
       assert.equal(
         step.if,
         '${{ !cancelled() }}',
@@ -110,7 +122,7 @@ describe('a failing step does not suppress the ones after it', () => {
   });
 
   test('each gate step is named, so the failing command is readable', () => {
-    for (const step of gateSteps)
+    for (const step of gateSteps())
       assert.ok(step.name, `step running "${step.run}" should have a name`);
   });
 });
