@@ -265,7 +265,7 @@ Without this, a `working` orphan carries neither `ready` nor `reviewRequested`, 
 | `reviewing`, live | another clone is mid-review     | **leave it** — the assignee/age guard below                           |
 | `reviewing`, dead | a reviewer crashed mid-judgment | flip back to `reviewRequested`, drop the assignee → re-reviewed fresh |
 
-The reclaim is gated by the **same assignee/age guard as the implement reconcile** (above), so one clone never kills another clone's **live** review: a `reviewing` issue assigned to a **different** runner — or, under one **shared bot identity**, to this runner — is presumed **live** and left alone unless the **weaker age fallback** clears it; only an **unassigned** one, or (with **distinct per-runner identities**) this runner's **own crashed lease**, is flipped back to `reviewRequested`. With `labels.reviewing` off there are no `reviewing` orphans and this job is inert. Full rules: `work-review-queue`.
+The reclaim is gated by the **same assignee/age guard as the implement reconcile** (above), so one clone never kills another clone's **live** review: a `reviewing` issue assigned to a **different** runner — or, under one **shared bot identity**, to this runner — is presumed **live** and left alone unless the **weaker age fallback** clears it; only an **unassigned** one, or (with **distinct per-runner identities**) this runner's **own crashed lease**, is flipped back to `reviewRequested`. With `labels.reviewing` off there are no `reviewing` orphans and this job is inert. When the drain runs this, and under which lock: `work-review-queue`.
 
 Both move **labels only**, never branches, and are **idempotent** — nothing to reclaim is the normal result.
 
