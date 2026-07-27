@@ -36,15 +36,17 @@ Its one principle, from which the rest follows:
 
 Before a single branch is classified, collect everything that must not be deleted:
 
-| Protected                  | Read from                                                                            |
+| Protected                  | Comes from                                                                           |
 | :------------------------- | :----------------------------------------------------------------------------------- |
-| The forge's default branch | `gh repo view --json defaultBranchRef`                                               |
+| The forge's default branch | the forge                                                                            |
 | The integration branch     | `pr.base`, else the default branch                                                   |
-| Checked out anywhere       | `git worktree list --porcelain` — every `branch refs/heads/…`, HEAD included         |
-| Forge-protected            | `gh api "repos/{owner}/{repo}/branches?protected=true" --paginate`                   |
-| Has an **open** PR         | `gh pr list --state open --json headRefName`                                         |
+| Checked out anywhere       | this checkout's worktrees, the current HEAD included                                 |
+| Forge-protected            | the forge's branch protection — classic rules and rulesets alike                     |
+| Has an **open** PR         | the forge's open pull requests, every one of them                                    |
 | Name fallback              | `main`, `master`, `dev`, `develop`, `stage`, `staging`, `prod`, `production`, `next` |
-| `pruneBranches.protect`    | Glob patterns from the config — **added to** this list, never replacing it           |
+| `pruneBranches.protect`    | glob patterns from the config — **added to** this list, never replacing it           |
+
+**Take the exact reads from [Protection](REFERENCE.md#protection), never from memory.** Each carries the pagination it needs, and that is not decoration: a list command stops at its default page — `gh pr list` fetches 30 — and silently returns a shorter answer, which here reads as "this branch has no open PR". A source written out a second time is how that limit gets dropped.
 
 - **Protection is a filter, not a warning.** A protected branch leaves the run entirely: not preselected, not listed as a candidate, not mentioned as "skipped because protected but you could". The count is worth reporting; the branches are not candidates.
 - **The name fallback is a floor, not the mechanism.** A repo with real branch protection gets it from the forge; the names exist so a repo that declares no rules is still safe. Both apply, always — the fallback is never switched off by the forge answering.
