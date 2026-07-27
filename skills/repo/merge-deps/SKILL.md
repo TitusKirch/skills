@@ -90,7 +90,7 @@ The endpoint needs `security_events` scope — no access → say the alerts coul
 
 - **Dependabot-authored PRs only, matched on author.** Never any other PR, under any circumstance, for any reason. Not a comment, not a label, not a mention in the report.
 - **Manual invocation only.** Never fire proactively — not on a push, not because bumps "look due". Someone asks, or this skill does nothing.
-- **Plan first; then merge only what the config authorizes.** The plan/report is always shown before any merge. A **major bump waits for an explicit confirmation** even when opted in; the low-risk tier merges on the standing opt-in unless `mergeDeps.confirm` is `"always"`. Plan-only triggers ("nur den plan", "dry run", "just show me", "nicht mergen") → print the plan and the exact `gh` commands, then stop.
+- **Plan first; then merge only what the config authorizes.** The plan/report is always shown before any merge. A **major bump waits for an explicit confirmation** even when opted in; the low-risk tier merges on the standing opt-in unless `mergeDeps.confirm` is `"always"`. Plan-only triggers ("nur den Plan", "dry run", "just show me", "nicht mergen") → print the plan and the exact `gh` commands, then stop.
 - **Never opens a PR.** In any mode. A missing Dependabot PR is a finding to report, never a gap to fill by hand.
 - **An empty check list is never green.** Absence of a verdict is `unknown`, and `unknown` never merges.
 - **Never resolve conflicts, never edit a lockfile, never force-push a Dependabot branch.** Hand it back with `@dependabot rebase`.

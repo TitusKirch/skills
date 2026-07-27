@@ -387,3 +387,68 @@ describe('nothing a skill ships points out of its folder', () => {
     assert.deepEqual(broken, [], 'intra-skill links must not dangle');
   });
 });
+
+// The plan-only trigger phrases are user-facing vocabulary: whichever skill a user is
+// talking to, the same words have to reach the same behaviour. They are hand-copied into
+// every skill that offers the mode — deliberately, since each also names its own action
+// ("nichts löschen", "nicht committen") and the promise itself reads better in each
+// skill's own verb than in one generic formula. What must not vary is the shared core,
+// and it already had: seven skills wrote "nur den plan", three "nur den Plan", with
+// nothing anywhere to notice the split.
+const PLAN_ONLY_TRIGGERS = ['just show me', 'dry run', 'nur den Plan'];
+
+/** Skills offering a plan-only mode, found by the heading that announces it. */
+function skillsWithPlanOnlyMode(): string[] {
+  return allSkills().filter((p) =>
+    docsOf(join(ROOT, 'skills', p)).some((f) =>
+      readFileSync(f, 'utf8').includes('Plan-only triggers')
+    )
+  );
+}
+
+const shippedText = (path: string) =>
+  docsOf(join(ROOT, 'skills', path))
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n');
+
+describe('plan-only triggers are one vocabulary, not one per skill', () => {
+  const offering = skillsWithPlanOnlyMode();
+
+  test('the mode is offered by the skills that change things', () => {
+    // Not a fixed roster — the count guards against the heading being renamed and this
+    // whole suite silently checking an empty set.
+    assert.ok(
+      offering.length >= 8,
+      `only ${offering.length} skills announce plan-only triggers`
+    );
+  });
+
+  test('each offering skill names every trigger in the shared core', () => {
+    const missing: string[] = [];
+    for (const path of offering) {
+      const text = shippedText(path);
+      for (const trigger of PLAN_ONLY_TRIGGERS) {
+        if (!text.includes(`"${trigger}"`))
+          missing.push(`${path}: "${trigger}"`);
+      }
+    }
+    assert.deepEqual(
+      missing,
+      [],
+      'a plan-only skill must offer the whole core'
+    );
+  });
+
+  test('the German trigger keeps its capital everywhere', () => {
+    // The drift that actually happened. Checked across every skill, not just the ones
+    // above, so a lowercase copy cannot hide in a skill that words the heading its own way.
+    const lowercase = allSkills().filter((p) =>
+      /nur den plan/.test(shippedText(p))
+    );
+    assert.deepEqual(
+      lowercase,
+      [],
+      'write "nur den Plan" — it is a noun, and the phrase is one vocabulary'
+    );
+  });
+});

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // Single source of truth for the skill registry.
 // Discovers skills from the filesystem (skills/<category>/<name>/SKILL.md
-// frontmatter) and projects them into seven artifacts: README.md's table, each
+// frontmatter) and projects them into eight artifacts: README.md's table, each
 // skills/<category>/README.md, .claude-plugin/plugin.json, skills.sh.json, the
 // config contract mirrored into every skill that reads the config, the
 // author-authority block mirrored into every skill that reads third-party text,
-// and the check-command contract mirrored into every skill that runs the gate.
+// the check-command contract mirrored into every skill that runs the gate, and the
+// single-flight-lock spec mirrored into the four work-loop skills.
 //
 //   node scripts/gen-skills.ts           # rewrite whichever have drifted
 //   node scripts/gen-skills.ts --check   # exit 1 if any is stale (CI)
@@ -32,6 +33,7 @@ export interface Paths {
   configBlock: string;
   authorityBlock: string;
   verifyBlock: string;
+  worklockBlock: string;
   resolver: string;
 }
 
@@ -45,6 +47,7 @@ export function paths(root: string): Paths {
     configBlock: join(root, 'scripts', 'config-block.md'),
     authorityBlock: join(root, 'scripts', 'authority-block.md'),
     verifyBlock: join(root, 'scripts', 'verify-block.md'),
+    worklockBlock: join(root, 'scripts', 'worklock-block.md'),
     resolver: join(root, 'scripts', 'resolve-config.sh')
   };
 }
@@ -82,6 +85,13 @@ const VERIFY_BASE_OPEN = '<skills-verify>';
 const VERIFY_BASE_END = '</skills-verify>';
 const VERIFY_ISOLATED_OPEN = '<skills-verify-isolated>';
 const VERIFY_ISOLATED_END = '</skills-verify-isolated>';
+
+// The fourth mirrored contract, and the one that had to be mirrored rather than cited:
+// both queues pointed at `work-implement`'s REFERENCE for the lock spec — a pointer that
+// resolves to nothing on an installed copy — and then wrote the load-bearing half out
+// again anyway, in two wordings that had already diverged by a clause.
+const WORKLOCK_OPEN = '<skills-worklock>';
+const WORKLOCK_END = '</skills-worklock>';
 
 // The Agent Skills spec caps `description` at 1024 characters, and that cap is a cliff:
 // a skill one character over is non-conformant, and nothing about writing a description
@@ -217,7 +227,7 @@ export function discoverSkills(p: Paths): Skill[] {
           } catch (err) {
             // No SKILL.md means the directory is not a skill — skip it. Any other
             // read failure is not that, and swallowing it would drop the skill from
-            // all seven artifacts in one silent `--write`, reporting success while
+            // all eight artifacts in one silent `--write`, reporting success while
             // deleting a published skill's row, entry and grouping.
             if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
             throw err;
@@ -456,6 +466,18 @@ export function verifyBody(p: Paths, variant: 'base' | 'isolated'): string {
   return `${base}\n\n${raw.slice(isolatedAt + isolatedMarker.length).trim()}`;
 }
 
+// The worklock source has one body and no variants: both loops need the same spec, and
+// which lock path a given loop takes is the one thing each skill states for itself.
+export function worklockBody(p: Paths): string {
+  const raw = readFileSync(p.worklockBlock, 'utf8');
+  const marker = '<!-- worklock:body -->';
+  const at = raw.indexOf(marker);
+  if (at === -1) {
+    throw new Error(`${p.worklockBlock}: missing ${marker}`);
+  }
+  return raw.slice(at + marker.length).trim();
+}
+
 // The mirrored block opens with a level-3 heading, so it belongs under "## Config".
 // Placed anywhere else it silently reads as part of the preceding section — a queue
 // skill's block landed under "## Workflow" and became its last step. Rewriting the
@@ -684,6 +706,11 @@ export function main(argv: string[], root: string = ROOT): RunResult {
         end: VERIFY_ISOLATED_END,
         body: verifyBody(p, 'isolated')
       }
+    ])
+  );
+  stale.push(
+    ...syncTaggedBlock(p, skills, check, 'worklock', [
+      { open: WORKLOCK_OPEN, end: WORKLOCK_END, body: worklockBody(p) }
     ])
   );
 
