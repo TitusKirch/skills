@@ -14,7 +14,7 @@ Every file named below is the source of truth for what it configures. Read it ra
 cp CLAUDE.md AGENTS.md   # or the reverse, whichever you just edited
 ```
 
-Retyping a change is exactly how the two drift; one reflowed line or reworded clause is enough. `diff CLAUDE.md AGENTS.md` must print nothing. If it ever does, treat it as a defect and fix it by letting one file win wholesale — never by merging them.
+Retyping a change is exactly how the two drift; one reflowed line or reworded clause is enough. `diff CLAUDE.md AGENTS.md` must print nothing — `pnpm test` fails when it does. Fix it by letting one file win wholesale, never by merging them.
 
 ## Commands
 
@@ -27,7 +27,7 @@ Retyping a change is exactly how the two drift; one reflowed line or reworded cl
 | `pnpm skills:sync`  | Regenerates six artifacts from the skill folders. **Run after touching any skill.**                                                                                                                                                                 |
 | `pnpm skills:check` | The CI guard for the above. Fails if any of the six drifted.                                                                                                                                                                                        |
 | `pnpm typecheck`    | `tsc --noEmit`. `erasableSyntaxOnly` is on, so an enum fails here, not at runtime.                                                                                                                                                                  |
-| `pnpm test`         | `node --test` over `test/` — the resolver, the schema, skill self-containment, and the CI-gate guard.                                                                                                                                               |
+| `pnpm test`         | `node --test` over `test/` — the resolver, the schema, skill self-containment, the CI-gate guard, and the `CLAUDE.md`/`AGENTS.md` mirror.                                                                                                           |
 | `pnpm skills:link`  | Symlinks every skill into `~/.claude/skills/` for live local testing — whole-folder, except a skill carrying a dev-artifact dir (`evals/`) links entry by entry to leave the fixture out.                                                           |
 
 **Six artifacts are generated — never hand-edit them:** the root `README.md` skills table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, `skills.sh.json`'s groupings, the `<skills-config>` block plus `templates/resolve-config.sh` mirrored into each config-reading skill (source: `scripts/config-block.md` and `scripts/resolve-config.sh`), and the `<skills-authority>` / `<skills-authority-reduced>` author-authority block mirrored into each skill that reads third-party text (source: `scripts/authority-block.md`). A new category also needs an entry in `CATEGORIES` in `scripts/gen-skills.ts`, or the sync fails loudly.
