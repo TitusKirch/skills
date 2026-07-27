@@ -22,3 +22,4 @@ A decision earns an ADR when it constrains work that comes later and its reasoni
 | [ADR-0011](0011-mirror-the-check-command-contract.md)         | Mirror the check-command contract                           | accepted | 2026-07-27 |
 | [ADR-0012](0012-let-the-review-establish-green.md)            | Let the review establish green                              | accepted | 2026-07-27 |
 | [ADR-0013](0013-state-what-the-authority-table-guarantees.md) | State what the authority table guarantees                   | accepted | 2026-07-27 |
+| [ADR-0014](0014-let-rationale-travel-with-the-skill.md)       | Let rationale travel with the skill                         | accepted | 2026-07-27 |
