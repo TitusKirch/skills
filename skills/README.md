@@ -93,9 +93,9 @@ Resolution per setting: **config → native/detected → built-in default** — 
 - [`handoff`](work/handoff/REFERENCE.md#config) — `language` (owns no section of its own)
 - [`write-docs`](docs/write-docs/REFERENCE.md#config) — `language`, `docs.*`
 - [`compact-readme`](docs/compact-readme/REFERENCE.md#config) — `docs` (owns no section of its own)
-- [`work-implement`](work/work-implement/REFERENCE.md#config) — `language`, `work.*`, `pr.base`
+- [`work-implement`](work/work-implement/REFERENCE.md#config) — `language`, `verify`, `work.*`, `pr.base`
 - [`work-implement-queue`](work/work-implement/REFERENCE.md#config) — shares `work-implement`'s `work.*` config
-- [`work-review`](work/work-review/REFERENCE.md#config) — `language`, `work.*`, `work.review.*`
+- [`work-review`](work/work-review/REFERENCE.md#config) — `language`, `verify`, `work.*`, `work.review.*`
 - [`work-review-queue`](work/work-review/REFERENCE.md#config) — shares `work-review`'s config
 
 `tituskirch-skills-config` also carries the mirrored config block and resolver, but as the config's **author** rather than a consumer — it manages the file (block in its `SKILL.md`, no `REFERENCE.md`), so it sits outside this reader list.
