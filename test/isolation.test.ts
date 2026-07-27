@@ -4,23 +4,23 @@
 
 import { test, describe, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { ROOT, sandbox, type Sandbox } from './helpers.ts';
+import { discoverSkills, paths } from '../scripts/gen-skills.ts';
 
 const boxes: Sandbox[] = [];
 after(() => boxes.forEach((b) => b.cleanup()));
 
-/** Every skill directory, as "<category>/<name>". */
+/**
+ * Every skill directory, as "<category>/<name>".
+ *
+ * Asked of the generator rather than walked again here: what counts as a skill is one
+ * rule, and a second walk in this file would answer it slightly differently — it
+ * counted any directory, where the generator requires a SKILL.md in a known category.
+ */
 function allSkills(): string[] {
-  const skillsDir = join(ROOT, 'skills');
-  return readdirSync(skillsDir)
-    .filter((c) => statSync(join(skillsDir, c)).isDirectory())
-    .flatMap((c) =>
-      readdirSync(join(skillsDir, c))
-        .filter((s) => statSync(join(skillsDir, c, s)).isDirectory())
-        .map((s) => `${c}/${s}`)
-    );
+  return discoverSkills(paths(ROOT)).map((s) => s.path);
 }
 
 /** Markdown files a skill ships. */
