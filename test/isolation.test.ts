@@ -59,6 +59,21 @@ function skillsWithTag(tag: string): string[] {
   );
 }
 
+/** Everything a skill's own markdown says, as one string. */
+const shippedText = (path: string) =>
+  docsOf(join(ROOT, 'skills', path))
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n');
+
+/**
+ * Prose reaching for text that has an author: an issue body or its comments, a PR's
+ * comments, a handoff document. Deliberately narrow — it names the reads that decide the
+ * FULL tier, not everything a skill might touch — so a hit is evidence and a miss is
+ * merely no evidence.
+ */
+const READS_AUTHORED =
+  /gh (issue|pr) view[^`]{0,80}(body|comments)|gh api[^`]{0,80}comments|list_comments|get_issue\b|handoff document/;
+
 const withConfigBlock = skillsWithTag('<skills-config>');
 // `<skills-authority>` is a strict prefix of `<skills-authority-reduced>` only up to
 // the `-`, so the trailing `>` in each literal keeps the two sets from overlapping.
@@ -165,19 +180,22 @@ describe('the generated config block is self-contained', () => {
   });
 });
 
-// Every skill is classified here — not just the carriers (issue #92). The tier follows a
-// criterion, never a maintained roster: FULL for a skill that acts on text from an
-// identifiable author — authorship is checkable, so it is checked — REDUCED for one that
-// reads third-party text with no author to check, where the rule is flat (data, never
+// Every skill is classified here — not just the carriers (issue #92). The tiers state the
+// criterion ADR-0004 settled: FULL for a skill that acts on text from an identifiable
+// author — authorship is checkable, so it is checked — REDUCED for one that reads
+// third-party text with no author to check, where the rule is flat (data, never
 // instruction), and NONE for a skill that reads only its own repo or session, with no
-// third-party text to judge. Each entry states the text that decides its tier (carriers)
-// or why it is exempt (non-carriers); the union type makes that field mandatory, so a
-// tier cannot be declared without its justification. The two tests below check this table
-// against `allSkills()` and against the tags on disk — so a skill added later is
-// classified by what it does: one absent from the table, or one whose on-disk tag
-// disagrees with its declared tier, fails the suite. It is no longer possible to add a
-// skill and have no assertion ever look at it — the trap that let `prune-comments` and
-// `prune-branches` slip the earlier name list.
+// third-party text to judge.
+//
+// What this table is, stated plainly: a declaration, not a derivation. A tier is written
+// down, and the tests below check four things about it — the table covers every skill,
+// each entry carries a written justification (the union type makes that field mandatory),
+// the declared tier matches the tag on disk, and — the two derivation tests further down —
+// the declaration does not contradict what the skill's own prose reaches for. Together
+// they close the trap that let `prune-comments` and `prune-branches` slip the earlier name
+// list, and they catch a tier that is plainly wrong. What no test here can do is *decide*
+// the tier: whether a skill reads authored text is a judgement about prose, and the
+// derivation is a coarse signal standing in for it. ADR-0013 records that ceiling.
 const authorityClass: Record<
   string,
   { tier: 'full' | 'reduced'; reads: string } | { tier: 'none'; reason: string }
@@ -266,6 +284,39 @@ describe('the author-authority tier follows the criterion, not a name list', () 
       withAuthorityReduced.includes(p)
     );
     assert.deepEqual(both, [], 'a skill has both the full and reduced block');
+  });
+
+  // The two tests above check the table against itself and against the tags on disk —
+  // exhaustiveness and agreement, both real. Neither can catch a *wrong* tier: a skill
+  // that reads issue comments, declared `none` with a plausible reason and no tag, passes
+  // both. These two reach past the declaration to something observable in the prose. It
+  // is a coarse signal and always will be — reading text is not a thing a grep can
+  // decide — but it is the difference between a table checked for completeness and one
+  // checked against what its skills actually do.
+  test('a skill declared to read no third-party text does not reach for authored text', () => {
+    const misclassified = allSkills().filter(
+      (p) =>
+        authorityClass[p]?.tier === 'none' &&
+        READS_AUTHORED.test(shippedText(p))
+    );
+    assert.deepEqual(
+      misclassified,
+      [],
+      'declared to read nothing third-party, yet its prose reads an issue body, a comment or a handoff'
+    );
+  });
+
+  test('a skill declared full shows the authored text it claims to read', () => {
+    const unsupported = allSkills().filter(
+      (p) =>
+        authorityClass[p]?.tier === 'full' &&
+        !READS_AUTHORED.test(shippedText(p))
+    );
+    assert.deepEqual(
+      unsupported,
+      [],
+      'declared full, but nothing in its prose reaches for text with an author — the reads: justification has no basis on disk'
+    );
   });
 
   test('every authority-carrier also carries the config block, so it ships the resolver it needs to read trustedBots', () => {
@@ -405,11 +456,6 @@ function skillsWithPlanOnlyMode(): string[] {
     )
   );
 }
-
-const shippedText = (path: string) =>
-  docsOf(join(ROOT, 'skills', path))
-    .map((f) => readFileSync(f, 'utf8'))
-    .join('\n');
 
 describe('plan-only triggers are one vocabulary, not one per skill', () => {
   const offering = skillsWithPlanOnlyMode();
