@@ -112,6 +112,12 @@ export interface Group {
   skills: Skill[];
 }
 
+// Drift is compared on collapsed whitespace throughout: oxfmt rewraps the mirrored
+// markdown and pads the generated tables, so a reflow must not read as a change while a
+// reworded sentence still does. Defined once — three copies of this is where the
+// artifacts would start disagreeing about what counts as drift.
+const norm = (text: string) => text.replace(/\s+/g, ' ').trim();
+
 export function parseFrontmatter(raw: string): Record<string, string> {
   const match = raw.match(/^---\n([\s\S]*?)\n---/);
   const out: Record<string, string> = {};
@@ -338,14 +344,34 @@ export function syncCategoryReadmes(
     } catch {
       current = '';
     }
-    // Compare on collapsed whitespace so oxfmt's wrapping never reads as drift.
-    const norm = (text: string) => text.replace(/\s+/g, ' ').trim();
     if (norm(current) !== norm(expected)) {
       stale.push(`skills/${group.category}/README.md`);
       if (!check) writeFileSync(file, expected);
     }
   }
   return stale;
+}
+
+// Two artifacts are one key inside a JSON file the generator does not otherwise own, so
+// the mechanic is shared and only the projection differs. Every other key in the file
+// survives the rewrite — that is the whole reason this reads and re-serializes rather
+// than writing the key's value out on its own.
+function syncJsonKey(
+  file: string,
+  key: string,
+  expected: unknown,
+  check: boolean
+): boolean {
+  const data = JSON.parse(readFileSync(file, 'utf8')) as Record<
+    string,
+    unknown
+  >;
+  const drift = JSON.stringify(data[key] ?? []) !== JSON.stringify(expected);
+  if (drift && !check) {
+    data[key] = expected;
+    writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`);
+  }
+  return drift;
 }
 
 // skills.sh.json drives how skills.sh displays the collection. Projected from
@@ -355,32 +381,25 @@ export function syncSkillsSh(
   groups: Group[],
   check: boolean
 ): boolean {
-  const content = readFileSync(p.skillsSh, 'utf8');
-  const data = JSON.parse(content);
-  const expected = groups.map((group) => ({
-    title: group.title,
-    description: group.description,
-    skills: group.skills.map((s) => s.name)
-  }));
-  const drift =
-    JSON.stringify(data.groupings ?? []) !== JSON.stringify(expected);
-  if (drift && !check) {
-    data.groupings = expected;
-    writeFileSync(p.skillsSh, `${JSON.stringify(data, null, 2)}\n`);
-  }
-  return drift;
+  return syncJsonKey(
+    p.skillsSh,
+    'groupings',
+    groups.map((group) => ({
+      title: group.title,
+      description: group.description,
+      skills: group.skills.map((s) => s.name)
+    })),
+    check
+  );
 }
 
 export function syncPlugin(p: Paths, skills: Skill[], check: boolean): boolean {
-  const content = readFileSync(p.plugin, 'utf8');
-  const data = JSON.parse(content);
-  const expected = skills.map((s) => `./skills/${s.path}`);
-  const drift = JSON.stringify(data.skills ?? []) !== JSON.stringify(expected);
-  if (drift && !check) {
-    data.skills = expected;
-    writeFileSync(p.plugin, `${JSON.stringify(data, null, 2)}\n`);
-  }
-  return drift;
+  return syncJsonKey(
+    p.plugin,
+    'skills',
+    skills.map((s) => `./skills/${s.path}`),
+    check
+  );
 }
 
 // A skill can be installed on its own, so it must not link to another skill or to a
@@ -463,8 +482,6 @@ export function syncConfigContract(
   const stale: string[] = [];
   const expected = `${CONFIG_OPEN}\n\n${configBody(p)}\n\n${CONFIG_END}`;
   const resolver = readFileSync(p.resolver, 'utf8');
-  // Compare on collapsed whitespace so oxfmt's wrapping never reads as drift.
-  const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
 
   for (const skill of skills) {
     const dir = join(p.skills, skill.path);
@@ -530,8 +547,6 @@ export function syncTaggedBlock(
   variants: { open: string; end: string; body: string }[]
 ): string[] {
   const stale: string[] = [];
-  // Compare on collapsed whitespace so oxfmt's wrapping never reads as drift.
-  const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
 
   for (const skill of skills) {
     const dir = join(p.skills, skill.path);
