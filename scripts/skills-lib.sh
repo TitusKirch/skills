@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
-# Shared skill discovery — the one place that defines "a skill is a directory
-# under skills/ containing a SKILL.md". Sourced by list-skills.sh and
-# link-skills.sh so the find lives in a single seam.
+# The shell side of skill discovery. What a skill *is* — a directory at
+# skills/<category>/<name> holding a SKILL.md, in a category the generator knows —
+# is defined once, in gen-skills.ts, and this reaches it through `--paths`.
+#
+# It used to be a second definition (`find skills -name SKILL.md | sort`), and the two
+# already disagreed: find matched a SKILL.md at any depth where the generator matches
+# only depth two, and sorting whole paths puts work-implement-queue before
+# work-implement where sorting directory names does the reverse. Neither divergence
+# had a symptom yet, which is the argument for closing it now rather than later.
 
-# Print each skill's SKILL.md path relative to the repo root, sorted.
+# Print each skill's SKILL.md path relative to the repo root, in the generator's order.
 # Usage: skills_md_paths <repo-root>
 skills_md_paths() {
   local repo="$1"
-  (cd "$repo" && find skills -name SKILL.md -not -path '*/node_modules/*' | sort)
+  node "$repo/scripts/gen-skills.ts" --paths
 }
 
 # Directories that may sit inside a skill folder for development but must never be

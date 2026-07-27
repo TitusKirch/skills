@@ -56,6 +56,27 @@ export function sandbox(
   };
 }
 
+export interface Registry {
+  /** The fixture tree, copied so a `--write` run may rewrite it. */
+  root: string;
+  cleanup: () => void;
+}
+
+/**
+ * Copy `test/fixtures/registry` — a miniature of this repo's own shape — into a
+ * throwaway directory the generator may write to. The fixture is deliberately out of
+ * sync, so a run has both something to report and something to fix.
+ */
+export function registry(): Registry {
+  const base = mkdtempSync(join(tmpdir(), 'tituskirch-skills-registry-'));
+  const root = join(base, 'repo');
+  cpSync(join(ROOT, 'test', 'fixtures', 'registry'), root, { recursive: true });
+  return {
+    root,
+    cleanup: () => rmSync(base, { recursive: true, force: true })
+  };
+}
+
 export interface Run {
   status: number;
   stdout: string;
