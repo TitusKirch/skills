@@ -208,8 +208,13 @@ export function discoverSkills(p: Paths): Skill[] {
               join(p.skills, category, dir, 'SKILL.md'),
               'utf8'
             );
-          } catch {
-            return null;
+          } catch (err) {
+            // No SKILL.md means the directory is not a skill — skip it. Any other
+            // read failure is not that, and swallowing it would drop the skill from
+            // all seven artifacts in one silent `--write`, reporting success while
+            // deleting a published skill's row, entry and grouping.
+            if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+            throw err;
           }
           const fm = parseFrontmatter(raw);
           const summary = fm['metadata.summary'];

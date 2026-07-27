@@ -257,6 +257,18 @@ describe('discovery', () => {
     assert.deepEqual(found, ['repo/alpha', 'repo/beta', 'work/gamma']);
   });
 
+  test('a SKILL.md that exists but cannot be read is a loud failure', () => {
+    const { root } = open();
+    // A directory where the file belongs: readFileSync fails with EISDIR, standing in
+    // for any non-ENOENT read failure. Swallowed, such a failure would drop the skill
+    // from every artifact at once and still report success.
+    mkdirSync(join(root, 'skills', 'repo', 'broken', 'SKILL.md'), {
+      recursive: true
+    });
+
+    assert.throws(() => discoverSkills(paths(root)), { code: 'EISDIR' });
+  });
+
   test('an unknown category is a loud failure, not a silent skip', () => {
     const { root } = open();
     mkdirSync(join(root, 'skills', 'bogus'), { recursive: true });
