@@ -42,7 +42,7 @@ Before building the queue, reclaim issues an earlier implement-run crashed on: a
 
 **`ai: ready` is already the human's approval** to work an issue — the label means "scoped + approved for an AI agent to pick up". So the drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, branch strategy and parallel mode (call out any **dependency-forced order**, plus issues **deferred** or **skipped**), then drain. Under `/loop` it runs unattended.
 
-- **Plan-only triggers** ("nur den plan", "dry run", "don't run") still stop after the plan.
+- **Plan-only triggers** ("just show me", "dry run", "nur den Plan", "don't run") still stop after the plan.
 - If the ready-gate is **widened** (`labels.ready: false`, so issues were never explicitly opted-in), confirm before working those — there is no per-issue approval to lean on.
 
 ### 5. Drain

@@ -47,7 +47,7 @@ The **selection query** (`work-review`'s REFERENCE) → every issue in `reviewRe
 
 ### 4. Announce the batch — then drain
 
-Issues in `reviewRequested` were pushed by the implement loop **for exactly this** — so the review drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, then drain (unattended under `/loop`). **Plan-only triggers** ("nur den plan", "dry run", "don't run") still stop after the plan.
+Issues in `reviewRequested` were pushed by the implement loop **for exactly this** — so the review drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, then drain (unattended under `/loop`). **Plan-only triggers** ("just show me", "dry run", "nur den Plan", "don't run") still stop after the plan.
 
 ### 5. Drain
 

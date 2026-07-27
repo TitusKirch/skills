@@ -47,7 +47,7 @@ Show: title · `base ← head` · ready/draft · existing-PR status · the rende
 
 ### 5. Create — update your own — or stop
 
-- **Plan-only triggers** ("nur den plan", "don't create", "dry run", "just show me", "nicht erstellen"): print the exact `gh pr create` / `gh pr edit` command and stop.
+- **Plan-only triggers** ("nur den Plan", "don't create", "dry run", "just show me", "nicht erstellen"): print the exact `gh pr create` / `gh pr edit` command and stop.
 - **No existing PR** → after confirmation: `gh pr create --base <base> --head <branch> --title … --body-file …`. **Ready by default**; `--draft` only if asked.
 - **An open PR you opened** (author login == `gh api user --jq .login`) → offer to **update its body**: `gh pr edit <n> --body-file …`. Don't change its title, base, or draft state unless asked.
 - **A PR opened by anyone else or by automation** (e.g. a `dev → main` rollup) → **leave it untouched**. Report its number and author, then stop.

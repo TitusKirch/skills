@@ -57,7 +57,7 @@ One preview: tracker · action · template · title · body · labels/priority/s
 
 ### 7. Execute — or stop
 
-- **Plan-only triggers** ("nur den plan", "don't create", "dry run", "just show me", "nicht erstellen") → print the exact `gh` command / MCP call and **stop**.
+- **Plan-only triggers** ("nur den Plan", "don't create", "dry run", "just show me", "nicht erstellen") → print the exact `gh` command / MCP call and **stop**.
 - **Otherwise** → confirm, then execute (create/update/search). Report the result (issue URL / id). For bulk, execute in order and report each.
 
 ## Guardrails

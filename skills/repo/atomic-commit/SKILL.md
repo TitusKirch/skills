@@ -53,7 +53,7 @@ Show the detected conventions, then a numbered commit plan: each commit's messag
 
 ### 5. Commit — or stop
 
-- **Plan-only triggers** ("nicht committen", "nur den plan", "wie würdest du das committen", "don't commit", "dry run", "just show me"): **stop after the plan** and print the exact `git` commands the user could run. Do **not** run `git commit`.
+- **Plan-only triggers** ("nicht committen", "nur den Plan", "wie würdest du das committen", "don't commit", "dry run", "just show me"): **stop after the plan** and print the exact `git` commands the user could run. Do **not** run `git commit`.
 - **Otherwise**: ask for confirmation, then execute group by group — stage exactly that group's files/hunks, commit, verify with `git diff --cached --stat` before and `git log -1` after. Reset staging between groups so commits stay atomic.
 
 ## Guardrails
