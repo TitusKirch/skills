@@ -56,7 +56,8 @@
     "timeout": 600
   },
   "mergeDeps": {
-    "merge": "grouped"
+    "merge": "grouped",
+    "verify": "pnpm install --frozen-lockfile && pnpm verify"
   },
   "pruneBranches": {
     "age": 90,

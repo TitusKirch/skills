@@ -116,14 +116,28 @@ describe('a failing step does not suppress the ones after it', () => {
 });
 
 describe('the local gate stays the same gate', () => {
-  test('the config points at the script CI mirrors', () => {
-    const config = JSON.parse(
-      readFileSync(join(ROOT, '.tituskirch-skills.json'), 'utf8')
-    ) as { verify?: string; mergeDeps?: { verify?: string } };
+  const config = JSON.parse(
+    readFileSync(join(ROOT, '.tituskirch-skills.json'), 'utf8')
+  ) as { verify?: string; mergeDeps?: { verify?: string } };
 
+  test('the config points at the script CI mirrors', () => {
     assert.equal(config.verify, 'pnpm verify');
-    // mergeDeps.verify is documented to fall back to the root key, so the assertion
-    // is on the effective value — omitting it is the recommended config, not drift.
-    assert.equal(config.mergeDeps?.verify ?? config.verify, 'pnpm verify');
+  });
+
+  // merge-deps runs its command against a Dependabot PR's own head in a throwaway
+  // worktree — a bare checkout with no node_modules, where the root key alone would
+  // fail on a missing oxlint and hold every PR in the queue on a verify that never
+  // had a chance to pass. Installing first is also the only way the gate sees the
+  // updated versions at all: a dependency PR *is* its lockfile.
+  describe('merge-deps verifies in a bare worktree', () => {
+    const effective = config.mergeDeps?.verify ?? config.verify ?? '';
+
+    test('the command installs before it runs anything', () => {
+      assert.match(effective, /^pnpm install --frozen-lockfile &&/);
+    });
+
+    test('what it then runs is the same gate, not a narrower one', () => {
+      assert.match(effective, /&& pnpm verify$/);
+    });
   });
 });

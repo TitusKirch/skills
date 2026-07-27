@@ -17,3 +17,4 @@ A decision earns an ADR when it constrains work that comes later and its reasoni
 | [ADR-0006](0006-move-summary-into-metadata.md)                | Move summary into metadata.summary                          | accepted | 2026-07-25 |
 | [ADR-0007](0007-permit-claude-code-frontmatter-extensions.md) | Permit Claude Code frontmatter extensions, at a stated cost | accepted | 2026-07-25 |
 | [ADR-0008](0008-keep-eval-fixtures-out-of-the-package.md)     | Keep eval fixtures in the skill folder, out of the package  | accepted | 2026-07-25 |
+| [ADR-0009](0009-enforce-the-agents-md-mirror-in-the-gate.md)  | Enforce the AGENTS.md mirror in the gate                    | accepted | 2026-07-27 |
