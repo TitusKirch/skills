@@ -16,15 +16,38 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SKILLS_DIR = join(ROOT, 'skills');
-const README = join(ROOT, 'README.md');
-const PLUGIN = join(ROOT, '.claude-plugin', 'plugin.json');
-const SKILLS_SH = join(ROOT, 'skills.sh.json');
-const CONFIG_BLOCK = join(ROOT, 'scripts', 'config-block.md');
-const AUTHORITY_BLOCK = join(ROOT, 'scripts', 'authority-block.md');
-const VERIFY_BLOCK = join(ROOT, 'scripts', 'verify-block.md');
-const RESOLVER = join(ROOT, 'scripts', 'resolve-config.sh');
+export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+// Every path the generator touches, derived from one root. The root is an argument
+// rather than a module constant because the artifacts are what needs checking, and
+// checking them means letting a run produce them: a test points the whole generator
+// at a fixture tree and lets it write there. Wired to a constant these functions can
+// only ever be run against this repo, which is why none of them had a test.
+export interface Paths {
+  root: string;
+  skills: string;
+  readme: string;
+  plugin: string;
+  skillsSh: string;
+  configBlock: string;
+  authorityBlock: string;
+  verifyBlock: string;
+  resolver: string;
+}
+
+export function paths(root: string): Paths {
+  return {
+    root,
+    skills: join(root, 'skills'),
+    readme: join(root, 'README.md'),
+    plugin: join(root, '.claude-plugin', 'plugin.json'),
+    skillsSh: join(root, 'skills.sh.json'),
+    configBlock: join(root, 'scripts', 'config-block.md'),
+    authorityBlock: join(root, 'scripts', 'authority-block.md'),
+    verifyBlock: join(root, 'scripts', 'verify-block.md'),
+    resolver: join(root, 'scripts', 'resolve-config.sh')
+  };
+}
 
 const START = '<!-- skills:start -->';
 const END = '<!-- skills:end -->';
@@ -73,7 +96,7 @@ const DESCRIPTION_BUDGET = 960;
 // available here: no enums, no namespaces, no parameter properties.
 type Category = 'repo' | 'work' | 'docs' | 'meta';
 
-interface Skill {
+export interface Skill {
   category: Category;
   dir: string;
   path: string;
@@ -82,14 +105,14 @@ interface Skill {
   frontmatter: { summary?: string; description?: string };
 }
 
-interface Group {
+export interface Group {
   category: Category;
   title: string;
   description: string;
   skills: Skill[];
 }
 
-function parseFrontmatter(raw: string): Record<string, string> {
+export function parseFrontmatter(raw: string): Record<string, string> {
   const match = raw.match(/^---\n([\s\S]*?)\n---/);
   const out: Record<string, string> = {};
   if (!match?.[1]) return out;
@@ -118,7 +141,7 @@ function parseFrontmatter(raw: string): Record<string, string> {
 }
 
 // Fallback when a skill has no `metadata.summary`: the first clause of `description`.
-function deriveSummary(description: string): string {
+export function deriveSummary(description: string): string {
   const dash = description.search(/\s[—–]\s/);
   const period = description.search(/\.\s/);
   const stops = [dash, period === -1 ? -1 : period + 1].filter((i) => i > 0);
@@ -158,8 +181,8 @@ const CATEGORIES: Record<Category, { title: string; description: string }> = {
   }
 };
 
-function discoverSkills(): Skill[] {
-  const categories = readdirSync(SKILLS_DIR, { withFileTypes: true })
+export function discoverSkills(p: Paths): Skill[] {
+  const categories = readdirSync(p.skills, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name);
 
@@ -174,7 +197,7 @@ function discoverSkills(): Skill[] {
   return (Object.keys(CATEGORIES) as Category[])
     .filter((category) => categories.includes(category))
     .flatMap((category) =>
-      readdirSync(join(SKILLS_DIR, category), { withFileTypes: true })
+      readdirSync(join(p.skills, category), { withFileTypes: true })
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name)
         .sort()
@@ -182,7 +205,7 @@ function discoverSkills(): Skill[] {
           let raw;
           try {
             raw = readFileSync(
-              join(SKILLS_DIR, category, dir, 'SKILL.md'),
+              join(p.skills, category, dir, 'SKILL.md'),
               'utf8'
             );
           } catch {
@@ -204,7 +227,7 @@ function discoverSkills(): Skill[] {
 }
 
 // [{ category, title, description, skills: [...] }] in CATEGORIES order.
-function byCategory(skills: Skill[]): Group[] {
+export function byCategory(skills: Skill[]): Group[] {
   return (
     Object.entries(CATEGORIES) as [Category, (typeof CATEGORIES)[Category]][]
   )
@@ -216,7 +239,7 @@ function byCategory(skills: Skill[]): Group[] {
     .filter((group) => group.skills.length > 0);
 }
 
-function renderTable(groups: Group[]): string {
+export function renderTable(groups: Group[]): string {
   const sections = groups.flatMap((group) => [
     '',
     `### ${group.title}`,
@@ -235,7 +258,7 @@ function renderTable(groups: Group[]): string {
 // Parse the committed block semantically so oxfmt's column alignment and its
 // table-padding never trip the drift check. Headings and rows both matter —
 // a skill silently moving category has to register as drift.
-function parseTable(block: string): string[] {
+export function parseTable(block: string): string[] {
   const tokens: string[] = [];
   for (const line of block.split('\n')) {
     const heading = line.match(/^###\s+(.*?)\s*$/);
@@ -251,7 +274,7 @@ function parseTable(block: string): string[] {
   return tokens;
 }
 
-function expectedTableTokens(groups: Group[]): string[] {
+export function expectedTableTokens(groups: Group[]): string[] {
   return groups.flatMap((group) => [
     `h\t${group.title}`,
     ...group.skills.map(
@@ -260,8 +283,8 @@ function expectedTableTokens(groups: Group[]): string[] {
   ]);
 }
 
-function syncReadme(groups: Group[], check: boolean): boolean {
-  const content = readFileSync(README, 'utf8');
+export function syncReadme(p: Paths, groups: Group[], check: boolean): boolean {
+  const content = readFileSync(p.readme, 'utf8');
   const from = content.indexOf(START);
   const to = content.indexOf(END);
   if (from === -1 || to === -1) {
@@ -272,14 +295,14 @@ function syncReadme(groups: Group[], check: boolean): boolean {
   const expected = expectedTableTokens(groups);
   const drift = JSON.stringify(current) !== JSON.stringify(expected);
   if (drift && !check) {
-    writeFileSync(README, content.replace(block, renderTable(groups)));
+    writeFileSync(p.readme, content.replace(block, renderTable(groups)));
   }
   return drift;
 }
 
 // One README per category — the section landing a reader hits when they open
 // skills/<category>/. Fully generated; edit skill frontmatter, not these.
-function renderCategoryReadme(group: Group): string {
+export function renderCategoryReadme(group: Group): string {
   return `${[
     `<!-- Generated by \`pnpm skills:sync\` — edit skill frontmatter, not this file. -->`,
     '',
@@ -295,10 +318,14 @@ function renderCategoryReadme(group: Group): string {
   ].join('\n')}\n`;
 }
 
-function syncCategoryReadmes(groups: Group[], check: boolean): string[] {
+export function syncCategoryReadmes(
+  p: Paths,
+  groups: Group[],
+  check: boolean
+): string[] {
   const stale: string[] = [];
   for (const group of groups) {
-    const file = join(SKILLS_DIR, group.category, 'README.md');
+    const file = join(p.skills, group.category, 'README.md');
     const expected = renderCategoryReadme(group);
     let current = '';
     try {
@@ -318,8 +345,12 @@ function syncCategoryReadmes(groups: Group[], check: boolean): string[] {
 
 // skills.sh.json drives how skills.sh displays the collection. Projected from
 // the same categories so the website grouping can never drift from the folders.
-function syncSkillsSh(groups: Group[], check: boolean): boolean {
-  const content = readFileSync(SKILLS_SH, 'utf8');
+export function syncSkillsSh(
+  p: Paths,
+  groups: Group[],
+  check: boolean
+): boolean {
+  const content = readFileSync(p.skillsSh, 'utf8');
   const data = JSON.parse(content);
   const expected = groups.map((group) => ({
     title: group.title,
@@ -330,19 +361,19 @@ function syncSkillsSh(groups: Group[], check: boolean): boolean {
     JSON.stringify(data.groupings ?? []) !== JSON.stringify(expected);
   if (drift && !check) {
     data.groupings = expected;
-    writeFileSync(SKILLS_SH, `${JSON.stringify(data, null, 2)}\n`);
+    writeFileSync(p.skillsSh, `${JSON.stringify(data, null, 2)}\n`);
   }
   return drift;
 }
 
-function syncPlugin(skills: Skill[], check: boolean): boolean {
-  const content = readFileSync(PLUGIN, 'utf8');
+export function syncPlugin(p: Paths, skills: Skill[], check: boolean): boolean {
+  const content = readFileSync(p.plugin, 'utf8');
   const data = JSON.parse(content);
   const expected = skills.map((s) => `./skills/${s.path}`);
   const drift = JSON.stringify(data.skills ?? []) !== JSON.stringify(expected);
   if (drift && !check) {
     data.skills = expected;
-    writeFileSync(PLUGIN, `${JSON.stringify(data, null, 2)}\n`);
+    writeFileSync(p.plugin, `${JSON.stringify(data, null, 2)}\n`);
   }
   return drift;
 }
@@ -352,12 +383,12 @@ function syncPlugin(skills: Skill[], check: boolean): boolean {
 // shared is therefore mirrored *into* each skill and kept identical from here: the
 // config contract as text between markers, and the resolver as a real file the skill
 // can execute. A skill opts in by carrying the markers.
-function configBody(): string {
-  const raw = readFileSync(CONFIG_BLOCK, 'utf8');
+export function configBody(p: Paths): string {
+  const raw = readFileSync(p.configBlock, 'utf8');
   const marker = '<!-- config:body -->';
   const at = raw.indexOf(marker);
   if (at === -1) {
-    throw new Error(`${CONFIG_BLOCK}: missing ${marker}`);
+    throw new Error(`${p.configBlock}: missing ${marker}`);
   }
   return raw.slice(at + marker.length).trim();
 }
@@ -365,15 +396,15 @@ function configBody(): string {
 // The authority source holds both variants, split by markers: the full body runs from
 // `<!-- authority:full -->` to `<!-- authority:reduced -->`, the reduced body from there
 // to the end. Each is trimmed and mirrored verbatim into its own tag.
-function authorityBody(variant: 'full' | 'reduced'): string {
-  const raw = readFileSync(AUTHORITY_BLOCK, 'utf8');
+export function authorityBody(p: Paths, variant: 'full' | 'reduced'): string {
+  const raw = readFileSync(p.authorityBlock, 'utf8');
   const fullMarker = '<!-- authority:full -->';
   const reducedMarker = '<!-- authority:reduced -->';
   const fullAt = raw.indexOf(fullMarker);
   const reducedAt = raw.indexOf(reducedMarker);
   if (fullAt === -1 || reducedAt === -1 || reducedAt < fullAt) {
     throw new Error(
-      `${AUTHORITY_BLOCK}: missing or misordered ${fullMarker} / ${reducedMarker}`
+      `${p.authorityBlock}: missing or misordered ${fullMarker} / ${reducedMarker}`
     );
   }
   return variant === 'full'
@@ -385,15 +416,15 @@ function authorityBody(variant: 'full' | 'reduced'): string {
 // authority variants, which are alternatives, `isolated` is base *plus* the install section:
 // composed here rather than written out twice, so the half both variants share cannot drift
 // against itself inside its own source file.
-function verifyBody(variant: 'base' | 'isolated'): string {
-  const raw = readFileSync(VERIFY_BLOCK, 'utf8');
+export function verifyBody(p: Paths, variant: 'base' | 'isolated'): string {
+  const raw = readFileSync(p.verifyBlock, 'utf8');
   const baseMarker = '<!-- verify:base -->';
   const isolatedMarker = '<!-- verify:isolated -->';
   const baseAt = raw.indexOf(baseMarker);
   const isolatedAt = raw.indexOf(isolatedMarker);
   if (baseAt === -1 || isolatedAt === -1 || isolatedAt < baseAt) {
     throw new Error(
-      `${VERIFY_BLOCK}: missing or misordered ${baseMarker} / ${isolatedMarker}`
+      `${p.verifyBlock}: missing or misordered ${baseMarker} / ${isolatedMarker}`
     );
   }
   const base = raw.slice(baseAt + baseMarker.length, isolatedAt).trim();
@@ -405,7 +436,11 @@ function verifyBody(variant: 'base' | 'isolated'): string {
 // Placed anywhere else it silently reads as part of the preceding section — a queue
 // skill's block landed under "## Workflow" and became its last step. Rewriting the
 // block cannot fix where it sits, so placement is asserted rather than repaired.
-function assertPlacement(content: string, from: number, where: string): void {
+export function assertPlacement(
+  content: string,
+  from: number,
+  where: string
+): void {
   const headings = content.slice(0, from).match(/^## .*$/gm);
   const under = headings ? headings[headings.length - 1] : null;
   if (under !== '## Config') {
@@ -415,15 +450,19 @@ function assertPlacement(content: string, from: number, where: string): void {
   }
 }
 
-function syncConfigContract(skills: Skill[], check: boolean): string[] {
+export function syncConfigContract(
+  p: Paths,
+  skills: Skill[],
+  check: boolean
+): string[] {
   const stale: string[] = [];
-  const expected = `${CONFIG_OPEN}\n\n${configBody()}\n\n${CONFIG_END}`;
-  const resolver = readFileSync(RESOLVER, 'utf8');
+  const expected = `${CONFIG_OPEN}\n\n${configBody(p)}\n\n${CONFIG_END}`;
+  const resolver = readFileSync(p.resolver, 'utf8');
   // Compare on collapsed whitespace so oxfmt's wrapping never reads as drift.
   const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
 
   for (const skill of skills) {
-    const dir = join(SKILLS_DIR, skill.path);
+    const dir = join(p.skills, skill.path);
     let hosts = 0;
 
     for (const name of ['SKILL.md', 'REFERENCE.md']) {
@@ -478,7 +517,8 @@ function syncConfigContract(skills: Skill[], check: boolean): string[] {
 //
 // Generic rather than one function per contract: the third copy of this loop is where the
 // contracts would start disagreeing about what counts as drift.
-function syncTaggedBlock(
+export function syncTaggedBlock(
+  p: Paths,
   skills: Skill[],
   check: boolean,
   label: string,
@@ -489,7 +529,7 @@ function syncTaggedBlock(
   const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
 
   for (const skill of skills) {
-    const dir = join(SKILLS_DIR, skill.path);
+    const dir = join(p.skills, skill.path);
     for (const name of ['SKILL.md', 'REFERENCE.md']) {
       const file = join(dir, name);
       let current = '';
@@ -526,7 +566,7 @@ function syncTaggedBlock(
 // Punctuation: skills.sh parses real YAML, so an unquoted `summary`/`description` must not
 // contain ": " (colon+space) or " #" (space+hash), or its parser drops the whole skill —
 // and our loose frontmatter regex above would not otherwise catch it.
-function lintFrontmatter(skills: Skill[]): string[] {
+export function lintFrontmatter(skills: Skill[]): string[] {
   const problems: string[] = [];
   for (const skill of skills) {
     // Length is checked on the raw value, quoted or not: a quoted description counts its
@@ -556,72 +596,99 @@ function lintFrontmatter(skills: Skill[]): string[] {
   return problems;
 }
 
-const mode = process.argv[2] ?? '--write';
+// One run, as a value: the exit code and the two streams, returned rather than written.
+// Everything a run decides — which mode, which artifacts drifted, what the operator is
+// told — is then assertable without spawning a process or capturing stdout, and the
+// process boundary below stays the only place that talks to the OS.
+export interface RunResult {
+  code: number;
+  stdout: string;
+  stderr: string;
+}
 
-if (mode === '--paths') {
-  for (const skill of discoverSkills()) {
-    process.stdout.write(`skills/${skill.path}/SKILL.md\n`);
+export function main(argv: string[], root: string = ROOT): RunResult {
+  const mode = argv[0] ?? '--write';
+  if (mode !== '--paths' && mode !== '--check' && mode !== '--write') {
+    return { code: 2, stdout: '', stderr: `unknown mode: ${mode}\n` };
   }
-} else if (mode === '--check' || mode === '--write') {
+
+  const p = paths(root);
+  const skills = discoverSkills(p);
+
+  if (mode === '--paths') {
+    const lines = skills.map((skill) => `skills/${skill.path}/SKILL.md\n`);
+    return { code: 0, stdout: lines.join(''), stderr: '' };
+  }
+
   const check = mode === '--check';
-  const skills = discoverSkills();
   const groups = byCategory(skills);
 
   const problems = lintFrontmatter(skills);
   if (problems.length) {
-    process.stderr.write(
-      `skill frontmatter invalid:\n${problems.map((p) => `  - ${p}`).join('\n')}\n`
-    );
-    process.exit(1);
+    return {
+      code: 1,
+      stdout: '',
+      stderr: `skill frontmatter invalid:\n${problems.map((x) => `  - ${x}`).join('\n')}\n`
+    };
   }
 
   const stale: string[] = [];
-  if (syncReadme(groups, check)) stale.push('README.md table');
-  if (syncPlugin(skills, check)) stale.push('plugin.json skills array');
-  if (syncSkillsSh(groups, check)) stale.push('skills.sh.json groupings');
-  stale.push(...syncCategoryReadmes(groups, check));
-  stale.push(...syncConfigContract(skills, check));
+  if (syncReadme(p, groups, check)) stale.push('README.md table');
+  if (syncPlugin(p, skills, check)) stale.push('plugin.json skills array');
+  if (syncSkillsSh(p, groups, check)) stale.push('skills.sh.json groupings');
+  stale.push(...syncCategoryReadmes(p, groups, check));
+  stale.push(...syncConfigContract(p, skills, check));
   stale.push(
-    ...syncTaggedBlock(skills, check, 'authority', [
+    ...syncTaggedBlock(p, skills, check, 'authority', [
       {
         open: AUTHORITY_FULL_OPEN,
         end: AUTHORITY_FULL_END,
-        body: authorityBody('full')
+        body: authorityBody(p, 'full')
       },
       {
         open: AUTHORITY_REDUCED_OPEN,
         end: AUTHORITY_REDUCED_END,
-        body: authorityBody('reduced')
+        body: authorityBody(p, 'reduced')
       }
     ])
   );
   stale.push(
-    ...syncTaggedBlock(skills, check, 'verify', [
+    ...syncTaggedBlock(p, skills, check, 'verify', [
       {
         open: VERIFY_BASE_OPEN,
         end: VERIFY_BASE_END,
-        body: verifyBody('base')
+        body: verifyBody(p, 'base')
       },
       {
         open: VERIFY_ISOLATED_OPEN,
         end: VERIFY_ISOLATED_END,
-        body: verifyBody('isolated')
+        body: verifyBody(p, 'isolated')
       }
     ])
   );
 
   if (check && stale.length) {
-    process.stderr.write(
-      `skills registry out of sync: ${stale.join(', ')}\nrun \`pnpm skills:sync\`\n`
-    );
-    process.exit(1);
+    return {
+      code: 1,
+      stdout: '',
+      stderr: `skills registry out of sync: ${stale.join(', ')}\nrun \`pnpm skills:sync\`\n`
+    };
   }
 
   let state = 'already in sync';
   if (check) state = 'in sync';
   else if (stale.length) state = `updated ${stale.join(', ')}`;
-  process.stdout.write(`skills registry ${state} (${skills.length} skills)\n`);
-} else {
-  process.stderr.write(`unknown mode: ${mode}\n`);
-  process.exit(2);
+  return {
+    code: 0,
+    stdout: `skills registry ${state} (${skills.length} skills)\n`,
+    stderr: ''
+  };
+}
+
+// The process boundary, and the whole of it. Importing this file runs no I/O.
+if (import.meta.main) {
+  const result = main(process.argv.slice(2));
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  process.exit(result.code);
 }
