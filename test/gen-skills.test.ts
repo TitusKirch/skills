@@ -63,7 +63,8 @@ describe('a run reports, writes, and then has nothing left to do', () => {
       'skills/repo/README.md',
       'skills/repo/alpha/SKILL.md config block',
       'skills/repo/beta/SKILL.md authority block',
-      'skills/repo/beta/SKILL.md verify block'
+      'skills/repo/beta/SKILL.md verify block',
+      'skills/work/gamma/SKILL.md worklock block'
     ]) {
       assert.ok(
         run.stderr.includes(artifact),
@@ -206,6 +207,13 @@ describe('what a write actually puts on disk', () => {
     // `isolated` is base plus the install section; `<skills-verify>` is base alone.
     assert.ok(beta.includes('Fixture base verify body.'));
     assert.ok(!beta.includes('Fixture install section.'));
+
+    const gamma = readFileSync(
+      join(root, 'skills', 'work', 'gamma', 'SKILL.md'),
+      'utf8'
+    );
+    assert.ok(gamma.includes('Fixture worklock body.'));
+    assert.ok(!gamma.includes('stale worklock body'));
   });
 
   test('the resolver ships to config carriers, byte-exact, and to nobody else', () => {
@@ -392,13 +400,14 @@ describe('the two frontmatter faults nothing else catches', () => {
   test('a run stops on a lint problem before writing anything', () => {
     const { root } = open();
     const file = join(root, 'skills', 'work', 'gamma', 'SKILL.md');
-    writeFileSync(
-      file,
-      readFileSync(file, 'utf8').replace(
-        'description: The third fixture skill — carries no mirrored block at all.',
-        'description: has a colon: right here'
-      )
+    // Matched by shape, not by the fixture's exact wording: a literal that stops
+    // matching would leave this test passing against an unmodified fixture.
+    const broken = readFileSync(file, 'utf8').replace(
+      /^description: .*$/m,
+      'description: has a colon: right here'
     );
+    assert.match(broken, /has a colon: right here/, 'the fixture was modified');
+    writeFileSync(file, broken);
     const before = readFileSync(join(root, 'README.md'), 'utf8');
     const run = main(['--write'], root);
 

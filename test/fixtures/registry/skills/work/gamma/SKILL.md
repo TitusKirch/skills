@@ -1,12 +1,18 @@
 ---
 name: gamma
-description: The third fixture skill — carries no mirrored block at all.
+description: The third fixture skill — carries the worklock block and nothing else.
 metadata:
-  summary: carries nothing mirrored
+  summary: carries the worklock block
 allowed-tools:
   - Read
 ---
 
 # gamma
 
-Nothing here opts into a mirrored block.
+## The single-flight lock
+
+<skills-worklock>
+
+stale worklock body
+
+</skills-worklock>
