@@ -8,7 +8,6 @@ allowed-tools:
   - Edit
   - Grep
   - Glob
-  - Bash(sh:*)
   - Bash(printf:*)
   - Bash(jq:*)
   - Bash(git diff:*)
@@ -17,7 +16,6 @@ allowed-tools:
   - Bash(git symbolic-ref:*)
   - Bash(head:*)
   - Bash(grep:*)
-  - Bash(sed:*)
 ---
 
 # prune-comments
