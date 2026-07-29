@@ -1,36 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Symlinks each skill under skills/ into ~/.claude/skills/, so Claude Code
-# discovers them as user-scope skills available in every project.
+# Symlinks each skill under skills/ into every user-scope skills directory the clients
+# this repo publishes for actually read (SKILL_LINK_DESTS in scripts/skills-lib.sh), so
+# they discover them as user-scope skills available in every project.
 #
 # A skill with no dev-artifact dir is linked as one whole-folder symlink. One that
 # carries a dev-artifact dir (evals/, see scripts/skills-lib.sh) cannot be — the
 # symlink would pull the artifact into the installation — so its root entries are
 # linked individually and the artifact is left behind. This mirrors how packaging
-# excludes evals/: a linked skill must be as self-contained as a published one.
+# excludes evals/: a linked skill must be as self-contained as a published one. Both
+# forms apply per destination: each one gets its own whole-folder link or link tree.
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-DEST="$HOME/.claude/skills"
 
 # shellcheck source=scripts/skills-lib.sh
 . "$REPO/scripts/skills-lib.sh"
 
-# If ~/.claude/skills is itself a symlink that points back into this repo,
-# we'd end up writing the per-skill symlinks into the repo's own skills/ tree.
-# Detect and bail out instead of polluting the working copy.
-if [ -L "$DEST" ]; then
-  resolved="$(readlink -f "$DEST")"
+# If a destination is itself a symlink that points back into this repo, we'd end up
+# writing the per-skill symlinks into the repo's own skills/ tree. Detect and bail out
+# instead of polluting the working copy. Every destination is checked before any of
+# them is written, so a bad one fails the run outright rather than half-linking.
+for dest in "${SKILL_LINK_DESTS[@]}"; do
+  [ -L "$dest" ] || continue
+  resolved="$(readlink -f "$dest")"
   case "$resolved" in
     "$REPO" | "$REPO"/*)
-      echo "error: $DEST is a symlink into this repo ($resolved)." >&2
-      echo "Remove it (rm \"$DEST\") and re-run; the script will recreate it as a real dir." >&2
+      echo "error: $dest is a symlink into this repo ($resolved)." >&2
+      echo "Remove it (rm \"$dest\") and re-run; the script will recreate it as a real dir." >&2
       exit 1
       ;;
   esac
-fi
-
-mkdir -p "$DEST"
+done
 
 # A per-entry link tree we built holds only symlinks; a user's own skill dir holds
 # real files. That difference is how we tell a tree we may rebuild from a directory
@@ -70,8 +71,20 @@ link_skill() {
   echo "linked $name -> $src (dev artifacts excluded)"
 }
 
+# Read the skill list once, then replay it per destination — discovery shells out to
+# the generator, and every destination gets the same set. Collected with read rather
+# than mapfile, which bash 3.2 (still /bin/bash on macOS) does not have.
+skill_mds=()
 while IFS= read -r skill_md; do
-  src="$(dirname "$REPO/$skill_md")"
-  name="$(basename "$src")"
-  link_skill "$src" "$name" "$DEST/$name"
+  skill_mds+=("$skill_md")
 done < <(skills_md_paths "$REPO")
+
+for dest in "${SKILL_LINK_DESTS[@]}"; do
+  mkdir -p "$dest"
+  echo "$dest:"
+  for skill_md in "${skill_mds[@]}"; do
+    src="$(dirname "$REPO/$skill_md")"
+    name="$(basename "$src")"
+    link_skill "$src" "$name" "$dest/$name"
+  done
+done
