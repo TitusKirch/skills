@@ -32,23 +32,39 @@ IMAGE='python:3.12-slim'
 VALIDATOR='skills-ref==0.1.1'
 VALIDATOR_MODULE='skills_ref.cli'
 
-# The single sanctioned re-tier, reproduced from skills/meta/validate-skills/REFERENCE.md
-# ("The one re-tiered line"). skills-ref fails the whole skill for any top-level
-# frontmatter key outside the standard's six; these are Claude Code extensions, so the
-# verdict is kept ("not in the open standard") while the tier becomes client-extension
-# (non-portable) rather than spec violation. Without this the gate is red on day one on
-# work-implement-queue and work-review-queue, whose `disallowed-tools` is deliberate
-# and recorded in ADR-0007.
+# The single sanctioned re-tier, mirrored from skills/meta/validate-skills/REFERENCE.md
+# ("The extension matrix"). skills-ref fails the whole skill for any top-level
+# frontmatter key outside the standard's six; every key below is one a named client
+# defines, so the verdict is kept ("not in the open standard") while the tier becomes
+# client-extension (non-portable) rather than spec violation. Without this the gate is
+# red on day one on work-implement-queue and work-review-queue, whose `disallowed-tools`
+# is deliberate and recorded in ADR-0007.
 #
-# The list is Claude-Code-only and known incomplete — issue #109 is what completes it.
-# test/conformance-gate.test.ts pins it to the skill's prose so the two cannot drift.
+# Each entry is `field=clients`, because *which* clients define a field is part of the
+# finding rather than a footnote: `paths` and `disable-model-invocation` are Cursor's as
+# well as Claude Code's, so reporting them as Claude-only would state something untrue
+# about how portable they are. The skill's matrix is the source and this is the mirror;
+# test/conformance-gate.test.ts pins the two key-for-key and client-for-client.
+#
+# Claude Code's seventeen documented fields minus the three that are also standard
+# (`name`, `description`, `allowed-tools` — skills-ref allows all three, so none is ever
+# re-tiered) leaves fourteen; Cursor's legacy `globs` is the fifteenth.
 CLIENT_EXTENSIONS=(
-  disallowed-tools
-  when_to_use
-  disable-model-invocation
-  arguments
-  model
-  context
+  'agent=Claude Code'
+  'argument-hint=Claude Code'
+  'arguments=Claude Code'
+  'background=Claude Code'
+  'context=Claude Code'
+  'disable-model-invocation=Claude Code, Cursor'
+  'disallowed-tools=Claude Code'
+  'effort=Claude Code'
+  'globs=Cursor'
+  'hooks=Claude Code'
+  'model=Claude Code'
+  'paths=Claude Code, Cursor'
+  'shell=Claude Code'
+  'user-invocable=Claude Code'
+  'when_to_use=Claude Code'
 )
 
 # The container side: install once, then validate every skill directory handed in.
@@ -137,11 +153,14 @@ ok=0
 extended=0
 failed=0
 
-# Is $1 one of the re-tiered Claude Code extension keys?
-is_client_extension() {
-  local key="$1" known
-  for known in "${CLIENT_EXTENSIONS[@]}"; do
-    [ "$key" = "$known" ] && return 0
+# Prints the clients that define $1, or fails if it is not a re-tiered extension key.
+client_extension_clients() {
+  local key="$1" entry
+  for entry in "${CLIENT_EXTENSIONS[@]}"; do
+    if [ "$key" = "${entry%%=*}" ]; then
+      printf '%s' "${entry#*=}"
+      return 0
+    fi
   done
   return 1
 }
@@ -149,7 +168,7 @@ is_client_extension() {
 # Judge one skill from the lines collected between its ##BEGIN and ##END markers.
 judge() {
   local dir="$1" rc="$2"
-  local line finding keys tail key unknown_joined
+  local line finding keys tail key clients unknown_joined
   local -a violations=() extensions=() unknown=()
 
   if [ "$rc" = 0 ]; then
@@ -179,8 +198,9 @@ judge() {
       for key in "${split[@]}"; do
         key="${key//[[:space:]]/}"
         [ -z "$key" ] && continue
-        if is_client_extension "$key"; then
-          extensions+=("$key")
+        if clients="$(client_extension_clients "$key")"; then
+          # `clients|key`, split again at print time — the finding is the pair.
+          extensions+=("$clients|$key")
         else
           unknown+=("$key")
         fi
@@ -213,7 +233,7 @@ judge() {
   fi
 
   for line in "${extensions[@]}"; do
-    printf '          client extension (Claude Code), not portable: %s\n' "$line"
+    printf '          client extension (%s), not portable: %s\n' "${line%%|*}" "${line#*|}"
   done
   for line in "${violations[@]}"; do
     printf '          %s\n' "$line"

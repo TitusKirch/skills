@@ -18,7 +18,7 @@ A skill is a **directory** whose only required member is `SKILL.md`. Optional, s
 
 ### Frontmatter fields
 
-`SKILL.md` opens with YAML frontmatter, then Markdown body. The settled frontmatter contract (`skills/README.md`, from the landed contract issue) tags every field **[standard]** (the open Agent Skills spec), **[Claude Code]** (a client extension the spec does not define), or **[house]** (a consuming repo's own field) — and that tag **is** the tier a stray key lands in: a **[standard]** breach is a **spec violation**, a **[Claude Code]** key is a **client extension (non-portable)**, a **[house]** field is **house style**.
+`SKILL.md` opens with YAML frontmatter, then Markdown body. The settled frontmatter contract (`skills/README.md`, from the landed contract issue) tags every field **[standard]** (the open Agent Skills spec), **[client]** — written as the defining client's name, **[Claude Code]** or **[Cursor]** — or **[house]** (a consuming repo's own field), and that tag **is** the tier a stray key lands in: a **[standard]** breach is a **spec violation**, a **[client]** key is a **client extension (non-portable)**, a **[house]** field is **house style**.
 
 **Standard fields [standard]** — the six the open standard defines; `skills-ref` enforces exactly these:
 
@@ -31,25 +31,76 @@ A skill is a **directory** whose only required member is `SKILL.md`. Optional, s
 | `metadata`      | No       | Map of **string keys to string values**; the conforming home for client-specific fields                                                            | **spec violation** if not a string map                               |
 | `allowed-tools` | No       | Space-separated string of pre-approved tools; **Experimental** — support varies between agents                                                     | rarely a hard breach; note portability                               |
 
-**Claude Code extensions [Claude Code]** — valid in Claude Code, **absent from the open standard**. A skill using one loads in Claude Code but **not** in a conformant client, so each is a **client extension (non-portable)** finding, never a spec violation. `skills-ref` does not know them — its allowlist is the six above — so it fails each as an `Unexpected fields in frontmatter` line, which the [re-tiering rule](#getting-and-running-skills-ref) moves into this tier:
+**Client extensions [client]** — fields a **named client** defines that the open standard does not. A skill carrying one loads in the clients that define it and **not** in a conformant client that rejects unknown keys, so each is a **client extension (non-portable)** finding, never a spec violation. `skills-ref` knows none of them — its allowlist is the six above — so it fails each as an `Unexpected fields in frontmatter` line, which the [re-tiering rule](#the-one-re-tiered-line--unexpected-fields-in-frontmatter) moves into this tier.
 
-| Field                      | Tier                                |
-| :------------------------- | :---------------------------------- |
-| `disallowed-tools`         | **client extension** (non-portable) |
-| `when_to_use`              | **client extension** (non-portable) |
-| `disable-model-invocation` | **client extension** (non-portable) |
-| `arguments`                | **client extension** (non-portable) |
-| `model`                    | **client extension** (non-portable) |
-| subagent `context`         | **client extension** (non-portable) |
+**Which client defines a field is part of the finding**, not merely that the standard does not. Two of these keys are defined by **more than one** client with the same name and the same meaning, so reporting them as "Claude-only, will not load elsewhere" states something untrue and talks an author out of portability they never lost:
 
-This is the **whole** known set — a top-level key outside both tables above is genuinely unrecognised and stays a **spec violation**.
+<a id="the-extension-matrix"></a>
+
+| Field                      | Defined by          |
+| :------------------------- | :------------------ |
+| `agent`                    | Claude Code         |
+| `argument-hint`            | Claude Code         |
+| `arguments`                | Claude Code         |
+| `background`               | Claude Code         |
+| `context`                  | Claude Code         |
+| `disable-model-invocation` | Claude Code, Cursor |
+| `disallowed-tools`         | Claude Code         |
+| `effort`                   | Claude Code         |
+| `globs`                    | Cursor              |
+| `hooks`                    | Claude Code         |
+| `model`                    | Claude Code         |
+| `paths`                    | Claude Code, Cursor |
+| `shell`                    | Claude Code         |
+| `user-invocable`           | Claude Code         |
+| `when_to_use`              | Claude Code         |
+
+This table is the **single** list of re-tiered keys; everything else that needs one — the re-tiering rule below, a consuming repo's unattended gate — reads it from here rather than keeping a second copy.
+
+Where the counts come from, because they are easy to state wrongly:
+
+- **Claude Code documents seventeen frontmatter fields** ([its reference](https://code.claude.com/docs/en/skills)). Three of them are **standard** — `name`, `description` and `allowed-tools`, the last flagged Experimental by the spec but on `skills-ref`'s allowlist all the same — which leaves the **fourteen** Claude Code rows above. A count of fifteen comes from filing `allowed-tools` as an extension; `skills-ref` accepts it, so it is never re-tiered.
+- **Cursor documents five** ([its reference](https://cursor.com/docs/skills)): `name`, `description` and `metadata` from the standard, plus `paths` and `disable-model-invocation` — its own fields, sharing Claude Code's names and semantics. `globs` is its **legacy** spelling of `paths`, still accepted for older skills and not for new ones. It documents no `license`, `compatibility` or `allowed-tools`.
+
+Fourteen plus `globs` is the fifteen rows above. A top-level key outside this table and the standard's six is genuinely unrecognised and stays a **spec violation**.
 
 **House fields [house]** — a consuming repo's own keys, carried **inside** `metadata` so the standard's string-map contract is never broken. This repo's is `metadata.summary`; its absence is a [house-style](#the-house-style-tier) finding, never a spec breach.
 
 Two field notes that catch people out:
 
 - **`name` must equal the folder name.** `skills-ref` checks this, and it is a real portability bug (a client keys the skill by its directory), so it is a **spec violation**, not house style.
-- **`metadata` is a string→string map.** A nested non-string value (an object, a number) is a spec breach. This is why a house field like `summary` lives at `metadata.summary` **as a string** — the standard's sanctioned way to carry a client-specific field without violating the map contract. A `[Claude Code]` extension is the other way to carry a client-specific field — as a **top-level** key the client defines, which is exactly why `skills-ref` rejects it and why it is non-portable rather than a spec breach.
+- **`metadata` is a string→string map.** A nested non-string value (an object, a number) is a spec breach. This is why a house field like `summary` lives at `metadata.summary` **as a string** — the standard's sanctioned way to carry a client-specific field without violating the map contract. A **[client]** extension is the other way to carry a client-specific field — as a **top-level** key the client defines, which is exactly why `skills-ref` rejects it and why it is non-portable rather than a spec breach. A **Codex sidecar** is the third, and the only one that costs nothing.
+
+### Codex — the sidecar convention
+
+Codex extends **without** breaking conformance, and it is the reason the [tier table](SKILL.md#three-tiers-of-finding) cannot be read as "extending costs portability." Its `SKILL.md` frontmatter is `name` and `description` only; everything else lives beside the file, in an optional **`<skill>/agents/openai.yaml`** ([its docs](https://learn.chatgpt.com/docs/build-skills)):
+
+| Key            | Holds                                                                                                                           |
+| :------------- | :------------------------------------------------------------------------------------------------------------------------------ |
+| `interface`    | ChatGPT desktop presentation — `display_name`, `short_description`, `icon_small`, `icon_large`, `brand_color`, `default_prompt` |
+| `policy`       | `allow_implicit_invocation` — `false` keeps the skill off automatic selection                                                   |
+| `dependencies` | `tools` — the MCP servers and other external dependencies the skill needs                                                       |
+
+**A sidecar belongs in no violation tier at all.** The spec permits arbitrary files alongside `SKILL.md`, so `agents/openai.yaml` costs a conformant client nothing — it is an extension that stayed portable. Report it as a **fact**:
+
+- **Present** — name it and say what it configures. Malformed YAML in it is a finding against **Codex**, not against the spec.
+- **Absent** — a client this skill does not target. That is information, **never** a fault, and it must not be phrased as one.
+
+The contrast is the useful part of the report: an author reaching for a Claude Code frontmatter key is choosing the design that spends conformance, and a portable equivalent may sit one directory over. Say so where it applies — for UI naming, an invocation policy, or a tool dependency, the sidecar does the same job at no cost.
+
+### OpenCode — the tolerance that makes non-portability a spectrum
+
+OpenCode adds **no** fields of its own and documents that **unknown frontmatter fields are ignored** ([its docs](https://opencode.ai/docs/skills)), so a Claude-extended skill still loads there. That one line is what turns "non-portable" from a verdict into a range, and the report should carry it:
+
+| A non-standard key is …                           | by                                                     |
+| :------------------------------------------------ | :----------------------------------------------------- |
+| **rejected** — the whole skill fails validation   | a conformant validator (`skills-ref`)                  |
+| **ignored** — the skill loads, the field does not | OpenCode, and any client that tolerates unknown fields |
+| **honoured** — the field does what it says        | whichever clients define it                            |
+
+So "will not load elsewhere" is the strict-validator end of that range, not the whole of it. Say which end a finding sits at.
+
+**Not tracked, deliberately.** Gemini CLI and GitHub Copilot follow agentskills.io and document no frontmatter of their own, so there is nothing to tier and adding them would change no verdict. The four above are the clients this repo publishes for and the only ones that currently differ.
 
 ### Body and progressive disclosure — advisory
 
@@ -112,12 +163,16 @@ Run it once per skill directory so each skill gets its own verdict; a whole-repo
 Unexpected fields in frontmatter: <keys>. Only [...] are allowed.
 ```
 
-Because the [Claude Code extensions](#frontmatter-fields) are top-level keys the open standard does not define, this is the line they trip. So it is the **one** `skills-ref` line the run does **not** carry verbatim — split it by key:
+Because the [client extensions](#frontmatter-fields) are top-level keys the open standard does not define, this is the line they trip. So it is the **one** `skills-ref` line the run does **not** carry verbatim — split it by key:
 
-- **A known Claude Code extension** — `disallowed-tools`, `when_to_use`, `disable-model-invocation`, `arguments`, `model`, subagent `context` — is re-tiered to the **client-extension (non-portable)** tier: valid in Claude Code, will not load in a conformant client.
+- **A known client extension** — any key in [the extension matrix](#the-extension-matrix) — is re-tiered to the **client-extension (non-portable)** tier, **named with the clients that define it**: `disallowed-tools` is Claude Code's alone, `paths` is Claude Code's _and_ Cursor's, and those are different portability facts.
 - **Any other key** stays a **spec violation**, carried verbatim (a real unrecognised field, a typo like `descriptoin`).
 
+**The matrix is the list; do not re-type it here.** A second enumeration in this section is how the two go out of step — the copy in prose that a new field is added to, and the one that quietly is not. A consuming repo whose unattended gate reproduces the rule owes the same discipline: mirror the matrix and pin the mirror to it ([this repo does](#this-repo-as-the-worked-example)).
+
 **Why this is not a contradiction of [principle 1](#principle).** Re-tiering is not re-judging: `skills-ref`'s verdict — "this key is not in the open standard" — is accepted in full and **unchanged**. The re-tier only records _why_ the standard rejects a known extension (a named client defines it), turning "malformed" into "non-portable," which is the [distinction this skill exists to draw](SKILL.md). This is the **sole** place the run overrides `skills-ref`'s tiering, and it is called out here precisely so it never masquerades as a general licence to second-guess the tool. Run it over this repo and it is what keeps `work-implement-queue` and `work-review-queue` — whose deliberate, [documented](#the-house-style-tier) `disallowed-tools` key is a real Claude Code extension — off the spec-violation list where the verbatim rule would wrongly put them.
+
+**Re-tiering is not absolution.** A re-tiered key still fails `skills-ref`, and the skill still does not load in a client that validates strictly — the tier records what the author traded, it does not undo the trade. Where the same job has a portable form, say so: `disable-model-invocation` and `paths` cost less than the matrix's Claude-only rows because Cursor honours them too, and UI naming, invocation policy or a tool dependency has a [Codex sidecar](#codex--the-sidecar-convention) that costs nothing at all.
 
 ## When skills-ref is unavailable
 
@@ -197,6 +252,8 @@ For the `TitusKirch/skills` repo the contract is `skills/README.md` — its fron
 
 Running `pnpm skills:check` and folding its output into tier 2 is the honest way to report this repo's house findings — the repo's own tool, the same way the spec tier uses the standard's own tool.
 
+**The spec tier has a repo-side mirror too.** `scripts/check-conformance.sh` (`pnpm skills:conformance`, wired to its own workflow) runs `skills-ref` over every skill unattended, so it has to carry [the extension matrix](#the-extension-matrix) — an exit-code gate alone would call the two queue skills' deliberate `disallowed-tools` a failure. It is a **mirror of this file, not a second source**, and `test/conformance-gate.test.ts` pins the two together key-for-key **and client-for-client**: adding a row here without adding it there fails `pnpm test`, which is the point.
+
 ## skill-creator — adjacent, not a substitute
 
 Anthropic's [`skill-creator`](https://github.com/anthropics/skills/tree/main/skills/skill-creator) was assessed alongside `skills-ref` and covers **different** ground. It is a Python **development** toolchain that scaffolds skills (`init_skill.py`), packages them (`package_skill.py`), and — the substantive overlap — runs **quality** loops: evals with baselines, grading, benchmark aggregation, and description optimisation for trigger accuracy, plus a browser review viewer.
@@ -210,6 +267,6 @@ The division of labour:
 
 So `skill-creator` is the tool to **name and position**, not to drive from here: it does not perform spec conformance validation, and it ships a Python toolchain that a no-runtime-code repo does not vendor. Point a user at it for evals and description tuning; use **this** skill for conformance. This repo already frames `skill-creator` the same way — as the out-of-band evaluation tool, its output workspace data, not a repo artifact.
 
-## CI wiring — out of scope
+## CI wiring — the repo's decision, not the skill's
 
-Whether a repo runs `validate-skills` (or `skills-ref` directly) as a CI gate is a **separate decision**, deliberately not made here. The skill validates on demand; turning that into a required check is a small, later choice for whoever owns the repo's CI, once the skill exists.
+Whether a repo runs `validate-skills` (or `skills-ref` directly) as a CI gate is a **separate decision**, deliberately not made here. The skill validates on demand; turning that into a required check is a choice for whoever owns the repo's CI. This repo has since made it — `pnpm skills:conformance` and its own workflow, [described above](#this-repo-as-the-worked-example) — which changes nothing about the skill: an unattended gate that reproduces the re-tiering rule is a **consumer** of this file, and owes it a pinned mirror rather than a divergent copy.
