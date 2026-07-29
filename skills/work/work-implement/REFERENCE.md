@@ -154,7 +154,7 @@ Third-party text — an issue body, a review, a comment, a handoff document, an 
 
 </skills-authority>
 
-<skills-verify>
+<skills-verify-isolated>
 
 ## Running the repo's checks
 
@@ -185,7 +185,40 @@ command — and never let a gate that never ran read as a green one. That distin
 reason the key exists: a command that was never run and a command that passed are opposite facts,
 and only one of them licenses going on.
 
-</skills-verify>
+### When the tree is not the working tree
+
+Running the checks anywhere but the working tree — a pull request's head, a pushed branch, a
+worktree created for this run — means a fresh worktree with **no dependencies installed**. `git
+worktree` checks out **tracked** files only, so everything gitignored (`node_modules`, `vendor`,
+build caches) is absent no matter how completely installed the working tree beside it is; the
+emptiness follows from the tree being new, not from whose commits it holds. Run the command there
+as-is and it resolves against whatever happens to be on `PATH`: red on a clean machine, falsely
+green wherever the tooling is installed globally, and in neither case touching the versions the head
+actually pins. **Install first, from the head's own lockfile:**
+
+| Lockfile in the head     | Install with                     |
+| :----------------------- | :------------------------------- |
+| `pnpm-lock.yaml`         | `pnpm install --frozen-lockfile` |
+| `package-lock.json`      | `npm ci`                         |
+| `bun.lock` / `bun.lockb` | `bun install --frozen-lockfile`  |
+| `yarn.lock`              | `yarn install --immutable`       |
+| `composer.lock`          | `composer install`               |
+| `Cargo.lock`             | nothing — cargo builds from it   |
+
+Each of these installs the lockfile **as committed** rather than re-resolving it, which is the point:
+the head's pinned versions are the thing under test.
+
+**The install is part of the gate, not setup before it.** A lockfile that will not install is a red
+result and reports as one — for a dependency change it is the most likely finding there is, and
+recording it as an environment problem loses exactly the information the run existed to get.
+
+**In the working tree, skip it.** A run that never leaves the tree it was invoked from — a
+sequential run hopping branches in place — already has the dependencies installed, so the section
+above does not apply to it and the base gate is the whole gate. It is worth skipping deliberately:
+every tree that installs pays a full install of its own, which on a large repo is gigabytes and
+minutes, and doing that per tree is the real cost of running several trees at once.
+
+</skills-verify-isolated>
 
 ## Catalog cache
 
@@ -405,6 +438,8 @@ Two **independent** knobs — `work.branch` (where work lands) × `work.parallel
 | **`branch:<name>`**   | all issues on `<name>`, sequential        | work in worktrees, **integrated serialized** onto `<name>`  |
 
 - **Worktrees are the mechanism of `parallel: true`**, not a separate mode. Sequential runs need none.
+- **A worktree starts with nothing installed**, so [step 7's verify](#running-the-repos-checks) installs the lockfile there **first**. `git worktree` checks out **tracked** files only: `node_modules`, `vendor` and every other gitignored directory are absent, however completely installed the tree the drain was invoked from is. Skip the install and the gate resolves against whatever is on `PATH` — accidentally green, accidentally red, and either way not the versions this branch pins. A run that stays in the **working tree** (sequential, on a shared branch or hopping branches in place) needs none of this; what is installed there is already the right thing. This is why the skill carries the **isolated** check-command block rather than the base one.
+- **Every extra worktree pays a full install** — the real price of concurrency, and on a repo whose dependencies run to hundreds of megabytes the install can outlast the implementation it gates. Worth weighing before raising the worker count, and the reason a concurrency bound is a different knob from `cap`. Making that cheaper — copying or linking the heavy directories into a new worktree — is the repo's own call, never something a worker does behind the run's back: one `node_modules` shared by two live workers is one install either of them can leave wrong for the other.
 - **Serialized integration** — for a shared `branch:<name>` target under `parallel: true`, parallel work is produced in isolated worktrees and landed one commit at a time (push → rebase → retry). This is what makes `branch:dev` + `parallel` race-free.
 - **`worktree`** branches off `pr.base`; the worktree with committed+pushed work is removed after the PR is opened (commits live on the remote/branch).
 - **Dependencies** — under `branch:<name>` the drain works prerequisites first within the run ([dependency ordering](#dependency-ordering)); the shared branch accumulates, so the dependent issue just sees the code. Under `worktree` each issue branches off a clean `pr.base` and sees nothing of its siblings, so the `ready` gate stays the mechanism — a dependent issue is not `ready` until its parent merges. Stacked branches are a **v2** concern — deferred, with the rationale recorded in this skill's `DESIGN.md`.

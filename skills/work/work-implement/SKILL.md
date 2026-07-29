@@ -66,7 +66,7 @@ Keep the change scoped to this one issue.
 
 ### 7. Verify
 
-Run the repo's checks (the root `verify` key, else detected — tests, lint, build). Green → continue. **Red and unfixable, spec ambiguous, or a genuine human decision needed → set `blocked`**, comment the reason on the issue, stop. `blocked` is a real outcome, not a failure to hide.
+Run the repo's checks (the root `verify` key, else detected — tests, lint, build). **Working in a worktree** (`parallel: true`) means a tree with **no dependencies installed** — `git worktree` checks out tracked files only — so **install from the lockfile there first**, or the gate never touches the versions this branch pins ([how](REFERENCE.md#running-the-repos-checks)). A run in the working tree already has them and skips it. Green → continue. **Red and unfixable, spec ambiguous, or a genuine human decision needed → set `blocked`**, comment the reason on the issue, stop. `blocked` is a real outcome, not a failure to hide.
 
 ### 8. Commit, PUSH, hand off to review
 

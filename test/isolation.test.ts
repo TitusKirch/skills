@@ -86,15 +86,20 @@ const withVerifyIsolated = skillsWithTag('<skills-verify-isolated>');
 /**
  * Which skills run the repo's gate, and in which tree.
  *
- * `base` runs it in the working tree; `isolated` runs it against a head that is not the
- * working tree, so it installs that head's lockfile first. The roster lives here rather
- * than being inferred, because both failure directions are silent on disk: a skill that
- * starts running checks without the block re-invents detection, and a listed one that
- * lost its block keeps the prose that promises it.
+ * `base` runs it in the working tree; `isolated` runs it in a tree that is not the working
+ * tree — a PR head, a pushed branch, a worktree the run made for itself — so it installs
+ * that tree's lockfile first. A skill that can be either, depending on how the repo
+ * configures it, belongs in `isolated`: `work-implement` verifies in place when sequential
+ * but in a fresh worktree once `parallel` is on, and the install section is scoped by its
+ * own heading, so the isolated body is the superset that stays correct on both paths.
+ *
+ * The roster lives here rather than being inferred, because both failure directions are
+ * silent on disk: a skill that starts running checks without the block re-invents
+ * detection, and a listed one that lost its block keeps the prose that promises it.
  */
 const VERIFY_CARRIERS: Record<'base' | 'isolated', string[]> = {
-  base: ['repo/prune-comments', 'repo/update-deps', 'work/work-implement'],
-  isolated: ['repo/merge-deps', 'work/work-review']
+  base: ['repo/prune-comments', 'repo/update-deps'],
+  isolated: ['repo/merge-deps', 'work/work-implement', 'work/work-review']
 };
 
 describe('the generated config block is self-contained', () => {
