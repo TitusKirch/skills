@@ -9,10 +9,7 @@ allowed-tools:
   - Glob
   - Bash(command -v:*)
   - Bash(skills-ref:*)
-  - Bash(find:*)
   - Bash(grep:*)
-  - Bash(sed:*)
-  - Bash(sort:*)
 ---
 
 # validate-skills
