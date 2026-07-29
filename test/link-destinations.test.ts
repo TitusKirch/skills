@@ -23,15 +23,37 @@ import {
   writeFileSync
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { ROOT } from './helpers.ts';
 import { discoverSkills, paths } from '../scripts/gen-skills.ts';
 
-/** The destinations under a given HOME, in the order skills-lib.sh names them. */
-const destsUnder = (home: string) => [
-  join(home, '.claude', 'skills'),
-  join(home, '.agents', 'skills')
-];
+const LIB = join(ROOT, 'scripts', 'skills-lib.sh');
+
+/**
+ * The destinations under a given HOME, in the order skills-lib.sh names them —
+ * read out of `SKILL_LINK_DESTS` rather than restated here.
+ *
+ * A literal copy would be a second definition of the list ADR-0016 keeps in one
+ * place, and it would fail the way second copies do: silently. A destination added
+ * to the shell list would be linked by the scripts and asserted by nothing, while
+ * every test below kept passing over the destinations it still knew about — the
+ * new one, the one most likely to be got wrong, uncovered. Reading the list means
+ * a destination cannot be added without these tests following it.
+ */
+function destsUnder(home: string): string[] {
+  const printed = spawnSync(
+    'bash',
+    ['-c', '. "$1"; printf "%s\\n" "${SKILL_LINK_DESTS[@]}"', 'bash', LIB],
+    { encoding: 'utf8', env: { PATH: process.env.PATH ?? '', HOME: home } }
+  );
+  assert.equal(printed.status, 0, printed.stderr);
+  const dests = printed.stdout.split('\n').filter(Boolean);
+  assert.ok(
+    dests.length >= 2,
+    'SKILL_LINK_DESTS should name the destinations these tests compare'
+  );
+  return dests;
+}
 
 const homes: string[] = [];
 after(() => homes.forEach((h) => rmSync(h, { recursive: true, force: true })));
@@ -128,33 +150,43 @@ describe('skills:link destinations', () => {
     const at = home();
     assert.equal(run('link-skills.sh', at).code, 0);
 
-    // A real skill dir of the user's own, and a symlink pointing somewhere else.
-    const [claudeDest, agentsDest] = destsUnder(at) as [string, string];
-    mkdirSync(join(agentsDest, 'mine'));
-    writeFileSync(join(agentsDest, 'mine', 'SKILL.md'), 'mine\n');
-    symlinkSync(tmpdir(), join(claudeDest, 'elsewhere'));
+    // In every destination: a real skill dir of the user's own, and a symlink
+    // pointing somewhere else. Neither is ours, in either place.
+    for (const dest of destsUnder(at)) {
+      mkdirSync(join(dest, 'mine'));
+      writeFileSync(join(dest, 'mine', 'SKILL.md'), 'mine\n');
+      symlinkSync(tmpdir(), join(dest, 'elsewhere'));
+    }
 
     assert.equal(run('unlink-skills.sh', at).code, 0);
-    assert.deepEqual(readdirSync(agentsDest), ['mine']);
-    assert.deepEqual(readdirSync(claudeDest), ['elsewhere']);
+    for (const dest of destsUnder(at))
+      assert.deepEqual(
+        readdirSync(dest).sort(),
+        ['elsewhere', 'mine'],
+        `${dest} should keep exactly what unlink did not create`
+      );
   });
 
   test('a destination symlinked into the repo fails the run before anything is written', () => {
     const at = home();
-    // The second destination is the trap; the first is the one that must stay untouched.
-    const [claudeDest, agentsDest] = destsUnder(at) as [string, string];
-    mkdirSync(join(at, '.agents'), { recursive: true });
-    symlinkSync(join(ROOT, 'skills'), agentsDest);
+    // The last destination is the trap, so every destination written before it is a
+    // destination the guard has to have checked *before* writing any of them.
+    const dests = destsUnder(at);
+    const trap = dests.at(-1) as string;
+    const untouched = dests.slice(0, -1);
+    mkdirSync(dirname(trap), { recursive: true });
+    symlinkSync(join(ROOT, 'skills'), trap);
 
     const linked = run('link-skills.sh', at);
     assert.equal(linked.code, 1);
     assert.match(linked.stderr, /symlink into this repo/);
-    assert.ok(
-      !existsSync(claudeDest),
-      'a bad destination must abort the run, not half-link it'
-    );
+    for (const dest of untouched)
+      assert.ok(
+        !existsSync(dest),
+        `a bad destination must abort the run, not half-link it into ${dest}`
+      );
     assert.equal(
-      readlinkSync(agentsDest),
+      readlinkSync(trap),
       join(ROOT, 'skills'),
       'the trap symlink should be reported, not replaced'
     );
