@@ -102,19 +102,21 @@ Set `DISABLE_TELEMETRY=1` to opt out of the CLI's anonymous install-count teleme
 git clone https://github.com/TitusKirch/skills.git
 cd skills
 pnpm install
-pnpm skills:link        # symlinks every skill into ~/.claude/skills/
+pnpm skills:link        # symlinks every skill into ~/.claude/skills/ and ~/.agents/skills/
 pnpm skills:list        # lists every SKILL.md in the repo
 pnpm skills:unlink      # removes only the symlinks pointing back into this repo
 ```
 
-Restart Claude Code (or run `/reload-plugins`). Because the skills live as symlinks, edits in the working copy are picked up live.
+Both destinations, every run: `~/.claude/skills/` is the only user-scope path Claude Code reads, and `~/.agents/skills/` is the vendor-neutral one Codex, Cursor, OpenCode and Gemini CLI read — Codex reads nothing else this repo links to. `skills:unlink` clears both.
+
+Restart your agent (Claude Code: `/reload-plugins`). Because the skills live as symlinks, edits in the working copy are picked up live.
 
 ### Option C — install a single skill by hand
 
-Copy one skill folder into — paths shown for Claude Code, other clients read their own skills directory:
+Copy one skill folder into:
 
-- **User scope** — `~/.claude/skills/<skill-name>/` (available in every project).
-- **Project scope** — `.claude/skills/<skill-name>/` (committed alongside the consuming project).
+- **User scope** — `~/.claude/skills/<skill-name>/` (Claude Code) or `~/.agents/skills/<skill-name>/` (Codex, Cursor, OpenCode, Gemini CLI) — available in every project.
+- **Project scope** — `.claude/skills/<skill-name>/` or `.agents/skills/<skill-name>/` — committed alongside the consuming project.
 
 ## 🚀 Quick start
 
