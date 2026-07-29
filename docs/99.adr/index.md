@@ -24,3 +24,4 @@ A decision earns an ADR when it constrains work that comes later and its reasoni
 | [ADR-0013](0013-state-what-the-authority-table-guarantees.md)       | State what the authority table guarantees                   | accepted | 2026-07-27 |
 | [ADR-0014](0014-let-rationale-travel-with-the-skill.md)             | Let rationale travel with the skill                         | accepted | 2026-07-27 |
 | [ADR-0015](0015-tier-an-extension-by-the-clients-that-define-it.md) | Tier an extension by the clients that define it             | accepted | 2026-07-29 |
+| [ADR-0016](0016-link-into-every-client-skills-path.md)              | Link into every client skills path, always                  | accepted | 2026-07-29 |
