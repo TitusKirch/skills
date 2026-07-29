@@ -60,6 +60,72 @@ const BLANKET_BASH: Record<string, string> = {
 };
 
 /**
+ * Command prefixes that can run *another* command, and how.
+ *
+ * A permission rule is a command-prefix match, so `Bash(sh:*)` matches `sh -c '<anything>'`
+ * and `Bash(find:*)` matches `find . -exec <anything> \;`. A scoped rule headed by one of
+ * these is a blanket `Bash` spelled differently — it reads as a narrowing in review and
+ * grants arbitrary execution in fact, which is the one outcome ADR-0017 exists to prevent.
+ * Each entry names the mechanism, so the list can be argued with rather than trusted.
+ *
+ * This is a floor, not a proof of confinement. It catches the primitives whose *purpose*
+ * is to run something else; it cannot catch every escape hatch in every binary, and a
+ * passing list still does not confine a skill. Per ADR-0005 the durable controls are
+ * `disallowed-tools` and `.claude/settings.json` deny rules — this gate only keeps the
+ * scoped form from being a fiction.
+ */
+const EXEC_CAPABLE: Record<string, string> = {
+  sh: '`sh -c <anything>`',
+  bash: '`bash -c <anything>`',
+  zsh: '`zsh -c <anything>`',
+  ksh: '`ksh -c <anything>`',
+  dash: '`dash -c <anything>`',
+  fish: '`fish -c <anything>`',
+  eval: 'evaluates its argument as a command',
+  exec: 'replaces the shell with an arbitrary command',
+  command: '`command <anything>` runs it, bypassing functions and aliases',
+  env: '`env <anything>` runs it with a modified environment',
+  xargs: 'runs the command it is given, once per input line',
+  nohup: 'runs an arbitrary command detached',
+  timeout: 'runs an arbitrary command under a time limit',
+  watch: 'runs an arbitrary command on a loop',
+  find: '`-exec` / `-execdir` / `-ok` run arbitrary commands (POSIX, not a GNU extra)',
+  sed: "`-i` writes files in place; GNU's `e` command and `s///e` flag execute the pattern space",
+  awk: '`system()` and `cmd | getline` run arbitrary commands',
+  gawk: '`system()` and `cmd | getline` run arbitrary commands',
+  perl: 'a general-purpose interpreter',
+  python: 'a general-purpose interpreter',
+  python3: 'a general-purpose interpreter',
+  ruby: 'a general-purpose interpreter',
+  node: 'a general-purpose interpreter',
+  ssh: 'runs an arbitrary command on the far side',
+  sort: '`--compress-program=PROG` runs PROG',
+  git: '`git -c alias.x=!<cmd> x` and `-c core.pager=<cmd>` run arbitrary commands'
+};
+
+/**
+ * Exact prefixes cleared despite an exec-capable head, each with why that spelling cannot.
+ *
+ * The head token is the wrong unit for a command whose *subcommand* decides what it does:
+ * `git` can reach a shell, `git diff` cannot. Clearing is per exact prefix and costs a
+ * written reason — the same shape as BLANKET_BASH above, and for the same purpose. Scoping
+ * a skill that needs `git commit` means adding it here and saying why, not widening the
+ * rule to `Bash(git:*)` and hoping nobody reads it.
+ */
+const EXEC_CLEARED: Record<string, string> = {
+  'command -v':
+    'prints where a command would be found; the -v form runs nothing',
+  'git diff': 'reads the working tree; writes nothing and runs nothing',
+  'git ls-files': 'reads the index and prints paths; writes nothing',
+  'git rev-parse': 'prints revisions and repository paths; writes nothing',
+  'git symbolic-ref':
+    'prints a symbolic ref; the writing form needs a second argument'
+};
+
+/** The command prefix inside a scoped rule: `Bash(git diff:*)` → `git diff`. */
+const prefixOf = (tool: string) => /^Bash\((.+):\*\)$/.exec(tool)?.[1] ?? '';
+
+/**
  * One skill's `allowed-tools`, read out of its frontmatter.
  *
  * Only the YAML-list form is understood, which is the form every skill here uses. A
@@ -167,5 +233,48 @@ describe('the scoped form is what a new skill inherits', () => {
           `${skill}: "${tool}" should read \`Bash(<command prefix>:*)\`, the form .claude/settings.json rules use`
         );
       }
+  });
+});
+
+describe('a scoped rule is not a blanket Bash by another name', () => {
+  test('no scoped rule is headed by a command that runs other commands', () => {
+    for (const skill of skills())
+      for (const tool of allowedTools(skill)) {
+        const prefix = prefixOf(tool);
+        if (!prefix || EXEC_CLEARED[prefix]) continue;
+
+        const head = prefix.split(/\s+/)[0] ?? '';
+        const mechanism = EXEC_CAPABLE[head];
+        assert.ok(
+          !mechanism,
+          `${skill}: "${tool}" pre-approves arbitrary execution — ${mechanism} — so it grants what a blanket \`Bash\` grants. Drop it and let the command ask, or pin a narrower prefix and clear it in EXEC_CLEARED with the reason that spelling cannot execute.`
+        );
+      }
+  });
+
+  test('every cleared prefix is headed by an exec-capable command, so the list cannot grow sideways', () => {
+    for (const prefix of Object.keys(EXEC_CLEARED)) {
+      const head = prefix.split(/\s+/)[0] ?? '';
+      assert.ok(
+        EXEC_CAPABLE[head],
+        `EXEC_CLEARED lists "${prefix}", whose head \`${head}\` is not in EXEC_CAPABLE — nothing was blocking it, so the entry only obscures what the gate checks`
+      );
+      assert.notEqual(
+        prefix,
+        head,
+        `EXEC_CLEARED lists the bare command \`${head}\` — clearing a whole command defeats the check; clear the subcommand that cannot execute`
+      );
+    }
+  });
+
+  test('each cleared prefix and each mechanism says something, so neither list can be padded to pass', () => {
+    for (const [key, reason] of [
+      ...Object.entries(EXEC_CAPABLE),
+      ...Object.entries(EXEC_CLEARED)
+    ])
+      assert.ok(
+        reason.trim().length >= 15,
+        `${key}: say how it executes (or why this spelling cannot), not a placeholder`
+      );
   });
 });
