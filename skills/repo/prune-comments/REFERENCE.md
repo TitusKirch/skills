@@ -14,6 +14,8 @@ Mechanics for the [`prune-comments`](SKILL.md) skill: what counts as redundant, 
 
 **Why a skill this per-run reads anything at all.** The check command is not a decision the run gets to make: the repo already declared what "still passes" means, and detecting `pnpm check` when the repo says `pnpm verify` runs the wrong gate on a tree this skill just edited. `update-deps` reads the same root `verify` while owning no section of its own — same reasoning, same key.
 
+**And why the check command will ask before it runs.** This skill's `allowed-tools` names the commands it drives rather than granting `Bash` outright: the resolver (`sh`, `printf`, `jq`), the four **read-only** git subcommands the scoping below uses (`git diff`, `git ls-files`, `git rev-parse`, `git symbolic-ref`), and `head` / `grep` / `sed` for reading a file's first lines. The repo's `verify` is deliberately absent, because it is _whatever the repo declares_ — no fixed pattern can pre-approve an arbitrary command without pre-approving every command. So it prompts once, which costs nothing here: this skill [confirms with a human before it removes anything](SKILL.md#guardrails), so a person is already present, and the field is pre-approval rather than restriction — an unlisted command still runs, it just asks first. What the scoped list buys is the other half: `git commit`, `git push` and `git checkout` are **not** pre-approved, which matches a skill whose guardrail is _never commit, push, open a PR or merge_.
+
 <skills-config>
 
 ### Reading the config
