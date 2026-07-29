@@ -140,6 +140,8 @@ skills-ref validate ./path/to/skill
 
 If the quick recipes fail, the **authoritative** install steps are in `skills-ref`'s own README (clone the repo, then `pip install -e .` or `uv sync` inside `skills-ref/`); fall back to those before declaring it unavailable.
 
+**Recipes 2 and 3 will ask before they run, and that is the design.** This skill's `allowed-tools` pre-approves what it uses to _look_ — `find`, `sed`, `sort`, `grep`, `command -v`, and `skills-ref` itself — and deliberately stops short of `uvx`, `pip` and `python -m venv`. Those install code from the network, which is the one action here worth a human's eye, and this skill is invoked by a person who is present to give it: its guardrail is [**Report, do not repair**](SKILL.md#guardrails), so there is no unattended run for a prompt to stall. The field is pre-approval, not restriction — an unlisted command still runs, it just asks first — so leaving the installers off costs one confirmation and buys a skill that cannot install anything without being asked. The repo's own house lint is off the list for the same reason from the other direction: it is whatever the repo declares, so no fixed pattern could pre-approve it honestly.
+
 **Subcommands:**
 
 | Command                             | Purpose                                                                    |

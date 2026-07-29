@@ -4,10 +4,15 @@ metadata:
   summary: Validates skills against the Agent Skills spec via skills-ref, separating spec violations, client extensions and house-style deviations.
 description: Validates agent skills against the Agent Skills specification — one named skill, or every skill in a repo — and reports what fails and where. Drives skills-ref, the standard's reference validator, rather than reimplementing the checks; where skills-ref cannot be obtained it reports the spec tier as unverified rather than passing a weaker hand-check off as green. Reports spec violations, client extensions (naming which of Claude Code, Cursor, Codex and OpenCode accept the field) and house-style deviations as distinct findings, never conflated. Names Anthropic's skill-creator as the adjacent quality tool it is, not a conformance validator. Use when the user wants to validate, check, lint or conformance-test a skill or SKILL.md, verify frontmatter against the spec, find skills that break the standard, or says things like "validate the skills", "check this skill against the spec", "is my SKILL.md valid", "Skills prüfen", "Skill validieren".
 allowed-tools:
-  - Bash
   - Read
   - Grep
   - Glob
+  - Bash(command -v:*)
+  - Bash(skills-ref:*)
+  - Bash(find:*)
+  - Bash(grep:*)
+  - Bash(sed:*)
+  - Bash(sort:*)
 ---
 
 # validate-skills
