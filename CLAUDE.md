@@ -20,15 +20,16 @@ Retyping a change is exactly how the two drift; one reflowed line or reworded cl
 
 `package.json` has the full list. The ones with non-obvious behaviour:
 
-| Command             | Why it needs saying                                                                                                                                                                                                                                 |
-| :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm verify`       | **The repo's gate** — `check` + `skills:check` + `typecheck` + `test`, in CI's order, and the root `verify` key. CI runs the same commands as one step each, so one run reports every failure; `test/ci-gate.test.ts` fails if the two lists drift. |
-| `pnpm check`        | Lint + format check only — a subset of the gate, not the gate. `pnpm check:fix` applies both fixers.                                                                                                                                                |
-| `pnpm skills:sync`  | Regenerates eight artifacts from the skill folders. **Run after touching any skill.**                                                                                                                                                               |
-| `pnpm skills:check` | The CI guard for the above. Fails if any of the six drifted.                                                                                                                                                                                        |
-| `pnpm typecheck`    | `tsc --noEmit`. `erasableSyntaxOnly` is on, so an enum fails here, not at runtime.                                                                                                                                                                  |
-| `pnpm test`         | `node --test` over `test/` — the resolver, the schema, skill self-containment, the CI-gate guard, and the `CLAUDE.md`/`AGENTS.md` mirror.                                                                                                           |
-| `pnpm skills:link`  | Symlinks every skill into `~/.claude/skills/` for live local testing — whole-folder, except a skill carrying a dev-artifact dir (`evals/`) links entry by entry to leave the fixture out.                                                           |
+| Command                   | Why it needs saying                                                                                                                                                                                                                                 |
+| :------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm verify`             | **The repo's gate** — `check` + `skills:check` + `typecheck` + `test`, in CI's order, and the root `verify` key. CI runs the same commands as one step each, so one run reports every failure; `test/ci-gate.test.ts` fails if the two lists drift. |
+| `pnpm check`              | Lint + format check only — a subset of the gate, not the gate. `pnpm check:fix` applies both fixers.                                                                                                                                                |
+| `pnpm skills:sync`        | Regenerates eight artifacts from the skill folders. **Run after touching any skill.**                                                                                                                                                               |
+| `pnpm skills:check`       | The CI guard for the above. Fails if any of the six drifted.                                                                                                                                                                                        |
+| `pnpm typecheck`          | `tsc --noEmit`. `erasableSyntaxOnly` is on, so an enum fails here, not at runtime.                                                                                                                                                                  |
+| `pnpm test`               | `node --test` over `test/` — the resolver, the schema, skill self-containment, the CI-gate guard, the conformance-gate guard, and the `CLAUDE.md`/`AGENTS.md` mirror.                                                                               |
+| `pnpm skills:link`        | Symlinks every skill into `~/.claude/skills/` for live local testing — whole-folder, except a skill carrying a dev-artifact dir (`evals/`) links entry by entry to leave the fixture out.                                                           |
+| `pnpm skills:conformance` | Validates every skill against the Agent Skills spec with `skills-ref`, pinned and run in Docker. **Not in `verify`** — the gate stays pnpm-only; this needs Docker. Its own workflow.                                                               |
 
 **Eight artifacts are generated — never hand-edit them:** the root `README.md` skills table, each `skills/<category>/README.md`, `.claude-plugin/plugin.json`, `skills.sh.json`'s groupings, the `<skills-config>` block plus `templates/resolve-config.sh` mirrored into each config-reading skill (source: `scripts/config-block.md` and `scripts/resolve-config.sh`), the `<skills-authority>` / `<skills-authority-reduced>` author-authority block mirrored into each skill that reads third-party text (source: `scripts/authority-block.md`), the `<skills-verify>` / `<skills-verify-isolated>` check-command block mirrored into each skill that runs the repo's gate (source: `scripts/verify-block.md`), and the `<skills-worklock>` single-flight-lock spec mirrored into the four `work-*` skills (source: `scripts/worklock-block.md`). A new category also needs an entry in `CATEGORIES` in `scripts/gen-skills.ts`, or the sync fails loudly.
 
@@ -45,11 +46,12 @@ Retyping a change is exactly how the two drift; one reflowed line or reworded cl
 
 ## CI gotchas
 
-`.github/workflows/` is authoritative. Three behaviours that mislead if unknown:
+`.github/workflows/` is authoritative. Four behaviours that mislead if unknown:
 
 - **CI runs `on: pull_request` only, so a commit pushed straight to `dev` is never checked by CI.** The AI work loop is configured `branch:dev` — it commits to the shared branch with no PR — which makes `pnpm verify`, run locally before the push, the _only_ automated gate between such a change and the release branch. That is why the root `verify` key is the full gate and not just lint plus format: nothing downstream would catch a broken test, a type error, or a drifted generated artifact until the rollup PR.
 - **CI skips draft PRs** — a draft's empty check list is not a pass.
 - **CodeQL only fires on `**/*.{js,ts,mjs,cjs}` or workflow changes** — it will not run on a markdown-only PR, which is most PRs here.
+- **The skill conformance check is a separate workflow, scoped to `skills/**` and its own script** — so it does not run on a PR that touches neither, and, like everything else here, never on a push straight to `dev`. It re-tiers the deliberate `disallowed-tools` (ADR-0007) instead of failing on it; `test/conformance-gate.test.ts` pins that list to `validate-skills`' prose. Running it locally needs Docker, which is why `pnpm verify` does not.
 
 ## Adding a skill
 

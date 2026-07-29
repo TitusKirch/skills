@@ -47,6 +47,8 @@ pnpm install   # wires husky hooks
 
 CI runs the same commands, one step per command, so a single run reports every failure rather than stopping at the first. A test (`test/ci-gate.test.ts`) asserts CI's step list still matches what `verify` composes, so keeping `pnpm verify` green locally is keeping CI green.
 
+**One check sits outside that gate.** `pnpm skills:conformance` validates every skill against the [Agent Skills specification](https://agentskills.io/specification) with the standard's own validator, pinned and run in a container — so it needs Docker, which is exactly why `pnpm verify` does not reach it and stays runnable with nothing but pnpm. A separate workflow runs it on any pull request that touches `skills/`. It re-tiers the Claude Code frontmatter extensions this repo deliberately uses ([ADR-0007](docs/99.adr/0007-permit-claude-code-frontmatter-extensions.md)) rather than failing on them, so a green run still reports them as non-portable.
+
 ## Branching & PRs
 
 1. **Don't push directly to `main`.** Branch off `main` for every change.
