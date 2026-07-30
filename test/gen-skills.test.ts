@@ -64,7 +64,8 @@ describe('a run reports, writes, and then has nothing left to do', () => {
       'skills/repo/alpha/SKILL.md config block',
       'skills/repo/beta/SKILL.md authority block',
       'skills/repo/beta/SKILL.md verify block',
-      'skills/work/gamma/SKILL.md worklock block'
+      'skills/work/gamma/SKILL.md worklock block',
+      'skills/work/gamma/SKILL.md plan block'
     ]) {
       assert.ok(
         run.stderr.includes(artifact),
@@ -214,6 +215,10 @@ describe('what a write actually puts on disk', () => {
     );
     assert.ok(gamma.includes('Fixture worklock body.'));
     assert.ok(!gamma.includes('stale worklock body'));
+    // Two mirrored blocks in one file: the second must land without the first
+    // block's rewrite dropping it.
+    assert.ok(gamma.includes('Fixture plan body.'));
+    assert.ok(!gamma.includes('stale plan body'));
   });
 
   test('the resolver ships to config carriers, byte-exact, and to nobody else', () => {

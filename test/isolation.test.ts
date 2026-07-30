@@ -82,6 +82,7 @@ const withAuthorityReduced = skillsWithTag('<skills-authority-reduced>');
 // Same trailing-`>` reasoning for the check-command block's two variants.
 const withVerifyBase = skillsWithTag('<skills-verify>');
 const withVerifyIsolated = skillsWithTag('<skills-verify-isolated>');
+const withPlanBlock = skillsWithTag('<skills-plan>');
 
 /**
  * Which skills run the repo's gate, and in which tree.
@@ -101,6 +102,37 @@ const VERIFY_CARRIERS: Record<'base' | 'isolated', string[]> = {
   base: ['repo/prune-comments', 'repo/update-deps'],
   isolated: ['repo/merge-deps', 'work/work-implement', 'work/work-review']
 };
+
+/**
+ * Which skills put a plan in front of a human — a plan, a preview, a candidate list or a
+ * findings report — and therefore carry the rule that all of it has to render in a terminal.
+ *
+ * Declared, for the same reason as the roster above: both failure directions are silent. A
+ * skill that starts presenting a plan without the block re-decides the form per run, which is
+ * how a package list ended up folded into `<details>` and arrived as an empty summary line;
+ * a listed one that lost its block keeps the promise with nothing behind it.
+ *
+ * The four skills deliberately absent present no plan to answer: `handoff` and `vhs-demo`
+ * deliver a file, and `work-implement` / `work-review` are single units a drain invokes, whose
+ * output is a short outcome rather than something a human reads to decide.
+ */
+const PLAN_CARRIERS = [
+  'docs/compact-readme',
+  'docs/write-docs',
+  'docs/write-readme',
+  'meta/tituskirch-skills-config',
+  'meta/validate-skills',
+  'repo/atomic-commit',
+  'repo/merge-deps',
+  'repo/prune-branches',
+  'repo/prune-comments',
+  'repo/pull-request',
+  'repo/release',
+  'repo/update-deps',
+  'work/issue',
+  'work/work-implement-queue',
+  'work/work-review-queue'
+];
 
 describe('the generated config block is self-contained', () => {
   test('it is present in the skills that read config, and nowhere else by accident', () => {
@@ -501,5 +533,44 @@ describe('plan-only triggers are one vocabulary, not one per skill', () => {
       [],
       'write "nur den Plan" — it is a noun, and the phrase is one vocabulary'
     );
+  });
+});
+
+describe('the plan a skill presents has to render where it is read', () => {
+  test('the tags on disk are exactly the roster', () => {
+    assert.deepEqual(withPlanBlock.sort(), [...PLAN_CARRIERS].sort());
+  });
+
+  test('every skill offering a plan-only mode carries the block', () => {
+    // Derived rather than listed: a skill that promises to print a plan and stop is
+    // presenting one by definition, so this half of the roster cannot go stale.
+    const missing = skillsWithPlanOnlyMode().filter(
+      (p) => !withPlanBlock.includes(p)
+    );
+    assert.deepEqual(
+      missing,
+      [],
+      'a skill that prints a plan on request must carry the rule for how it renders'
+    );
+  });
+
+  test('no link inside the plan block leaves the skill folder', () => {
+    for (const path of withPlanBlock) {
+      const dir = join(ROOT, 'skills', path);
+      for (const file of docsOf(dir)) {
+        const body = readFileSync(file, 'utf8');
+        const from = body.indexOf('<skills-plan>');
+        if (from === -1) continue;
+        const block = body.slice(from, body.indexOf('</skills-plan>'));
+        for (const target of relativeLinks(file).filter((t) =>
+          block.includes(`(${t}`)
+        )) {
+          assert.ok(
+            !target.startsWith('..'),
+            `${path}: plan block links out of the skill via "${target}"`
+          );
+        }
+      }
+    }
   });
 });
