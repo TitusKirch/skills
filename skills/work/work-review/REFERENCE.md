@@ -307,13 +307,17 @@ The **label** is unaffected: `work.labels.done` keeps its string and its meaning
 The review runs the repo's gate itself ([Running the repo's checks](#running-the-repos-checks)). Read-only means the **user's tree** is not touched — it does not mean nothing is run, so the gate runs in a worktree of its own:
 
 ```bash
-# $head is the branch the work was pushed to; $install and $verify come from the section above.
+# $head is the branch the work was pushed to; $n is the issue's id. $install and $verify
+# come from the section above. The tree's path is derived, never carried — see below.
 git fetch origin "$head"
-tmp=$(mktemp -d)
-git worktree add --detach "$tmp" "origin/$head"
-( cd "$tmp" && eval "$install" && eval "$verify" )   # exit status is the gate
-git worktree remove "$tmp"
+git worktree add --detach \
+  "$(git rev-parse --git-common-dir)/tituskirch-skills/work/review-$n" "origin/$head"
+( cd "$(git rev-parse --git-common-dir)/tituskirch-skills/work/review-$n" \
+    && eval "$install" && eval "$verify" )   # exit status is the gate
+git worktree remove "$(git rev-parse --git-common-dir)/tituskirch-skills/work/review-$n"
 ```
+
+**The path is recomputed by every command, and `mktemp -d` is why it has to be.** These skills run each command in its own short-lived process, so a `tmp=$(mktemp -d)` assigned on one line is **gone** by the next — and `mktemp` hands back a fresh random name that nothing can reconstruct afterwards. Every later command then addresses an **empty** path, which does not fail in any way a run would notice: `git worktree add --detach "" …` trips an internal git assertion (`BUG: builtin/worktree.c:275`), and `cd ""` **succeeds and stays where it is**, so the gate runs in the user's tree — the one outcome this block exists to prevent. A path derived from the repo and the issue has none of that: any command can recompute it, so nothing has to survive between them. It is the same reason the [single-flight lock](#the-single-flight-lock) and the catalog cache live under `$(git rev-parse --git-common-dir)/tituskirch-skills/` rather than somewhere a variable would have to remember. **Keeping `mktemp -d` is possible, but only by joining every command that touches the tree into the one that created it.**
 
 **The removal carries no `--force`, and that is the point.** The tree is created `--detach`, so there is no branch to be attached to, and everything the install writes is gitignored — which `git worktree remove` does not count. So a plain `remove` succeeds on every run that went to plan. When it **refuses**, the head left untracked, non-ignored files behind, and on a review run that is a finding worth reading rather than an obstacle to force past. `--force` would also be **denied** wherever a repo's `.claude/settings.json` carries the usual `Bash(git worktree remove --force:*)` rule — which makes the cleanup step fail outright on every run, with no prompt to approve. A `deny` entry is not a permission question: it refuses the call, so the step does not stop for someone, it simply never completes and the worktree is left to be removed by hand.
 
