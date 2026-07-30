@@ -100,7 +100,8 @@ const EXEC_CAPABLE: Record<string, string> = {
   node: 'a general-purpose interpreter',
   ssh: 'runs an arbitrary command on the far side',
   sort: '`--compress-program=PROG` runs PROG',
-  git: '`git -c alias.x=!<cmd> x` and `-c core.pager=<cmd>` run arbitrary commands'
+  git: '`git -c alias.x=!<cmd> x` and `-c core.pager=<cmd>` run arbitrary commands',
+  gh: '`gh alias set --shell x <cmd>` then `gh x` runs it, and `gh extension exec` runs an installed extension'
 };
 
 /**
@@ -111,15 +112,45 @@ const EXEC_CAPABLE: Record<string, string> = {
  * written reason — the same shape as BLANKET_BASH above, and for the same purpose. Scoping
  * a skill that needs `git commit` means adding it here and saying why, not widening the
  * rule to `Bash(git:*)` and hoping nobody reads it.
+ *
+ * A reason here says what the *spelling* can reach through its arguments. It does not say
+ * the repository cannot: `core.pager`, `diff.external` and `gh`'s `pager` are configuration,
+ * and a repo supplying them runs its own command under any of these prefixes. That is the
+ * same floor EXEC_CAPABLE is measured against, and the reason ADR-0005's durable controls —
+ * not this list — are what confine a skill. Write the reasons that way; a clear that claims
+ * "runs nothing" full stop is claiming more than the gate delivers.
  */
 const EXEC_CLEARED: Record<string, string> = {
   'command -v':
     'prints where a command would be found; the -v form runs nothing',
-  'git diff': 'reads the working tree; writes nothing and runs nothing',
+  'git diff':
+    'prints a diff; the exec routes on `git` are global options (`-c`, `--exec-path`) that sit before the subcommand, where this prefix cannot reach them',
+  'git log':
+    'prints commits; same global-option reasoning as `git diff`, and it needs an explicit `--ext-diff` to reach even a configured external differ',
   'git ls-files': 'reads the index and prints paths; writes nothing',
   'git rev-parse': 'prints revisions and repository paths; writes nothing',
   'git symbolic-ref':
-    'prints a symbolic ref; the writing form needs a second argument'
+    'prints a symbolic ref; the writing form needs a second argument',
+  'gh pr view':
+    "prints a pull request; `gh`'s exec routes are top-level (`gh <alias>`, `gh extension exec`), and `gh` refuses to alias over a core command"
+};
+
+/**
+ * Rules `skills/README.md` shows as what *not* to write, each with where it says so.
+ *
+ * The frontmatter contract has to name bad rules to teach the scoping, so it is the one
+ * file whose examples cannot all be required to pass. Listing them makes the exception
+ * explicit and pins it in both directions, like every other list here: a counter-example
+ * the gate has stopped rejecting fails, so an illustration cannot quietly turn into a
+ * recommendation, and one the file no longer shows fails too.
+ */
+const TAUGHT_AS_REJECTED: Record<string, string> = {
+  'Bash(sh:*)':
+    'named in the scope-by-what-it-reaches note as arbitrary execution',
+  'Bash(find:*)': 'same note — `find -exec` runs anything',
+  'Bash(git:*)': "same note — `git -c alias.x='!…' x` reaches a shell",
+  'Bash(gh:*)':
+    'same note — `gh alias set --shell` then `gh <alias>` reaches a shell'
 };
 
 /** The command prefix inside a scoped rule: `Bash(git diff:*)` → `git diff`. */
@@ -167,7 +198,7 @@ describe('a blanket Bash grant is a named exception, never the default', () => {
       if (!isBlanketBash(allowedTools(skill))) continue;
       assert.ok(
         BLANKET_BASH[skill],
-        `${skill} grants a blanket \`Bash\` — scope it (\`Bash(git:*)\`, \`Bash(gh:*)\`, …), or add it to BLANKET_BASH in this file with the reason it cannot be`
+        `${skill} grants a blanket \`Bash\` — scope it (\`Bash(git diff:*)\`, \`Bash(gh pr view:*)\`, …), or add it to BLANKET_BASH in this file with the reason it cannot be`
       );
     }
   });
@@ -270,11 +301,78 @@ describe('a scoped rule is not a blanket Bash by another name', () => {
   test('each cleared prefix and each mechanism says something, so neither list can be padded to pass', () => {
     for (const [key, reason] of [
       ...Object.entries(EXEC_CAPABLE),
-      ...Object.entries(EXEC_CLEARED)
+      ...Object.entries(EXEC_CLEARED),
+      ...Object.entries(TAUGHT_AS_REJECTED)
     ])
       assert.ok(
         reason.trim().length >= 15,
         `${key}: say how it executes (or why this spelling cannot), not a placeholder`
       );
+  });
+});
+
+/**
+ * Every `Bash(…)` rule the frontmatter contract shows, as written in the file.
+ *
+ * `skills/README.md` is what a skill author copies from, so a rule it prints is a rule
+ * that gets written. Reading the prose as well as the fenced example is deliberate: the
+ * field note carries its own inline `allowed-tools:` line, which is just as copyable as
+ * the template above it.
+ */
+const taughtRules = () => {
+  const raw = readFileSync(join(ROOT, 'skills', 'README.md'), 'utf8');
+  return [...new Set(raw.match(/Bash\([^()]+\)/g) ?? [])];
+};
+
+describe('the frontmatter contract teaches rules its own gate accepts', () => {
+  // Twice the contract has taught a rule this gate refuses — `Bash(git:*)`, then the
+  // `Bash(git log:*)` that replaced it — because nothing connected the prose to the check.
+  // Hand-fixing an example invites the next wrong one; this is the check that does not.
+  //
+  // Only this file is read. An ADR records what was decided on its date and is refined by
+  // a later record rather than edited, so ADR-0005's `Bash(git:*) Bash(gh:*)` stays as
+  // written and ADR-0017 carries the correction — a template to copy is a different thing
+  // from a record of a decision, and only the template has to hold today.
+  test('the contract shows rules at all, so an unreadable file cannot pass', () => {
+    assert.ok(
+      taughtRules().length > 0,
+      'skills/README.md shows no `Bash(…)` rule — either the contract stopped teaching the scoped form, or this reader stopped finding it'
+    );
+  });
+
+  test('every rule it teaches passes the exec-primitive check', () => {
+    for (const tool of taughtRules()) {
+      if (TAUGHT_AS_REJECTED[tool]) continue;
+
+      const prefix = prefixOf(tool);
+      assert.ok(
+        prefix,
+        `skills/README.md teaches "${tool}", which is not the \`Bash(<command prefix>:*)\` form the same file requires`
+      );
+      if (EXEC_CLEARED[prefix]) continue;
+
+      const head = prefix.split(/\s+/)[0] ?? '';
+      const mechanism = EXEC_CAPABLE[head];
+      assert.ok(
+        !mechanism,
+        `skills/README.md teaches "${tool}", which this gate rejects — ${mechanism}. Show a cleared prefix instead, or clear this one in EXEC_CLEARED with the reason that spelling cannot execute.`
+      );
+    }
+  });
+
+  test('and every rule it names as one to avoid is still one the gate rejects', () => {
+    const taught = taughtRules();
+    for (const [tool, where] of Object.entries(TAUGHT_AS_REJECTED)) {
+      assert.ok(
+        taught.includes(tool),
+        `TAUGHT_AS_REJECTED lists "${tool}", which skills/README.md no longer shows (${where}) — drop the entry`
+      );
+
+      const prefix = prefixOf(tool);
+      assert.ok(
+        EXEC_CAPABLE[prefix.split(/\s+/)[0] ?? ''] && !EXEC_CLEARED[prefix],
+        `skills/README.md shows "${tool}" as a rule to avoid (${where}), but this gate accepts it — the illustration and the check disagree`
+      );
+    }
   });
 });
