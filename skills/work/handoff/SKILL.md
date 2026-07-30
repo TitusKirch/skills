@@ -7,9 +7,13 @@ allowed-tools:
   - Read
   - Write
   - Edit
-  - Bash
   - Grep
   - Glob
+  - Bash(jq:*)
+  - Bash(printf:*)
+  - Bash(git log:*)
+  - Bash(git rev-parse:*)
+  - Bash(ls:*)
 ---
 
 # handoff

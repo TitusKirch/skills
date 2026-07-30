@@ -7,9 +7,10 @@ allowed-tools:
   - Read
   - Write
   - Edit
-  - Bash
   - Glob
   - Grep
+  - Bash(jq:*)
+  - Bash(wc:*)
 ---
 
 # compact-readme

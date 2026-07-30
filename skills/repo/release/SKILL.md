@@ -4,10 +4,20 @@ metadata:
   summary: Drives the release-please flow to a shipped release — promotes the integration branch, then merges the release PR.
 description: Drives a repo's release-please flow to a shipped release — promotes the integration branch onto the release branch (config-gated), waits for the release PR release-please opens, validates it, and merges it. Forge chosen per-repo by config (root `forge` key); v1 is GitHub via the gh CLI. Invoke manually only — this skill never fires proactively, never merges without confirmation, and opens at most one pull request (the promotion PR, and only where configured to create it). Use when the user explicitly asks to cut, ship or publish a release, to merge the release-please PR, to promote dev onto main for a release, or says things like "ship the release", "cut a release", "merge the release PR", "Release machen", "Release veröffentlichen".
 allowed-tools:
-  - Bash
   - Read
   - Grep
   - Glob
+  - Bash(jq:*)
+  - Bash(printf:*)
+  - Bash(git log:*)
+  - Bash(git rev-list:*)
+  - Bash(git rev-parse:*)
+  - Bash(git describe:*)
+  - Bash(gh pr list:*)
+  - Bash(gh pr view:*)
+  - Bash(gh pr checks:*)
+  - Bash(gh repo view:*)
+  - Bash(gh api:*)
 ---
 
 # release

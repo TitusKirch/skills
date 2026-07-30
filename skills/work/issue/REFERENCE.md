@@ -60,6 +60,10 @@ else
 fi
 ```
 
+**What the grant leaves out, and why that is the point.** This skill's `allowed-tools` names the commands it drives rather than granting `Bash` outright — `gh issue list` / `view`, `gh search issues`, `gh label list`, `gh project list` and `gh repo view` for everything it reads, plus `jq`, `printf` and `mkdir` for the config and the cache. **`gh issue create`, `gh issue edit`, `gh issue close` and `gh api` are deliberately absent.** The first three are the writes this skill [previews once and performs only after confirmation](SKILL.md); `gh api` is off because the sub-issue recipes drive it with `--method POST` and `--method DELETE`, and a prefix rule cannot tell those from a read.
+
+**What the list is, and is not.** It documents what this skill drives and keeps the unattended surface small; it is **not** a restriction — an unlisted command still runs once a person says yes.
+
 <skills-config>
 
 ### Reading the config

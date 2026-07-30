@@ -24,31 +24,20 @@ import { discoverSkills, paths } from '../scripts/gen-skills.ts';
  * The named exceptions: skills still granting a blanket `Bash`, each with the reason it
  * has not been scoped yet.
  *
- * Two of these reasons are permanent and two are not, and the difference is worth
- * seeing. A skill that runs the repo's own `verify` drives *whatever the consuming repo
- * declares* — no fixed pattern pre-approves an arbitrary command without pre-approving
- * every command — and an unattended queue skill cannot answer a permission prompt at
- * all, so for those four-plus-two the blanket grant may well be the right answer. The
- * rest are simply undecided, and say so.
+ * Every reason left here is permanent, which is the state the migration was aiming at: a
+ * skill that runs the repo's own `verify` drives *whatever the consuming repo declares* —
+ * no fixed pattern pre-approves an arbitrary command without pre-approving every command —
+ * an unattended queue skill cannot answer a permission prompt at all, and a skill whose
+ * work *is* a container invocation is granting `docker`, which runs anything. None of the
+ * three is waiting on a per-skill pass; each is the honest answer for that skill.
  */
 const BLANKET_BASH: Record<string, string> = {
-  'docs/compact-readme': 'not yet scoped — awaiting its own per-skill pass',
   'docs/vhs-demo':
-    'not yet scoped — drives VHS through a docker invocation whose shape is still per-repo',
-  'docs/write-docs': 'not yet scoped — awaiting its own per-skill pass',
-  'docs/write-readme': 'not yet scoped — awaiting its own per-skill pass',
-  'meta/tituskirch-skills-config':
-    'not yet scoped — awaiting its own per-skill pass',
-  'repo/atomic-commit': 'not yet scoped — awaiting its own per-skill pass',
+    'drives VHS through `docker run`, which takes the command it runs as an argument — a scoped rule here would be `Bash(docker:*)`, the blanket grant spelled longer',
   'repo/merge-deps':
     "runs the repo's own `verify` in a throwaway worktree — an arbitrary declared command no pattern can pre-approve",
-  'repo/prune-branches': 'not yet scoped — awaiting its own per-skill pass',
-  'repo/pull-request': 'not yet scoped — awaiting its own per-skill pass',
-  'repo/release': 'not yet scoped — awaiting its own per-skill pass',
   'repo/update-deps':
     "runs the repo's own `verify` plus each ecosystem's updater — arbitrary declared commands no pattern can pre-approve",
-  'work/handoff': 'not yet scoped — awaiting its own per-skill pass',
-  'work/issue': 'not yet scoped — awaiting its own per-skill pass',
   'work/work-implement':
     "runs the repo's own `verify` — an arbitrary declared command no pattern can pre-approve",
   'work/work-implement-queue':
@@ -101,17 +90,47 @@ const EXEC_CAPABLE: Record<string, string> = {
   ssh: 'runs an arbitrary command on the far side',
   sort: '`--compress-program=PROG` runs PROG',
   git: '`git -c alias.x=!<cmd> x` and `-c core.pager=<cmd>` run arbitrary commands',
-  gh: '`gh alias set --shell x <cmd>` then `gh x` runs it, and `gh extension exec` runs an installed extension'
+  gh: '`gh alias set --shell x <cmd>` then `gh x` runs it, and `gh extension exec` runs an installed extension',
+  docker:
+    '`docker run <image> <cmd>` runs it, and `-v /:/host` hands it the filesystem it was meant to be isolated from'
 };
 
 /**
- * Exact prefixes cleared despite an exec-capable head, each with why that spelling cannot.
+ * Subcommands that take a command as an *argument*, so the subcommand is no narrower than
+ * the head. Listed apart from EXEC_CAPABLE because nothing above them can be cleared: the
+ * clear below is by token prefix, and these are the prefixes it must never reach.
+ *
+ * `git push --receive-pack=<cmd>` (spelled `--exec=<cmd>`) and `git fetch --upload-pack=<cmd>`
+ * run their argument on the far side — which for a filesystem remote is this machine. And
+ * `git config core.pager=<cmd>` writes the very configuration the clears above declare out
+ * of scope, turning a one-step grant into a two-step one. A skill needing any of the three
+ * lets it ask, which is the correct cost for the one command in its recipe that can execute.
+ */
+const EXEC_CAPABLE_SUBCOMMANDS: Record<string, string> = {
+  'git push':
+    '`--receive-pack=<cmd>` / `--exec=<cmd>` runs it on the remote, which a filesystem remote makes local',
+  'git fetch': '`--upload-pack=<cmd>` runs it on the far side, same as above',
+  'git clone': '`--upload-pack=<cmd>`, same as `git fetch`',
+  'git ls-remote': '`--upload-pack=<cmd>`, same as `git fetch`',
+  'git config':
+    'writes `core.pager`, `core.editor` and `alias.*`, so it arms an exec route the next git command fires'
+};
+
+/**
+ * Prefixes cleared despite an exec-capable head, each with why that spelling cannot.
  *
  * The head token is the wrong unit for a command whose *subcommand* decides what it does:
- * `git` can reach a shell, `git diff` cannot. Clearing is per exact prefix and costs a
- * written reason — the same shape as BLANKET_BASH above, and for the same purpose. Scoping
- * a skill that needs `git commit` means adding it here and saying why, not widening the
- * rule to `Bash(git:*)` and hoping nobody reads it.
+ * `git` can reach a shell, `git diff` cannot. Clearing costs a written reason — the same
+ * shape as BLANKET_BASH above, and for the same purpose. Scoping a skill that needs
+ * `git commit` means adding it here and saying why, not widening the rule to `Bash(git:*)`
+ * and hoping nobody reads it.
+ *
+ * Clearing is by **token prefix**: an entry for `gh pr` clears `Bash(gh pr list:*)` too,
+ * because the reason — no command reachable through the arguments — holds for everything
+ * under it. That is what lets a skill pin the narrow rule it actually needs without this
+ * list carrying one entry per subcommand it will never see. It also means an entry here is
+ * exactly as wide as it reads, so `git` and `gh` alone are refused below, and the
+ * EXEC_CAPABLE_SUBCOMMANDS above can never be reached by a prefix.
  *
  * A reason here says what the *spelling* can reach through its arguments. It does not say
  * the repository cannot: `core.pager`, `diff.external` and `gh`'s `pager` are configuration,
@@ -119,20 +138,61 @@ const EXEC_CAPABLE: Record<string, string> = {
  * same floor EXEC_CAPABLE is measured against, and the reason ADR-0005's durable controls —
  * not this list — are what confine a skill. Write the reasons that way; a clear that claims
  * "runs nothing" full stop is claiming more than the gate delivers.
+ *
+ * What is deliberately **absent** is as much of the decision as what is here. `git push`,
+ * `git fetch` and `git config` are named above as exec routes in their own right, so the
+ * skills that drive them ask — which lands the prompt on the deleting push, the merging
+ * fetch and the config write rather than on the reads around them.
  */
 const EXEC_CLEARED: Record<string, string> = {
   'command -v':
     'prints where a command would be found; the -v form runs nothing',
+  'git add': 'stages paths; takes no command as an argument',
+  'git apply': 'applies a patch to the tree; takes no command as an argument',
+  'git branch':
+    'lists, creates and deletes branch refs; takes no command as an argument',
+  'git cat-file': 'prints an object; takes no command as an argument',
+  'git cherry':
+    'compares commits against an upstream; takes no command as an argument',
+  'git commit':
+    'records the index; the `-c` here names a commit to reuse a message from, not a configuration assignment',
+  'git commit-tree':
+    'writes a commit object from a tree; takes no command as an argument',
+  'git describe': 'prints the nearest tag; takes no command as an argument',
   'git diff':
     'prints a diff; the exec routes on `git` are global options (`-c`, `--exec-path`) that sit before the subcommand, where this prefix cannot reach them',
+  'git for-each-ref':
+    'prints refs through a format string, which is interpolated and never executed',
+  'git fsck': 'checks object connectivity; takes no command as an argument',
   'git log':
     'prints commits; same global-option reasoning as `git diff`, and it needs an explicit `--ext-diff` to reach even a configured external differ',
   'git ls-files': 'reads the index and prints paths; writes nothing',
+  'git merge-base': 'prints a common ancestor; takes no command as an argument',
+  'git reflog': 'prints the ref log; takes no command as an argument',
+  'git remote':
+    'lists and edits remote entries; takes no command as an argument, and the URL it stores is fetched by a command that asks',
+  'git rev-list': 'prints revisions; takes no command as an argument',
   'git rev-parse': 'prints revisions and repository paths; writes nothing',
+  'git show':
+    'prints objects; like `git log` it needs an explicit `--ext-diff` to reach even a configured external differ',
+  'git status':
+    'prints the working-tree state; takes no command as an argument',
   'git symbolic-ref':
     'prints a symbolic ref; the writing form needs a second argument',
-  'gh pr view':
-    "prints a pull request; `gh`'s exec routes are top-level (`gh <alias>`, `gh extension exec`), and `gh` refuses to alias over a core command"
+  'git verify-commit':
+    'checks a signature; the program that does it comes from `gpg.program`, which is configuration rather than an argument',
+  'git worktree':
+    'adds, lists and removes linked worktrees; takes no command as an argument',
+  'gh api':
+    "sends one API request; `gh`'s exec routes are top-level (`gh <alias>`, `gh extension exec`), which a subcommand prefix cannot reach",
+  'gh auth': 'reads and stores credentials; same top-level-only exec routes',
+  'gh issue': 'works on issues; same top-level-only exec routes',
+  'gh label': 'works on labels; same top-level-only exec routes',
+  'gh pr':
+    "works on pull requests; `gh` refuses to alias over a core command, so `gh pr <anything>` stays inside `gh`'s own subcommand tree",
+  'gh project': 'works on projects; same top-level-only exec routes',
+  'gh repo': 'works on repositories; same top-level-only exec routes',
+  'gh search': 'runs one search query; same top-level-only exec routes'
 };
 
 /**
@@ -153,8 +213,47 @@ const TAUGHT_AS_REJECTED: Record<string, string> = {
     'same note — `gh alias set --shell` then `gh <alias>` reaches a shell'
 };
 
+/**
+ * Skills that pre-approve no command at all, each with why there is none to name.
+ *
+ * The scoped form is a smaller grant; *no* Bash grant is the smallest, and a skill whose
+ * whole job runs through Read, Write and Edit has nothing to pre-approve. Requiring one
+ * anyway would have it invent a command to declare, which is the opposite of the point.
+ * Listed rather than inferred, and pinned in both directions like the others: a skill here
+ * that starts driving something must say so, and one that drives nothing cannot be quietly
+ * handed a grant.
+ */
+const NO_BASH: Record<string, string> = {
+  'docs/write-readme':
+    'scaffolds README.md through Read/Write/Edit and drives no command — it reads no config either'
+};
+
 /** The command prefix inside a scoped rule: `Bash(git diff:*)` → `git diff`. */
 const prefixOf = (tool: string) => /^Bash\((.+):\*\)$/.exec(tool)?.[1] ?? '';
+
+/** Split a command prefix into tokens: `git ls-files` → `['git', 'ls-files']`. */
+const tokens = (prefix: string) => prefix.split(/\s+/).filter(Boolean);
+
+/** Is `prefix` `entry` or something under it? `git commit --amend` is under `git commit`. */
+const startsWith = (prefix: string, entry: string) => {
+  const [p, e] = [tokens(prefix), tokens(entry)];
+  return e.length <= p.length && e.every((t, i) => t === p[i]);
+};
+
+/**
+ * The EXEC_CLEARED entry covering this prefix, if one does.
+ *
+ * By token prefix, so `gh pr` covers `gh pr list` — the reason a clear gives is a property
+ * of the subcommand, and it does not stop holding because a skill pinned something narrower.
+ */
+const clearedBy = (prefix: string) =>
+  Object.keys(EXEC_CLEARED).find((entry) => startsWith(prefix, entry));
+
+/** The exec-capable subcommand this prefix reaches, if any — `git push --force` reaches `git push`. */
+const execSubcommand = (prefix: string) =>
+  Object.keys(EXEC_CAPABLE_SUBCOMMANDS).find((entry) =>
+    startsWith(prefix, entry)
+  );
 
 /**
  * One skill's `allowed-tools`, read out of its frontmatter.
@@ -233,13 +332,23 @@ describe('the scoped form is what a new skill inherits', () => {
   test('a scoped skill still declares the Bash it drives, rather than dropping it', () => {
     for (const skill of skills()) {
       const tools = allowedTools(skill);
-      if (isBlanketBash(tools)) continue;
-      // Dropping Bash entirely is not the scoped form — it is a different change, and
-      // every skill here drives at least one command. Silently losing the grant would
-      // read as progress while costing a prompt on every single command.
+      if (isBlanketBash(tools) || NO_BASH[skill]) continue;
+      // Dropping Bash entirely is not the scoped form — it is a different change. Losing
+      // the grant silently would read as progress while costing a prompt on every command
+      // the skill actually runs, so a skill that runs none says so in NO_BASH instead.
       assert.ok(
         tools.some((t) => t.startsWith('Bash(')),
-        `${skill}: scoped skills pre-approve the commands they drive — declare at least one \`Bash(…)\``
+        `${skill}: scoped skills pre-approve the commands they drive — declare at least one \`Bash(…)\`, or name it in NO_BASH with the reason it drives none`
+      );
+    }
+  });
+
+  test('and every skill claiming to drive nothing declares no Bash at all', () => {
+    for (const [skill, reason] of Object.entries(NO_BASH)) {
+      const tools = allowedTools(skill);
+      assert.ok(
+        !tools.some((t) => t === 'Bash' || t.startsWith('Bash(')),
+        `NO_BASH says ${skill} drives no command (${reason}), but its list grants Bash — drop the entry, or drop the grant`
       );
     }
   });
@@ -272,9 +381,16 @@ describe('a scoped rule is not a blanket Bash by another name', () => {
     for (const skill of skills())
       for (const tool of allowedTools(skill)) {
         const prefix = prefixOf(tool);
-        if (!prefix || EXEC_CLEARED[prefix]) continue;
+        if (!prefix) continue;
 
-        const head = prefix.split(/\s+/)[0] ?? '';
+        const reached = execSubcommand(prefix);
+        assert.ok(
+          !reached,
+          `${skill}: "${tool}" reaches \`${reached}\`, which takes a command as an argument — ${EXEC_CAPABLE_SUBCOMMANDS[reached ?? '']}. Let it ask; no clear can cover it.`
+        );
+        if (clearedBy(prefix)) continue;
+
+        const head = tokens(prefix)[0] ?? '';
         const mechanism = EXEC_CAPABLE[head];
         assert.ok(
           !mechanism,
@@ -285,7 +401,7 @@ describe('a scoped rule is not a blanket Bash by another name', () => {
 
   test('every cleared prefix is headed by an exec-capable command, so the list cannot grow sideways', () => {
     for (const prefix of Object.keys(EXEC_CLEARED)) {
-      const head = prefix.split(/\s+/)[0] ?? '';
+      const head = tokens(prefix)[0] ?? '';
       assert.ok(
         EXEC_CAPABLE[head],
         `EXEC_CLEARED lists "${prefix}", whose head \`${head}\` is not in EXEC_CAPABLE — nothing was blocking it, so the entry only obscures what the gate checks`
@@ -295,14 +411,23 @@ describe('a scoped rule is not a blanket Bash by another name', () => {
         head,
         `EXEC_CLEARED lists the bare command \`${head}\` — clearing a whole command defeats the check; clear the subcommand that cannot execute`
       );
+      // A clear is as wide as it reads, so one that sits on or above a subcommand taking a
+      // command argument would hand out exactly what that subcommand can run.
+      const reached = execSubcommand(prefix);
+      assert.ok(
+        !reached,
+        `EXEC_CLEARED lists "${prefix}", which covers \`${reached}\` — ${EXEC_CAPABLE_SUBCOMMANDS[reached ?? '']}`
+      );
     }
   });
 
-  test('each cleared prefix and each mechanism says something, so neither list can be padded to pass', () => {
+  test('each cleared prefix and each mechanism says something, so no list can be padded to pass', () => {
     for (const [key, reason] of [
       ...Object.entries(EXEC_CAPABLE),
+      ...Object.entries(EXEC_CAPABLE_SUBCOMMANDS),
       ...Object.entries(EXEC_CLEARED),
-      ...Object.entries(TAUGHT_AS_REJECTED)
+      ...Object.entries(TAUGHT_AS_REJECTED),
+      ...Object.entries(NO_BASH)
     ])
       assert.ok(
         reason.trim().length >= 15,
@@ -349,9 +474,9 @@ describe('the frontmatter contract teaches rules its own gate accepts', () => {
         prefix,
         `skills/README.md teaches "${tool}", which is not the \`Bash(<command prefix>:*)\` form the same file requires`
       );
-      if (EXEC_CLEARED[prefix]) continue;
+      if (clearedBy(prefix)) continue;
 
-      const head = prefix.split(/\s+/)[0] ?? '';
+      const head = tokens(prefix)[0] ?? '';
       const mechanism = EXEC_CAPABLE[head];
       assert.ok(
         !mechanism,
@@ -370,7 +495,7 @@ describe('the frontmatter contract teaches rules its own gate accepts', () => {
 
       const prefix = prefixOf(tool);
       assert.ok(
-        EXEC_CAPABLE[prefix.split(/\s+/)[0] ?? ''] && !EXEC_CLEARED[prefix],
+        EXEC_CAPABLE[tokens(prefix)[0] ?? ''] && !clearedBy(prefix),
         `skills/README.md shows "${tool}" as a rule to avoid (${where}), but this gate accepts it — the illustration and the check disagree`
       );
     }

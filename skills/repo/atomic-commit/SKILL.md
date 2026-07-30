@@ -4,10 +4,22 @@ metadata:
   summary: Commits session work as atomic Conventional Commits (or just plans).
 description: Commits the current session's working-tree changes as a series of atomic Conventional Commits in the repo's own detected conventions (scopes, types, commitlint rules, message language). Always presents the full plan first and commits only after confirmation; switches to plan-only when asked. Use when the user wants to commit session or feature work, mentions conventional or atomic commits, splitting changes into multiple commits, or says things like "how would you commit this", "just show me the plan", "don't commit yet", "nicht committen".
 allowed-tools:
-  - Bash
   - Read
   - Grep
   - Glob
+  - Bash(jq:*)
+  - Bash(printf:*)
+  - Bash(mkdir:*)
+  - Bash(git status:*)
+  - Bash(git diff:*)
+  - Bash(git log:*)
+  - Bash(git rev-parse:*)
+  - Bash(git cat-file:*)
+  - Bash(git verify-commit:*)
+  - Bash(git add:*)
+  - Bash(git apply:*)
+  - Bash(git commit:*)
+  - Bash(gh api:*)
 ---
 
 # atomic-commit

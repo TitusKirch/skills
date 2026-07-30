@@ -28,6 +28,10 @@ Also reads the shared root `language` (report wording).
 
 **`protect` adds; it never replaces.** It is `issue.labels.exclude`'s shape and its semantics — a repo names what _else_ must be left alone, and cannot use the key to unprotect the default branch, the integration branch, a worktree checkout or a forge-protected branch. Patterns are globs matched against the **short** name (`feature/x`, not `refs/heads/feature/x`), and they apply identically on both sides of the run.
 
+**What the grant leaves out, and why that is the point.** This skill's `allowed-tools` names the commands it drives rather than granting `Bash` outright — the read-only git subcommands the staleness rules use (`git branch`, `git cherry`, `git merge-base`, `git for-each-ref`, `git rev-parse`, `git reflog`, `git fsck`), `git worktree` and `git commit-tree` for the recovery recipes, and the `gh` reads that resolve a PR's state. **`git push` is deliberately absent**, and it is the one command that deletes a remote branch: the run asks before it, which is exactly where a prompt belongs in a skill that [never deletes without an explicit yes](SKILL.md). `git fetch` and `git config` are absent for a sharper reason — `--upload-pack=<cmd>` and a written `core.pager` each take a command, so pre-approving them would be a blanket `Bash` spelled longer.
+
+**What the list is, and is not.** It documents what this skill drives and keeps the unattended surface small; it is **not** a restriction. An unlisted command still runs once a person says yes — the deleting push included. What changed is that the prose guardrail and the silent surface now say the same thing.
+
 <skills-config>
 
 ### Reading the config

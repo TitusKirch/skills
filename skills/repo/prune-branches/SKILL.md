@@ -4,10 +4,24 @@ metadata:
   summary: Reports a repo's stale branches grouped by why they are stale, and deletes the ones confirmed.
 description: Reports a repo's stale branches grouped by why they are stale — merged into the integration branch (squash and rebase merges included), upstream gone, a closed PR that never merged, and no commits for 90 days — then deletes only what a human confirms. Local and remote branches list separately; a scope argument restricts a run to one side. Merged and upstream-gone form the default set; a closed PR and plain age are listed, never preselected. Protected branches are never offered. Forge chosen per-repo by config (root forge key); v1 is GitHub via the gh CLI. Invoke manually only — never fires proactively and never deletes without an explicit yes. Use when the user wants to prune, clean up or list stale, merged or dead branches, asks which branches are safe to delete, or says things like "clean up the branches", "delete the merged branches", "Branches aufräumen", "alte Branches löschen".
 allowed-tools:
-  - Bash
   - Read
   - Grep
   - Glob
+  - Bash(jq:*)
+  - Bash(printf:*)
+  - Bash(git branch:*)
+  - Bash(git cherry:*)
+  - Bash(git merge-base:*)
+  - Bash(git for-each-ref:*)
+  - Bash(git rev-parse:*)
+  - Bash(git reflog:*)
+  - Bash(git worktree:*)
+  - Bash(git fsck:*)
+  - Bash(git commit-tree:*)
+  - Bash(gh pr list:*)
+  - Bash(gh pr view:*)
+  - Bash(gh repo view:*)
+  - Bash(gh api:*)
 ---
 
 # prune-branches
