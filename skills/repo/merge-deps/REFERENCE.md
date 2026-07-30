@@ -238,13 +238,15 @@ gh pr checks "$n"
 **Verify the PR's head without touching the user's tree** — a throwaway worktree, removed whatever happens:
 
 ```bash
-git fetch origin "pull/$n/head:merge-deps-$n"
-git worktree add "$tmp" "merge-deps-$n"
+git fetch origin "pull/$n/head"
+git worktree add --detach "$tmp" FETCH_HEAD
 # $install comes from the head's own lockfile — see "Running the repo's checks".
 # It is part of the gate: if it fails, the PR is red, and that is the finding.
 ( cd "$tmp" && eval "$install" && eval "$verify" )   # exit status is the gate
-git worktree remove --force "$tmp" && git branch -D "merge-deps-$n"
+git worktree remove "$tmp"
 ```
+
+**The head is checked out detached, so there is no branch to clean up.** Fetching it into a local `merge-deps-$n` branch would leave one behind that only `git branch -D` removes — `-d` refuses it, because a PR head is unmerged by construction — and `-D` is exactly what a repo's `.claude/settings.json` denies. With no branch there is nothing to delete, and the `--force` on the removal goes with it: the tree holds only what the install wrote, which is gitignored and which `git worktree remove` therefore does not count. A refusal here means the head left untracked, non-ignored files behind, which is a finding about the PR rather than an obstacle to force past.
 
 **Merge — directly, with the method the PR's own base allows:**
 
