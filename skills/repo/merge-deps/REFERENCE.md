@@ -238,17 +238,21 @@ gh pr checks "$n"
 **Verify the PR's head without touching the user's tree** — a throwaway worktree, removed whatever happens:
 
 ```bash
+# Reclaim first — this drain retries PRs across runs, so an abandoned tree at this path is
+# the likely case, not the exotic one. Not &&-chained: nothing to reclaim is normal.
+git worktree remove "$(git rev-parse --git-common-dir)/tituskirch-skills/merge-deps/$n" 2>/dev/null
+git worktree prune
 # One command on purpose — see below; FETCH_HEAD does not survive another fetch.
 # The tree's path is derived from the PR number, never carried in a variable — also below.
 git fetch origin "pull/$n/head" \
   && git worktree add --detach \
-       "$(git rev-parse --git-common-dir)/tituskirch-skills/work/merge-deps-$n" \
+       "$(git rev-parse --git-common-dir)/tituskirch-skills/merge-deps/$n" \
        "$(git rev-parse FETCH_HEAD)"
 # $install comes from the head's own lockfile — see "Running the repo's checks".
 # It is part of the gate: if it fails, the PR is red, and that is the finding.
-( cd "$(git rev-parse --git-common-dir)/tituskirch-skills/work/merge-deps-$n" \
+( cd "$(git rev-parse --git-common-dir)/tituskirch-skills/merge-deps/$n" \
     && eval "$install" && eval "$verify" )   # exit status is the gate
-git worktree remove "$(git rev-parse --git-common-dir)/tituskirch-skills/work/merge-deps-$n"
+git worktree remove "$(git rev-parse --git-common-dir)/tituskirch-skills/merge-deps/$n"
 ```
 
 **The head is checked out detached, so there is no branch to clean up.** Fetching it into a local `merge-deps-$n` branch would leave one behind that only `git branch -D` removes — `-d` refuses it, because a PR head is unmerged by construction — and `-D` is exactly what a repo's `.claude/settings.json` denies. With no branch there is nothing to delete, and the `--force` on the removal goes with it: the tree holds only what the install wrote, which is gitignored and which `git worktree remove` therefore does not count. A refusal here means the head left untracked, non-ignored files behind, which is a finding about the PR rather than an obstacle to force past.
@@ -256,6 +260,12 @@ git worktree remove "$(git rev-parse --git-common-dir)/tituskirch-skills/work/me
 **The fetch and the checkout are one command, and that is what replaces the branch's stability.** A named branch could not be moved by anything else; `FETCH_HEAD` is rewritten by **any** other fetch in the repository, and this skill drains many PRs unattended in a repo a person may also be using. Left across two commands the recipe would verify whatever the last fetch happened to leave there and then **merge the PR it believed it verified** — a wrong merge rather than a failed run. Joining them closes that window without a branch to delete: one process fetches, resolves `FETCH_HEAD` and checks the commit out, so no step of this skill can interleave. Another process in the same repository still can — the window is microseconds rather than minutes, not zero. **Splitting the line back apart reopens it**, and a shell variable is no substitute — these skills run each command in its own short-lived process, so a `head_sha=` captured in one call is gone by the next. What this does **not** cover is the PR moving between the gate and the merge; that race predates this recipe and belongs to the merge step.
 
 **The tree's path is derived for the same reason, and this is the sharper case.** A `tmp=$(mktemp -d)` cannot be carried to the next command either, and `mktemp` returns a random name nothing can reconstruct — so every later command addresses an **empty** path. That does not fail in any way a run would notice: `git worktree add --detach "" …` trips an internal git assertion (`BUG: builtin/worktree.c:275`), and `cd ""` **succeeds and stays put**, so the install and the gate run in the user's own tree — precisely what the heading above promises they will not. Deriving the path from the PR number instead means any command can recompute it and none has to remember it, the same reason the shared caches live under `$(git rev-parse --git-common-dir)/tituskirch-skills/`. `mktemp -d` stays workable only if every command touching the tree is joined into the one that created it.
+
+**A reused path has to be reclaimed, not just released.** `mktemp -d` never handed back a name anyone had held; a derived one may still be occupied by a run that died between creating the tree and removing it, and `git worktree add` onto an occupied path exits **128** — which in a drain that retries the same PRs across runs would wedge that PR permanently. Hence the `remove`/`prune` pair ahead of the fetch, neither `&&`-chained, because **nothing to reclaim is the normal outcome**. It is the premise the single-flight lock's stale rule and the queues' reconcile step already start from; the lock and the caches needed none because each is created and deleted in one step, where a worktree has a half-finished state between the two.
+
+**Verified rather than assumed, because the pair does not cover everything:** `remove` exits 128 on a path git no longer knows as a worktree, and `prune` only drops metadata for directories already gone, so a **leftover directory** survives both. An **empty** one is harmless — `git worktree add` succeeds into it. A **non-empty** one is a real remnant and the run **stops and reports it** instead of deleting it: the deletion would be `rm -rf` on the derived path, `git rev-parse --git-common-dir` resolves absolute in a linked worktree, and the command would then read `rm -rf /…` — which the usual `Bash(rm -rf /:*)` deny rule prefix-matches. Forcing past it would recreate exactly the collision these recipes were rewritten to remove.
+
+**The tree lives under `tituskirch-skills/merge-deps/`, not `…/work/`.** Nothing collided there, but `work/` is the directory the **single-flight lock spec** claims for the `work-*` loops, and this is a `repo/` skill — a namespace that says which skill owns it costs nothing and stops a later reader from inferring that this drain is part of the work lifecycle. `$n` is the PR number, so one subdirectory per PR.
 
 **Merge — directly, with the method the PR's own base allows:**
 
