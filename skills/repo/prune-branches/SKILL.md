@@ -16,7 +16,7 @@ allowed-tools:
   - Bash(git for-each-ref:*)
   - Bash(git rev-parse:*)
   - Bash(git reflog:*)
-  - Bash(git worktree:*)
+  - Bash(git worktree list:*)
   - Bash(git fsck:*)
   - Bash(git commit-tree:*)
   - Bash(gh pr list:*)

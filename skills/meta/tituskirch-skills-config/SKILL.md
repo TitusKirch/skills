@@ -11,7 +11,7 @@ allowed-tools:
   - Bash(jq:*)
   - Bash(printf:*)
   - Bash(curl:*)
-  - Bash(git remote:*)
+  - Bash(git remote get-url:*)
   - Bash(git rev-parse:*)
   - Bash(gh auth status:*)
   - Bash(gh label list:*)
