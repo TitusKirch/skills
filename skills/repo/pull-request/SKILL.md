@@ -17,7 +17,7 @@ allowed-tools:
   - Bash(cut:*)
   - Bash(grep:*)
   - Bash(git rev-parse:*)
-  - Bash(git branch:*)
+  - Bash(git branch --show-current:*)
   - Bash(git log:*)
   - Bash(git diff:*)
   - Bash(gh pr list:*)
