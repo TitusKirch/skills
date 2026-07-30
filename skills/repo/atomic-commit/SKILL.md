@@ -10,6 +10,7 @@ allowed-tools:
   - Bash(jq:*)
   - Bash(printf:*)
   - Bash(mkdir:*)
+  - Bash(dirname:*)
   - Bash(date:*)
   - Bash(ls:*)
   - Bash(head:*)
