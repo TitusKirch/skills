@@ -38,13 +38,14 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
     "reviewRequested": { "maxRounds": 3 },
     "linear": {
       "team": "Engineering",
-      "statuses": ["Todo", "In Progress", "Changes Requested"],
+      "statuses": ["Todo", "In Progress", "Changes Requested", "Accepted"],
       "states": {
         "ready": "Todo",
         "working": "In Progress",
         "reviewRequested": "In Review",
         "changesRequested": "Changes Requested",
         "needsHuman": "Needs Human",
+        "accepted": "Accepted",
         "done": "Done"
       }
     }
@@ -67,7 +68,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 | `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                   |
 | `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                    |
 | `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                      |
-| `work.linear.states`                        | lifecycle step → Linear workflow state name; **no default** — see below                                               |
+| `work.linear.states`                        | Linear workflow state names; **no default** — see below and [AI-accepted is not shipped](#ai-accepted-is-not-shipped) |
 
 **`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.reviewRequested: false` → the PR's existence is the signal; `labels.reviewing: false` → **no review lease** — the review loop relies on its lock alone, with no cross-clone claim (this is the **default**, so an unset `reviewing` keeps today's behaviour); `labels.blocked: false` → comment only / Linear state; `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
 
@@ -85,7 +86,23 @@ Leaving the state untouched is a defined outcome, not a degraded one — the lab
 
 **`states` and `statuses` have to be read together.** They point in opposite directions — `states` is what the loop _writes_, `statuses` is what it will _select_ — and the [selection query](#selection-query) ANDs them, so a state this mapping can produce that `statuses` omits takes the issue out of the queue for good. The trap is `changesRequested`, because it is the loop's second input: map it to a state outside `statuses` and a review that requests changes hands the issue back to a queue that can no longer see it — the label is right, the board is right, and nothing ever picks it up. The same applies to whichever state an escalated issue is left in, since a human resolving `needsHuman` by hand moves the label but not the state.
 
-So: **every state an eligible issue can legitimately sit in belongs in `statuses`** — the ones `states.ready` and `states.changesRequested` name, plus wherever `reviewRequested` leaves an issue that a human may hand back. Being generous costs nothing; the label filter is what actually gates eligibility, and it already excludes `working`, `reviewing` and `blocked`. Being too narrow costs a silent stall.
+So: **every state an eligible issue can legitimately sit in belongs in `statuses`** — the ones `states.ready` and `states.changesRequested` name, plus wherever `reviewRequested` leaves an issue that a human may hand back and `states.accepted`, which is where a human hands an **already-accepted** issue back from. Being generous costs nothing; the label filter is what actually gates eligibility, and it already excludes `working`, `reviewing` and `blocked`. Being too narrow costs a silent stall.
+
+### AI-accepted is not shipped
+
+Two of the lifecycle's moments look alike on a board and are not: the **AI accepted this** moment the review loop produces, and the **this has shipped** moment nothing in either loop can observe. [`done` is the first of them](#terminal-done) — the work is still sitting on `pr.base`, unmerged and unreleased — so a board column called `Done` written at that moment says something the work has not earned, and, because Linear's integration never fires on a non-default `pr.base`, nothing later corrects it.
+
+So `states` carries **two** keys for the tail of the lifecycle, and only one of them is the work loop's:
+
+| Key               | Written when                                     | Written by                                                                    |
+| :---------------- | :----------------------------------------------- | :---------------------------------------------------------------------------- |
+| `states.accepted` | AI review accepts — the `done` lifecycle step    | the **review loop**, with `labels.done`, in the same `save_issue` call        |
+| `states.done`     | the change reaches the repo's **default branch** | Linear's integration (`pr.base` **is** default), else the **`release` skill** |
+
+- **`states.accepted` is not a terminal column.** Name it for what it is — `Accepted`, `Ready for release` — and put it in `statuses` (above), because a human handing an accepted issue back relabels it without moving the state.
+- **`states.done` is terminal, and neither loop writes it.** The queue's own contract is that [shipping is the rollup merge's business](#terminal-done), so waiting for a merge it does not perform is a coupling the implement loop deliberately refuses. The writer is whatever observes the default branch: Linear's GitHub integration where `pr.base` **is** the default branch, otherwise the `release` skill at the promotion edge that lands there.
+- **Unmapped is the safe answer, and it is a real one.** A repo that promotes by hand, with no release tool for the `release` skill to drive, has **no writer** for `states.done` — so leave it unmapped and let the board rest at accepted, rather than mapping a `Done` nothing will ever observe. A config that maps only `done` and not `accepted` degrades the same way: the accept verdict leaves the state untouched (the "step omitted" row above), which lags the board without ever claiming a ship — and the `release` skill's shipped-marking goes inert too, because `states.accepted` is the filter that says which issues are waiting to ship and it has none.
+- **The step key and the state key differ here on purpose.** Everywhere else `states.<step>` names the step that writes it; the `done` **step** (label `ai: done`, meaning _AI-accepted_) writes `states.accepted`, because renaming the label would churn every repo's config and tracker for a meaning that is already correct. Where the two names diverge is exactly where the two meanings do.
 
 Reads `pr.base` (branch base) and the shared root `language` from the same file. Schema: the repo-root `tituskirch-skills.schema.json`.
 
@@ -267,7 +284,7 @@ Thick edges are the path a healthy issue takes; everything thin is an exception.
 
 - **`reviewRequested` = awaiting AI review** by a **different** agent — not "awaiting a human". The `work-review` loop consumes it and writes the verdict. Its default label reads `ai: review requested`.
 - **`reviewing` = a reviewer holds the review lease** and is mid-judgment — the review loop's in-flight state, the counterpart of `working`. It exists only when `labels.reviewing` is configured; the reviewer flips `reviewRequested → reviewing` (and assigns) before reading the diff, and the verdict label move (`done` / `changes-requested` / `needs human` / `blocked`) clears it. A `reviewing` orphan is reclaimed to `reviewRequested` (below).
-- **`done` = AI-reviewed and accepted** (low-risk), or accepted by a human via `needs human`. It does **not** mean "merged": GitHub's `Closes #<n>` and Linear's integration fire only on a **default-branch** merge, which a non-default `pr.base` (e.g. `dev`) never triggers — so shipping is the rollup merge's business, not the queue's.
+- **`done` = AI-reviewed and accepted** (low-risk), or accepted by a human via `needs human`. It does **not** mean "merged": GitHub's `Closes #<n>` and Linear's integration fire only on a **default-branch** merge, which a non-default `pr.base` (e.g. `dev`) never triggers — so shipping is the rollup merge's business, not the queue's. On Linear this is why the accept verdict writes `states.accepted` and **not** `states.done` — [AI-accepted is not shipped](#ai-accepted-is-not-shipped).
 - **`review-after-land`** — under `branch:<name>` the commit lands on the branch **before** review; the issue is still not `done` until review passes, and a `changes-requested` verdict is fixed **forward** (more commits), never reverted. Details: `work-review`.
 
 ### Reconcile
@@ -515,7 +532,7 @@ Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — disco
 - **Lifecycle** — `save_issue` with the issue's `id` (create and update are one tool, keyed on the `id`) to set the lifecycle label + assignee, plus that step's `work.linear.states` state when one is mapped — **one atomic call**, so label and state never drift. Step unmapped, or no `states` at all → write the label + assignee and **leave the state alone**. Never invent a state name: the map is the only source, and `statuses` is an eligibility filter, not a mapping.
 - **Eligible** — `list_issues` by team + `labels.ready` + `labels.repo` + `work.linear.statuses`; order by native priority.
 - **Dependencies** — `list_issues` returns no relations; fan out `get_issue(includeRelations: true)` (see [dependency ordering](#dependency-ordering)).
-- **Which steps write a state** — the **implement loop** writes `states.working` on the lease and `states.reviewRequested` after the push. The **review loop** writes `states.done` / `states.changesRequested` / `states.needsHuman` on its verdict; the implement reconcile writes `states.ready` when it reclaims a pre-push orphan. Linear's integration may also move the issue on a default-branch merge — a bonus, never the signal waited on. `states.ready` is otherwise not written by the worker — it records where a human parks a startable issue, the anchor `statuses` should contain. The `blocked` side-exit is carried by `labels.blocked`.
+- **Which steps write a state** — the **implement loop** writes `states.working` on the lease and `states.reviewRequested` after the push. The **review loop** writes `states.accepted` / `states.changesRequested` / `states.needsHuman` on its verdict; the implement reconcile writes `states.ready` when it reclaims a pre-push orphan. **`states.done` is written by neither** — it is the terminal shipped state, left to Linear's integration or the `release` skill ([AI-accepted is not shipped](#ai-accepted-is-not-shipped)). Linear's integration may also move the issue on a default-branch merge — a bonus, never the signal waited on. `states.ready` is otherwise not written by the worker — it records where a human parks a startable issue, the anchor `statuses` should contain. The `blocked` side-exit is carried by `labels.blocked`.
 - **PR lives on GitHub** — even for a Linear-tracked repo, the code PR is a GitHub PR. The branch name / PR carries the **Linear key** (`ENG-123`) so Linear's GitHub integration **links** it. That link is traceability: on a non-default `pr.base` the integration never moves the issue at all, so [`done`](#terminal-done) comes from the sign-off or the reconcile — never from waiting on Linear.
 - **Team is required**; resolve `work.linear.team` to its id via the cache. `states` is optional — resolve each mapped name to its id via the cache; a name that matches **no** state in the team is a config error → report it, do not fall back to a guess.
 

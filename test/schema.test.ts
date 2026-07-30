@@ -181,6 +181,50 @@ describe('the reviewing lease label (opt-in review-loop lease)', () => {
   });
 });
 
+// ADR-0018 split the tail of the Linear map in two: `accepted` is what the review
+// verdict writes, `done` is the shipped state no work skill writes. The keys are
+// independent — a repo can map either, both, or neither — because a config that maps
+// only `done` has to keep validating while its accept verdict quietly writes no state
+// at all. That is the migration path, so the schema must not turn it into an error.
+describe('the accepted/done split in the Linear state map', () => {
+  const linearWork = (states: Record<string, string>) => ({
+    work: {
+      tracker: 'linear',
+      linear: { team: 'ENG', statuses: ['Todo', 'Accepted'], states },
+      labels: { repo: 'repo: x' }
+    }
+  });
+
+  test('accepts either key alone, and both together', () => {
+    accepts(linearWork({ accepted: 'Accepted' }), 'accepted alone');
+    accepts(linearWork({ done: 'Done' }), 'done alone — the unmigrated config');
+    accepts(
+      linearWork({ accepted: 'Ready for release', done: 'Done' }),
+      'both, which is the shape the split is for'
+    );
+    accepts(linearWork({}), 'neither — the lifecycle runs on labels alone');
+  });
+
+  test('accepted is a non-empty string like every other state name', () => {
+    rejects(linearWork({ accepted: '' }), 'empty accepted state');
+    rejects(
+      { work: { linear: { states: { accepted: 1 } } } },
+      'numeric accepted state'
+    );
+    rejects(
+      { work: { linear: { states: { accepted: false } } } },
+      'accepted is a state name, not a labelOrOff'
+    );
+  });
+
+  test('the old key is not silently re-spelled', () => {
+    rejects(
+      { work: { linear: { states: { shipped: 'Done' } } } },
+      'shipped was the rejected alternative and is not a key'
+    );
+  });
+});
+
 describe('nothing about existing configs changed', () => {
   test('a config with no profiles key is still valid', () => {
     accepts({ language: 'en', pr: { base: 'dev' } }, 'plain config');

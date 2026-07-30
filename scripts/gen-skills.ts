@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // Single source of truth for the skill registry.
 // Discovers skills from the filesystem (skills/<category>/<name>/SKILL.md
-// frontmatter) and projects them into eight artifacts: README.md's table, each
+// frontmatter) and projects them into nine artifacts: README.md's table, each
 // skills/<category>/README.md, .claude-plugin/plugin.json, skills.sh.json, the
 // config contract mirrored into every skill that reads the config, the
 // author-authority block mirrored into every skill that reads third-party text,
-// the check-command contract mirrored into every skill that runs the gate, and the
-// single-flight-lock spec mirrored into the four work-loop skills.
+// the check-command contract mirrored into every skill that runs the gate, the
+// single-flight-lock spec mirrored into the four work-loop skills, and the
+// plan-presentation rule mirrored into every skill that presents a plan.
 //
 //   node scripts/gen-skills.ts           # rewrite whichever have drifted
 //   node scripts/gen-skills.ts --check   # exit 1 if any is stale (CI)
@@ -34,6 +35,7 @@ export interface Paths {
   authorityBlock: string;
   verifyBlock: string;
   worklockBlock: string;
+  planBlock: string;
   resolver: string;
 }
 
@@ -48,6 +50,7 @@ export function paths(root: string): Paths {
     authorityBlock: join(root, 'scripts', 'authority-block.md'),
     verifyBlock: join(root, 'scripts', 'verify-block.md'),
     worklockBlock: join(root, 'scripts', 'worklock-block.md'),
+    planBlock: join(root, 'scripts', 'plan-block.md'),
     resolver: join(root, 'scripts', 'resolve-config.sh')
   };
 }
@@ -92,6 +95,15 @@ const VERIFY_ISOLATED_END = '</skills-verify-isolated>';
 // again anyway, in two wordings that had already diverged by a clause.
 const WORKLOCK_OPEN = '<skills-worklock>';
 const WORKLOCK_END = '</skills-worklock>';
+
+// The fifth mirrored contract, and the only one about the skill's *output*: a plan is read
+// once, in a terminal, so it has to render there. Every other contract here is about what a
+// skill reads or runs; this one is about what arrives in front of the human deciding. It was
+// mirrored rather than written per skill because the failure it prevents is silent — a plan
+// folded into `<details>` prints its summary and nothing else — and every plan-presenting
+// skill is one wording away from re-inventing it.
+const PLAN_OPEN = '<skills-plan>';
+const PLAN_END = '</skills-plan>';
 
 // The Agent Skills spec caps `description` at 1024 characters, and that cap is a cliff:
 // a skill one character over is non-conformant, and nothing about writing a description
@@ -227,7 +239,7 @@ export function discoverSkills(p: Paths): Skill[] {
           } catch (err) {
             // No SKILL.md means the directory is not a skill — skip it. Any other
             // read failure is not that, and swallowing it would drop the skill from
-            // all eight artifacts in one silent `--write`, reporting success while
+            // all nine artifacts in one silent `--write`, reporting success while
             // deleting a published skill's row, entry and grouping.
             if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
             throw err;
@@ -478,6 +490,18 @@ export function worklockBody(p: Paths): string {
   return raw.slice(at + marker.length).trim();
 }
 
+// One body, no variants either: a terminal renders the same for every skill, so what a plan
+// may look like does not vary with what the skill is planning.
+export function planBody(p: Paths): string {
+  const raw = readFileSync(p.planBlock, 'utf8');
+  const marker = '<!-- plan:body -->';
+  const at = raw.indexOf(marker);
+  if (at === -1) {
+    throw new Error(`${p.planBlock}: missing ${marker}`);
+  }
+  return raw.slice(at + marker.length).trim();
+}
+
 // The mirrored block opens with a level-3 heading, so it belongs under "## Config".
 // Placed anywhere else it silently reads as part of the preceding section — a queue
 // skill's block landed under "## Workflow" and became its last step. Rewriting the
@@ -711,6 +735,11 @@ export function main(argv: string[], root: string = ROOT): RunResult {
   stale.push(
     ...syncTaggedBlock(p, skills, check, 'worklock', [
       { open: WORKLOCK_OPEN, end: WORKLOCK_END, body: worklockBody(p) }
+    ])
+  );
+  stale.push(
+    ...syncTaggedBlock(p, skills, check, 'plan', [
+      { open: PLAN_OPEN, end: PLAN_END, body: planBody(p) }
     ])
   );
 

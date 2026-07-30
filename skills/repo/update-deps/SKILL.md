@@ -50,7 +50,7 @@ So **always diff the gated plan against an ungated read** (`--maturity-period 0`
 
 Same duty for **exact pins**: the default scope of `taze` skips them entirely, so they are invisible rather than reported. Do a `--include-locked` read to see them and report them as **held — exact pin**. [Pins](REFERENCE.md#exact-pins).
 
-Present the plan — moved, held, and why — and **write only after confirmation**. Plan-only triggers ("dry run", "just show me", "nur den Plan", "nicht schreiben") → print the plan and the exact commands, then stop.
+Present the plan — moved, held, and why — and **write only after confirmation**. **The per-ecosystem package lists _are_ the plan**, so they arrive rendered, never folded away: several dozen lines of packages is the normal size of this plan, and it is exactly that bulk a human has to read to answer. How that constrains the form — and what to do instead when a list runs long — is [Presenting the plan](#presenting-the-plan) below; it binds this step and the report alike. Plan-only triggers ("dry run", "just show me", "nur den Plan", "nicht schreiben") → print the plan and the exact commands, then stop.
 
 ### 4. Update — drive the repo's own updater
 
@@ -74,11 +74,42 @@ Run the repo's own check command — the root `verify` key in `.tituskirch-skill
 
 ### 7. Report
 
+One report, every section of it visible on arrival — same form rule as the plan, for the same reason: this is the run's only account of what moved.
+
 - **Moved** — package, from → to, bump level, per ecosystem.
 - **Held, with the reason** — release-age gate (and the version it withheld), exact pin, major outside range, declared constraint, excluded by the repo's updater config.
 - **Advisories** — open ones, which are fixed by this run, which are not, and why not.
 - **Verify** — the command and its result.
 - **Hand-off** — the tree is dirty and verified; committing is `atomic-commit`'s job and a PR is `pull-request`'s. Name them; do not do them.
+
+<skills-plan>
+
+## Presenting the plan
+
+Everything this skill puts in front of a human — plan, preview, candidate list, findings report —
+is read **once, in a terminal**, and answered there. So **every section of it renders on arrival**,
+with no interaction needed to reveal it: prose, lists, tables, fenced code.
+
+**Never fold content behind a control.** `<details>`/`<summary>` is a browser widget, and a
+terminal has no way to open it: the summary line prints and everything under it does not. The plan
+then arrives as headings with nothing beneath them, and the failure is silent on **both** sides —
+the skill believes it reported, and the reader sees no marker saying anything is missing, so a
+human confirms a plan whose contents never reached them. What gets folded is whatever ran long,
+which is to say the part the decision actually rested on. The same holds for anything else needing
+a click: a tab strip, an accordion, a "show more".
+
+**Length is handled by shortening, never by hiding.** This is a fixed rule of the skill, not a
+per-run judgement, so it holds however long the list runs. Trim to what the decision needs, group
+the rest by something the reader already thinks in (ecosystem, kind, verdict) with a count per
+group, or split it across sections. What is left out is left out **visibly**: say how many, why,
+and the exact command that shows the rest.
+
+**This binds what the skill presents, not what it writes.** A `<details>` block inside a README, an
+issue body, a pull request description or a docs page is rendered by a browser and is entirely
+legitimate there. The rule is about the message a human reads to decide — never about the content
+of a file.
+
+</skills-plan>
 
 ## Guardrails
 

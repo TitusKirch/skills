@@ -41,6 +41,7 @@ Otherwise, for the chosen edge (its own `head` and `base`), by `release.promote`
 
 - **Undrafting is what starts CI.** Where the repo's checks skip drafts (`if: github.event.pull_request.draft == false` + a `ready_for_review` trigger), the draft rollup PR has run **nothing**. Undraft first (`gh pr ready <n>`), _then_ wait for the checks that undrafting triggers — never read a draft's empty check list as "green".
 - **Checks green, then merge with a merge commit** — `gh pr merge <n> --merge`, never `--squash`. The individual `feat:`/`fix:` commits must stay visible or release-please cannot compute the bump. Fixed, not a preference — and it holds at **every** edge, which is what keeps a multi-stage chain's release artifacts conflict-free ([why](REFERENCE.md#promotion-chains)). A `base` whose ruleset forbids `merge` breaks release-please itself — **report that and stop**; it is a repo misconfiguration, not something to squash around.
+- **Then mark what shipped** — when this edge's `base` **is** the repo's default branch, the merge is the moment the promoted work reaches it, so the issues it carries become shipped. On **Linear** that is the one moment `work.linear.states.done` is written, by this skill and nothing else; on GitHub, and wherever the config leaves a precondition unmet — a mapping absent, a candidate filter that does not resolve — the step is **inert**, and inert is the only safe degradation: a query missing a filter selects more issues, not fewer, and this step ends in a write. It is bookkeeping for a merge the human already confirmed, so it is **listed in that merge's plan** rather than confirmed again — and a failure here is **reported, never retried into the merge**. Mechanics, and which issues qualify: [Marking shipped](REFERENCE.md#marking-shipped).
 
 ### 3. Wait for the release PR
 
@@ -74,6 +75,35 @@ Report the version, the tag, the release url, and every PR touched.
 
 Every wait is bounded. On timeout, **stop and report what was observed** — never poll on silently. The common benign case is that **nothing is release-worthy**: every commit since the last tag is typed `chore`/`refactor`/`docs`, so release-please opens no PR at all. Say that, with the commit types you actually saw, rather than "timed out".
 
+<skills-plan>
+
+## Presenting the plan
+
+Everything this skill puts in front of a human — plan, preview, candidate list, findings report —
+is read **once, in a terminal**, and answered there. So **every section of it renders on arrival**,
+with no interaction needed to reveal it: prose, lists, tables, fenced code.
+
+**Never fold content behind a control.** `<details>`/`<summary>` is a browser widget, and a
+terminal has no way to open it: the summary line prints and everything under it does not. The plan
+then arrives as headings with nothing beneath them, and the failure is silent on **both** sides —
+the skill believes it reported, and the reader sees no marker saying anything is missing, so a
+human confirms a plan whose contents never reached them. What gets folded is whatever ran long,
+which is to say the part the decision actually rested on. The same holds for anything else needing
+a click: a tab strip, an accordion, a "show more".
+
+**Length is handled by shortening, never by hiding.** This is a fixed rule of the skill, not a
+per-run judgement, so it holds however long the list runs. Trim to what the decision needs, group
+the rest by something the reader already thinks in (ecosystem, kind, verdict) with a count per
+group, or split it across sections. What is left out is left out **visibly**: say how many, why,
+and the exact command that shows the rest.
+
+**This binds what the skill presents, not what it writes.** A `<details>` block inside a README, an
+issue body, a pull request description or a docs page is rendered by a browser and is entirely
+legitimate there. The rule is about the message a human reads to decide — never about the content
+of a file.
+
+</skills-plan>
+
 ## Guardrails
 
 - **Manual invocation only.** Never fire proactively — not after a merge, not after a green CI run, not because a release "looks due". Someone asks, or this skill does nothing.
@@ -82,6 +112,7 @@ Every wait is bounded. On timeout, **stop and report what was observed** — nev
 - **Only its own two PRs.** The rollup PR and release-please's release PR are the only PRs it may undraft or merge — both opened by automation, and named here as the sole, deliberate exceptions to the sibling rule that automation's PRs are untouchable. Any other PR → leave it alone.
 - **The promotion's merge commit is fixed** — `head` → `base` merges, never squashes, or release-please loses the individual commits it computes the bump from. A ruleset forbidding it is a repo **misconfiguration to report**, not to work around. The **release PR** is the softer case: squash preferred, but the forge's allowed methods decide (step 5). Neither is a config key — one is a mechanical requirement, the other is read from the forge.
 - **Never force-push, never tag by hand, never edit the version or `CHANGELOG.md`.** release-please owns all three; racing it corrupts the manifest.
+- **Only issues the AI work loop already accepted are marked shipped**, and only after the merge that put them on the default branch. An issue referenced by a promoted commit but still mid-lifecycle — working, awaiting review, changes requested, escalated, blocked — is **left alone**: this skill observes a merge, it does not adjudicate a lifecycle. It writes one workflow state and never a label, so nothing here can hand an issue to, or take one from, either work loop.
 - **Attribution-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in any PR, comment, or commit it produces.
 - **GitHub forge (v1).** No GitHub remote / `gh` unavailable → stop; never fall back to raw `git` plumbing or the API by hand.
 

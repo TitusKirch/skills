@@ -25,7 +25,7 @@ Mechanics for the [`release`](SKILL.md) skill. **GitHub (`gh`) is the only forge
 | `release.head`    | Integration branch, what gets promoted — `stages`' first element when set. Default: `pr.base`, else the default branch.                                                                                           |
 | `release.timeout` | Seconds to bound **each** wait (release PR appearing, checks finishing). Default: 600.                                                                                                                            |
 
-Also reads `pr.base` (the `head` fallback) and the shared root `language` (report wording).
+Also reads `pr.base` (the `head` fallback) and the shared root `language` (report wording), plus — read-only, and only for [Marking shipped](#marking-shipped) — `work.tracker`, `work.labels.{done,repo}` and `work.linear.{team,states.accepted,states.done}`. **Two of those inherit, and this skill inherits them the same way the work skills do:** `work.tracker` falls back to `issue.tracker` and `work.linear.team` to `issue.linear.team`. Reading them without the fallback would make a repo that declares Linear once, under `issue`, Linear to both work loops and not-Linear here — inert on exactly the repo the step was written for.
 
 **Minimal config wins — except for promotion.** Branches and timeout have working defaults, so a repo that integrates onto `pr.base` and releases from its default branch writes neither. `promote` is the deliberate exception: it defaults to `false`, so **a repo that wants `head` → `base` promoted must say so**. Merging onto the release branch is opt-in, never inherited from a default.
 
@@ -147,6 +147,40 @@ A repo with a pre-production stage promotes along a **chain** — `dev → stagi
 
 Removing the hardcoded branch names is also what lets `base` be named `master` (or anything) uniformly — the skill layer already defaults `base` to the repo's own default branch; only the static workflow YAML ever hardcodes it.
 
+## Marking shipped
+
+The AI work loop stops at `pr.base`. Its terminal label means **AI-accepted**, not shipped, and on Linear it writes `work.linear.states.accepted` for exactly that reason — the work is on an integration branch, unmerged into the default branch, and Linear's own GitHub integration only ever fires on a **default-branch** merge, so on a non-default `pr.base` nothing corrects the board later. This skill performs the merge that does reach the default branch, which makes it the one thing in the toolchain positioned to observe the ship. So it writes `work.linear.states.done` — the **only** state either the work loop or this skill treats as terminal, and the only tracker write this skill makes at all.
+
+**It is inert unless every one of these holds**, and inert is the common case — the checks are cheap and none of them is a config error to report:
+
+| Condition                                                                       | Otherwise                                                                    |
+| :------------------------------------------------------------------------------ | :--------------------------------------------------------------------------- |
+| the merged edge's `base` **is** the repo's default branch                       | an earlier edge in a chain ships nothing yet — skip                          |
+| `work` is not `false`, and `work.tracker` (else `issue.tracker`) is `linear`    | GitHub has no workflow state to set — see below                              |
+| `work.linear.states.done` is mapped                                             | the repo declined a shipped column — skip, and see the gap below             |
+| `work.linear.states.accepted` is mapped, **and** `work.labels.done` is a string | the candidate query has no discriminating filter left — skip, never widen it |
+
+**Candidates come from the tracker, not from the merge.** List the team's issues carrying `work.labels.done` (and `work.labels.repo`, unless `false`) whose state is `work.linear.states.accepted`. Deriving them instead from the promoted commit range would be the obvious route and is the wrong one: the range is `origin/$base..origin/$head`, which the merge itself empties, so it has to be captured **before** the merge and is lost outright if the run dies between the two. Asking the tracker which issues are waiting to ship is **resumable** — a later invocation sees the same set — and it also catches an issue whose code landed in an earlier promotion but whose review only accepted it since.
+
+**A filter that does not resolve makes this step inert — it never widens the query.** That is the fourth precondition above, and it is a precondition rather than a footnote because dropping a filter from a query does not shrink its result, it **grows** it, and the very next thing this step does is a **write**. Both filters can legitimately be absent: `work.labels.done` is a `labelOrOff` the schema lets a repo set to `false`, and `work.linear.states.accepted` is unmapped in the `done`-only config the `work-implement` reference blesses as the migration path off the pre-split mapping — so a schema-valid, explicitly-supported config reaches this query with a filter missing. Run it anyway and the candidate set becomes **every issue on the team**, each one written to `Done` the moment any commit mentions its key: issues still `In Progress`, escalated, blocked, or reopened by a human after the AI accepted them. That contradicts the guarantee below outright, and it is why the general rule from [Reading the config](#reading-the-config) — resolve into a variable, never let an empty substitution reach a flag — carries a **specific** answer here: unresolvable means the step does not run, not that it runs unfiltered. The same holds for a filter this skill cannot read at all (no `jq`, an unreadable config): report it and skip, never proceed on a widened set.
+
+**Then ask git whether each one actually shipped.** The work loop references its issue in every commit it makes, so the default branch is the record:
+
+```sh
+default=$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name')
+git fetch origin "$default"
+
+# $key is the issue's tracker key (ENG-123). The trailing class is a boundary, not
+# decoration: a bare match counts ENG-12's commit as ENG-123's ship.
+git log "origin/$default" -E --grep "$key([^0-9]|\$)" --format=%H --max-count=1
+```
+
+Non-empty → the work is on the default branch → `save_issue` with the issue's `id` and `states.done`. Empty → leave it alone; it is accepted work that has not shipped yet, which is the state's whole point. **Nothing else is touched**: not the lifecycle label, not an issue in any other lifecycle state, not an issue a promoted commit merely mentions. This skill observes a merge; adjudicating a lifecycle belongs to the work loops.
+
+**Idempotent, and honest about its gap.** An issue already in `states.done` is no longer a candidate, so a re-run writes nothing — and that holds **because `states.accepted` is the filter**, which is the second thing the fourth precondition buys: a query without it would re-select what it just wrote. A run that dies before writing leaves the issue in `accepted`, and the **next** invocation picks it up from the same tracker query. The genuine gap is a repo that never runs this skill — promoting by hand, or having no release tool for it to drive. There the board rests at accepted with no writer, which is why `states.done` is better left unmapped than mapped to a `Done` nothing will observe.
+
+**On GitHub the distinction cannot be shown, and is not faked.** A GitHub issue has labels and no workflow state, so `ai: done` is the whole terminal signal and it already means AI-accepted. Whether the work shipped is answered by the repo's releases and its default branch, not by the tracker — see [Decisions](#decisions) for why a second `ai: shipped` label was rejected.
+
 ## gh recipes
 
 **Is there anything to promote?**
@@ -219,4 +253,6 @@ The issue that specified this skill left its defaults open. What was settled, an
 - **A chain is an ordered array, not named slots or an edge list** — `release.stages` (last element = release branch) scales to N stages and degenerates to `[head, base]` with **zero migration**, so `head`/`base` stay the two-branch sugar. Rejected: named `staging`/`head`/`base` slots (hard-cap at three, order implicit in key names) and an explicit edge list (over-general — it buys non-linear graphs at the cost of a cycle/fork validator no linear chain needs).
 - **One edge per invocation** — the skill promotes the topmost pending edge and stops, so "at most one PR, ever" generalises to **at most one _open_ promotion PR at a time**, one human confirmation per merge. Walking the whole chain in a single run would collapse several deliberate human gates — the opposite of why this skill is manual-only.
 - **`staging` is a gate, not a prerelease point (deferred)** — release-please owns versioning on `base` alone; earlier stages accumulate and promote but never version. A second release-please on `staging` is separable, needs real manifest-ownership design, and is the **one** thing that would break the merge-commit flow-back invariant — so it stays out of the chain's first cut.
+- **This skill owns the terminal shipped state, because it owns the merge that causes it** — the AI work loop's terminal label means _AI-accepted_ and it stops at `pr.base` by contract, so a `Done` written there is a claim the work has not earned and nothing later corrects it on a non-default `pr.base`. The promotion merge onto the default branch is the observable ship, and this skill performs it. Rejected: **the work loop waiting for the merge** — it would hold issues open indefinitely on a merge it does not perform, coupling the queue to the process it deliberately does not own. Rejected: **a GitHub `ai: shipped` label** — a second tracker mechanic every repo would have to create, for information the default branch and the releases already hold; GitHub simply cannot show the distinction, and pretending otherwise costs more than the gap does. Rejected: **triggering on the release tag rather than the default branch** — "released" is a release-tool concept, so a repo without one would have no trigger at all, while "on the default branch" is a moment every repo has; a repo that means the tag can leave the state unmapped and say so on the board.
+- **Candidates are read from the tracker, not the promoted commit range** — the range dies with the merge that empties it, so a run that fails between merging and writing loses the set for good; asking which issues are waiting to ship is resumable across invocations and picks up work accepted after its code landed. The cost is one tracker query per release run instead of a `git log` the run already has.
 - **Workflow triggers stay the repo's own — documented, not shipped** — `on.*.branches` is static YAML parsed before any job runs, so it cannot read this config; the skill documents the trigger-broad/gate-in-a-step pattern instead of shipping workflows. The same removal of hardcoded branch names is what lets a release branch named `master` (or anything) work uniformly, since the skill already defaults `base` to the repo's own default branch.
