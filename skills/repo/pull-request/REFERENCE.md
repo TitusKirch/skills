@@ -87,6 +87,10 @@ instructions=$(printf '%s' "$resolved" | jq -er '.pr.instructions // empty' 2>/d
 
 `language` is a shared root key; `pr.*` are this skill's section. `pr.language` overrides the root `language` for the PR title/body, mirroring `commit.language` / `issue.language`. `pr.instructions` mirrors `commit.instructions` / `issue.instructions` — additive wording guidance that never overrides the template, detection, or guardrails. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
+**What the grant leaves out, and why that is the point.** This skill's `allowed-tools` names the commands it drives rather than granting `Bash` outright — `git rev-parse`, `git branch`, `git log` and `git diff` for the branch and its commits, `gh pr list` / `view` / `diff` and `gh repo view` for the forge side, plus `jq`, `printf` and `mkdir` for the shared conventions cache. **`gh pr create`, `gh pr edit`, `gh pr ready` and `git push` are deliberately absent.** Everything that reads is pre-approved; everything that changes the forge or the remote asks, which matches a skill that [presents the full plan and creates only after confirmation](SKILL.md). `git push` is also an exec route in its own right (`--receive-pack=<cmd>`), so no clear could cover it.
+
+**What the list is, and is not.** It documents what this skill drives and keeps the unattended surface small; it is **not** a restriction — an unlisted command still runs once a person says yes.
+
 <skills-config>
 
 ### Reading the config

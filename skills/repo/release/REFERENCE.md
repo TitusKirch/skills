@@ -29,6 +29,10 @@ Also reads `pr.base` (the `head` fallback) and the shared root `language` (repor
 
 **Minimal config wins — except for promotion.** Branches and timeout have working defaults, so a repo that integrates onto `pr.base` and releases from its default branch writes neither. `promote` is the deliberate exception: it defaults to `false`, so **a repo that wants `head` → `base` promoted must say so**. Merging onto the release branch is opt-in, never inherited from a default.
 
+**What the grant leaves out, and why that is the point.** This skill's `allowed-tools` names the commands it drives rather than granting `Bash` outright — `git log`, `git rev-list`, `git rev-parse` and `git describe` for the range and the tags, `gh pr list` / `view` / `checks` and `gh repo view` for the release PR and its gate. **`gh pr merge`, `gh pr create` and `git fetch` are deliberately absent.** The two merges this skill performs are the whole reason it [never merges without confirmation](SKILL.md), so the prompt lands on them rather than on the reads that lead up to them; `git fetch` stays off because `--upload-pack=<cmd>` takes a command, which no clear can narrow.
+
+**What the list is, and is not.** It documents what this skill drives and keeps the unattended surface small; it is **not** a restriction — an unlisted command still runs once a person says yes, the merge included.
+
 <skills-config>
 
 ### Reading the config

@@ -9,7 +9,8 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-  - Bash
+  - Bash(jq:*)
+  - Bash(grep:*)
 ---
 
 # write-docs

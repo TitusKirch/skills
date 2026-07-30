@@ -7,8 +7,16 @@ allowed-tools:
   - Read
   - Write
   - Edit
-  - Bash
   - WebFetch
+  - Bash(jq:*)
+  - Bash(printf:*)
+  - Bash(curl:*)
+  - Bash(git remote:*)
+  - Bash(git rev-parse:*)
+  - Bash(gh auth status:*)
+  - Bash(gh label list:*)
+  - Bash(gh issue list:*)
+  - Bash(gh api:*)
 ---
 
 # tituskirch-skills-config

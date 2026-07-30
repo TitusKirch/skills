@@ -4,10 +4,21 @@ metadata:
   summary: Opens a pull request from the current branch via gh; forge chosen by config (github in v1).
 description: Creates a pull request from the current branch in the repo's own conventions — an umbrella Conventional-Commits title and a body filled from the repo's PR template. Forge chosen per-repo by config (root `forge`); v1 is GitHub via the gh CLI. Presents the full plan first and creates only after confirmation; plan-only when asked. Updates your own existing PR instead of duplicating, and never touches PRs opened by others or automation. Use when the user wants to open, create, or raise a pull request or merge request, mentions a PR/MR or a conventional PR, or says things like "open a PR", "create a pull request", "PR for this branch", "PR erstellen", "mach einen PR".
 allowed-tools:
-  - Bash
   - Read
   - Grep
   - Glob
+  - Bash(jq:*)
+  - Bash(printf:*)
+  - Bash(mkdir:*)
+  - Bash(git rev-parse:*)
+  - Bash(git branch:*)
+  - Bash(git log:*)
+  - Bash(git diff:*)
+  - Bash(gh pr list:*)
+  - Bash(gh pr view:*)
+  - Bash(gh pr diff:*)
+  - Bash(gh repo view:*)
+  - Bash(gh api:*)
 ---
 
 # pull-request
