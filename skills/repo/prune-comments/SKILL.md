@@ -13,7 +13,7 @@ allowed-tools:
   - Bash(git diff:*)
   - Bash(git ls-files:*)
   - Bash(git rev-parse:*)
-  - Bash(git symbolic-ref:*)
+  - Bash(git symbolic-ref --short:*)
   - Bash(head:*)
   - Bash(grep:*)
 ---
