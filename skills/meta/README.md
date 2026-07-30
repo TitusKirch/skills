@@ -5,6 +5,6 @@
 Configure the skills themselves, per repo.
 
 - **[tituskirch-skills-config](./tituskirch-skills-config/SKILL.md)** — Sets up, reconciles, and drift-checks .tituskirch-skills.json, the shared config the other TitusKirch skills read.
-- **[validate-skills](./validate-skills/SKILL.md)** — Validates skills against the Agent Skills spec via skills-ref, separating spec violations from house-style deviations.
+- **[validate-skills](./validate-skills/SKILL.md)** — Validates skills against the Agent Skills spec via skills-ref, separating spec violations, client extensions and house-style deviations.
 
 Back to [all skills](../README.md).

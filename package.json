@@ -43,6 +43,7 @@
     "skills:unlink": "bash scripts/unlink-skills.sh",
     "skills:sync": "node scripts/gen-skills.ts",
     "skills:check": "node scripts/gen-skills.ts --check",
+    "skills:conformance": "bash scripts/check-conformance.sh",
     "prepare": "husky"
   },
   "devDependencies": {

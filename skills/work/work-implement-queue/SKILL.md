@@ -50,7 +50,7 @@ Before building the queue, reclaim issues an earlier implement-run crashed on: a
 For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-implement` on exactly that issue:
 
 - **sequential** (`parallel: false`) — one worker at a time; **re-fetch** the next eligible issue each iteration.
-- **parallel** (`parallel: true`) — N workers in isolated git worktrees; for a `branch:<name>` target, pushes are integrated **serialized**; dependent issues never run concurrently. Mechanics: **Branch strategy** in `work-implement`'s REFERENCE.
+- **parallel** (`parallel: true`) — N workers in isolated git worktrees; for a `branch:<name>` target, pushes are integrated **serialized**; dependent issues never run concurrently. A worktree holds **tracked files only**, so each worker installs the repo's dependencies in its own tree before verifying — a real per-worker cost to weigh when raising N. Mechanics: **Branch strategy** in `work-implement`'s REFERENCE.
 
 **Heartbeat the lock each iteration.** The lock is held for the whole batch, which no single shell process spans, so the drain **re-stamps** the implement lock's `refreshed` timestamp once per iteration (one cheap command) — that is what keeps a **live** drain from being misread as a crashed one by the **heartbeat-timestamp** stale rule (**The single-flight lock** below). The lock is released **explicitly** at step 6, not by a shell-lifetime trap.
 

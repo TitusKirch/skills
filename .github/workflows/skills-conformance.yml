@@ -1,0 +1,51 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: Skill conformance
+
+# Scoped to skill changes the way CodeQL is scoped to code — most pull requests here
+# touch neither. The script and the discovery it leans on are in scope too, so a
+# change to the gate itself is checked by the gate itself.
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'skills/**'
+      - 'scripts/check-conformance.sh'
+      - 'scripts/skills-lib.sh'
+      - 'scripts/gen-skills.ts'
+      - '.github/workflows/skills-conformance.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    name: Conformance
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - uses: actions/checkout@v7
+
+      # Node, not pnpm: the script discovers skills through `gen-skills.ts --paths`,
+      # which imports only node builtins, so no install is needed. The validator
+      # itself runs in a container (docker ships on ubuntu-latest) — this job takes
+      # on no Python of its own, which is the whole point of the Docker choice.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # The script, not `pnpm skills:conformance`, only so the job needs no pnpm
+      # setup for a run that installs nothing — the pnpm script is a one-line alias
+      # for this exact command, which is what a contributor runs locally.
+      #
+      # Deliberately not a step in the CI workflow's gate: `pnpm verify` stays
+      # pnpm-only so it runs without Docker. See scripts/check-conformance.sh.
+      - name: Validate skills against the Agent Skills spec
+        run: bash scripts/check-conformance.sh

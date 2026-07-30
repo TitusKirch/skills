@@ -12,9 +12,16 @@ remembered to list it:
 
 - **Base** — the command runs in the **working tree**, where the repo's dependencies are already
   installed and the change under test is already applied.
-- **Isolated** — the command runs against **someone else's head**: a pull request, a pushed branch,
-  a throwaway worktree. Nothing is installed there, so nothing about the result means anything until
-  it is.
+- **Isolated** — the command runs in a tree that is **not** the working tree: a pull request's head,
+  a pushed branch, a worktree the run created for its own work. Nothing is installed there, so
+  nothing about the result means anything until it is. Whose change is under test does not enter
+  into it — a worktree holding the run's _own_ commits is as empty as one holding a stranger's.
+- **Either, decided by config** — carries **isolated**. A skill whose tree depends on how the repo
+  configures it (`work-implement`, sequential in the working tree but in a fresh worktree once
+  `parallel` is on) cannot be classified per run from here, and the isolated body is the safe
+  superset: its install section is scoped by its own heading to the non-working-tree case, so the
+  working-tree path reads past it unchanged. Carrying **base** and hand-writing the install into the
+  skill would be the same text un-mirrored, which is what this file exists to prevent.
 
 <!-- verify:base -->
 
@@ -51,11 +58,14 @@ and only one of them licenses going on.
 
 ### When the tree is not the working tree
 
-Checking someone else's head — a pull request, a pushed branch — means a fresh worktree with **no
-dependencies installed**. Run the command there as-is and it resolves against whatever happens to be
-on `PATH`: red on a clean machine, falsely green wherever the tooling is installed globally, and in
-neither case touching the versions the head actually pins. **Install first, from the head's own
-lockfile:**
+Running the checks anywhere but the working tree — a pull request's head, a pushed branch, a
+worktree created for this run — means a fresh worktree with **no dependencies installed**. `git
+worktree` checks out **tracked** files only, so everything gitignored (`node_modules`, `vendor`,
+build caches) is absent no matter how completely installed the working tree beside it is; the
+emptiness follows from the tree being new, not from whose commits it holds. Run the command there
+as-is and it resolves against whatever happens to be on `PATH`: red on a clean machine, falsely
+green wherever the tooling is installed globally, and in neither case touching the versions the head
+actually pins. **Install first, from the head's own lockfile:**
 
 | Lockfile in the head     | Install with                     |
 | :----------------------- | :------------------------------- |
@@ -72,3 +82,9 @@ the head's pinned versions are the thing under test.
 **The install is part of the gate, not setup before it.** A lockfile that will not install is a red
 result and reports as one — for a dependency change it is the most likely finding there is, and
 recording it as an environment problem loses exactly the information the run existed to get.
+
+**In the working tree, skip it.** A run that never leaves the tree it was invoked from — a
+sequential run hopping branches in place — already has the dependencies installed, so the section
+above does not apply to it and the base gate is the whole gate. It is worth skipping deliberately:
+every tree that installs pays a full install of its own, which on a large repo is gigabytes and
+minutes, and doing that per tree is the real cost of running several trees at once.

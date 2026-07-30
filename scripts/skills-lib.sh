@@ -9,6 +9,17 @@
 # work-implement where sorting directory names does the reverse. Neither divergence
 # had a symptom yet, which is the argument for closing it now rather than later.
 
+# Where a linked skill lands. Two destinations, always, because one client reads each:
+# ~/.claude/skills is Claude Code's user scope and the only path it reads, and
+# ~/.agents/skills is the vendor-neutral one Codex, Cursor, OpenCode and Gemini CLI
+# read — the only one of the two Codex reads at all. Linking both, unconditionally
+# rather than by a client argument, is what keeps unlink deterministic: see ADR-0016.
+#
+# Shared by link-skills.sh and unlink-skills.sh so the two cannot disagree — unlink
+# has to remove exactly what link created, and a second copy of this list is the one
+# way that stops being true.
+SKILL_LINK_DESTS=("$HOME/.claude/skills" "$HOME/.agents/skills")
+
 # Print each skill's SKILL.md path relative to the repo root, in the generator's order.
 # Usage: skills_md_paths <repo-root>
 skills_md_paths() {
