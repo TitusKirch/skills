@@ -10,15 +10,21 @@ allowed-tools:
   - Bash(jq:*)
   - Bash(printf:*)
   - Bash(mkdir:*)
+  - Bash(date:*)
+  - Bash(ls:*)
+  - Bash(head:*)
+  - Bash(cksum:*)
+  - Bash(cut:*)
+  - Bash(grep:*)
   - Bash(git rev-parse:*)
-  - Bash(git branch:*)
+  - Bash(git branch --show-current:*)
   - Bash(git log:*)
   - Bash(git diff:*)
   - Bash(gh pr list:*)
   - Bash(gh pr view:*)
   - Bash(gh pr diff:*)
   - Bash(gh repo view:*)
-  - Bash(gh api:*)
+  - Bash(gh api user:*)
 ---
 
 # pull-request

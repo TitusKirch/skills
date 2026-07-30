@@ -103,5 +103,13 @@
       "priority: medium",
       "priority: low"
     ]
+  },
+  "profiles": {
+    "worktree": {
+      "work": {
+        "branch": "worktree",
+        "parallel": true
+      }
+    }
   }
 }

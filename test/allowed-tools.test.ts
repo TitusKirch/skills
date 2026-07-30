@@ -21,31 +21,62 @@ import { ROOT } from './helpers.ts';
 import { discoverSkills, paths } from '../scripts/gen-skills.ts';
 
 /**
- * The named exceptions: skills still granting a blanket `Bash`, each with the reason it
- * has not been scoped yet.
+ * The kinds of reason a blanket `Bash` can rest on, each with why no narrowing exists.
  *
- * Every reason left here is permanent, which is the state the migration was aiming at: a
- * skill that runs the repo's own `verify` drives *whatever the consuming repo declares* —
- * no fixed pattern pre-approves an arbitrary command without pre-approving every command —
- * an unattended queue skill cannot answer a permission prompt at all, and a skill whose
- * work *is* a container invocation is granting `docker`, which runs anything. None of the
- * three is waiting on a per-skill pass; each is the honest answer for that skill.
+ * With the migration finished, every entry below is permanent rather than pending, and the
+ * *kind* is what makes that checkable: a reason is not free text a later author can invent
+ * to fit, it is one of these, and the tests pin the set in both directions — a kind nothing
+ * claims fails, and a skill claiming a kind not listed here fails too.
+ *
+ * That is deliberately the only place the kinds are enumerated. `skills/README.md` used to
+ * carry a prose copy — a count of them and a claim about which skills they cover — and it
+ * went stale on every pass this migration took, because prose is the one part of this gate
+ * nothing reads. The contract page now points here instead of restating it.
  */
-const BLANKET_BASH: Record<string, string> = {
-  'docs/vhs-demo':
-    'drives VHS through `docker run`, which takes the command it runs as an argument — a scoped rule here would be `Bash(docker:*)`, the blanket grant spelled longer',
-  'repo/merge-deps':
-    "runs the repo's own `verify` in a throwaway worktree — an arbitrary declared command no pattern can pre-approve",
-  'repo/update-deps':
-    "runs the repo's own `verify` plus each ecosystem's updater — arbitrary declared commands no pattern can pre-approve",
-  'work/work-implement':
-    "runs the repo's own `verify` — an arbitrary declared command no pattern can pre-approve",
-  'work/work-implement-queue':
-    'unattended by design (`disallowed-tools: AskUserQuestion`) — a permission prompt has nobody to answer it',
-  'work/work-review':
-    "runs the repo's own `verify` — an arbitrary declared command no pattern can pre-approve",
-  'work/work-review-queue':
-    'unattended by design (`disallowed-tools: AskUserQuestion`) — a permission prompt has nobody to answer it'
+const PERMANENT_REASONS: Record<string, string> = {
+  verify:
+    "runs the repo's own `verify` — an arbitrary declared command, and no fixed pattern pre-approves one without pre-approving every command",
+  unattended:
+    'unattended by design (`disallowed-tools: AskUserQuestion`) — a permission prompt has nobody to answer it, so a narrow grant turns a prompt into a hang',
+  container:
+    'its work *is* a container invocation, and the container takes the command it runs as an argument — the scoped rule would read `Bash(docker:*)`, the blanket grant spelled longer'
+};
+
+/**
+ * The named exceptions: skills still granting a blanket `Bash`, each with the kind of
+ * reason it rests on and what that looks like for this skill in particular.
+ *
+ * None is waiting on a per-skill pass; each is the honest answer for that skill.
+ */
+const BLANKET_BASH: Record<string, { why: string; detail: string }> = {
+  'docs/vhs-demo': {
+    why: 'container',
+    detail: 'drives VHS through `docker run`'
+  },
+  'repo/merge-deps': {
+    why: 'verify',
+    detail: 'runs it in a throwaway worktree, per dependency update'
+  },
+  'repo/update-deps': {
+    why: 'verify',
+    detail: "runs it plus each ecosystem's own updater"
+  },
+  'work/work-implement': {
+    why: 'verify',
+    detail: 'runs it as the gate on the work it is about to push'
+  },
+  'work/work-implement-queue': {
+    why: 'unattended',
+    detail: 'drains the implement queue under `/loop`, with nobody watching'
+  },
+  'work/work-review': {
+    why: 'verify',
+    detail: 'runs it against the pushed head it is reviewing'
+  },
+  'work/work-review-queue': {
+    why: 'unattended',
+    detail: 'drains the review queue under `/loop`, with nobody watching'
+  }
 };
 
 /**
@@ -62,6 +93,14 @@ const BLANKET_BASH: Record<string, string> = {
  * passing list still does not confine a skill. Per ADR-0005 the durable controls are
  * `disallowed-tools` and `.claude/settings.json` deny rules — this gate only keeps the
  * scoped form from being a fiction.
+ *
+ * *Runs a command* is the line, and writing a file is deliberately on the other side of it.
+ * `curl -o <path>` writes anywhere, which is the two-step shape that put `git config` in
+ * EXEC_CAPABLE_SUBCOMMANDS below — but the step it arms is one *something else* has to
+ * fire, and by that reading `printf`, `mkdir`, `cat`, `git add` and `git apply` are all
+ * exec routes too, along with Write and Edit. A model that catches `curl` catches nearly
+ * every grant here, so this list keeps the narrower one and the floor is documented rather
+ * than widened. Raising it is an ADR's decision, not an entry.
  */
 const EXEC_CAPABLE: Record<string, string> = {
   sh: '`sh -c <anything>`',
@@ -312,10 +351,38 @@ describe('a blanket Bash grant is a named exception, never the default', () => {
   });
 
   test('each reason says something, so the list cannot be padded to pass', () => {
-    for (const [skill, reason] of Object.entries(BLANKET_BASH))
+    for (const [skill, { detail }] of Object.entries(BLANKET_BASH))
       assert.ok(
-        reason.trim().length >= 20,
+        detail.trim().length >= 20,
         `${skill}: give a real reason for the blanket grant, not a placeholder`
+      );
+  });
+
+  test('every exception rests on one of the named kinds, not on free text', () => {
+    for (const [skill, { why }] of Object.entries(BLANKET_BASH))
+      assert.ok(
+        PERMANENT_REASONS[why],
+        `${skill}: "${why}" is not a kind PERMANENT_REASONS names — a blanket grant rests on one of those, or on a new kind added there with why no narrowing exists`
+      );
+  });
+
+  test('and every named kind is one some skill actually rests on', () => {
+    // The other half of the pin. Without it a kind outlives the last skill that needed it,
+    // which is the same stale-claim shape the roster check above exists to prevent — and
+    // the reason `skills/README.md` no longer keeps a copy of this list.
+    const claimed = new Set(Object.values(BLANKET_BASH).map((e) => e.why));
+    assert.deepEqual(
+      Object.keys(PERMANENT_REASONS).sort(),
+      [...claimed].sort(),
+      'PERMANENT_REASONS names a kind no skill claims (or a skill claims one it does not name) — the set of kinds is meant to shrink with the list'
+    );
+  });
+
+  test('each kind says why no narrowing exists, so a kind cannot be a label', () => {
+    for (const [why, reason] of Object.entries(PERMANENT_REASONS))
+      assert.ok(
+        reason.trim().length >= 40,
+        `PERMANENT_REASONS.${why}: say why nothing narrower pre-approves it, not a placeholder`
       );
   });
 });
