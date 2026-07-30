@@ -9,6 +9,7 @@ allowed-tools:
   - Glob
   - Bash(jq:*)
   - Bash(printf:*)
+  - Bash(grep:*)
   - Bash(git branch:*)
   - Bash(git cherry:*)
   - Bash(git merge-base:*)

@@ -14,6 +14,7 @@ allowed-tools:
   - Bash(git log:*)
   - Bash(git rev-parse:*)
   - Bash(ls:*)
+  - Bash(tail:*)
 ---
 
 # handoff
