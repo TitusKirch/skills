@@ -19,7 +19,7 @@ Reads the shared `work.*` section (schema: **Config** in `work-implement`'s REFE
 | `work.labels.reviewing`        | The review loop's **lease** label — claimed `reviewRequested → reviewing` before reviewing, the tracker-global counterpart of `working`. **Opt-in: defaults to off**; when off, the review loop uses its lock alone (today's behaviour, no lease). |
 | `work.labels.changesRequested` | The "review requested changes" label — hands back to the implement loop.                                                                                                                                                                           |
 | `work.labels.needsHuman`       | The "escalated to a human" label.                                                                                                                                                                                                                  |
-| `work.labels.done`             | Terminal "accepted".                                                                                                                                                                                                                               |
+| `work.labels.done`             | Terminal "accepted" — the AI is finished with this issue, **not** "shipped". On Linear its state is `work.linear.states.accepted`; `states.done` is the shipped state, and the reviewer never writes it ([why](#accepted-is-not-shipped)).         |
 | `verify` _(root)_              | The repo's own check command, run here against the **pushed head** — the review establishes green rather than inheriting the implementer's. Reading and detection: [Running the repo's checks](#running-the-repos-checks).                         |
 
 Every key, type and default lives once in the repo-root [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json).
@@ -296,6 +296,12 @@ On a shared branch (e.g. `branch:dev`) the implementer commits **directly to the
 
 Under `worktree`, the PR is the artifact: review its diff, and a `changes-requested` re-work re-pushes the same branch.
 
+## Accepted is not shipped
+
+`done` is the **verdict**, not the ship. Under either branch strategy the accepted work sits on `pr.base` — unmerged into the default branch, unreleased — and on a non-default `pr.base` no tracker automation ever fires to correct that later. So on Linear the accept verdict writes **`work.linear.states.accepted`** (an `Accepted` / `Ready for release` column), **never `states.done`**, which is the terminal shipped state written by whatever observes the default branch: Linear's own GitHub integration where `pr.base` **is** the default branch, otherwise the `release` skill at the promotion edge that lands there. Full rule, including what an unmapped key does: **AI-accepted is not shipped** in `work-implement`'s REFERENCE.
+
+The **label** is unaffected: `work.labels.done` keeps its string and its meaning. Only the Linear state the verdict writes alongside it changed, because only the board was claiming something the work had not earned.
+
 ## Verifying the pushed head
 
 The review runs the repo's gate itself ([Running the repo's checks](#running-the-repos-checks)). Read-only means the **user's tree** is not touched — it does not mean nothing is run, so the gate runs in a worktree of its own:
@@ -332,3 +338,5 @@ Then move the label to `work.labels.changesRequested`. For `done`/`needs human`/
 ## Tracker recipes
 
 Label moves mirror the implement loop's own **Tracker — GitHub (`gh`)** recipes. The reviewer writes the **lease** label `reviewing` on claim (only when `labels.reviewing` is configured — flip `reviewRequested → reviewing`, `--add-assignee`), then the **verdict** labels (`done` / `changesRequested` / `needsHuman` / `blocked`) and their mapped Linear states; the review reconcile writes `reviewRequested` when it reclaims a `reviewing` orphan (dropping the assignee). It never writes `working`/`ready` (those are the implement loop's). On **Linear** the `reviewing` lease sets the label via `save_issue`; `work.linear.states` has no `reviewing` mapping, so the workflow state is left untouched (the "unmapped step leaves the state alone" rule in the implement REFERENCE).
+
+**The verdict labels and their Linear states do not share a name.** Three map straight through — `changesRequested` → `states.changesRequested`, `needsHuman` → `states.needsHuman`, and `blocked` carries no state at all. The fourth does not: the `done` verdict writes **`states.accepted`**, and `states.done` is the shipped state neither loop writes ([Accepted is not shipped](#accepted-is-not-shipped)). A repo whose `states` maps `done` but not `accepted` gets the "unmapped step" outcome — label written, board untouched — which is the intended failure direction.

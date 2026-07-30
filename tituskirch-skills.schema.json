@@ -614,12 +614,12 @@
                 "minLength": 1
               },
               "uniqueItems": true,
-              "description": "Workflow states that count as startable (e.g. [\"Todo\", \"In Progress\"])."
+              "description": "Workflow states that count as startable (e.g. [\"Todo\", \"In Progress\"]). ANDed with the label filter, so every state an eligible issue can legitimately sit in has to appear here — the ones states.ready and states.changesRequested name, plus states.accepted, which is where a human hands an already-accepted issue back from. A state the mapping can produce but this list omits takes the issue out of the queue for good, silently."
             },
             "states": {
               "type": "object",
               "additionalProperties": false,
-              "description": "Lifecycle step to Linear workflow state name, written alongside the lifecycle label. State names are per-team and cannot be derived, so there is no default: an unmapped step leaves the workflow state untouched, and omitting the key drives the lifecycle by label alone. Never guess a state name.",
+              "description": "Linear workflow state names, written alongside the lifecycle label. State names are per-team and cannot be derived, so there is no default: an unmapped step leaves the workflow state untouched, and omitting the key drives the lifecycle by label alone. Never guess a state name. Every key but `done` is a step the work loop writes; `done` is the terminal shipped state, which the work loop deliberately never writes.",
               "properties": {
                 "ready": {
                   "type": "string",
@@ -646,10 +646,15 @@
                   "minLength": 1,
                   "description": "Set when the reviewer escalates to a human, e.g. \"Needs Human\"."
                 },
+                "accepted": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Set when AI review accepts the work — the `done` lifecycle step, whose label (work.labels.done, \"ai: done\") means AI-accepted, not shipped. Deliberately NOT a terminal board column: the work sits on pr.base, unmerged and unreleased, so name the column that says so (\"Accepted\", \"Ready for release\"). Belongs in statuses too, because a human handing an accepted issue back relabels it without moving the state. Unmapped leaves the state untouched, which is the safe outcome — the wrong write is a Done the work has not earned."
+                },
                 "done": {
                   "type": "string",
                   "minLength": 1,
-                  "description": "Terminal state, e.g. \"Done\". Normally set by Linear's GitHub integration on merge; written by the worker only on a branch target with no PR."
+                  "description": "Terminal shipped state, e.g. \"Done\" — the change is on the repo's default branch. Never written by the work loop, which by its own contract stops at pr.base: written by Linear's GitHub integration where pr.base IS the default branch, and otherwise by the release skill when it merges the promotion edge whose base is the default branch. A repo that promotes by hand, with no release tool for that skill to drive, has no writer for this state and should leave it unmapped rather than let the board claim a ship that nothing observed."
                 }
               }
             }
