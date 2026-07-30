@@ -24,7 +24,7 @@ allowed-tools:
   - Bash(gh pr view:*)
   - Bash(gh pr diff:*)
   - Bash(gh repo view:*)
-  - Bash(gh api:*)
+  - Bash(gh api user:*)
 ---
 
 # pull-request
