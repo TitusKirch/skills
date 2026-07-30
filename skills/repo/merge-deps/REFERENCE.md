@@ -239,16 +239,23 @@ gh pr checks "$n"
 
 ```bash
 # One command on purpose — see below; FETCH_HEAD does not survive another fetch.
-git fetch origin "pull/$n/head" && git worktree add --detach "$tmp" "$(git rev-parse FETCH_HEAD)"
+# The tree's path is derived from the PR number, never carried in a variable — also below.
+git fetch origin "pull/$n/head" \
+  && git worktree add --detach \
+       "$(git rev-parse --git-common-dir)/tituskirch-skills/work/merge-deps-$n" \
+       "$(git rev-parse FETCH_HEAD)"
 # $install comes from the head's own lockfile — see "Running the repo's checks".
 # It is part of the gate: if it fails, the PR is red, and that is the finding.
-( cd "$tmp" && eval "$install" && eval "$verify" )   # exit status is the gate
-git worktree remove "$tmp"
+( cd "$(git rev-parse --git-common-dir)/tituskirch-skills/work/merge-deps-$n" \
+    && eval "$install" && eval "$verify" )   # exit status is the gate
+git worktree remove "$(git rev-parse --git-common-dir)/tituskirch-skills/work/merge-deps-$n"
 ```
 
 **The head is checked out detached, so there is no branch to clean up.** Fetching it into a local `merge-deps-$n` branch would leave one behind that only `git branch -D` removes — `-d` refuses it, because a PR head is unmerged by construction — and `-D` is exactly what a repo's `.claude/settings.json` denies. With no branch there is nothing to delete, and the `--force` on the removal goes with it: the tree holds only what the install wrote, which is gitignored and which `git worktree remove` therefore does not count. A refusal here means the head left untracked, non-ignored files behind, which is a finding about the PR rather than an obstacle to force past.
 
-**The fetch and the checkout are one command, and that is what replaces the branch's stability.** A named branch could not be moved by anything else; `FETCH_HEAD` is rewritten by **any** other fetch in the repository, and this skill drains many PRs unattended in a repo a person may also be using. Left across two commands the recipe would verify whatever the last fetch happened to leave there and then **merge the PR it believed it verified** — a wrong merge rather than a failed run. Joining them closes that window without a branch to delete: one process fetches, resolves `FETCH_HEAD` and checks the commit out, so nothing can interleave. **Splitting the line back apart reopens it**, and a shell variable is no substitute — these skills run each command in its own short-lived process, so a `head_sha=` captured in one call is gone by the next. What this does **not** cover is the PR moving between the gate and the merge; that race predates this recipe and belongs to the merge step.
+**The fetch and the checkout are one command, and that is what replaces the branch's stability.** A named branch could not be moved by anything else; `FETCH_HEAD` is rewritten by **any** other fetch in the repository, and this skill drains many PRs unattended in a repo a person may also be using. Left across two commands the recipe would verify whatever the last fetch happened to leave there and then **merge the PR it believed it verified** — a wrong merge rather than a failed run. Joining them closes that window without a branch to delete: one process fetches, resolves `FETCH_HEAD` and checks the commit out, so no step of this skill can interleave. Another process in the same repository still can — the window is microseconds rather than minutes, not zero. **Splitting the line back apart reopens it**, and a shell variable is no substitute — these skills run each command in its own short-lived process, so a `head_sha=` captured in one call is gone by the next. What this does **not** cover is the PR moving between the gate and the merge; that race predates this recipe and belongs to the merge step.
+
+**The tree's path is derived for the same reason, and this is the sharper case.** A `tmp=$(mktemp -d)` cannot be carried to the next command either, and `mktemp` returns a random name nothing can reconstruct — so every later command addresses an **empty** path. That does not fail in any way a run would notice: `git worktree add --detach "" …` trips an internal git assertion (`BUG: builtin/worktree.c:275`), and `cd ""` **succeeds and stays put**, so the install and the gate run in the user's own tree — precisely what the heading above promises they will not. Deriving the path from the PR number instead means any command can recompute it and none has to remember it, the same reason the shared caches live under `$(git rev-parse --git-common-dir)/tituskirch-skills/`. `mktemp -d` stays workable only if every command touching the tree is joined into the one that created it.
 
 **Merge — directly, with the method the PR's own base allows:**
 
