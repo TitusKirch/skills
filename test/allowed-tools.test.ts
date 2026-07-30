@@ -100,7 +100,8 @@ const EXEC_CAPABLE: Record<string, string> = {
   node: 'a general-purpose interpreter',
   ssh: 'runs an arbitrary command on the far side',
   sort: '`--compress-program=PROG` runs PROG',
-  git: '`git -c alias.x=!<cmd> x` and `-c core.pager=<cmd>` run arbitrary commands'
+  git: '`git -c alias.x=!<cmd> x` and `-c core.pager=<cmd>` run arbitrary commands',
+  gh: '`gh alias set --shell x <cmd>` then `gh x` runs it, and `gh extension exec` runs an installed extension'
 };
 
 /**
@@ -111,15 +112,27 @@ const EXEC_CAPABLE: Record<string, string> = {
  * written reason — the same shape as BLANKET_BASH above, and for the same purpose. Scoping
  * a skill that needs `git commit` means adding it here and saying why, not widening the
  * rule to `Bash(git:*)` and hoping nobody reads it.
+ *
+ * A reason here says what the *spelling* can reach through its arguments. It does not say
+ * the repository cannot: `core.pager`, `diff.external` and `gh`'s `pager` are configuration,
+ * and a repo supplying them runs its own command under any of these prefixes. That is the
+ * same floor EXEC_CAPABLE is measured against, and the reason ADR-0005's durable controls —
+ * not this list — are what confine a skill. Write the reasons that way; a clear that claims
+ * "runs nothing" full stop is claiming more than the gate delivers.
  */
 const EXEC_CLEARED: Record<string, string> = {
   'command -v':
     'prints where a command would be found; the -v form runs nothing',
-  'git diff': 'reads the working tree; writes nothing and runs nothing',
+  'git diff':
+    'prints a diff; the exec routes on `git` are global options (`-c`, `--exec-path`) that sit before the subcommand, where this prefix cannot reach them',
+  'git log':
+    'prints commits; same global-option reasoning as `git diff`, and it needs an explicit `--ext-diff` to reach even a configured external differ',
   'git ls-files': 'reads the index and prints paths; writes nothing',
   'git rev-parse': 'prints revisions and repository paths; writes nothing',
   'git symbolic-ref':
-    'prints a symbolic ref; the writing form needs a second argument'
+    'prints a symbolic ref; the writing form needs a second argument',
+  'gh pr view':
+    "prints a pull request; `gh`'s exec routes are top-level (`gh <alias>`, `gh extension exec`), and `gh` refuses to alias over a core command"
 };
 
 /** The command prefix inside a scoped rule: `Bash(git diff:*)` → `git diff`. */
@@ -167,7 +180,7 @@ describe('a blanket Bash grant is a named exception, never the default', () => {
       if (!isBlanketBash(allowedTools(skill))) continue;
       assert.ok(
         BLANKET_BASH[skill],
-        `${skill} grants a blanket \`Bash\` — scope it (\`Bash(git:*)\`, \`Bash(gh:*)\`, …), or add it to BLANKET_BASH in this file with the reason it cannot be`
+        `${skill} grants a blanket \`Bash\` — scope it (\`Bash(git diff:*)\`, \`Bash(gh pr view:*)\`, …), or add it to BLANKET_BASH in this file with the reason it cannot be`
       );
     }
   });
