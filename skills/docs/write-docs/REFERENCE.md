@@ -113,6 +113,8 @@ Values: `in development` · `planned` · `deprecated` — a shipped page omits t
 
 An **ADR** records one architectural decision and the reasoning behind it. It is a **structurally distinct artifact** — its own filename schema, extra frontmatter and an append-only lifecycle. Everything here **overrides** the general page contract above.
 
+This section is the artifact's contract — what an ADR looks like once there is one to write. **Whether a decision earns one at all** is the threshold in [SKILL.md](SKILL.md#when-a-decision-earns-an-adr), asked before routing.
+
 ### Section
 
 ADRs live in **`docs/99.adr/`** — a numbered house section like any other, never an unprefixed `docs/adr/`.
@@ -146,6 +148,12 @@ date: 2026-07-15
 - **`status`** — `proposed` · `accepted` · `rejected` · `deprecated` · `superseded`.
 - **`date`** — ISO `YYYY-MM-DD`; the day the status last changed.
 - **Context, decision and consequences are body sections, not frontmatter** — they are prose, and prose belongs where it renders. Required H2s in order: `Context`, `Decision`, `Consequences` (Nygard / MADR). Template: [`templates/adr.md`](templates/adr.md).
+
+### Size
+
+**An ADR can be a single paragraph. The value is in recording that a decision was made and why — not in filling out sections.** The three H2s are required as _headings_, not as a word budget: any of them may be one sentence, and "the consequences are the obvious ones" is a complete `Consequences` section.
+
+This is a **permission, not a ceiling** — no word count in either direction. A decision with four rejected alternatives earns the words it takes to name them, and append-only means an over-long record cannot be trimmed later anyway. The permission exists because the cost of a mandatory-looking section is paid at the moment of **writing**, where a record that feels like paperwork is a record that does not get made — and an unwritten ADR is the only failure mode this contract cannot recover from.
 
 ### Lifecycle — append-only
 
