@@ -398,14 +398,14 @@ triage=$(printf '%s' "$resolved" | jq -er '.work.labels.needsTriage | select(. !
 [ "$triage" = 'false' ] && triage=
 
 # GitHub — implement-loop inputs (ready OR changes-requested); comma = OR within a search qualifier
-gh issue list --state open \
+issues=$(gh issue list --state open \
   --search "label:\"$ready\",\"$chreq\"" \
-  --json number,title,labels,createdAt
+  --json number,title,labels,createdAt)
 ```
 
 Both inputs empty means **no eligible query exists** — report that as a config problem, never as an empty queue. Skip a label that is `false` and build the search from the remaining one.
 
-**Then partition the result on `$triage`** (skip when empty) — the rows already carry `labels`, so this is local:
+**Then partition the result on `$triage`** (skip when empty) — `$issues` is the query's output, **captured** above rather than printed, and the rows already carry `labels`, so this is local:
 
 ```bash
 # withheld: eligible AND untriaged → report, never work. queue: the rest.
