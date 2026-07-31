@@ -81,7 +81,8 @@ git fetch origin                          # ancestry is judged against origin/*,
 # Candidate parents: open PRs in THIS repository whose head is neither this branch,
 # the base, nor the default branch. Excluding the last two matters — a dev → main
 # rollup PR has head `dev`, an ancestor of everything.
-gh pr list --state open --json number,headRefName,baseRefName,isCrossRepository \
+# --limit 100 because gh pages at 30 by default and truncates in silence (below).
+gh pr list --state open --limit 100 --json number,headRefName,baseRefName,isCrossRepository \
   --jq ".[] | select(.isCrossRepository != true) | select(.headRefName != \"$head\" and .headRefName != \"$base\" and .headRefName != \"$default\")"
 
 # Then classify each candidate branch B against HEAD:
@@ -107,6 +108,8 @@ fi
 - **A missing `origin/<B>` is skipped, not fatal.** The fetch above is what makes that safe: after it, a ref still missing is a branch this remote does not have, not one this tree merely had not seen. Skip that candidate and say so in the plan; do not end the run. **The fetch is the one command here that is not pre-approved** — `git fetch` carries the same `--upload-pack=<cmd>` exec route that keeps `git push` out of [`allowed-tools`](#config), so it asks. Declined or failing, judge against the refs already present and **name every skipped candidate in the plan**, so the human sees which branches were not judged rather than being told, wrongly, that nothing was found.
 - **A tip already on the trunk is filtered.** An open PR whose commits have since landed on the base is an ancestor of every branch cut after it, and without this arm it would read as a parent for all of them. A genuine parent always carries commits the trunk does not.
 
+**The list is paged, and a truncated page is the one drop nobody sees.** `gh pr list` returns **30** PRs by default, so past thirty open PRs the candidate set is cut off with no error and no signal — and a genuine parent outside the page is never considered, which lands exactly the mis-based PR this section exists to prevent. Every other drop above is knowing: cross-fork is filtered on a stated rule, a missing ref is named in the plan, a trunk-contained tip is filtered on a stated rule. Truncation drops a candidate without anyone learning there was one, so the asymmetry the rest of this section argues for does not hold for it. Hence `--limit 100` in the query — and, because that is a bigger page rather than a guarantee, **a page that comes back full is itself worth a line in the plan**: at that count the set may be a prefix, so say so instead of reporting "no parent found" as if the whole list had been read. The [existing-PR check](#existing-pr-and-who-owns-it) needs none of this — it is `--head`-scoped, so it is bounded already.
+
 The refusal that stays is the one that earns it: a candidate sharing history that is **not** on the trunk, whose tip is nevertheless no ancestor of this branch. That one may well be the parent, moved out from under this branch, and guessing there is exactly what produces the wrong diff.
 
 **The direction matters as much as the overlap.** Only a branch **below** this one is a base; a branch someone stacked **on top** shares exactly the same commits, differing only in which is the ancestor of which — hence the second arm above. Skipping that test turns every branch with a layer above it into an out-of-sync refusal, which would block the bottom of a healthy stack from ever opening its PR.
@@ -122,8 +125,9 @@ The refusal that stays is the one that earns it: a candidate sharing history tha
 | **Cross-fork** (`isCrossRepository: true`)                                             | unaffected         | **skip the candidate** — cross-fork stacks are not supported, so it cannot be the parent. Filtered in the query; never a refusal                                                 |
 | **`origin/<B>` still missing** after `git fetch origin`                                | unaffected         | **skip the candidate** and name it in the plan — the ref is not on this remote, so it is not a branch this one is stacked on                                                     |
 | **B's tip already contained in the trunk**                                             | unaffected         | **skip the candidate** — its commits are on the base already, so it carries nothing this branch could sit on                                                                     |
+| **The candidate page came back full** (`--limit` reached)                              | unaffected         | **note it in the plan** — the set may be a prefix, so a parent beyond the page was never judged; this is the one drop that is otherwise invisible                                |
 
-Only the first four rows decide the base; the last three drop a candidate and let the remaining ones decide. **Every refusal row stops before creating anything** and says which PRs it saw — while a skipped candidate never stops anything, because a run that refuses on a branch stacked on nothing is a broken skill, not a careful one. That asymmetry is the whole design: the cost of stopping is one round trip, the cost of guessing is a PR whose diff is someone else's work — but the cost of stopping on a candidate that was never a parent is a skill that cannot open a PR at all.
+Only the first four rows decide the base; the last four leave that to the remaining candidates — three by dropping one, the last by saying the list may not have held them all. **Every refusal row stops before creating anything** and says which PRs it saw — while a skipped candidate never stops anything, because a run that refuses on a branch stacked on nothing is a broken skill, not a careful one. That asymmetry is the whole design: the cost of stopping is one round trip, the cost of guessing is a PR whose diff is someone else's work — but the cost of stopping on a candidate that was never a parent is a skill that cannot open a PR at all.
 
 **A base the user named wins outright.** An explicit `--base <branch>` (or a base given in the request) is an answer, not a guess — take it, skip the detection, and mention at most in passing what the check would have picked. The refusals above exist because there is no answer, so they never override one.
 
@@ -275,6 +279,13 @@ A **skipped** candidate is a note on an otherwise ordinary plan, not a stop — 
   base ← head : dev ← feat/api-cache   (base = pr.base)
   skipped     : #57 (fix/typo, fork) — cross-fork, cannot be a stack parent
                 #61 (feat/queue) — origin/feat/queue absent after fetch
+```
+
+A **full candidate page** is a note on the same footing — the run proceeds, and the human learns the set may have been a prefix rather than the whole list:
+
+```text
+  base ← head : dev ← feat/api-cache   (base = pr.base)
+  candidates  : 100 open PRs read (page full) — a parent beyond it was not judged
 ```
 
 A refusal prints the same header and then stops, naming what it saw rather than a bare "cannot determine":
