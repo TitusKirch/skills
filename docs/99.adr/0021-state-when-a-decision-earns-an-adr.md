@@ -5,7 +5,7 @@ status: 'accepted'
 date: '2026-07-31'
 ---
 
-# ADR-0020 — State when a decision earns an ADR
+# ADR-0021 — State when a decision earns an ADR
 
 ## Context
 
