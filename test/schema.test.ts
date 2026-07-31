@@ -181,6 +181,43 @@ describe('the reviewing lease label (opt-in review-loop lease)', () => {
   });
 });
 
+// The triage flag is the only `work.labels.*` key the loops never write — naming it
+// turns on the contradiction check (untriaged + a lifecycle label → withheld and
+// reported, never worked). It is a repo convention rather than a lifecycle state, so
+// it must stay opt-in: absent has to keep validating, and `false` has to remain
+// expressible, or "off" collapses into "use some guessed string".
+describe('the needsTriage label (opt-in contradiction check)', () => {
+  test('accepts a label string or false, like the other labels', () => {
+    accepts(
+      { work: { labels: { needsTriage: 'needs triage' } } },
+      'needsTriage as a label string'
+    );
+    accepts(
+      { work: { labels: { needsTriage: false } } },
+      'needsTriage switched off'
+    );
+    accepts(
+      { work: { labels: { ready: 'ai: ready' } } },
+      'needsTriage omitted entirely'
+    );
+  });
+
+  test('rejects a value that is neither a non-empty string nor false', () => {
+    rejects(
+      { work: { labels: { needsTriage: '' } } },
+      'empty needsTriage label'
+    );
+    rejects(
+      { work: { labels: { needsTriage: 1 } } },
+      'numeric needsTriage label'
+    );
+    rejects(
+      { work: { labels: { needsTriage: true } } },
+      'needsTriage set true'
+    );
+  });
+});
+
 // ADR-0018 split the tail of the Linear map in two: `accepted` is what the review
 // verdict writes, `done` is the shipped state no work skill writes. The keys are
 // independent — a repo can map either, both, or neither — because a config that maps
