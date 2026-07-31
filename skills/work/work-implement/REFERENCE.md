@@ -320,7 +320,9 @@ Without this, a `working` orphan carries neither `ready` nor `reviewRequested`, 
 
 The reclaim is gated by the **same assignee/age guard as the implement reconcile** (above), so one clone never kills another clone's **live** review: a `reviewing` issue assigned to a **different** runner — or, under one **shared bot identity**, to this runner — is presumed **live** and left alone unless the **weaker age fallback** clears it; only an **unassigned** one, or (with **distinct per-runner identities**) this runner's **own crashed lease**, is flipped back to `reviewRequested`. With `labels.reviewing` off there are no `reviewing` orphans and this job is inert. When the drain runs this, and under which lock: `work-review-queue`.
 
-Both move **labels only**, never branches, and are **idempotent** — nothing to reclaim is the normal result.
+**On `local`, review reconcile job (a) has no input where the repo has no forge.** It exists to close out a human's out-of-band action **on the PR** (merged → `done`, closed-unmerged → `blocked`), and the offline repo this tracker was built for has no PR to read. It degrades in the safe direction — no artifact to query means nothing to reconcile, and the issue simply stays `reviewRequested` — but the path stays shut: a human who accepts or abandons the work outside the loop has no signal the loop can pick up, and edits the issue file's `state` by hand instead, which on this tracker is a one-line edit rather than an API call. Job (b), the `reviewing` orphan reclaim, is unaffected: it reads the issue file, not a forge. A `local` repo that **does** have a forge keeps job (a) exactly as written — [`local` is a tracker, not a forge](#tracker--local-files).
+
+Both move **labels only** (on `local`, the `state` field), never branches, and are **idempotent** — nothing to reclaim is the normal result.
 
 ```bash
 # GitHub — does this issue already have a pushed PR? (distinguishes crash-before vs crash-after-push)
@@ -551,7 +553,35 @@ Linear puts every repo's issues in one team, so the team alone cannot say "this 
 
 No service, no auth, no network: the issues are **committed markdown files** in the repo, `<dir>/NNNN-slug.md`, one per issue. `<dir>` is `work.local.dir`, falling back to `issue.local.dir` and then to `.agents/issues` — the same two-step fallback `work.linear.team` takes. Why files, and why these answers rather than the plausible alternatives: [ADR-0020](https://github.com/TitusKirch/skills/blob/main/docs/99.adr/0020-back-the-local-tracker-with-committed-files.md).
 
-**The forge axis is untouched.** `local` is a **tracker**, not a forge: the root `forge` key still says where pull requests go, so a repo may file its issues in-tree and open its PRs on GitHub. Everything about `work.branch`, the push and the PR is unchanged by this driver.
+**The forge axis is untouched.** `local` is a **tracker**, not a forge: the root `forge` key still says where pull requests go, so a repo may file its issues in-tree and open its PRs on GitHub. `work.branch`, the push and the PR keep their meanings — but a store that lives **in the tree** does interact with `work.branch: worktree`, and that is [the next section](#which-tree-is-the-tracker), not an absence of interaction.
+
+### Which tree is the tracker
+
+The issue files are **committed**, so under `work.branch: worktree` — and under `parallel: true`, which _is_ worktrees ([Branch strategy](#branch-strategy)) — every per-issue worktree checks out **its own copy** of `<dir>/NNNN-slug.md` on its own branch. Three copies of an issue are three answers to "what state is it in", and only one of them can be the tracker.
+
+**The store is the main working tree's `<dir>`, resolved absolutely** — the same directory from inside any worktree, and the one path both drains can derive rather than carry. A per-issue worktree's copy is a **checkout artifact: read nothing from it, write nothing to it.** It is a snapshot of the state at branch-off and goes stale the moment the drain advances the issue.
+
+```sh
+# The tracker's tree. `git worktree list` always prints the main working tree first,
+# and this resolves identically from inside a linked worktree — derived, never carried
+# (the same reason the drains derive their worktree paths instead of passing them).
+main=$(git worktree list --porcelain | sed -n '1s/^worktree //p')
+[ -n "$main" ] || { echo "cannot resolve the main working tree" >&2; exit 1; }
+```
+
+Skip that rule and the failure is **silent**, which is the shape this driver is most exposed to:
+
+1. the drain leases `state: 'working'` in the store;
+2. the worker's worktree, branched off `pr.base` beforehand, still reads `state: 'ready'`;
+3. the worker advances to `reviewRequested` in whichever copy its cwd happens to land in — into the worktree, it either commits lifecycle churn onto the PR branch or dirties the tree and trips the [clean-tree assert](#lease--race-rules); into the store, the PR branch still carries a stale `ready`;
+4. the review drain greps the store, sees no `reviewRequested`, and the issue is **invisible to the review queue** — indistinguishable from a drained one.
+
+Two consequences follow from there being exactly one writable copy:
+
+- **Only one side ever edits the file, so the merge stays clean.** Transitions are written and committed in the main working tree, on whatever branch it holds; a per-issue branch carries the issue file exactly as it was cut and never touches it. A file changed on one side only merges without a conflict — that is precisely what the never-write-the-worktree rule buys, and precisely what is lost the moment a worker edits its own copy.
+- **`branch:<name>` raises no such question.** There is one tree, the shared branch is its branch, and the store and the work are the same checkout. The rule is written for `worktree` and costs `branch:<name>` nothing.
+
+The main working tree is also the one place the two drains agree on **without exchanging state**. A repo whose main tree sits on a branch that lacks `<dir>` is not a special case: the existence check below reports it as the setup problem it is.
 
 ### The file
 
@@ -578,21 +608,38 @@ parent: null
 - **`assignee`** is what the [reconcile's guard](#reconcile) reads. It is only as distinct as the runner's own git identity, and nothing here proves it is per-runner — so the default-to-shared rule applies unchanged: take the **age-gated** path, never a bare-assignee reclaim.
 - **`labels`** is free-form and carries no lifecycle meaning; the loop never writes it.
 - **Nothing is ever deleted.** `done` and `blocked` are states, not removals — a skill never deletes or moves an issue file. Archiving is the repo's own business.
+- **Reading is quote-tolerant; writing is canonical.** The file is advertised as human-readable and hand-editable, and `state: ready` is as valid a YAML scalar as `state: 'ready'` — so a matcher that accepts only the quoted form drops a hand-written issue out of **every** queue, silently, exactly the way the empty-directory trap does. Every read therefore tolerates optional quotes and trailing space; every write emits the single-quoted form, so a file the loop has touched is canonical without a hand-written one being rejected:
 
-### Availability, and the empty-directory trap
+  ```sh
+  # the one matcher, used by both loops' selection and by the transition guard
+  state_re() { printf "^%s:[[:space:]]*['\"]?%s['\"]?[[:space:]]*$" "$1" "$2"; }
+  ```
 
-The check is that `<dir>` **exists**. A missing directory under `tracker: local` is a **setup problem to report**, not an empty queue — the same distinction the [selection query](#selection-query) draws for a label the tracker lacks, and it fails the same silent way: a glob that matches nothing reads exactly like a backlog that is done.
+  This is the opposite call from the `## AI review — round N` heading, whose exact wording **is** load-bearing because `work-review`'s round count parses it — and which says so where it is defined.
+
+### Resolving the store, and the empty-directory trap
+
+**`local.dir` is repo-relative, so it is never used as a path on its own.** Every command here runs in its own process with **no guaranteed cwd** — and the loop's own verify recipe `cd`s into a worktree — so a bare `"$dir"` resolves against whatever the process happened to inherit: a missing directory in one command and, worse, a _different_ tree's copy in the next. Anchor it, and anchor it to the [tracker's tree](#which-tree-is-the-tracker) rather than the current one:
+
+```sh
+# $resolved comes from the resolver — see "Reading the config" in this file.
+# $main is the main working tree — see "Which tree is the tracker".
+dir=$(printf '%s' "$resolved" | jq -er '.work.local.dir // .issue.local.dir // empty' 2>/dev/null) || dir=
+[ -n "$dir" ] || dir=.agents/issues
+case "$dir" in /*) store=$dir ;; *) store=$main/$dir ;; esac
+[ -d "$store" ] || { echo "tracker is local but $store does not exist" >&2; exit 1; }
+```
+
+`$store` — absolute, anchored, existence-checked — is what every recipe below and in `work-review`'s REFERENCE reads and writes; a bare `$dir` never appears again.
+
+The check is that `$store` **exists**. A missing directory under `tracker: local` is a **setup problem to report**, not an empty queue — the same distinction the [selection query](#selection-query) draws for a label the tracker lacks, and it fails the same silent way: a glob that matches nothing reads exactly like a backlog that is done.
 
 ### Eligible
 
 ```sh
-# $resolved comes from the resolver — see "Reading the config" in this file.
-dir=$(printf '%s' "$resolved" | jq -er '.work.local.dir // .issue.local.dir // empty' 2>/dev/null) || dir=
-[ -n "$dir" ] || dir=.agents/issues
-[ -d "$dir" ] || { echo "tracker is local but $dir does not exist" >&2; exit 1; }
-
-# the implement loop's two inputs, by config key; drop a key whose mechanic is off
-grep -lE "^state: '(ready|changesRequested)'" "$dir"/*.md 2>/dev/null
+# the implement loop's two inputs, by config key; drop a key whose mechanic is off.
+# Quotes are optional in the file (see "The file"), so the match tolerates them.
+grep -lE "^state:[[:space:]]*['\"]?(ready|changesRequested)['\"]?[[:space:]]*$" "$store"/*.md 2>/dev/null
 ```
 
 Order the matches by `priority` (above), then by `number` — the file tracker's stand-in for creation order, and stable in a way a filesystem listing is not.
@@ -602,7 +649,8 @@ Order the matches by `priority` (above), then by `number` — the file tracker's
 Every lifecycle move is one rewritten frontmatter line, written to a sibling temp file and **`mv`-ed over the issue** — so a crash leaves either the old file or the new one, never a half-written issue. Read-then-write in **one** command: these skills run each command in its own process, so a state read on one line is a stale fact by the next.
 
 ```sh
-# $f the issue file, $from/$to config keys, $who the runner identity.
+# $f is "$store/NNNN-slug.md" — always under the tracker's tree, never the current
+# worktree's copy. $from/$to are config keys, $who the runner identity.
 awk -v to="$to" -v who="$who" '
   NR == 1 && $0 == "---" { fm = 1; print; next }
   fm && $0 == "---"      { fm = 0; print; next }
@@ -612,7 +660,7 @@ awk -v to="$to" -v who="$who" '
 ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
 ```
 
-Guard it with the `$from` state in the same command (`grep -q "^state: '$from'$" "$f" || exit 1`) so a run that lost the race stops instead of overwriting. **This is no more a compare-and-swap than the label flip is** — as everywhere else in this file, the [single-flight lock](#the-single-flight-lock) is what makes multi-consumer safe within a checkout, and the reconcile's guard is what covers the clones it cannot see.
+The write emits the **canonical quoted** form while the `/^state:/` match accepts whatever the file holds — the read-tolerant / write-canonical rule from [The file](#the-file), which is also why the guard below cannot be quote-strict. Guard it with the `$from` state in the same command (`grep -qE "$(state_re state "$from")" "$f" || exit 1`) so a run that lost the race stops instead of overwriting. **This is no more a compare-and-swap than the label flip is** — as everywhere else in this file, the [single-flight lock](#the-single-flight-lock) is what makes multi-consumer safe within a checkout, and the reconcile's guard is what covers the clones it cannot see.
 
 ### Referencing the issue from git
 
