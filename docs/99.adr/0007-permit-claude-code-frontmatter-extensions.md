@@ -30,3 +30,17 @@ The test is what a conformant client loses when it ignores the field:
 `skills-ref` reports the two queue skills as failing, and always will. `validate-skills` re-tiers exactly that line to "client extension, non-portable" — a portability statement, not a defect. Any CI gate must carry the same rule or it is red on day one.
 
 The re-tiering depends on a list of known extension names. That list must be complete before a new extension is adopted, or the repo's own validator will call a deliberate field malformed.
+
+## Amendments
+
+### 2026-07-31 — the cost is per client, not a single number
+
+The decision above stands; two of the facts it prices have moved, and this addendum records them without touching what it says.
+
+**`paths` and `disable-model-invocation` are not Claude-only.** Cursor defines both in its own `SKILL.md` frontmatter, under the same names with the same semantics ([its reference](https://cursor.com/docs/skills)). For those two the cost test's answer is not "still works elsewhere, just untuned" — in Cursor the field is honoured as written, and nothing is lost at all. The three tiers survive unchanged; what changes is that the price is read **per client** rather than as a single number, and that convergence between clients is a real category rather than a hypothetical.
+
+**So the tag becomes a client list.** The Decision's `[Claude Code]` gives way to the clients that define the field — `[Claude Code, Cursor]` where both do, `[Claude Code]` where only one does. A fourth tag alongside `[standard]` / `[Claude Code]` / `[house]` would leave the reader still asking _which_ clients, and keeping the singular tag on a shared field asserts something false about portability: an author reading `[Claude Code]` on `paths` trades away portability they never lost.
+
+**The claim in the Context has changed wording.** It quotes "installable in Claude Code, Cursor, Windsurf and friends"; the README now reads Claude Code, Codex, Cursor and OpenCode (18c35c2). The reasoning is unaffected — every extension still spends something real — but the audience it is spent on is the one named there now, and OpenCode is the client that ignores unknown fields and loads the skill anyway.
+
+Where the per-field detail lives: [ADR-0015](0015-tier-an-extension-by-the-clients-that-define-it.md) keys the re-tiering on a field → clients matrix and names `validate-skills`' `REFERENCE.md` as its single home. This addendum **refines, it does not supersede** — a reversal would have been a new record.

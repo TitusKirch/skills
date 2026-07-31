@@ -18,7 +18,7 @@ A skill is a **directory** whose only required member is `SKILL.md`. Optional, s
 
 ### Frontmatter fields
 
-`SKILL.md` opens with YAML frontmatter, then Markdown body. The settled frontmatter contract (`skills/README.md`, from the landed contract issue) tags every field **[standard]** (the open Agent Skills spec), **[client]** — written as the defining client's name, **[Claude Code]** or **[Cursor]** — or **[house]** (a consuming repo's own field), and that tag **is** the tier a stray key lands in: a **[standard]** breach is a **spec violation**, a **[client]** key is a **client extension (non-portable)**, a **[house]** field is **house style**.
+`SKILL.md` opens with YAML frontmatter, then Markdown body. The settled frontmatter contract (`skills/README.md`, from the landed contract issue) tags every field **[standard]** (the open Agent Skills spec), **[client]** — written as the list of clients that define it, **[Claude Code]** or **[Claude Code, Cursor]** — or **[house]** (a consuming repo's own field), and that tag **is** the tier a stray key lands in: a **[standard]** breach is a **spec violation**, a **[client]** key is a **client extension (non-portable)**, a **[house]** field is **house style**.
 
 **Standard fields [standard]** — the six the open standard defines; `skills-ref` enforces exactly these:
 
