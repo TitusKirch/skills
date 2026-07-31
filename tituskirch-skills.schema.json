@@ -542,7 +542,7 @@
         "feedback": {
           "type": "string",
           "enum": ["pr", "issue"],
-          "description": "Where the two loops write their round-by-round output — review verdicts and their rationale, the implementer's blocked reason, a surfaced label/body conflict. \"pr\" puts it on the pull request, leaving the issue its requirement, its lifecycle label and a link to the thread; \"issue\" puts it in the issue's comments, for a loop that opens no pull request. No fixed default: it follows work.branch, so worktree defaults to \"pr\" and branch:<name> to \"issue\". In \"pr\" mode with no pull request to post to, the feedback falls back to the issue rather than being dropped."
+          "description": "Where the two loops write their round-by-round output — review verdicts and their rationale, the implementer's blocked reason, a surfaced label/body conflict. \"pr\" puts it on the pull request, leaving the issue its requirement, its lifecycle label and a link to the thread; \"issue\" puts it in the issue's comments, for a loop that opens no pull request. No fixed default: it follows work.branch, so worktree defaults to \"pr\" and branch:<name> to \"issue\". In \"pr\" mode with no pull request to post to, the feedback falls back to the issue rather than being dropped, and a formal review the forge refuses on a self-authored pull request falls back to a plain pull-request comment."
         },
         "labels": {
           "type": "object",
