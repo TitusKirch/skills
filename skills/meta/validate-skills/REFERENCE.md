@@ -223,6 +223,8 @@ A repo's own link lint (here `test/isolation.test.ts`) reads `](…)` targets, s
 | "delegate each issue to `work-implement`", "commit via `atomic-commit`", "open the PR through `pull-request`" | **call**    | yes                 |
 | "committing is `atomic-commit`'s job", "the complement to `write-readme`", "`work-review` reviews them next"  | **mention** | no                  |
 
+**Rule 3 — optional is the default; required is the exception.** A declaration is not the whole check: **which kind** was declared is itself a finding. Every skill installs alone, so a **required** call is a claim that the skill has **no job at all** without the sibling — a thin drain whose every step is the delegation, and which therefore checks for it **before any state changes**. Anything short of that degrades: the run skips the pass, or does the work itself in the plainer way, and says so. Read a required declaration on a skill that plainly could carry on without the sibling as a tier-2 finding — it converts an uninstalled optional skill into an aborted run — and read a call to a skill the repo does **not** ship as required at all as the same finding, more sharply, since nothing in the repo governs whether that one is installed.
+
 **Running the pass.** Two greps locate candidates; the verdict is the read.
 
 ```sh
@@ -254,7 +256,7 @@ For the `TitusKirch/skills` repo the contract is `skills/README.md` — its fron
 - **Category placement** — the skill sits under the right `skills/<category>/` folder (`repo/`, `work/`, `docs/`, `meta/`).
 - **Generated artifacts in sync** — the six artifacts `pnpm skills:sync` produces are current (`pnpm skills:check` is the gate). Drift here is a repo-integrity finding, tier 2.
 - **`skills.sh.json` YAML-safety** — an unquoted `summary`/`description` must not contain `": "` (colon-space) or `" #"` (space-hash), or the repo's own parser drops the skill. `gen-skills.ts` lints exactly this; surface it as tier 2.
-- **[Cross-skill references](#cross-skill-references)** — a sibling is named, never pathed, and a call to one declares required or optional with its behaviour on absence. This repo is a multi-skill repo whose skills are installed individually, so both halves bite; `test/isolation.test.ts` covers the link form, and the prose-path and declaration halves come from the read.
+- **[Cross-skill references](#cross-skill-references)** — a sibling is named, never pathed; a call to one declares required or optional with its behaviour on absence; and the kind is **optional** unless the skill is one of the two queue drains calling its own worker (`work-implement-queue` → `work-implement`, `work-review-queue` → `work-review`), which is the repo's only sanctioned **required** call. This repo is a multi-skill repo whose skills are installed individually, so all three halves bite; `test/isolation.test.ts` covers the link form, and the prose-path, declaration and kind halves come from the read.
 
 Running `pnpm skills:check` and folding its output into tier 2 is the honest way to report this repo's house findings — the repo's own tool, the same way the spec tier uses the standard's own tool.
 
