@@ -152,7 +152,8 @@ date: 2026-07-15
 An ADR is **immutable once accepted**. The log records what was decided and when, so a superseded decision has to survive intact — that record is the whole value.
 
 - **Overturning a decision writes a new ADR.** The old one keeps its prose and only flips `status` to `superseded`, gains a `Superseded by ADR-NNNN` pointer under its H1, and updates `date`. The new ADR points back (`Supersedes ADR-NNNN`).
-- **Never** rewrite an accepted ADR's Context/Decision/Consequences, delete an ADR, or renumber one. Typo and link fixes are the only in-place edits.
+- **Adding to a decision that still stands writes an amendment, in place.** Where the decision holds but a fact it priced has moved, append a dated entry under a trailing `## Amendments` H2 (`### YYYY-MM-DD — what changed`) — the one section an accepted ADR may grow. It adds, never edits: Context/Decision/Consequences stay byte-for-byte, `status` and `date` stay put, and the amendment's own heading carries its date, so the index's Date column keeps meaning "the day the status last changed". **Superseding is reserved for a reversal** — reaching for a new record to say "this still holds, but" costs the reader the pointer, since nothing on the old record says it was refined.
+- **Never** rewrite an accepted ADR's Context/Decision/Consequences, delete an ADR, or renumber one. Typo fixes, link fixes and an appended amendment are the only in-place edits.
 - The general page rules **do not apply**: no edit-in-place for a changed decision, no one-topic-per-page dedupe (several ADRs may touch the same topic — that is the log working, not duplication), and no prose reconcile.
 
 ## Reconcile rules
