@@ -168,20 +168,38 @@ The **reconcile** job therefore recognizes such a directory and offers to bring 
 
 **The import is one proposal, and nothing moves unasked.** Move, rename, index row and the missing values are presented **together** and applied only on confirmation. Splitting the move out as a mechanical first step saves nothing — `title` / `description` / `status` have to be asked for anyway — and buys a half-imported log, which is worse than an unimported one.
 
-| The import supplies    | From                                                                                                                                      |
-| :--------------------- | :---------------------------------------------------------------------------------------------------------------------------------------- |
-| Path + name            | `docs/99.adr/NNNN-title.md`, `NNNN` the next free id — one per file, in the source directory's own order                                  |
-| `title`/`description`  | proposed from the H1 / first paragraph, confirmed like any other missing required field                                                   |
-| `status`               | proposed (`accepted` for a decision evidently in force), confirmed — never silently defaulted                                             |
-| `date`                 | the file's **first commit** is the decision date: `git log --diff-filter=A --reverse --format=%as -- <file>`, first line. No guess needed |
-| Body                   | the existing text **re-homed** under the required `Context` / `Decision` / `Consequences` H2s                                             |
-| The decision log's row | `99.adr/index.md`, in the same change                                                                                                     |
+#### The threshold governs adopted records too
+
+**Finding the directory is not the decision to admit it.** Admission is judged **per file**, against the same bar a record written here has to clear — [when a decision earns an ADR](SKILL.md#when-a-decision-earns-an-adr), as the target repo's own `99.adr/index.md` states it. A threshold that governs which decisions earn an ADR governs adopted ones no differently; nothing about arriving in another tool's format earns a record a place this log would not otherwise give it.
+
+**The gate belongs at the import step and nowhere later.** The log is [append-only](#lifecycle--append-only), so a record admitted wrongly can never be pruned — faithfully importing another tool's noise into a log that cannot be trimmed is a worse outcome than the blind spot the import exists to close. Ask it before the id is assigned, because after that there is no undo.
+
+A record that does **not** clear the bar has two outcomes, proposed in the same plan as the ones that do:
+
+| Outcome                            | When                                                                                                                                                                                          |
+| :--------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Route as an ordinary docs page** | the content is worth keeping but is not a decision this log records — it goes through the [routing matrix](SKILL.md#routing-matrix--what-you-changed--page-type--section) like any other page |
+| **Report and leave it alone**      | there is nothing to keep, or the call is genuinely the human's — named in the report, not moved, not imported                                                                                 |
+
+**Borderline is the human's call.** Name it in the plan and let them answer; never resolve it by importing "just in case", since that is the direction with no way back. Nothing is deleted either way — a record the reconciler declines to import stays exactly where it is.
+
+| The import supplies    | From                                                                                                                                               |
+| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Path + name            | `docs/99.adr/NNNN-title.md`, `NNNN` the next free id — one per admitted file, in the source directory's own order                                  |
+| `title`/`description`  | proposed from the H1 / first paragraph, confirmed like any other missing required field                                                            |
+| `status`               | proposed (`accepted` for a decision evidently in force, `proposed` while any required section is empty), confirmed — never silently defaulted      |
+| `date`                 | the file's **first commit** is the decision date: `git log --follow --diff-filter=A --reverse --format=%as -- <file>`, first line. No guess needed |
+| Body                   | the existing text **re-homed** under the required `Context` / `Decision` / `Consequences` H2s                                                      |
+| The decision log's row | `99.adr/index.md`, in the same change                                                                                                              |
 
 - **`date` is the decision's date, not the import's.** The field records when the `status` last changed, and a record entering the log unchanged last changed when it was written — so the first commit, never the day it moved.
+- **`--follow` is not optional here.** `git log` stops at a rename without it, and a foreign ADR directory has usually been moved at least once already — that is often how it ended up where the reconciler found it. Drop the flag and the one value this section claims needs no guess quietly becomes the date of a move.
 - **Untracked, or no commit for the file** → git has no answer; fall back to a date the file itself states, else propose today's and say which of the two it is.
-- **Re-homing is not rewriting.** The sentences are the author's and stay the author's — they move under the H2 they belong to, and a section the source never wrote is left empty rather than invented. Everything the reconciler cannot place goes in the plan for a human to place.
+- **The title states the decision, not the source's topic.** A foreign H1 is characteristically a noun phrase (`ADR-0003: Caching strategy`); the imported filename and `title` restate it in this log's shape — the [file schema](#file-schema)'s naming rule applies to an adopted record exactly as to a written one. Entry is the **only** chance to get it right: the reconciler may never rename a record once it is in `99.adr/`.
+- **Re-homing is not rewriting.** The sentences are the author's and stay the author's — they move under the H2 they belong to, and a section the source never wrote is left empty rather than invented. Everything the reconciler cannot place goes in the plan for a human to place — and an empty required section decides the `status` the record enters at (next bullet).
+- **A record never lands `accepted` with a required section empty.** Immutability starts the moment the file enters `99.adr/`, so an empty `Context` / `Decision` / `Consequences` admitted at `accepted` is a hole append-only forbids ever filling. Either the human fills it **in the same plan, before the change is applied**, or the record lands `status: proposed` — the honest description of an incomplete one, and the status that leaves it free to be completed and accepted later. Empty **and** accepted is the one combination the import must not produce.
 - **Assigning an id does not break [append-only](#lifecycle--append-only).** The file was never accepted _in this log_, so the id is a **first assignment**, not a renumbering, and shaping it on entry is not an edit to an accepted record. From the moment it lands in `99.adr/` it is immutable like every other ADR.
-- **Idempotent** — a second run finds no dedicated ADR directory left to import and proposes nothing.
+- **Idempotent** — an admitted record is gone from the source directory, so a second run has nothing left to propose for it. What the threshold declined is still there and is **reported** again, never re-proposed as an import; a directory emptied of everything admitted disappears from the job entirely.
 
 ## Reconcile rules
 
@@ -287,6 +305,6 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 - ❌ Context/decision/consequences as ADR frontmatter fields instead of body sections.
 - ❌ A how-to without a closing checklist.
 - ❌ Restating upstream/framework behavior instead of linking it.
-- ❌ Rewriting prose during a reconcile, or touching anything outside `docs/`.
+- ❌ Rewriting prose during a reconcile, or touching anything outside `docs/`. (Re-homing an [imported ADR](#foreign-adrs--a-decision-log-written-elsewhere)'s own sentences under the required H2s is the sole carve-out — the prose **moves**, it is never rewritten, and it never leaves `docs/`.)
 - ❌ Emoji in generated headings, landing pages, or prose — output is plain text.
 - ❌ Naming a specific docs tool/generator in the pages or the convention.
