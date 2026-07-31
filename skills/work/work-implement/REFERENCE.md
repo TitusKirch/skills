@@ -239,13 +239,13 @@ minutes, and doing that per tree is the real cost of running several trees at on
 
 ## Optional skill calls
 
-Three of this loop's steps hand work to a **separate skill**, and every skill installs on its own — so a sibling is never a given. All three are **optional calls** in the same shape: **invoke the skill when it is installed; when it is absent, take the stated fallback and carry on.** The rule lives here once and each call site references it, so a missing skill never fails a run — and never becomes a silent skip either, because the run **names the fallback it took** in its report.
+Three of this loop's steps hand work to a **separate skill**, and every skill installs on its own — so a sibling is never a given. All three are **optional calls** in the same shape: **invoke the skill when it is installed; when it is absent, take the stated fallback and carry on.** The rule lives here once and each call site references it, so a missing skill never leaves a run **undefined** — and never becomes a silent skip either, because the run **names the fallback it took** in its report. **Stated is not the same as graceful.** Two of the three fallbacks carry the work through unchanged; the third **is** `blocked`, so an absent `resolving-merge-conflicts` meeting a conflict does end that run with the work unpushed. What the shape guarantees is that every absence has a **defined** outcome, not that every absence is survivable.
 
 | Call site                                                          | Skill                       | Fallback when absent                                                                                   |
 | :----------------------------------------------------------------- | :-------------------------- | :----------------------------------------------------------------------------------------------------- |
 | Commit (step 8)                                                    | `atomic-commit`             | commit directly, in the repo's own Conventional Commits conventions, carrying the same issue reference |
 | Open / update the PR (step 8, `worktree` only)                     | `pull-request`              | open the PR with the forge CLI, same base and head                                                     |
-| Rebase conflict under `branch:<name>` ([below](#rebase-conflicts)) | `resolving-merge-conflicts` | `blocked`                                                                                              |
+| Rebase conflict under `branch:<name>` ([below](#rebase-conflicts)) | `resolving-merge-conflicts` | `blocked` — the run stops and the work stays unpushed, deliberately                                    |
 
 Two things the shape does **not** license:
 
