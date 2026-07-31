@@ -14,12 +14,12 @@ skills/
       evals/          # optional — dev-only eval fixtures; stripped by skill-creator packaging & skills:link
 ```
 
-| Category | Holds                                                    |
-| :------- | :------------------------------------------------------- |
-| `repo/`  | Commits, pull requests, releases, dependency updates.    |
-| `work/`  | Issues, the AI implement/review loops, session handoffs. |
-| `docs/`  | Documentation, READMEs, terminal demos.                  |
-| `meta/`  | Configuring the skills themselves.                       |
+| Category | Holds                                                                       |
+| :------- | :-------------------------------------------------------------------------- |
+| `repo/`  | Commits, pull requests, releases, dependency updates.                       |
+| `work/`  | Issues, the AI implement/review loops, session handoffs, session summaries. |
+| `docs/`  | Documentation, READMEs, terminal demos.                                     |
+| `meta/`  | Configuring the skills themselves.                                          |
 
 Categories are a **display and navigation** device, not a namespace: a skill's `name` is still globally unique and unprefixed, and `pnpm skills:link` flattens them back into each of its destinations (`~/.claude/skills/` and `~/.agents/skills/`). Category membership comes from the filesystem; each category's title and description live in `CATEGORIES` in [`scripts/gen-skills.ts`](../scripts/gen-skills.ts) — adding a category means one entry there, or `pnpm skills:sync` fails loudly rather than silently dropping the folder.
 
@@ -94,6 +94,7 @@ Resolution per setting: **config → native/detected → built-in default** — 
 - [`update-deps`](repo/update-deps/REFERENCE.md#config) — `language`, `verify` (owns no section of its own)
 - [`prune-comments`](repo/prune-comments/REFERENCE.md#config) — `language`, `verify`, `pr.base` (owns no section of its own)
 - [`handoff`](work/handoff/REFERENCE.md#config) — `language` (owns no section of its own)
+- [`tldr`](work/tldr/REFERENCE.md#config) — `language` (owns no section of its own)
 - [`write-docs`](docs/write-docs/REFERENCE.md#config) — `language`, `docs.*`
 - [`compact-readme`](docs/compact-readme/REFERENCE.md#config) — `docs` (owns no section of its own)
 - [`work-implement`](work/work-implement/REFERENCE.md#config) — `language`, `verify`, `work.*`, `pr.base`
@@ -160,7 +161,7 @@ Create `<category>/<skill-name>/SKILL.md` per the frontmatter contract above (us
 A few skills depart from the layout above on purpose, and one frontmatter question is settled in principle but still open per skill. Recorded here so the next author copying a skill treats these as deliberate, not drift to "correct" blindly:
 
 - **Supporting files are distributed unevenly.** `DESIGN.md` exists for `work-implement` only. The two queue skills (`work-implement-queue`, `work-review-queue`) carry their `<skills-config>` and author-authority blocks inline in `SKILL.md` and ship **no `REFERENCE.md`** — for them the drain _is_ the whole skill, and what a `REFERENCE.md` would hold is the lock spec they now mirror. Splitting a `SKILL.md` into a `REFERENCE.md` is a structural refactor (byte-identity, sync, mirrored-block boundaries), not a mechanical alignment, so it stays a per-skill judgement.
-- **Reference chains run two levels deep, and stop there.** The standard recommends keeping file references **one level deep** — what `SKILL.md` points at should not itself require opening something else. Fourteen skills go one hop further: `SKILL.md` → `REFERENCE.md` → `templates/…`. That hop is what [mirrored, not linked](#reading-the-config--mirrored-not-linked) costs — a skill has to be installable alone, so `resolve-config.sh` and the document templates ship **inside** the folder, and the `REFERENCE.md` documenting the contract is where they are named. What bounds the depth is **what the second hop lands on**: an asset the agent runs or fills in — `templates/resolve-config.sh`, `handoff`'s and `write-docs`'s document templates, `write-readme`'s skeleton — never another document to read. So **sibling documents are not cross-linked**: `SKILL.md` links `REFERENCE.md` and `DESIGN.md`, and neither links the other, so each is entered from `SKILL.md` and read straight through. Flattening the chain instead would mean inlining the config contract into all nineteen `SKILL.md`s — exactly what the mirrored block exists to prevent. Advisory either way: these are spec recommendations, not requirements, and `skills-ref` reports zero violations.
+- **Reference chains run two levels deep, and stop there.** The standard recommends keeping file references **one level deep** — what `SKILL.md` points at should not itself require opening something else. Fifteen skills go one hop further: `SKILL.md` → `REFERENCE.md` → `templates/…`. That hop is what [mirrored, not linked](#reading-the-config--mirrored-not-linked) costs — a skill has to be installable alone, so `resolve-config.sh` and the document templates ship **inside** the folder, and the `REFERENCE.md` documenting the contract is where they are named. What bounds the depth is **what the second hop lands on**: an asset the agent runs or fills in — `templates/resolve-config.sh`, `handoff`'s and `write-docs`'s document templates, `write-readme`'s skeleton — never another document to read. So **sibling documents are not cross-linked**: `SKILL.md` links `REFERENCE.md` and `DESIGN.md`, and neither links the other, so each is entered from `SKILL.md` and read straight through. Flattening the chain instead would mean inlining the config contract into all twenty `SKILL.md`s — exactly what the mirrored block exists to prevent. Advisory either way: these are spec recommendations, not requirements, and `skills-ref` reports zero violations.
 - **`allowed-tools` content is settled per skill, and the migration that settled it is finished.** The frontmatter contract settled the field's _semantics_ — pre-approval, not restriction (see the [field note](#field-notes) above) — while **what each skill declares** stayed a per-skill decision rather than one list for the whole catalogue, because rewriting the catalogue's tool lists on a guess would have been a large, likely-wrong diff. What changed is which form a skill gets for free. [ADR-0017](../docs/99.adr/0017-make-a-blanket-bash-grant-a-named-exception.md) made the scoped form the default and a blanket `Bash` a **named exception**, enumerated with its reason in [`test/allowed-tools.test.ts`](../test/allowed-tools.test.ts) and pinned in both directions — so a new skill cannot inherit the blanket grant by copying its neighbour. What is left is not a backlog: each skill still granting one does so for a reason that will not expire. **Which skills those are is the test's to say, not this page's** — a roster here is a second copy that goes stale the moment the list moves, which is exactly how this bullet came to name two skills long after eleven were scoped.
 
 ## Evaluating a skill

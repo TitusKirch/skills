@@ -19,6 +19,7 @@
     "./skills/repo/update-deps",
     "./skills/work/handoff",
     "./skills/work/issue",
+    "./skills/work/tldr",
     "./skills/work/work-implement",
     "./skills/work/work-implement-queue",
     "./skills/work/work-review",

@@ -15,10 +15,11 @@
     },
     {
       "title": "Tracked work",
-      "description": "Issues, the two AI work loops (implement and review), and handing work between sessions.",
+      "description": "Issues, the two AI work loops (implement and review), handing work between sessions, and summarising one.",
       "skills": [
         "handoff",
         "issue",
+        "tldr",
         "work-implement",
         "work-implement-queue",
         "work-review",

@@ -196,7 +196,7 @@ const CATEGORIES: Record<Category, { title: string; description: string }> = {
   work: {
     title: 'Tracked work',
     description:
-      'Issues, the two AI work loops (implement and review), and handing work between sessions.'
+      'Issues, the two AI work loops (implement and review), handing work between sessions, and summarising one.'
   },
   docs: {
     title: 'Docs & READMEs',

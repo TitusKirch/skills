@@ -50,12 +50,13 @@ Commits, pull requests, releases and dependency updates — each driven by the r
 
 ### Tracked work
 
-Issues, the two AI work loops (implement and review), and handing work between sessions.
+Issues, the two AI work loops (implement and review), handing work between sessions, and summarising one.
 
 | Skill                                                               | Description                                                                                                           |
 | :------------------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------- |
 | [`handoff`](skills/work/handoff/SKILL.md)                           | Hands off in-progress work to another agent or session via a committed handoff document.                              |
 | [`issue`](skills/work/issue/SKILL.md)                               | Creates/updates/searches issues across GitHub (gh) or Linear (MCP), tracker chosen by config.                         |
+| [`tldr`](skills/work/tldr/SKILL.md)                                 | Summarises the last answer, the task just finished, or the whole session into a fixed section order.                  |
 | [`work-implement`](skills/work/work-implement/SKILL.md)             | Implements one tracked issue and pushes it for AI review — claim, implement, verify, push, hand off.                  |
 | [`work-implement-queue`](skills/work/work-implement-queue/SKILL.md) | Drains the ready/changes-requested queue — implements each issue to a pushed, reviewable state.                       |
 | [`work-review`](skills/work/work-review/SKILL.md)                   | Reviews one issue's pushed work as an independent agent — verdict routes to done, changes, needs-human, or blocked.   |

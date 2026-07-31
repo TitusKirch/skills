@@ -1,4 +1,4 @@
-// The generator writes seven artifacts that nineteen published skills depend on, and
+// The generator writes seven artifacts that twenty published skills depend on, and
 // until its functions took a root rather than a module constant, none of them could be
 // run anywhere but this repo — so none of them had a test. These run the real thing
 // against `test/fixtures/registry`, a miniature of this repo's own shape, copied to a
