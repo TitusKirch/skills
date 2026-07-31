@@ -611,9 +611,13 @@ parent: null
 - **Reading is quote-tolerant; writing is canonical.** The file is advertised as human-readable and hand-editable, and `state: ready` is as valid a YAML scalar as `state: 'ready'` — so a matcher that accepts only the quoted form drops a hand-written issue out of **every** queue, silently, exactly the way the empty-directory trap does. Every read therefore tolerates optional quotes and trailing space; every write emits the single-quoted form, so a file the loop has touched is canonical without a hand-written one being rejected:
 
   ```sh
-  # the one matcher, used by both loops' selection and by the transition guard
-  state_re() { printf "^%s:[[:space:]]*['\"]?%s['\"]?[[:space:]]*$" "$1" "$2"; }
+  # the one matcher — ONE regex, written out in full at each of its three uses
+  # (this loop's Eligible, work-review's selection, the transition guard below).
+  # $key is a config key; ERE, so quote it for grep -E:
+  "^state:[[:space:]]*['\"]?$key['\"]?[[:space:]]*$"
   ```
+
+  **Inline it; never wrap it in a shell helper.** A `state_re()` function is the obvious deduplication and is wrong here for the reason stated twice already: **each command runs in its own process**, so a function defined in one command does not exist in the next. `$(state_re state ready)` then expands to the **empty string**, and `grep -qE ""` matches **any non-empty line** — the matcher does not fail, it matches everything, so the guard below passes unconditionally and the queries select the whole directory. Same failure shape as the empty `--label` the [selection query](#selection-query) warns about, and the reason three written-out copies are cheaper than one definition that has to travel.
 
   This is the opposite call from the `## AI review — round N` heading, whose exact wording **is** load-bearing because `work-review`'s round count parses it — and which says so where it is defined.
 
@@ -660,7 +664,13 @@ awk -v to="$to" -v who="$who" '
 ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
 ```
 
-The write emits the **canonical quoted** form while the `/^state:/` match accepts whatever the file holds — the read-tolerant / write-canonical rule from [The file](#the-file), which is also why the guard below cannot be quote-strict. Guard it with the `$from` state in the same command (`grep -qE "$(state_re state "$from")" "$f" || exit 1`) so a run that lost the race stops instead of overwriting. **This is no more a compare-and-swap than the label flip is** — as everywhere else in this file, the [single-flight lock](#the-single-flight-lock) is what makes multi-consumer safe within a checkout, and the reconcile's guard is what covers the clones it cannot see.
+The write emits the **canonical quoted** form while the `/^state:/` match accepts whatever the file holds — the read-tolerant / write-canonical rule from [The file](#the-file), which is also why the guard below cannot be quote-strict. Guard it with the `$from` state in the **same** command, with the matcher [written out](#the-file) rather than called from a helper the next process will not have:
+
+```sh
+grep -qE "^state:[[:space:]]*['\"]?$from['\"]?[[:space:]]*$" "$f" || exit 1
+```
+
+so a run that lost the race stops instead of overwriting — and so the guard cannot fail **open**, which an unresolved helper would make it do silently. **This is no more a compare-and-swap than the label flip is** — as everywhere else in this file, the [single-flight lock](#the-single-flight-lock) is what makes multi-consumer safe within a checkout, and the reconcile's guard is what covers the clones it cannot see.
 
 ### Referencing the issue from git
 
