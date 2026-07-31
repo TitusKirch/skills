@@ -51,7 +51,7 @@ CI runs the same commands, one step per command, so a single run reports every f
 
 ## Branching & PRs
 
-1. **Branch off `dev`, and target `dev`.** `dev` is the integration branch every PR goes into; `main` is the release branch and takes only the `dev → main` rollup PR that CI keeps open. Never push to either directly.
+1. **Branch off `dev`, and target `dev`.** `dev` is the integration branch every PR goes into; `main` is the release branch and takes only the `dev → main` rollup PR that CI keeps open. Never push to either directly — a contribution reaches `dev` through a pull request.
 2. **Conventional Commits required.** Commitlint enforces this on every commit. Examples:
    - `feat(skill-name): add new skill`
    - `fix(skill-name): correct example prompt`
