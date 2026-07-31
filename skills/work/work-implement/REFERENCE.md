@@ -237,6 +237,21 @@ minutes, and doing that per tree is the real cost of running several trees at on
 
 </skills-verify-isolated>
 
+## Optional skill calls
+
+Three of this loop's steps hand work to a **separate skill**, and every skill installs on its own — so a sibling is never a given. All three are **optional calls** in the same shape: **invoke the skill when it is installed; when it is absent, take the stated fallback and carry on.** The rule lives here once and each call site references it, so a missing skill never fails a run — and never becomes a silent skip either, because the run **names the fallback it took** in its report.
+
+| Call site                                                          | Skill                       | Fallback when absent                                                                                   |
+| :----------------------------------------------------------------- | :-------------------------- | :----------------------------------------------------------------------------------------------------- |
+| Commit (step 8)                                                    | `atomic-commit`             | commit directly, in the repo's own Conventional Commits conventions, carrying the same issue reference |
+| Open / update the PR (step 8, `worktree` only)                     | `pull-request`              | open the PR with the forge CLI, same base and head                                                     |
+| Rebase conflict under `branch:<name>` ([below](#rebase-conflicts)) | `resolving-merge-conflicts` | `blocked`                                                                                              |
+
+Two things the shape does **not** license:
+
+- **The caller keeps its own authority.** A called skill's rules govern its **method**, never this loop's outcomes. `resolving-merge-conflicts` says "always resolve, never `--abort`"; that does not override [`blocked`](#rebase-conflicts) as this skill's answer to a conflict it cannot resolve out of the issues. Drive the skill for the _how_ — the decision to stop stays here.
+- **Where a called skill expects a human, that part does not run.** A drain is unattended, so a prompt has nobody to answer it: skip that part, take the fallback for what it would have decided, and **record the deviation** rather than glossing it.
+
 ## Catalog cache
 
 Reuses the `issue` cache verbatim — `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (labels, teams, projects, states), so label names resolve to ids and teams/states are looked up without re-fetching. Same TTL (~3 days) and `--refresh`.
@@ -457,9 +472,20 @@ Two **independent** knobs — `work.branch` (where work lands) × `work.parallel
 - **Worktrees are the mechanism of `parallel: true`**, not a separate mode. Sequential runs need none.
 - **A worktree starts with nothing installed**, so [step 7's verify](#running-the-repos-checks) installs the lockfile there **first**. `git worktree` checks out **tracked** files only: `node_modules`, `vendor` and every other gitignored directory are absent, however completely installed the tree the drain was invoked from is. Skip the install and the gate resolves against whatever is on `PATH` — accidentally green, accidentally red, and either way not the versions this branch pins. A run that stays in the **working tree** (sequential, on a shared branch or hopping branches in place) needs none of this; what is installed there is already the right thing. This is why the skill carries the **isolated** check-command block rather than the base one.
 - **Every extra worktree pays a full install** — the real price of concurrency, and on a repo whose dependencies run to hundreds of megabytes the install can outlast the implementation it gates. Worth weighing before raising the worker count, and the reason a concurrency bound is a different knob from `cap`. Making that cheaper — copying or linking the heavy directories into a new worktree — is the repo's own call, never something a worker does behind the run's back: one `node_modules` shared by two live workers is one install either of them can leave wrong for the other.
-- **Serialized integration** — for a shared `branch:<name>` target under `parallel: true`, parallel work is produced in isolated worktrees and landed one commit at a time (push → rebase → retry). This is what makes `branch:dev` + `parallel` race-free.
+- **Serialized integration** — for a shared `branch:<name>` target under `parallel: true`, parallel work is produced in isolated worktrees and landed one commit at a time (push → rebase → retry). This is what makes `branch:dev` + `parallel` race-free. The retry answers a **race**; a rebase that stops with **conflicted files** is a different question, answered in [rebase conflicts](#rebase-conflicts) below.
 - **`worktree`** branches off `pr.base`; the worktree with committed+pushed work is removed after the PR is opened (commits live on the remote/branch).
 - **Dependencies** — under `branch:<name>` the drain works prerequisites first within the run ([dependency ordering](#dependency-ordering)); the shared branch accumulates, so the dependent issue just sees the code. Under `worktree` each issue branches off a clean `pr.base` and sees nothing of its siblings, so the `ready` gate stays the mechanism — a dependent issue is not `ready` until its parent merges. Stacked branches are a **v2** concern — deferred, with the rationale recorded in this skill's `DESIGN.md`.
+
+### Rebase conflicts
+
+`push → rebase → retry` answers the **race** — someone landed first, so rebase onto the new tip and try again. It does not answer the **conflict**, and a retry cannot: repeating a rebase that collided just collides again. This is the rule for the moment the rebase stops with conflicted files.
+
+**Scope: any rebase onto a shared branch — `branch:<name>`, at either `parallel` setting.** The other side is not always a sibling worker; a second clone, a human, or a merged dependency PR lands on `<name>` between this run's last fetch and its push, so a **sequential** drain hits exactly the same stop. **`worktree` is out of scope** — there each issue branches off a clean `pr.base` and its conflicts surface at PR merge, beyond this run's reach.
+
+1. **Recover both intents from the issues, not from the diff.** Drive `resolving-merge-conflicts` ([optional call](#optional-skill-calls)); its substance is finding each side's **primary sources** instead of inferring intent from the hunks. **Hand those sources in** rather than letting the skill go looking: this side is the issue being worked, and under [serialized integration](#branch-strategy) the other side is a **sibling issue from the same drain**, whose number and body the run already holds — knowledge the skill cannot reach on its own and better than the commit-message archaeology it would otherwise do. Where the other side is **not** a sibling (a human's commit, a merged dependency PR), hand in what the run can name — the commit and its PR — and say that is all there was.
+2. **Resolve preserving both intents.** Where they are genuinely incompatible, keep the side matching the goal of the branch; never invent behaviour that was in neither side.
+3. **Where the intents do not carry, stop — set `blocked`**, comment the conflicted files and both sides on the issue, and leave the work unpushed. This is a deliberate deviation from the called skill's "always resolve": on a shared branch a silent mis-resolution of a sibling's change lands on `<name>` itself, and the review loop then sees a merged result rather than a question. Stopping is the cheaper mistake every time. With the skill absent, `blocked` is the whole behaviour.
+4. **Re-run the [checks](#running-the-repos-checks) after a resolution, before the push.** The resolved tree is **not** the tree step 7 passed — it now carries the other side's commits too — so that green says nothing about it. And a commit pushed straight to `<name>` opens no pull request, so a forge CI configured on pull requests never sees it. Red after a resolution is a `blocked`, not another retry. The review loop re-runs the gate against the pushed head regardless; this run's re-run is what keeps a broken tree off the shared branch in the first place.
 
 ## Dependency ordering
 
