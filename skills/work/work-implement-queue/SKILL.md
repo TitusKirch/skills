@@ -62,13 +62,13 @@ Release the lock. Summarise each issue and its outcome (handed to `reviewRequest
 
 Issues now in `reviewRequested` are the drain's hand-off — the `work-review-queue` picks them up. Name the count.
 
-**Then name the queue's state**, so a repeating driver (`/loop`, cron, a human) knows whether to run again, wait, or stop — instead of that rule living in whoever typed the loop prompt. Decide it **in this order**:
+**Then name the queue's state**, so a repeating driver (`/loop`, cron, a human) knows whether to run again, wait, or stop — instead of that rule living in whoever typed the loop prompt. **Query the tracker again first**: work that became eligible while the last issue was being implemented is already there, and waiting on input that exists wastes an interval. Then decide **in this order**:
 
 1. **Stopped on `work.cap` with eligible issues left → `work remaining`.** Run again **immediately**, never wait: a cap-ended drain is not an empty queue.
-2. **Nothing eligible, but issues sit in `reviewRequested`/`reviewing` → `backpressure`.** A review can hand any of them back as `changes-requested`, which is this loop's input. Wait `work.loop.wait` (default 120 s) and re-check — but only while the **review** lock's `refreshed` heartbeat keeps advancing. That lock **absent** (nobody is reviewing in this checkout) or **frozen past the stale window** (the review drain crashed) → **stop and report** instead, naming how many issues wait unattended. `work.loop.maxWait` (default 1800 s) is the loud backstop.
-3. **Otherwise → `quiescent`.** Stop. `done`, `blocked` and `needs human` are terminal and never keep the loop alive.
+2. **Nothing eligible, but issues sit in `reviewRequested`/`reviewing` → `backpressure`.** A review can hand any of them back as `changes-requested`, which is this loop's input. Wait `work.loop.wait` (default 120 s), then re-check. The **review** lock's `refreshed` heartbeat advancing means keep waiting; frozen past the stale window means the review drain crashed → **stop and report**. That lock **absent** is **not** by itself a reason to stop — it also means a counterpart between cap-ended runs, or one on another host — so fall back to the waited-on issues' `updatedAt`: fresh → keep waiting; frozen past the stale window → stop, naming how many wait unattended. `work.loop.maxWait` (default 1800 s) is the loud backstop.
+3. **Otherwise — only terminal states left (`done`/`blocked`/`needs human`) → `quiescent`.** Stop; none of them ever keeps the loop alive. An empty query taken **straight after** finishing an issue is not this: only a check that follows a **wait** is evidence the queue is quiet.
 
-The wait happens **between** drains, after the lock is released, so a waiting driver blocks nothing. Full rule — the states, what each loop waits on, and why the bound is the counterpart's heartbeat rather than a round count: **Queue state** in `work-implement`'s REFERENCE.
+The wait happens **between** drains, after the lock is released, so a waiting driver blocks nothing. Full rule — the states, what each loop waits on, why the bound is the counterpart's heartbeat rather than a round count, and how cross-host degrades: **Queue state** in `work-implement`'s REFERENCE.
 
 ## Config
 
