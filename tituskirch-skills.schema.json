@@ -542,7 +542,7 @@
         "labels": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Lifecycle label names. Each is a label string, or false to disable that mechanic.",
+          "description": "Label names the work skills reason about. Each is a label string, or false to disable that mechanic. Most are lifecycle states the loops write; repo and needsTriage are markers the loops only read.",
           "properties": {
             "ready": {
               "$ref": "#/$defs/labelOrOff"
@@ -572,6 +572,10 @@
             },
             "repo": {
               "$ref": "#/$defs/labelOrOff"
+            },
+            "needsTriage": {
+              "$ref": "#/$defs/labelOrOff",
+              "description": "The repo's own untriaged marker — \"nobody has assessed this issue yet\". Not a lifecycle state and never written by the work loops: it is named here so a skill can reason about a label the repo already uses, which is the whole of it — a skill cannot honour a label it was never told about. Opt-in, like reviewing: it defaults to false (off), because unlike the ai: * states, whose spelling these skills own, this one is the repo's and is spelled however the repo spells it (\"needs triage\", \"triage\", \"status: needs-triage\"); a default string would guess, and acting on a guessed label is the failure this key exists to prevent. Set it to the repo's exact string to switch the mechanic on. Read by issue, which withholds it from a template's declared labels when the filing author is an authorized maintainer — an issue filed by the person who would triage it is assessed by definition."
             }
           }
         },

@@ -32,7 +32,8 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
       "needsHuman": "ai: needs human",
       "done": "ai: done",
       "blocked": "ai: blocked",
-      "repo": false
+      "repo": false,
+      "needsTriage": false
     },
     "priorityLabels": ["urgent", "high", "medium", "low"],
     "reviewRequested": { "maxRounds": 3 },
@@ -53,22 +54,23 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 }
 ```
 
-| Key                                         | Effect                                                                                                                |
-| :------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------- |
-| `work.tracker`                              | `github` or `linear`; falls back to `issue.tracker`                                                                   |
-| `work.cap`                                  | max issues a single drain works (mandatory bound; default 10)                                                         |
-| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)        |
-| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))            |
-| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                 |
-| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                       |
-| `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review |
-| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"   |
-| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                       |
-| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                     |
-| `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                   |
-| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                    |
-| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                      |
-| `work.linear.states`                        | Linear workflow state names; **no default** — see below and [AI-accepted is not shipped](#ai-accepted-is-not-shipped) |
+| Key                                         | Effect                                                                                                                      |
+| :------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------- |
+| `work.tracker`                              | `github` or `linear`; falls back to `issue.tracker`                                                                         |
+| `work.cap`                                  | max issues a single drain works (mandatory bound; default 10)                                                               |
+| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)              |
+| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))                  |
+| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                       |
+| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                             |
+| `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review       |
+| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"         |
+| `work.labels.needsTriage`                   | the repo's **untriaged marker** (labelOrOff); **opt-in — defaults to off** — [not a lifecycle state](#the-untriaged-marker) |
+| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                             |
+| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                           |
+| `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                         |
+| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                          |
+| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                            |
+| `work.linear.states`                        | Linear workflow state names; **no default** — see below and [AI-accepted is not shipped](#ai-accepted-is-not-shipped)       |
 
 **`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.reviewRequested: false` → the PR's existence is the signal; `labels.reviewing: false` → **no review lease** — the review loop relies on its lock alone, with no cross-clone claim (this is the **default**, so an unset `reviewing` keeps today's behaviour); `labels.blocked: false` → comment only / Linear state; `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
 
@@ -87,6 +89,14 @@ Leaving the state untouched is a defined outcome, not a degraded one — the lab
 **`states` and `statuses` have to be read together.** They point in opposite directions — `states` is what the loop _writes_, `statuses` is what it will _select_ — and the [selection query](#selection-query) ANDs them, so a state this mapping can produce that `statuses` omits takes the issue out of the queue for good. The trap is `changesRequested`, because it is the loop's second input: map it to a state outside `statuses` and a review that requests changes hands the issue back to a queue that can no longer see it — the label is right, the board is right, and nothing ever picks it up. The same applies to whichever state an escalated issue is left in, since a human resolving `needsHuman` by hand moves the label but not the state.
 
 So: **every state an eligible issue can legitimately sit in belongs in `statuses`** — the ones `states.ready` and `states.changesRequested` name, plus wherever `reviewRequested` leaves an issue that a human may hand back and `states.accepted`, which is where a human hands an **already-accepted** issue back from. Being generous costs nothing; the label filter is what actually gates eligibility, and it already excludes `working`, `reviewing` and `blocked`. Being too narrow costs a silent stall.
+
+### The untriaged marker
+
+`labels.needsTriage` is the odd one out among the labels: **not a lifecycle state**, written by neither loop, and **off by default**. It names the label the repo already uses to mark an issue nobody has assessed — `needs triage`, `triage`, whatever its spelling — so that a skill can reason about it at all; a skill cannot honour a label it was never told about, and until this key existed nothing told it.
+
+**It defaults to `false` rather than to a string, and that is the difference between this label and the seven states.** The `ai: *` states are these skills' own invention and have a canonical spelling, so a default is safe there. This label is the **repo's**, spelled however the repo spells it — a default would be a guess, and acting on a guessed label is precisely what the key exists to prevent. A repo switches the mechanic on by pinning its exact string, under the same changeover rule any label string carries ([the lock note](#the-single-flight-lock)): the string must exist on the tracker before a copy adopts it.
+
+Its first reader is the `issue` skill, which **withholds** the marker from a template's declared labels when the filing author is an authorized maintainer — an issue filed by the person who would triage it is assessed by definition. The rule, and how narrow it is: `issue`'s REFERENCE.
 
 ### AI-accepted is not shipped
 

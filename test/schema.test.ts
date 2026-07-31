@@ -181,6 +181,36 @@ describe('the reviewing lease label (opt-in review-loop lease)', () => {
   });
 });
 
+// The untriaged marker is the repo's own label, not a lifecycle state these skills
+// own the spelling of — so it is pinned, never defaulted, and off until a repo pins
+// it. The schema's job is only to accept the pin (any non-empty string, since the
+// spelling varies per repo) and the off switch.
+describe('the needsTriage marker (the repo untriaged label)', () => {
+  test('accepts the repo own spelling, or false for off', () => {
+    accepts(
+      { work: { labels: { needsTriage: 'needs triage' } } },
+      'needsTriage as a label string'
+    );
+    accepts(
+      { work: { labels: { needsTriage: 'status: needs-triage' } } },
+      'a differently spelled marker'
+    );
+    accepts(
+      { work: { labels: { needsTriage: false } } },
+      'needsTriage switched off'
+    );
+  });
+
+  test('rejects a value that is neither a non-empty string nor false', () => {
+    rejects({ work: { labels: { needsTriage: '' } } }, 'empty marker');
+    rejects({ work: { labels: { needsTriage: 1 } } }, 'numeric marker');
+    rejects(
+      { work: { labels: { needsTriage: true } } },
+      'needsTriage set true'
+    );
+  });
+});
+
 // ADR-0018 split the tail of the Linear map in two: `accepted` is what the review
 // verdict writes, `done` is the shipped state no work skill writes. The keys are
 // independent — a repo can map either, both, or neither — because a config that maps
