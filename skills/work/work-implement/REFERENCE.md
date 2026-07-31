@@ -36,6 +36,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
     },
     "priorityLabels": ["urgent", "high", "medium", "low"],
     "reviewRequested": { "maxRounds": 3 },
+    "loop": { "wait": 120, "maxWait": 1800 },
     "linear": {
       "team": "Engineering",
       "statuses": ["Todo", "In Progress", "Changes Requested", "Accepted"],
@@ -65,6 +66,8 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 | `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"   |
 | `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                       |
 | `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                     |
+| `work.loop.wait`                            | seconds a repeating driver waits before re-checking a drain that ended in [backpressure](#queue-state); default 120   |
+| `work.loop.maxWait`                         | seconds of waiting after which that driver gives up and reports loudly; default 1800                                  |
 | `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                   |
 | `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                    |
 | `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                      |
@@ -444,6 +447,58 @@ The **window** is longer than any **legitimate gap between refreshes** — longe
 **The boundary, stated plainly.** This mutual exclusion holds **within one checkout** — the clones that share **one** git common dir on **one** filesystem, where the lock directory is visible to all of them. Two clones (or two hosts) that do **not** share the filesystem holding the lock each `mkdir` _their own_ lock and never see each other's. Cross-host coordination needs a central arbiter and is **out of scope for skill prose**; the reconcile's assignee/age guard, not the lock, is what keeps a second clone from destroying a first clone's live work.
 
 </skills-worklock>
+
+## Queue state
+
+Every drain ends. **Why** it ended is what a repeating driver — `/loop`, a cron job, a human — needs next, and from outside all the endings look the same. So each queue skill's final step names the queue's state as exactly one of these, alongside the per-issue outcomes:
+
+| State            | Means                                                                              | What a repeating driver does           |
+| :--------------- | :--------------------------------------------------------------------------------- | :------------------------------------- |
+| `work remaining` | the run stopped on `work.cap` with eligible issues still in the queue              | **run again immediately** — never wait |
+| `backpressure`   | nothing eligible now, but the counterpart loop can still produce this loop's input | **wait, then re-check** (below)        |
+| `quiescent`      | nothing eligible, and nothing anywhere can still become eligible                   | **stop**                               |
+
+Without it the rule lives in whoever wrote the `/loop` prompt — retyped every run, worded differently each time, and silently wrong when it is not typed at all. The failure it prevents is the **false finish**: an implement drain stops because its own queue is empty while the review loop is mid-issue and about to hand an issue back as `changes-requested`. The more the two loops cooperate, the more often that happens.
+
+**Cap reached is not queue empty.** `work.cap` defaults to 10, so ending with eligible issues left is ordinary, not exceptional — that is `work remaining`, and treating it as an empty queue stalls a queue that has work in it right now. Settle the cap question **first**; only a genuinely empty selection can be one of the other two states.
+
+**The state is reported after the lock is released.** Waiting happens **between** drains, never inside one, so a driver sitting out a `backpressure` interval holds nothing and blocks neither loop.
+
+### What counts as backpressure
+
+Narrower than "something is still open". `done`, `blocked` and `needs human` are **terminal for both loops** — they produce no further input, so none of them may keep a loop alive (`needs human` waits on a person, who is not a producer a loop can wait for). The condition is:
+
+> Wait while any issue sits in a state that can still transition **into this loop's own input state**.
+
+| Loop      | Own input                   | Waits on                               | Because that becomes its input               |
+| :-------- | :-------------------------- | :------------------------------------- | :------------------------------------------- |
+| implement | `ready`, `changesRequested` | `reviewRequested`, `reviewing`         | a review can return `changes-requested`      |
+| review    | `reviewRequested`           | `ready`, `changesRequested`, `working` | an implementation produces `reviewRequested` |
+
+### The bound is the counterpart's lock, not a round count
+
+Waiting is only worth anything while something is actually producing, so read the **counterpart loop's** [single-flight lock](#the-single-flight-lock) — the implement loop reads `…/work/review.lock`, the review loop reads `…/work/implement.lock`. Its `refreshed` heartbeat is re-stamped once per iteration, which is exactly the question here answered:
+
+| The counterpart's lock                       | Meaning                            | Action                                                                          |
+| :------------------------------------------- | :--------------------------------- | :------------------------------------------------------------------------------ |
+| **absent**                                   | nobody is running the counterpart  | **stop** — and report how many issues sit in the waited-on states unattended    |
+| **`refreshed` advancing**                    | the counterpart is making progress | **keep waiting**, however long it takes                                         |
+| **`refreshed` frozen past the stale window** | the counterpart crashed            | **stop** and report; the next counterpart drain's reconcile reclaims its orphan |
+
+A **round count cannot do this**: a single large issue sits in `working` for an hour with no label moving at all, and a count would abort on it — whereas the heartbeat separates **slow** from **dead**, which is the distinction it was built for.
+
+**The lock's boundary applies here too.** It is visible only within one checkout, so an absent lock means "nobody is running the counterpart **here**" — a drain in another clone is invisible to this check. Report it in those words rather than as "the other loop is dead".
+
+### The wait interval is not the stale window
+
+Two numbers, two jobs — unify them and one of them breaks. The stale window is **crash detection**, deliberately hours rather than minutes; the wait below is a **poll interval**, and polling hourly makes the loop useless.
+
+| Key                 |    Default | Why                                                                                                                                                                                                                                                                                                            |
+| :------------------ | ---------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `work.loop.wait`    |  **120** s | One counterpart iteration runs in minutes: a fresh worktree installs its dependencies before the gate, and the model reads the issue and the diff before either. The usual 60 s driver floor polls 3–5× per counterpart issue, each poll re-reading the skill and re-querying the tracker; 120 s lands at 1–2. |
+| `work.loop.maxWait` | **1800** s | A backstop, not the normal exit — a counterpart that drains empty releases its lock and ends the wait by itself, and a crashed one is caught by its frozen heartbeat. Reaching it means something nobody predicted, so it **reports loudly** instead of ending quietly.                                        |
+
+**Naming the state is the whole mechanism.** The skill reports the state and the recommended action in prose and calls no driver API, so `/loop`, a cron job and a human can all act on the same report and no skill acquires a dependency on a client-specific loop mechanism.
 
 ## Branch strategy
 

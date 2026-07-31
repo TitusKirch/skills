@@ -62,6 +62,14 @@ Release the lock. Summarise each issue and its outcome (handed to `reviewRequest
 
 Issues now in `reviewRequested` are the drain's hand-off — the `work-review-queue` picks them up. Name the count.
 
+**Then name the queue's state**, so a repeating driver (`/loop`, cron, a human) knows whether to run again, wait, or stop — instead of that rule living in whoever typed the loop prompt. Decide it **in this order**:
+
+1. **Stopped on `work.cap` with eligible issues left → `work remaining`.** Run again **immediately**, never wait: a cap-ended drain is not an empty queue.
+2. **Nothing eligible, but issues sit in `reviewRequested`/`reviewing` → `backpressure`.** A review can hand any of them back as `changes-requested`, which is this loop's input. Wait `work.loop.wait` (default 120 s) and re-check — but only while the **review** lock's `refreshed` heartbeat keeps advancing. That lock **absent** (nobody is reviewing in this checkout) or **frozen past the stale window** (the review drain crashed) → **stop and report** instead, naming how many issues wait unattended. `work.loop.maxWait` (default 1800 s) is the loud backstop.
+3. **Otherwise → `quiescent`.** Stop. `done`, `blocked` and `needs human` are terminal and never keep the loop alive.
+
+The wait happens **between** drains, after the lock is released, so a waiting driver blocks nothing. Full rule — the states, what each loop waits on, and why the bound is the counterpart's heartbeat rather than a round count: **Queue state** in `work-implement`'s REFERENCE.
+
 ## Config
 
 <skills-config>
