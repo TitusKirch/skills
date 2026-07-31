@@ -36,11 +36,12 @@ Before building the queue, reclaim issues an earlier implement-run crashed on: a
 ### 3. Build the queue
 
 - The **selection query** (`work-implement`'s REFERENCE) → every eligible issue (`ready` **or** `changes-requested`) → ordered by priority (Linear native priority; GitHub `work.priorityLabels`).
+- **Withhold the self-contradicting ones.** An eligible issue that _also_ carries `work.labels.needsTriage` (when the repo configures it; **off by default**) claims both "nobody has assessed this" and "approved, pick it up". Partition it out of the queue — **unleased, unlabelled, unassigned, uncommented** — and carry it to the report (step 6). It is **not** worked and **not** marked `blocked`: nothing is wrong with the work, a label is wrong, and a human clears it in one edit. The rule, and why the more permissive label is never obeyed: **Contradictory labels** in `work-implement`'s REFERENCE.
 - **`branch:<name>` → re-sort into dependency order** (**Dependency ordering** in `work-implement`'s REFERENCE) — prerequisites before dependents, priority as the tiebreak; **order first, then apply the cap**. Under `worktree` skip this.
 
 ### 4. Announce the batch — then drain
 
-**`ai: ready` is already the human's approval** to work an issue — the label means "scoped + approved for an AI agent to pick up". So the drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, branch strategy and parallel mode (call out any **dependency-forced order**, plus issues **deferred** or **skipped**), then drain. Under `/loop` it runs unattended.
+**`ai: ready` is already the human's approval** to work an issue — the label means "scoped + approved for an AI agent to pick up". So the drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, branch strategy and parallel mode (call out any **dependency-forced order**, plus issues **deferred**, **skipped** or **withheld as untriaged**), then drain. Under `/loop` it runs unattended.
 
 - **Plan-only triggers** ("just show me", "dry run", "nur den Plan", "don't run") still stop after the plan.
 - If the ready-gate is **widened** (`labels.ready: false`, so issues were never explicitly opted-in), confirm before working those — there is no per-issue approval to lean on.
@@ -59,6 +60,8 @@ Each worker returns `reviewRequested` (pushed, handed to the review loop — the
 ### 6. Report & release
 
 Release the lock. Summarise each issue and its outcome (handed to `reviewRequested` / `blocked` reason / skipped), what the reconcile reclaimed, issues **deferred** to a later run, any **dependency cycle** a human must untangle, and any **label/body conflict** a worker flagged.
+
+**Name every issue withheld for contradicting labels**, one line each with its number and both labels — this report is the _only_ artifact the check produces, so an issue left out of it is an issue that silently vanished from the queue. Say what clears it: drop the triage label if the issue really is assessed, drop the lifecycle label if it is not.
 
 Issues now in `reviewRequested` are the drain's hand-off — the `work-review-queue` picks them up. Name the count.
 
@@ -208,6 +211,7 @@ of a file.
 - **Claim-before-work, fresh fetch each iteration** — the worker leases each issue; the loop never snapshots the queue.
 - **The cap is mandatory** — never drain unbounded, and apply it **after** the ordering.
 - **Never work a dependent before its prerequisite** — order the graph, defer what depends on work not landing this run, skip cycles for a human.
+- **Never work an issue whose labels contradict each other** — `needsTriage` beside a lifecycle label is withheld and reported, never resolved by obeying the more permissive of the two, and never written to the tracker.
 - **This loop never reviews.** It produces `reviewRequested`/`blocked` only; `done`/`changes-requested`/`needs human` are the review loop's and the human's.
 - Inherits `work-implement`'s attribution-free, secret-free, only-this-issue guardrails.
 
