@@ -55,13 +55,15 @@ For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-imple
 
 **Heartbeat the lock each iteration.** The lock is held for the whole batch, which no single shell process spans, so the drain **re-stamps** the implement lock's `refreshed` timestamp once per iteration (one cheap command) — that is what keeps a **live** drain from being misread as a crashed one by the **heartbeat-timestamp** stale rule (**The single-flight lock** below). The lock is released **explicitly** at step 6, not by a shell-lifetime trap.
 
-Each worker returns `reviewRequested` (pushed, handed to the review loop — the normal outcome), `blocked`, or an error. **`reviewRequested`/`blocked` → continue** to the next issue; only a **hard error** (git broken, tracker down) stops the drain, releases the lock, and reports.
+Each worker returns `reviewRequested` (pushed, handed to the review loop — the normal outcome), `blocked`, `skipped`, or an error. **`reviewRequested`/`blocked`/`skipped` → continue** to the next issue; only a **hard error** (git broken, tracker down) stops the drain, releases the lock, and reports.
+
+**`skipped` is a worker-level withhold, not a failure.** The worker re-checks the triage contradiction at claim time, so a triage label added _between_ step 3's partition and the lease surfaces here instead — the same refusal, one issue later. It writes nothing to the tracker, so the drain treats it exactly as step 3's partition does: carry it into the **withheld** list step 6 names, and move on.
 
 ### 6. Report & release
 
 Release the lock. Summarise each issue and its outcome (handed to `reviewRequested` / `blocked` reason / skipped), what the reconcile reclaimed, issues **deferred** to a later run, any **dependency cycle** a human must untangle, and any **label/body conflict** a worker flagged.
 
-**Name every issue withheld for contradicting labels**, one line each with its number and both labels — this report is the _only_ artifact the check produces, so an issue left out of it is an issue that silently vanished from the queue. Say what clears it: drop the triage label if the issue really is assessed, drop the lifecycle label if it is not.
+**Name every issue withheld for contradicting labels**, one line each with its number and both labels — **both** the ones step 3's partition held back and the ones a worker returned `skipped` at claim time, which are the same finding caught at two moments. This report is the _only_ artifact the check produces, so an issue left out of it is an issue that silently vanished from the queue. Say what clears it: drop the triage label if the issue really is assessed, drop the lifecycle label if it is not.
 
 Issues now in `reviewRequested` are the drain's hand-off — the `work-review-queue` picks them up. Name the count.
 
