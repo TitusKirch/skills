@@ -28,3 +28,4 @@ A decision earns an ADR when it constrains work that comes later and its reasoni
 | [ADR-0017](0017-make-a-blanket-bash-grant-a-named-exception.md)     | Make a blanket Bash grant a named exception                 | accepted | 2026-07-29 |
 | [ADR-0018](0018-split-ai-accepted-from-shipped.md)                  | Split AI-accepted from shipped                              | accepted | 2026-07-30 |
 | [ADR-0019](0019-render-every-plan-where-it-is-read.md)              | Render every plan where it is read                          | accepted | 2026-07-30 |
+| [ADR-0020](0020-back-the-local-tracker-with-committed-files.md)     | Back the local tracker with committed issue files           | accepted | 2026-07-31 |
