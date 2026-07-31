@@ -11,6 +11,7 @@ allowed-tools:
   - Grep
   - Bash(jq:*)
   - Bash(grep:*)
+  - Bash(git log:*)
 ---
 
 # write-docs
@@ -95,10 +96,11 @@ Desired-state, idempotent — like a `--fix` linter for the docs tree.
 2. Diff against the convention and group the plan:
    - **Auto-fix (mechanical)** — numbering gaps/dupes, missing `index.md`, removed/unknown frontmatter keys, `N.kebab.md` filename normalization, unambiguous broken relative links.
    - **Prompt (value-needing)** — a missing required field (`title`/`description`): derive a candidate from the H1 / first paragraph and confirm.
+   - **Import (value-needing)** — a **dedicated ADR directory outside `99.adr/`** (`docs/adr/` and near variants): decisions recorded in someone else's format, which every other category misses, so they are missing from the decision log while the log still reads as complete. Propose the whole admission as **one** operation — move, rename to `NNNN-title.md`, the log's row, the missing frontmatter, the body under the required H2s — and apply it only on confirmation. Detection rule, the `date` derivation and what is report-only instead: [REFERENCE.md](REFERENCE.md#foreign-adrs--a-decision-log-written-elsewhere).
    - **Report only** — a how-to without a checklist, a page that fits no section, suspected duplication of an upstream source **or of a file in the repo**, any secret detected. Never auto-edited.
-3. Show the **plan + diff**; on confirm apply **only structure + frontmatter**. **Never rewrite prose. Only touch files inside `docs/`.**
+3. Show the **plan + diff**; on confirm apply **only structure + frontmatter**. **Never rewrite prose. Only touch files inside `docs/`.** The one exception is an **imported** ADR, whose body is **re-homed** under the required H2s — the author's sentences are moved, never rewritten.
 
-`99.adr/` is **exempt** — links and the decision log only. An ADR id is permanent, so never renumber one, never rename it to the dot-schema, never close a gap in the sequence ([REFERENCE.md](REFERENCE.md#reconcile-rules)).
+`99.adr/` is **exempt** — links and the decision log only. An ADR id is permanent, so never renumber one, never rename it to the dot-schema, never close a gap in the sequence ([REFERENCE.md](REFERENCE.md#reconcile-rules)). A **foreign** ADR is outside that exemption: it was never accepted _in this log_, so giving it an id is a first assignment rather than a renumbering, and shaping it on entry is not an edit to an accepted record.
 
 <skills-plan>
 

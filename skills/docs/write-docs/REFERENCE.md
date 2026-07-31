@@ -155,6 +155,34 @@ An ADR is **immutable once accepted**. The log records what was decided and when
 - **Never** rewrite an accepted ADR's Context/Decision/Consequences, delete an ADR, or renumber one. Typo and link fixes are the only in-place edits.
 - The general page rules **do not apply**: no edit-in-place for a changed decision, no one-topic-per-page dedupe (several ADRs may touch the same topic — that is the log working, not duplication), and no prose reconcile.
 
+### Foreign ADRs — a decision log written elsewhere
+
+A repo may already hold ADRs that were written **somewhere else, in someone else's format** — another tool's `docs/adr/0001-slug.md` with no frontmatter and a two-sentence body, a migrated repo's log, a human contributor following a different convention. Such a file matches no category in [Reconcile rules](#reconcile-rules): it is not a numbering gap, not a missing `index.md`, not an unknown key on a page we own. It is a page the job never looks at, so the decision it records is **absent from the decision log** — the one failure a log must not have, because an incomplete log still reads as complete.
+
+The **reconcile** job therefore recognizes such a directory and offers to bring it into the contract.
+
+**Detection is a dedicated ADR directory, and nothing else.** Inside `docs/`, a directory whose whole content is decision records: `adr/`, `adrs/`, `decisions/`, `architecture-decisions/` and near variants of those names.
+
+- **Never match on filenames.** A page called `adr-caching.md` sitting in a section, or an `adr/` holding a mix of decisions and other material, is **report only** — filename matching starts collecting documents nobody meant as decision records, and a wrong import is far more expensive than a missed one. Unsure → report, don't import.
+- **A decision directory outside `docs/`** (a root-level `adr/`) is likewise **report only**: the reconcile blast radius stops at `docs/`, so name it in the report and leave the move to a human.
+
+**The import is one proposal, and nothing moves unasked.** Move, rename, index row and the missing values are presented **together** and applied only on confirmation. Splitting the move out as a mechanical first step saves nothing — `title` / `description` / `status` have to be asked for anyway — and buys a half-imported log, which is worse than an unimported one.
+
+| The import supplies    | From                                                                                                                                      |
+| :--------------------- | :---------------------------------------------------------------------------------------------------------------------------------------- |
+| Path + name            | `docs/99.adr/NNNN-title.md`, `NNNN` the next free id — one per file, in the source directory's own order                                  |
+| `title`/`description`  | proposed from the H1 / first paragraph, confirmed like any other missing required field                                                   |
+| `status`               | proposed (`accepted` for a decision evidently in force), confirmed — never silently defaulted                                             |
+| `date`                 | the file's **first commit** is the decision date: `git log --diff-filter=A --reverse --format=%as -- <file>`, first line. No guess needed |
+| Body                   | the existing text **re-homed** under the required `Context` / `Decision` / `Consequences` H2s                                             |
+| The decision log's row | `99.adr/index.md`, in the same change                                                                                                     |
+
+- **`date` is the decision's date, not the import's.** The field records when the `status` last changed, and a record entering the log unchanged last changed when it was written — so the first commit, never the day it moved.
+- **Untracked, or no commit for the file** → git has no answer; fall back to a date the file itself states, else propose today's and say which of the two it is.
+- **Re-homing is not rewriting.** The sentences are the author's and stay the author's — they move under the H2 they belong to, and a section the source never wrote is left empty rather than invented. Everything the reconciler cannot place goes in the plan for a human to place.
+- **Assigning an id does not break [append-only](#lifecycle--append-only).** The file was never accepted _in this log_, so the id is a **first assignment**, not a renumbering, and shaping it on entry is not an edit to an accepted record. From the moment it lands in `99.adr/` it is immutable like every other ADR.
+- **Idempotent** — a second run finds no dedicated ADR directory left to import and proposes nothing.
+
 ## Reconcile rules
 
 Desired-state and idempotent. Blast radius: **structure + frontmatter only, prose untouched, inside `docs/` only, plan + diff first** (see SKILL.md). Categorize each deviation:
@@ -162,10 +190,12 @@ Desired-state and idempotent. Blast radius: **structure + frontmatter only, pros
 | Category      | Examples                                                                                                                              | Action          |
 | :------------ | :------------------------------------------------------------------------------------------------------------------------------------ | :-------------- |
 | Mechanical    | numbering gaps/dupes · missing `index.md` · removed/unknown frontmatter keys · `N.kebab.md` rename · unambiguous broken relative link | auto-fix        |
-| Value-needing | missing required `title`/`description`                                                                                                | propose + ask   |
+| Value-needing | missing required `title`/`description` · a [foreign ADR directory](#foreign-adrs--a-decision-log-written-elsewhere) to import         | propose + ask   |
 | Report only   | how-to without a checklist · page fits no section · suspected upstream duplication · secret found                                     | report, no edit |
 
 **`99.adr/` is exempt.** There the reconciler may only fix broken links and a missing/stale `index.md` row. It must **never** renumber an ADR, normalize `NNNN-title.md` to the dot-schema, close a numbering gap, or touch body prose or `status` — ids are permanent and gaps are not deviations. A missing `title`/`description` is still worth proposing; everything else in an ADR is report-only.
+
+**The exemption covers the log, not what is outside it.** A [foreign ADR](#foreign-adrs--a-decision-log-written-elsewhere) has never entered `99.adr/`, so importing one is not an exception to the rule above — there is no id to renumber and no accepted record to edit. It is the single case where the reconciler moves a file into `99.adr/` and re-homes body prose, and it does so only as one confirmed proposal.
 
 Read the whole tree fresh every run — it is live state and is **never cached**.
 
