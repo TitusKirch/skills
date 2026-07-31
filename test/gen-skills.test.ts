@@ -252,6 +252,32 @@ describe('what a write actually puts on disk', () => {
       'a skill that never names the resolver ships none'
     );
   });
+
+  test('a resolver left behind by a skill that stopped naming it is removed', () => {
+    const { root } = open();
+    // beta names the script nowhere, so this copy is exactly the orphan the mention-based
+    // trigger can strand: shipped once, then unreferenced by the text that decides shipping.
+    const orphan = join(
+      root,
+      'skills',
+      'repo',
+      'beta',
+      'templates',
+      'resolve-config.sh'
+    );
+    mkdirSync(join(root, 'skills', 'repo', 'beta', 'templates'), {
+      recursive: true
+    });
+    writeFileSync(orphan, '# stranded\n');
+
+    const check = main(['--check'], root);
+    assert.equal(check.code, 1);
+    assert.match(check.stderr, /repo\/beta\/templates\/resolve-config\.sh/);
+
+    main(['--write'], root);
+    assert.ok(!existsSync(orphan), 'the orphaned resolver is still shipped');
+    assert.equal(main(['--check'], root).code, 0);
+  });
 });
 
 describe('discovery', () => {

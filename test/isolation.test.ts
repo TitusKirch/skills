@@ -207,6 +207,19 @@ describe('the generated config block is self-contained', () => {
     }
   });
 
+  test('no skill ships a resolver it does not name', () => {
+    // The other half of the contract, checked against the real registry rather than a
+    // fixture: the mention is what the sync keys shipping on, so a copy left behind by a
+    // skill that stopped naming the script is checked by nothing above — every assertion
+    // here iterates the skills that *do* name it.
+    const orphans = allSkills().filter(
+      (path) =>
+        !withResolver.includes(path) &&
+        existsSync(join(ROOT, 'skills', path, 'templates', 'resolve-config.sh'))
+    );
+    assert.deepEqual(orphans, [], 'shipped resolver that nothing points at');
+  });
+
   test('all shipped resolvers are byte-identical to the canonical one', () => {
     const canonical = readFileSync(
       join(ROOT, 'scripts', 'resolve-config.sh'),

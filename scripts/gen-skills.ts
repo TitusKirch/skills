@@ -14,7 +14,14 @@
 //   node scripts/gen-skills.ts --check   # exit 1 if any is stale (CI)
 //   node scripts/gen-skills.ts --paths   # list SKILL.md paths (for scripts)
 
-import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+  mkdirSync,
+  rmSync,
+  existsSync
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
@@ -576,9 +583,21 @@ export function syncConfigContract(
       if (next.includes(RESOLVER_PATH)) shipsResolver = true;
     }
 
-    if (!shipsResolver) continue;
-
     const target = join(dir, 'templates', 'resolve-config.sh');
+
+    // The mention is the whole trigger, in both directions. A skill that stops naming the
+    // script keeps a copy nothing points at — drift-checked by nothing, and one more file
+    // an installed skill ships without reason — so the sync removes it rather than only
+    // ever adding. Without this the roster can only grow, and the "and to nobody else"
+    // half of the contract holds by accident.
+    if (!shipsResolver) {
+      if (existsSync(target)) {
+        stale.push(`skills/${skill.path}/templates/resolve-config.sh (orphan)`);
+        if (!check) rmSync(target);
+      }
+      continue;
+    }
+
     let currentResolver = '';
     try {
       currentResolver = readFileSync(target, 'utf8');
