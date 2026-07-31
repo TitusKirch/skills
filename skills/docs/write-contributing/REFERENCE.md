@@ -25,23 +25,23 @@ The order in [SKILL.md](SKILL.md#structure--the-house-order) is fixed. What each
 
 One row per fact the guide states. **Owner** is read first; the fallback chain runs left to right; **never** names what must not stand in for it.
 
-| Fact                  | Owner → fallback                                                                                            | Never                                                                 |
-| :-------------------- | :---------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------- |
-| **Base branch**       | `pr.base` in the config → the remote's default branch → ask                                                 | `main` by assumption, or the branch the session happens to be on      |
-| **Gate command**      | the root `verify` key → a `verify` / `check` / `test` script in the manifest → the command CI runs → ask    | a command that exists in no manifest and no workflow                  |
-| **Package manager**   | the committed lockfile → a `packageManager` / `engines.packageManager` pin                                  | `npm` because the manifest is a `package.json`                        |
-| **Runtime floor**     | `engines` → `.nvmrc` / `.tool-versions` / `mise.toml` → the CI matrix → ask                                 | the version installed on this machine                                 |
-| **Commit convention** | a commitlint config → the husky hook that runs it → the last ~50 commit subjects                            | "Conventional Commits" because the repo happens to use them elsewhere |
-| **Commit scopes**     | a `scopeVocab` / `scope-enum` in the commitlint config → the scopes the recent history actually uses        | an invented scope list                                                |
-| **Commit hooks**      | `.husky/` + the lint-staged config → any other hook manager's config                                        | claiming a hook the repo does not install                             |
-| **Intake routes**     | `.github/ISSUE_TEMPLATE/*.yml` (one row each) + `config.yml`'s `contact_links` → the plain new-issue URL    | a route the forge does not offer, e.g. Discussions when they are off  |
-| **Security route**    | `SECURITY.md` → the forge's private-reporting setting                                                       | "open an issue" — the one instruction that must never appear here     |
-| **Code of Conduct**   | `CODE_OF_CONDUCT.md`                                                                                        | linking a code of conduct the repo does not carry                     |
-| **PR expectations**   | `.github/pull_request_template.md` → the PR checks that are required                                        | a checklist the template does not ask for                             |
-| **Release flow**      | the release tool's config and its workflow (release-please, changesets, semantic-release) → the tag history | describing a manual flow where automation exists, or the reverse      |
-| **Release branch**    | the release workflow's trigger branch                                                                       | assuming it is the same branch contributors target                    |
-| **License**           | `LICENSE` → the manifest's `license` field                                                                  | naming a license from the badge alone                                 |
-| **Repo slug / URLs**  | the `origin` remote                                                                                         | the owner name from another repo's guide                              |
+| Fact                  | Owner → fallback                                                                                            | Never                                                                                |
+| :-------------------- | :---------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------- |
+| **Base branch**       | `pr.base` in the config → the remote's default branch → ask                                                 | `main` by assumption, or the branch the session happens to be on                     |
+| **Gate command**      | the root `verify` key → a `verify` / `check` / `test` script in the manifest → the command CI runs → ask    | the script's **body** in place of its name; a command in no manifest and no workflow |
+| **Package manager**   | the committed lockfile → a `packageManager` / `engines.packageManager` pin                                  | `npm` because the manifest is a `package.json`                                       |
+| **Runtime floor**     | `engines` → `.nvmrc` / `.tool-versions` / `mise.toml` → the CI matrix → ask                                 | the version installed on this machine                                                |
+| **Commit convention** | a commitlint config → the husky hook that runs it → the last ~50 commit subjects                            | "Conventional Commits" because the repo happens to use them elsewhere                |
+| **Commit scopes**     | a `scopeVocab` / `scope-enum` in the commitlint config → the scopes the recent history actually uses        | an invented scope list                                                               |
+| **Commit hooks**      | `.husky/` + the lint-staged config → any other hook manager's config                                        | claiming a hook the repo does not install                                            |
+| **Intake routes**     | `.github/ISSUE_TEMPLATE/*.yml` (one row each) + `config.yml`'s `contact_links` → the plain new-issue URL    | a route the forge does not offer, e.g. Discussions when they are off                 |
+| **Security route**    | `SECURITY.md` → the forge's private-reporting setting                                                       | "open an issue" — the one instruction that must never appear here                    |
+| **Code of Conduct**   | `CODE_OF_CONDUCT.md`                                                                                        | linking a code of conduct the repo does not carry                                    |
+| **PR expectations**   | `.github/pull_request_template.md` → the PR checks that are required                                        | a checklist the template does not ask for                                            |
+| **Release flow**      | the release tool's config and its workflow (release-please, changesets, semantic-release) → the tag history | describing a manual flow where automation exists, or the reverse                     |
+| **Release branch**    | the release workflow's trigger branch                                                                       | assuming it is the same branch contributors target                                   |
+| **License**           | `LICENSE` → the manifest's `license` field                                                                  | naming a license from the badge alone                                                |
+| **Repo slug / URLs**  | the `origin` remote                                                                                         | the owner name from another repo's guide                                             |
 
 **Where the config and a repo file disagree, the config wins** — it is the deliberate statement, the file the maintainer edited on purpose. Where two _files_ disagree, nothing wins: that is the **prompt** case, and it is reported with both candidates and their sources.
 
@@ -56,18 +56,35 @@ base=$(printf '%s' "$resolved" | jq -er '.pr.base // empty' 2>/dev/null) || base
 # …and where the forge CLI is available and origin/HEAD is unset:
 #   gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
 
-# Gate command — the root key, then the manifest's own scripts.
-verify=$(printf '%s' "$resolved" | jq -er '.verify // empty' 2>/dev/null) || verify=
-[ -n "$verify" ] || verify=$(jq -er '.scripts.verify // .scripts.check // .scripts.test // empty' package.json 2>/dev/null) || verify=
-
-# Package manager — the lockfile is the fact; the pin is the version.
+# Package manager — the lockfile is the fact; the pin is only the version.
 #   pnpm-lock.yaml → pnpm · package-lock.json → npm · bun.lock/bun.lockb → bun · yarn.lock → yarn
 #   composer.lock → composer · Cargo.lock → cargo
-jq -r '.packageManager // empty' package.json 2>/dev/null
+pm=
+for probe in pnpm-lock.yaml:pnpm package-lock.json:npm bun.lock:bun bun.lockb:bun \
+             yarn.lock:yarn composer.lock:composer Cargo.lock:cargo; do
+  [ -f "${probe%%:*}" ] || continue
+  pm=${probe#*:}; break
+done
+jq -r '.packageManager // empty' package.json 2>/dev/null   # the pinned version, where one exists
+
+# Gate command — the root key, then the script the manifest declares.
+# Take the script's KEY and prefix the package manager; never take its VALUE.
+verify=$(printf '%s' "$resolved" | jq -er '.verify // empty' 2>/dev/null) || verify=
+if [ -z "$verify" ]; then
+  key=$(jq -er '.scripts | if has("verify") then "verify"
+                           elif has("check") then "check"
+                           elif has("test")  then "test"
+                           else empty end' package.json 2>/dev/null) || key=
+  [ -n "$key" ] && [ -n "$pm" ] && verify="$pm run $key"
+fi
 
 # Intake routes — one row per template, plus the contact links.
 grep -l . .github/ISSUE_TEMPLATE/*.yml 2>/dev/null   # then read each file's `name:` and `description:`
 ```
+
+**The gate fallback reads the script's name, never its body** — the one trap in this table, because `jq '.scripts.verify'` returns the value and looks right until you read it. The value is the **expansion** (`pnpm check && pnpm skills:check && pnpm typecheck && pnpm test`): a string no contributor types, that restates the manifest into the guide, and that goes stale the moment the script composes one command more. It is the [never transcribe a file](SKILL.md#style-rules) rule, hit on the single row the guide most needs correct — and this is the path **every repo without a config** takes, so it is the common case, not a corner. The two branches must also agree in kind: `.verify` yields a runnable command, so the fallback has to yield one too.
+
+`<pm> run <key>` is always valid; pnpm, bun and yarn also accept the shorthand `<pm> <key>` for a name that collides with no built-in. Prefer whichever form the repo's own workflows and docs already type — that is another derivation, not a style choice. Composer repos read `composer.json`'s `scripts` the same way (`composer <key>`); a Cargo repo with no such manifest falls to `cargo test --locked`; and where no manifest declares one, the [table's](#derivation-table) next fallback is the command CI runs, then asking.
 
 A template's new-issue URL is `https://github.com/<owner>/<repo>/issues/new?template=<file>`; a `config.yml` contact link carries its own `url` verbatim.
 
