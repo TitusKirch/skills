@@ -40,7 +40,7 @@ Before building the queue, reclaim issues an earlier implement-run crashed on: a
 
 ### 4. Announce the batch — then drain
 
-**`ai: ready` is already the human's approval** to work an issue — the label means "scoped + approved for an AI agent to pick up". So the drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, branch strategy and parallel mode (call out any **dependency-forced order**, plus issues **deferred** or **skipped**), then drain. Under `/loop` it runs unattended.
+**`ai: ready` is already the human's approval** to work an issue — the label means "scoped + approved for an AI agent to pick up". So the drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, branch strategy and parallel mode (call out any **dependency-forced order**, any **mutex-forced wave split**, plus issues **deferred** or **skipped**), then drain. Under `/loop` it runs unattended.
 
 - **Plan-only triggers** ("just show me", "dry run", "nur den Plan", "don't run") still stop after the plan.
 - If the ready-gate is **widened** (`labels.ready: false`, so issues were never explicitly opted-in), confirm before working those — there is no per-issue approval to lean on.
@@ -51,6 +51,7 @@ For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-imple
 
 - **sequential** (`parallel: false`) — one worker at a time; **re-fetch** the next eligible issue each iteration.
 - **parallel** (`parallel: true`) — N workers in isolated git worktrees; for a `branch:<name>` target, pushes are integrated **serialized**; dependent issues never run concurrently. A worktree holds **tracked files only**, so each worker installs the repo's dependencies in its own tree before verifying — a real per-worker cost to weigh when raising N. Mechanics: **Branch strategy** in `work-implement`'s REFERENCE.
+- **Mutex — split the concurrent batch into waves.** Issues a human joined by an **order-free** relation (`mutex: <group>` on GitHub, the native `related` relation on Linear) must not run **at the same time**, though either order is fine. So no two of them go into one wave: walk the batch in order, place each issue in the current wave unless a partner is already there, and open the next wave with what did not fit. This applies under **both** branch strategies (under `branch:<name>`, within each topological level) and **delays only** — nothing is deferred, labelled or dropped, and the held-back issue runs later in this same run. Under `parallel: false` it is inert. Rules: **Parallel-batch mutex** in `work-implement`'s REFERENCE.
 
 **Heartbeat the lock each iteration.** The lock is held for the whole batch, which no single shell process spans, so the drain **re-stamps** the implement lock's `refreshed` timestamp once per iteration (one cheap command) — that is what keeps a **live** drain from being misread as a crashed one by the **heartbeat-timestamp** stale rule (**The single-flight lock** below). The lock is released **explicitly** at step 6, not by a shell-lifetime trap.
 
@@ -58,7 +59,7 @@ Each worker returns `reviewRequested` (pushed, handed to the review loop — the
 
 ### 6. Report & release
 
-Release the lock. Summarise each issue and its outcome (handed to `reviewRequested` / `blocked` reason / skipped), what the reconcile reclaimed, issues **deferred** to a later run, any **dependency cycle** a human must untangle, and any **label/body conflict** a worker flagged.
+Release the lock. Summarise each issue and its outcome (handed to `reviewRequested` / `blocked` reason / skipped), what the reconcile reclaimed, issues **deferred** to a later run, any **mutex** that split the batch into waves (a delay within this run, not a deferral), any **dependency cycle** a human must untangle, and any **label/body conflict** a worker flagged.
 
 Issues now in `reviewRequested` are the drain's hand-off — the `work-review-queue` picks them up. Name the count.
 
@@ -208,6 +209,7 @@ of a file.
 - **Claim-before-work, fresh fetch each iteration** — the worker leases each issue; the loop never snapshots the queue.
 - **The cap is mandatory** — never drain unbounded, and apply it **after** the ordering.
 - **Never work a dependent before its prerequisite** — order the graph, defer what depends on work not landing this run, skip cycles for a human.
+- **Never run a declared mutex pair concurrently** — split them across waves of the same run, under either branch strategy. A mutex **delays**; it never defers, labels, or blocks, and the skill never writes a `mutex:` label.
 - **This loop never reviews.** It produces `reviewRequested`/`blocked` only; `done`/`changes-requested`/`needs human` are the review loop's and the human's.
 - Inherits `work-implement`'s attribution-free, secret-free, only-this-issue guardrails.
 

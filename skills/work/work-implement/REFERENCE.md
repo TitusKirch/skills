@@ -458,6 +458,7 @@ Two **independent** knobs — `work.branch` (where work lands) × `work.parallel
 - **A worktree starts with nothing installed**, so [step 7's verify](#running-the-repos-checks) installs the lockfile there **first**. `git worktree` checks out **tracked** files only: `node_modules`, `vendor` and every other gitignored directory are absent, however completely installed the tree the drain was invoked from is. Skip the install and the gate resolves against whatever is on `PATH` — accidentally green, accidentally red, and either way not the versions this branch pins. A run that stays in the **working tree** (sequential, on a shared branch or hopping branches in place) needs none of this; what is installed there is already the right thing. This is why the skill carries the **isolated** check-command block rather than the base one.
 - **Every extra worktree pays a full install** — the real price of concurrency, and on a repo whose dependencies run to hundreds of megabytes the install can outlast the implementation it gates. Worth weighing before raising the worker count, and the reason a concurrency bound is a different knob from `cap`. Making that cheaper — copying or linking the heavy directories into a new worktree — is the repo's own call, never something a worker does behind the run's back: one `node_modules` shared by two live workers is one install either of them can leave wrong for the other.
 - **Serialized integration** — for a shared `branch:<name>` target under `parallel: true`, parallel work is produced in isolated worktrees and landed one commit at a time (push → rebase → retry). This is what makes `branch:dev` + `parallel` race-free.
+- **Mutex** — two issues a human has declared **order-free but colliding** (`mutex: <group>` on GitHub, `related` on Linear) never share a concurrent batch under `parallel: true`, in **either** branch mode; they run in different waves of the **same** run ([parallel-batch mutex](#parallel-batch-mutex)). Under `parallel: false` there is nothing to enforce.
 - **`worktree`** branches off `pr.base`; the worktree with committed+pushed work is removed after the PR is opened (commits live on the remote/branch).
 - **Dependencies** — under `branch:<name>` the drain works prerequisites first within the run ([dependency ordering](#dependency-ordering)); the shared branch accumulates, so the dependent issue just sees the code. Under `worktree` each issue branches off a clean `pr.base` and sees nothing of its siblings, so the `ready` gate stays the mechanism — a dependent issue is not `ready` until its parent merges. Stacked branches are a **v2** concern — deferred, with the rationale recorded in this skill's `DESIGN.md`.
 
@@ -516,10 +517,50 @@ A dependency cycle (A → B → A) has no valid order and is a **tracker-data er
 
 `branch:<name>` + `parallel: true` — dependent issues **cannot** run concurrently. Process the graph in **topological levels**: each level holds mutually independent issues that may run in parallel; levels run **sequentially**, with each level's [serialized integration](#branch-strategy) landing on the branch before the next starts. A chain therefore degenerates to sequential, which is the point.
 
+## Parallel-batch mutex
+
+Some issues carry **no ordering at all** and still must not run **at the same time** — two issues that rewrite the same file, either order fine, neither a prerequisite for the other. `blockedBy` is the wrong tool for that: it invents an order that does not exist and gates one behind the other permanently. So the constraint gets its **own**, order-free relation, read as a **mutex** — two issues joined by it are never selected into the **same parallel batch**, and the order between them stays free.
+
+**This is not [dependency ordering](#dependency-ordering).** That section answers _which one first_; a mutex answers _not together_. It is **symmetric**, so it reads the same from either end, and it never contributes an edge to the topological sort — a mutex can no more create a cycle than it can create an order.
+
+### The carrier
+
+The two trackers differ here, because only one of them has an order-free relation to lend:
+
+| Tracker    | Carrier                                   | Shape                                          |
+| :--------- | :---------------------------------------- | :--------------------------------------------- |
+| **GitHub** | the label convention **`mutex: <group>`** | a **group** — every issue carrying that label  |
+| **Linear** | the native **`related`** relation         | a **pair** — one edge joins exactly two issues |
+
+**GitHub has no order-free relation**, confirmed against the API: its native issue relationships are `blocked_by` / `blocking` (both ordered) and sub-issues (ordered), and nothing else. So the carrier there is a **label convention** — visible in the UI where the human declaring the collision is already working, filterable with a plain `gh issue list --label "mutex: <group>"`, and needing no API GitHub does not have. It is also **free to read**: labels already ride along on the [selection query](#selection-query)'s `--json … labels`, so the groups are known without one extra call. The group name is the human's, and any label matching the `mutex: ` prefix is one — nothing in the config enumerates them.
+
+**On Linear the read is the fan-out, not free.** `list_issues` returns no relations, so `related` comes from the same per-candidate `get_issue(id, includeRelations: true)` call [dependency ordering](#dependency-ordering) makes — read both relation kinds from that one response, and run the fan-out here even in a mode that would not otherwise have needed it.
+
+**The two shapes genuinely differ, and that is not a defect.** A GitHub label is an **equivalence class**: every issue wearing `mutex: reference-md` collides with every other one, by construction. A Linear `related` edge is **pairwise and not transitive** — A related B and B related C says nothing about A and C — so **never take connected components** of the `related` graph; that would serialize a pair no human joined. Judge each edge on its own.
+
+**Neither carrier is ever written by these skills.** A `mutex:` label must already exist on the tracker and is applied by the human who knows the collision; the drain reads it and never creates, adds or removes one — the same stance the lifecycle labels take. Likewise `related` on Linear. An issue may sit in **several** groups (several `mutex:` labels, several `related` partners); it then collides with the union of them.
+
+### What it changes
+
+**Only batch composition, and only under `parallel: true`** — that is the whole blast radius:
+
+| Mode                               | Effect                                                                                           |
+| :--------------------------------- | :----------------------------------------------------------------------------------------------- |
+| `parallel: false`                  | **inert** — a sequential run already works one issue at a time, which is all the mutex asks for  |
+| `worktree` + `parallel: true`      | split the concurrent batch — joined issues land in **different waves** of the same run           |
+| `branch:<name>` + `parallel: true` | split **within** a [topological level](#parallel) — that level runs as two or more waves instead |
+
+**A mutex never removes an issue from the queue.** It is neither [deferral](#cross-set-prerequisites) nor `blocked`: no label is written, nothing is dropped, nothing waits for a later run. The held-back issue runs **later in this same run**, once its partner's worker has finished — the whole difference between "must not run _together_" and "must not run _yet_".
+
+**Priority decides which of the two goes first**, ordering between them being free by definition. The split is otherwise ordinary wave logic: walk the batch in order, place each issue in the current wave unless a partner is already in it, and open the next wave with what did not fit. A group larger than the concurrency bound therefore degenerates to sequential — which is exactly what declaring the group meant.
+
+**The boundary is the [lock's boundary](#the-single-flight-lock).** The mutex is enforced by the drain that composes the waves, so it holds over precisely what that drain controls: one checkout, whose implement lock a second drain — and a direct `/work-implement 42` — already honours. A worker in **another clone** is invisible here for the same reason the lock cannot see it, and a directly-invoked single-issue run has no batch to split, so the mutex is inert there too. Cross-clone coordination needs a central arbiter and stays out of scope.
+
 ## Tracker — GitHub (`gh`)
 
 - **Lifecycle** — labels are flat (`ai: ready` …); flip with `gh issue edit <n> --add-label <x> --remove-label <y>`, assign with `--add-assignee`.
 - **Dependencies** — `blockedBy` / `parent`, GraphQL-only (see [dependency ordering](#dependency-ordering)).
+- **Mutex** — the `mutex: <group>` label convention (GitHub has no order-free relation); read straight off the labels `gh issue list --json …,labels` already returns, so it costs no extra call ([parallel-batch mutex](#parallel-batch-mutex)).
 - **Eligible** — `gh issue list --state open --label …`. Priority via `work.priorityLabels`.
 - **PR link** — `Closes #<n>` in the PR body links the PR to the issue, and auto-closes it on merge **into the default branch only**. With a non-default `pr.base` (e.g. `dev`) that merge fires neither, so the keyword is **traceability, not the route to [`done`](#terminal-done)**.
 - **Reconcile** — find an issue's PRs with `closedByPullRequestsReferences` (see [reconcile](#reconcile)).
@@ -532,6 +573,7 @@ Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — disco
 - **Lifecycle** — `save_issue` with the issue's `id` (create and update are one tool, keyed on the `id`) to set the lifecycle label + assignee, plus that step's `work.linear.states` state when one is mapped — **one atomic call**, so label and state never drift. Step unmapped, or no `states` at all → write the label + assignee and **leave the state alone**. Never invent a state name: the map is the only source, and `statuses` is an eligibility filter, not a mapping.
 - **Eligible** — `list_issues` by team + `labels.ready` + `labels.repo` + `work.linear.statuses`; order by native priority.
 - **Dependencies** — `list_issues` returns no relations; fan out `get_issue(includeRelations: true)` (see [dependency ordering](#dependency-ordering)).
+- **Mutex** — the native `related` relation, read from that **same** fan-out response; pairwise, never transitive, and no `mutex:` label is needed on this tracker ([parallel-batch mutex](#parallel-batch-mutex)).
 - **Which steps write a state** — the **implement loop** writes `states.working` on the lease and `states.reviewRequested` after the push. The **review loop** writes `states.accepted` / `states.changesRequested` / `states.needsHuman` on its verdict; the implement reconcile writes `states.ready` when it reclaims a pre-push orphan. **`states.done` is written by neither** — it is the terminal shipped state, left to Linear's integration or the `release` skill ([AI-accepted is not shipped](#ai-accepted-is-not-shipped)). Linear's integration may also move the issue on a default-branch merge — a bonus, never the signal waited on. `states.ready` is otherwise not written by the worker — it records where a human parks a startable issue, the anchor `statuses` should contain. The `blocked` side-exit is carried by `labels.blocked`.
 - **PR lives on GitHub** — even for a Linear-tracked repo, the code PR is a GitHub PR. The branch name / PR carries the **Linear key** (`ENG-123`) so Linear's GitHub integration **links** it. That link is traceability: on a non-default `pr.base` the integration never moves the issue at all, so [`done`](#terminal-done) comes from the sign-off or the reconcile — never from waiting on Linear.
 - **Team is required**; resolve `work.linear.team` to its id via the cache. `states` is optional — resolve each mapped name to its id via the cache; a name that matches **no** state in the team is a config error → report it, do not fall back to a guess.
