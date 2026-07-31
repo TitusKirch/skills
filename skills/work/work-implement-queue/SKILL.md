@@ -2,7 +2,7 @@
 name: work-implement-queue
 metadata:
   summary: Drains the ready/changes-requested queue — implements each issue to a pushed, reviewable state.
-description: Drains a repo's queue of implementable issues across GitHub (gh) or Linear (MCP) — selects every issue that is ready or has changes requested, orders them by priority (and, on a shared branch, by dependency), then implements each one to a pushed, reviewable state by delegating to work-implement. It hands each issue to the review loop (label review); the separate work-review-queue reviews them. Starts by reclaiming issues an earlier run crashed mid-implementation. Honours a per-run cap, runs sequentially or in parallel per config, single-flight-locked. Use when the user wants to batch-process, drain, or auto-implement the ready issues, run the implement loop, says things like "work the issues", "arbeite die Issues ab", "drain the queue", or runs it under /loop.
+description: Drains a repo's queue of implementable issues across GitHub (gh) or Linear (MCP) — selects every issue that is ready or has changes requested, defers any whose prerequisite has not landed, orders the rest by priority (and, on a shared branch, by dependency), then implements each one to a pushed, reviewable state by delegating to work-implement. It hands each issue to the review loop (label review); the separate work-review-queue reviews them. Starts by reclaiming issues an earlier run crashed mid-implementation. Honours a per-run cap, runs sequentially or in parallel per config, single-flight-locked. Use when the user wants to batch-process, drain, or auto-implement the ready issues, run the implement loop, says things like "work the issues", "arbeite die Issues ab", "drain the queue", or runs it under /loop.
 allowed-tools:
   - Bash
   - Read
@@ -36,7 +36,8 @@ Before building the queue, reclaim issues an earlier implement-run crashed on: a
 ### 3. Build the queue
 
 - The **selection query** (`work-implement`'s REFERENCE) → every eligible issue (`ready` **or** `changes-requested`) → ordered by priority (Linear native priority; GitHub `work.priorityLabels`).
-- **`branch:<name>` → re-sort into dependency order** (**Dependency ordering** in `work-implement`'s REFERENCE) — prerequisites before dependents, priority as the tiebreak; **order first, then apply the cap**. Under `worktree` skip this.
+- **Read each candidate's prerequisites** (**Dependency ordering** in `work-implement`'s REFERENCE) — from the tracker's own relations, under **both** branch strategies. An issue whose prerequisite is **unsatisfied** is **deferred**: dropped from this run's queue, unleased and unlabelled, and named in the report. Satisfied means the prerequisite is closed or its PR merged into `pr.base` — under `branch:<name>`, also that it is in this run's queue and worked first. Deferred is not `blocked`: it clears itself once the prerequisite lands.
+- **`branch:<name>` → re-sort the survivors into dependency order** — prerequisites before dependents, priority as the tiebreak; **order first, then apply the cap**. Under `worktree` there is no re-sort: nothing accumulates, so an in-run prerequisite satisfies nothing and the gate above has already removed every dependent it would have ordered.
 
 ### 4. Announce the batch — then drain
 
