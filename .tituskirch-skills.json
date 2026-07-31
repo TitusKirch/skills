@@ -25,6 +25,7 @@
       "prune-branches",
       "prune-comments",
       "pull-request",
+      "refine-issue",
       "release",
       "tituskirch-skills-config",
       "update-deps",

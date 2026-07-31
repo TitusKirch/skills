@@ -130,6 +130,7 @@ const PLAN_CARRIERS = [
   'repo/release',
   'repo/update-deps',
   'work/issue',
+  'work/refine-issue',
   'work/work-implement-queue',
   'work/work-review-queue'
 ];
@@ -138,7 +139,7 @@ describe('the generated config block is self-contained', () => {
   test('it is present in the skills that read config, and nowhere else by accident', () => {
     assert.equal(
       withConfigBlock.length,
-      16,
+      17,
       `found: ${withConfigBlock.join(', ')}`
     );
   });
@@ -241,6 +242,11 @@ const authorityClass: Record<
   'repo/merge-deps': { tier: 'full', reads: "a Dependabot PR's author" },
   'work/handoff': { tier: 'full', reads: 'a handoff document author' },
   'work/issue': { tier: 'full', reads: 'issue and comment authors' },
+  'work/refine-issue': {
+    tier: 'full',
+    reads:
+      'an issue body and its comments, including a rescope someone else wrote'
+  },
   'work/work-implement': {
     tier: 'full',
     reads: 'an issue body and review feedback'
