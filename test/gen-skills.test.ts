@@ -194,7 +194,7 @@ describe('what a write actually puts on disk', () => {
       'utf8'
     );
     assert.match(alpha, /<skills-config>\n\n### Reading the config/);
-    assert.ok(alpha.includes('Fixture config body.'));
+    assert.ok(alpha.includes('Fixture config body,'));
     assert.ok(!alpha.includes('stale config body'));
     // The preamble above `<!-- config:body -->` is not part of the body.
     assert.ok(!alpha.includes('Fixture stand-in'));
@@ -221,7 +221,7 @@ describe('what a write actually puts on disk', () => {
     assert.ok(!gamma.includes('stale plan body'));
   });
 
-  test('the resolver ships to config carriers, byte-exact, and to nobody else', () => {
+  test('the resolver ships to every skill that names it, byte-exact, and to nobody else', () => {
     const { root } = open();
     main(['--write'], root);
 
@@ -229,21 +229,27 @@ describe('what a write actually puts on disk', () => {
       join(root, 'scripts', 'resolve-config.sh'),
       'utf8'
     );
-    const shipped = join(
-      root,
-      'skills',
-      'repo',
-      'alpha',
-      'templates',
-      'resolve-config.sh'
-    );
-    assert.ok(existsSync(shipped), 'alpha carries the config block');
-    assert.equal(readFileSync(shipped, 'utf8'), source);
+    const resolverIn = (...segments: string[]) =>
+      join(root, 'skills', ...segments, 'templates', 'resolve-config.sh');
 
-    // beta carries tagged blocks but no config block, so it gets no resolver.
+    // alpha hosts the config block, and the body this run wrote into it names the
+    // resolver — so the mention the shipping decision reads is one the same run
+    // produced, not something that had to be on disk beforehand.
+    assert.ok(existsSync(resolverIn('repo', 'alpha')), 'alpha hosts the block');
+    assert.equal(readFileSync(resolverIn('repo', 'alpha'), 'utf8'), source);
+
+    // gamma hosts no config block and names the script anyway — the queue-skill
+    // shape: the contract's prose is left to a required sibling, the script is not.
+    assert.ok(
+      existsSync(resolverIn('work', 'gamma')),
+      'a skill naming the resolver ships it without hosting the block'
+    );
+    assert.equal(readFileSync(resolverIn('work', 'gamma'), 'utf8'), source);
+
+    // beta carries tagged blocks, hosts no config block and names no resolver.
     assert.ok(
       !existsSync(join(root, 'skills', 'repo', 'beta', 'templates')),
-      'a skill without the config block ships no resolver'
+      'a skill that never names the resolver ships none'
     );
   });
 });
