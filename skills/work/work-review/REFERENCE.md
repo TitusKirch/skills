@@ -298,9 +298,11 @@ Under `worktree`, the PR is the artifact: review its diff, and a `changes-reques
 
 ## Accepted is not shipped
 
-`done` is the **verdict**, not the ship. Under either branch strategy the accepted work sits on `pr.base` — unmerged into the default branch, unreleased — and on a non-default `pr.base` no tracker automation ever fires to correct that later. So on Linear the accept verdict writes **`work.linear.states.accepted`** (an `Accepted` / `Ready for release` column), **never `states.done`**, which is the terminal shipped state written by whatever observes the default branch: Linear's own GitHub integration where `pr.base` **is** the default branch, otherwise the `release` skill at the promotion edge that lands there. Full rule, including what an unmapped key does: **AI-accepted is not shipped** in `work-implement`'s REFERENCE.
+`done` is the **verdict**, not the ship. Under either branch strategy the accepted work sits on `pr.base` — unmerged into the default branch, unreleased — and on a non-default `pr.base` no tracker automation ever fires to mark the ship later. So on Linear the accept verdict writes **`work.linear.states.accepted`** (an `Accepted` / `Ready for release` column), **never `states.done`**, which is the terminal shipped state written by whatever observes the default branch: Linear's own GitHub integration where `pr.base` **is** the default branch, otherwise the `release` skill at the promotion edge that lands there. Full rule, including what an unmapped key does: **AI-accepted is not shipped** in `work-implement`'s REFERENCE.
 
 The **label** is unaffected: `work.labels.done` keeps its string and its meaning. Only the Linear state the verdict writes alongside it changed, because only the board was claiming something the work had not earned.
+
+**Every verdict state is a best-effort write.** Linear's own GitHub integration writes the same field on **any** event on the issue's pull request — a comment, a check — within seconds, and **label-blind**, so it overwrites a verdict state as readily as an in-flight one, `needsHuman` included even when that step is deliberately unmapped. No reconcile puts it back: both sweeps move labels only. That costs the review loop nothing — the **label** carries every verdict, and the label is what the loops read — but do not promise a repo that the board holds. What the mapping is worth, and the two ways a repo makes it hold: **The board has a second writer**, in `work-implement`'s REFERENCE.
 
 ## Verifying the pushed head
 
