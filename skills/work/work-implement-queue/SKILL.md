@@ -36,7 +36,8 @@ Before building the queue, reclaim issues an earlier implement-run crashed on: a
 ### 3. Build the queue
 
 - The **selection query** (`work-implement`'s REFERENCE) → every eligible issue (`ready` **or** `changes-requested`) → ordered by priority (Linear native priority; GitHub `work.priorityLabels`).
-- **`branch:<name>` → re-sort into dependency order** (**Dependency ordering** in `work-implement`'s REFERENCE) — prerequisites before dependents, priority as the tiebreak; **order first, then apply the cap**. Under `worktree` skip this.
+- **`branch:<name>` → re-sort into dependency order** (**Dependency ordering** in `work-implement`'s REFERENCE) — prerequisites before dependents, priority as the tiebreak; **order first, then apply the cap**. Under `worktree` skip the re-sort: nothing accumulates there, so the `ready` gate carries dependencies instead.
+- **Read the mutex relation here as well — skipping the re-sort does not skip this.** Under `parallel: true` the batch is split into waves (step 5), and the relation that splits it is read while the queue is built, under **both** branch strategies. On **GitHub** it costs nothing: the `mutex: <group>` labels already ride along on the selection query's `--json …,labels`. On **Linear** it is the per-candidate `get_issue(id, includeRelations: true)` fan-out — so under `worktree`, where no dependency re-sort calls for it, **make that fan-out anyway** and read `related` from the same response, or a declared mutex is silently inert in exactly the default mode. Under `parallel: false` there is no concurrent batch to split, so the read is skipped with the mutex itself. Rules: **Parallel-batch mutex** in `work-implement`'s REFERENCE.
 
 ### 4. Announce the batch — then drain
 
