@@ -2,7 +2,7 @@
 name: work-review-queue
 metadata:
   summary: Drains the awaiting-review queue — reviews each pushed issue with a fresh agent, routing to done/changes/needs-human.
-description: Drains a repo's queue of issues awaiting AI review across GitHub (gh) or Linear (MCP) — selects every issue in review, then reviews each with a fresh, independent agent by delegating to work-review, routing each to done, changes-requested (back to the implement loop), needs-human, or blocked. Starts by reconciling issues whose PR a human merged or closed out-of-band. Honours a per-run cap, single-flight-locked with a lock separate from the implement loop's, so review and implement drains run concurrently. Use when the user wants to review, drain, or auto-review the pushed AI work, run the review loop, says things like "review the queue", "reviewe die Issues", "drain the review queue", or runs it under /loop.
+description: Drains a repo's queue of issues awaiting AI review across GitHub (gh), Linear (MCP) or local issue files — selects every issue in review, then reviews each with a fresh, independent agent by delegating to work-review, routing each to done, changes-requested (back to the implement loop), needs-human, or blocked. Starts by reconciling issues whose PR a human merged or closed out-of-band. Honours a per-run cap, single-flight-locked with a lock separate from the implement loop's, so review and implement drains run concurrently. Use when the user wants to review, drain, or auto-review the pushed AI work, run the review loop, says things like "review the queue", "reviewe die Issues", "drain the review queue", or runs it under /loop.
 allowed-tools:
   - Bash
   - Read

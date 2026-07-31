@@ -2,7 +2,7 @@
 name: work-implement-queue
 metadata:
   summary: Drains the ready/changes-requested queue — implements each issue to a pushed, reviewable state.
-description: Drains a repo's queue of implementable issues across GitHub (gh) or Linear (MCP) — selects every issue that is ready or has changes requested, orders them by priority (and, on a shared branch, by dependency), then implements each one to a pushed, reviewable state by delegating to work-implement. It hands each issue to the review loop (label review); the separate work-review-queue reviews them. Starts by reclaiming issues an earlier run crashed mid-implementation. Honours a per-run cap, runs sequentially or in parallel per config, single-flight-locked. Use when the user wants to batch-process, drain, or auto-implement the ready issues, run the implement loop, says things like "work the issues", "arbeite die Issues ab", "drain the queue", or runs it under /loop.
+description: Drains a repo's queue of implementable issues across GitHub (gh), Linear (MCP) or local issue files — selects every issue that is ready or has changes requested, orders them by priority (and, on a shared branch, by dependency), then implements each one to a pushed, reviewable state by delegating to work-implement. It hands each issue to the review loop (label review); the separate work-review-queue reviews them. Starts by reclaiming issues an earlier run crashed mid-implementation. Honours a per-run cap, runs sequentially or in parallel per config, single-flight-locked. Use when the user wants to batch-process, drain, or auto-implement the ready issues, run the implement loop, says things like "work the issues", "arbeite die Issues ab", "drain the queue", or runs it under /loop.
 allowed-tools:
   - Bash
   - Read

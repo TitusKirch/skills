@@ -1,6 +1,6 @@
 # work-implement / work-implement-queue — Reference
 
-Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement-queue` (the drain). One tracker per repo (GitHub `gh` / Linear MCP), chosen by config. Reuses the `issue` skill's config file and catalog cache.
+Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement-queue` (the drain). One tracker per repo (GitHub `gh` / Linear MCP / [local files](#tracker--local-files)), chosen by config. Reuses the `issue` skill's config file and catalog cache.
 
 ## Principle
 
@@ -53,22 +53,23 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 }
 ```
 
-| Key                                         | Effect                                                                                                                |
-| :------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------- |
-| `work.tracker`                              | `github` or `linear`; falls back to `issue.tracker`                                                                   |
-| `work.cap`                                  | max issues a single drain works (mandatory bound; default 10)                                                         |
-| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)        |
-| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))            |
-| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                 |
-| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                       |
-| `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review |
-| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"   |
-| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                       |
-| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                     |
-| `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                   |
-| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                    |
-| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                      |
-| `work.linear.states`                        | Linear workflow state names; **no default** — see below and [AI-accepted is not shipped](#ai-accepted-is-not-shipped) |
+| Key                                         | Effect                                                                                                                                                       |
+| :------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `work.tracker`                              | `github`, `linear` or `local`; falls back to `issue.tracker`                                                                                                 |
+| `work.cap`                                  | max issues a single drain works (mandatory bound; default 10)                                                                                                |
+| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)                                               |
+| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))                                                   |
+| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                                                        |
+| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                                                              |
+| `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review                                        |
+| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"                                          |
+| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                                                              |
+| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                                                            |
+| `work.priorityLabels`                       | GitHub priority labels, highest first; the `local` tracker matches its `priority` field against the same ladder; Linear ignores them (native priority field) |
+| `work.local.dir`                            | `local` issue directory; falls back to `issue.local.dir`, then `.agents/issues` — see [Tracker — local](#tracker--local-files)                               |
+| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                                                           |
+| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                                                             |
+| `work.linear.states`                        | Linear workflow state names; **no default** — see below and [AI-accepted is not shipped](#ai-accepted-is-not-shipped)                                        |
 
 **`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.reviewRequested: false` → the PR's existence is the signal; `labels.reviewing: false` → **no review lease** — the review loop relies on its lock alone, with no cross-clone claim (this is the **default**, so an unset `reviewing` keeps today's behaviour); `labels.blocked: false` → comment only / Linear state; `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
 
@@ -241,6 +242,8 @@ minutes, and doing that per tree is the real cost of running several trees at on
 
 Reuses the `issue` cache verbatim — `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (labels, teams, projects, states), so label names resolve to ids and teams/states are looked up without re-fetching. Same TTL (~3 days) and `--refresh`.
 
+**`local` caches nothing**, and that is not an omission. The cache exists to turn names into remote ids; a file tracker has no ids, no label catalog and no team, so the issue directory _is_ the catalog — read fresh every run, at the cost of a directory listing. `--refresh` is inert there rather than an error.
+
 ## Lifecycle state machine
 
 ```mermaid
@@ -333,7 +336,7 @@ gh api graphql -f query='
   }' -F owner=<owner> -F repo=<repo> -F n=<n>
 ```
 
-For `branch:<name>` with no PR, "pushed artifact" = the issue's commits already on the remote branch (`git log origin/<branch> --grep "#<n>"`). **Linear** — the GitHub integration links the PR as an attachment; read it via `get_issue` for the PR url, then ask GitHub for state (`gh pr view <url> --json state,merged`).
+For `branch:<name>` with no PR, "pushed artifact" = the issue's commits already on the remote branch (`git log origin/<branch> --grep "#<n>"`). **Linear** — the GitHub integration links the PR as an attachment; read it via `get_issue` for the PR url, then ask GitHub for state (`gh pr view <url> --json state,merged`). **`local`** — the issue file records no PR, so the artifact is found in git the same way: the PR whose head is the issue's branch where the repo has a forge, otherwise `git log` for the issue's commits ([Tracker — local](#tracker--local-files)).
 
 ### Label vs body precedence
 
@@ -380,6 +383,8 @@ Both inputs empty means **no eligible query exists** — report that as a config
 **Ready-gate off** (`labels.ready: false`): the query above can't filter by a ready label — list open issues and instead **exclude** the in-flight ones (`--search "-label:<working> -label:<blocked>"`), so "never already `working`/`blocked`" still holds without a gate to lean on.
 
 Linear: `list_issues` filtered by team + label(s) + states; order by the native priority field.
+
+**`local`**: the filter is the issue files' `state` field, which holds the **config key** and not the label string — so `ready`/`changesRequested` are matched by name and a `labels.<key>: false` simply means no file carries that key. [Tracker — local](#tracker--local-files) has the recipe.
 
 ## Lease & race rules
 
@@ -469,10 +474,10 @@ Two **independent** knobs — `work.branch` (where work lands) × `work.parallel
 
 An edge **A → B** reads "**A must land before B**". Both relation kinds point that way, and both are read straight from the tracker — never inferred from the issue text:
 
-| Edge                              | GitHub                              | Linear                           |
-| :-------------------------------- | :---------------------------------- | :------------------------------- |
-| **prerequisite** (`A` blocks `B`) | `blockedBy` / `blocking`            | `blocked by` / `blocks` relation |
-| **parent → child**                | `parent` / `subIssues` (sub-issues) | `parent` / sub-issues            |
+| Edge                              | GitHub                              | Linear                           | Local                    |
+| :-------------------------------- | :---------------------------------- | :------------------------------- | :----------------------- |
+| **prerequisite** (`A` blocks `B`) | `blockedBy` / `blocking`            | `blocked by` / `blocks` relation | `blockedBy:` frontmatter |
+| **parent → child**                | `parent` / `subIssues` (sub-issues) | `parent` / sub-issues            | `parent:` frontmatter    |
 
 **GitHub — not reachable via `gh issue list` or `gh issue view --json`** (neither exposes a `parent`, `blockedBy` or sub-issue field); use the API per candidate. `blockedBy` may cross repos — keep only same-repo ends:
 
@@ -490,6 +495,8 @@ gh api graphql -f query='
 ```
 
 **Linear** — `list_issues` does **not** return relations; fan out `get_issue(id, includeRelations: true)` per candidate and read the `blocked by` relations plus `parent`.
+
+**`local`** — no fan-out: the frontmatter the selection already read carries both edges, as lists of issue numbers. They are still **relations, not text** — read the fields, never the prose beneath them, exactly as on the other two trackers. An edge naming a number no file in the directory has is a **tracker-data error**: report it and treat the prerequisite as [cross-set](#cross-set-prerequisites), never as satisfied.
 
 ### Building the order
 
@@ -540,8 +547,85 @@ Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — disco
 
 Linear puts every repo's issues in one team, so the team alone cannot say "this issue is this repo." `work.labels.repo` (a stable label, e.g. `repo: TitusKirch/envprism`) is the discriminator — the **single source of truth** for repo identity in Linear, and the cross-repo race-breaker. It is read here to **filter** and (when the `issue` skill applies it on create) to **tag** — projects are unsuitable because they are completable. Set it to a **string** to filter by that label; set it to **`false`** only for a **single-repo Linear team** — a deliberate opt-out where the team already _is_ the repo, so no filter is needed and the drain **proceeds**. The schema now **requires** the key present when `tracker: linear`, so an _absent_ key is a config error to report — never a licence to reach into another repo's issues.
 
+## Tracker — local (files)
+
+No service, no auth, no network: the issues are **committed markdown files** in the repo, `<dir>/NNNN-slug.md`, one per issue. `<dir>` is `work.local.dir`, falling back to `issue.local.dir` and then to `.agents/issues` — the same two-step fallback `work.linear.team` takes. Why files, and why these answers rather than the plausible alternatives: [ADR-0020](https://github.com/TitusKirch/skills/blob/main/docs/99.adr/0020-back-the-local-tracker-with-committed-files.md).
+
+**The forge axis is untouched.** `local` is a **tracker**, not a forge: the root `forge` key still says where pull requests go, so a repo may file its issues in-tree and open its PRs on GitHub. Everything about `work.branch`, the push and the PR is unchanged by this driver.
+
+### The file
+
+```markdown
+---
+number: 42
+title: 'Add a local file-based issue tracker driver'
+state: 'ready'
+priority: 'low'
+labels: ['feature', 'research']
+assignee: null
+blockedBy: [38]
+parent: null
+---
+
+## What problem are you trying to solve?
+
+…the body, exactly as the `issue` skill would have written it for a forge…
+```
+
+- **Frontmatter is the tracker's data; the prose is the issue.** Only the fields above are read as tracker state — a line in the body is text, never a relation, a state or a priority, the same split the [label-vs-body rule](#label-vs-body-precedence) draws everywhere else.
+- **`state` holds the config key** (`ready`, `working`, `reviewRequested`, `reviewing`, `changesRequested`, `needsHuman`, `done`, `blocked`), **never the `work.labels.*` string.** A file has no label catalog to resolve a string against, so the key — the thing every rule in this file already reasons about — is what is written. The `labels.*` strings are simply unused here, and `labels.<key>: false` still turns the mechanic off: no file carries that key, so nothing selects on it.
+- **`priority` is matched against [`work.priorityLabels`](#config)** — verbatim, or against an entry's segment after a `: ` separator, so a ladder of `priority: high` accepts both `'priority: high'` and a bare `'high'`. **Unmatched or absent ranks lowest**, never highest: an unranked issue must not jump the queue.
+- **`assignee`** is what the [reconcile's guard](#reconcile) reads. It is only as distinct as the runner's own git identity, and nothing here proves it is per-runner — so the default-to-shared rule applies unchanged: take the **age-gated** path, never a bare-assignee reclaim.
+- **`labels`** is free-form and carries no lifecycle meaning; the loop never writes it.
+- **Nothing is ever deleted.** `done` and `blocked` are states, not removals — a skill never deletes or moves an issue file. Archiving is the repo's own business.
+
+### Availability, and the empty-directory trap
+
+The check is that `<dir>` **exists**. A missing directory under `tracker: local` is a **setup problem to report**, not an empty queue — the same distinction the [selection query](#selection-query) draws for a label the tracker lacks, and it fails the same silent way: a glob that matches nothing reads exactly like a backlog that is done.
+
+### Eligible
+
+```sh
+# $resolved comes from the resolver — see "Reading the config" in this file.
+dir=$(printf '%s' "$resolved" | jq -er '.work.local.dir // .issue.local.dir // empty' 2>/dev/null) || dir=
+[ -n "$dir" ] || dir=.agents/issues
+[ -d "$dir" ] || { echo "tracker is local but $dir does not exist" >&2; exit 1; }
+
+# the implement loop's two inputs, by config key; drop a key whose mechanic is off
+grep -lE "^state: '(ready|changesRequested)'" "$dir"/*.md 2>/dev/null
+```
+
+Order the matches by `priority` (above), then by `number` — the file tracker's stand-in for creation order, and stable in a way a filesystem listing is not.
+
+### Writing a transition
+
+Every lifecycle move is one rewritten frontmatter line, written to a sibling temp file and **`mv`-ed over the issue** — so a crash leaves either the old file or the new one, never a half-written issue. Read-then-write in **one** command: these skills run each command in its own process, so a state read on one line is a stale fact by the next.
+
+```sh
+# $f the issue file, $from/$to config keys, $who the runner identity.
+awk -v to="$to" -v who="$who" '
+  NR == 1 && $0 == "---" { fm = 1; print; next }
+  fm && $0 == "---"      { fm = 0; print; next }
+  fm && /^state:/        { print "state: \047" to "\047"; next }
+  fm && /^assignee:/     { print "assignee: " (who == "" ? "null" : "\047" who "\047"); next }
+                         { print }
+' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+```
+
+Guard it with the `$from` state in the same command (`grep -q "^state: '$from'$" "$f" || exit 1`) so a run that lost the race stops instead of overwriting. **This is no more a compare-and-swap than the label flip is** — as everywhere else in this file, the [single-flight lock](#the-single-flight-lock) is what makes multi-consumer safe within a checkout, and the reconcile's guard is what covers the clones it cannot see.
+
+### Referencing the issue from git
+
+Reference the issue by its **path** — `Refs .agents/issues/0042-….md` — and **not** by `#42`. On a repo whose forge is GitHub a bare `#42` renders as a link to an unrelated GitHub issue, which is worse than no reference at all. The branch name needs no new rule: `ai/<ref>-<slug>` with the padded number as the ref (`ai/0042-add-a-local-tracker`), derivable from the filename alone.
+
+That path is also the [reconcile's](#reconcile) artifact query — `git log origin/<branch> --grep '0042-'` for a shared branch, or the PR whose head is the issue's branch where the repo has a forge.
+
+### What is inert here
+
+[Repo scope](#repo-scope) (the files are already in the repo), `work.linear.*`, and the [catalog cache](#catalog-cache). Where the review loop puts its verdict — appended to the issue file, which is also where the round count is read from — is `work-review`'s REFERENCE.
+
 ## Setup
 
-No own setup flow — `work` piggybacks on the `issue` skill's config + cache and only adds the `work.*` keys. The lifecycle labels must already **exist** on the configured tracker's catalog (the agent filters by them, it does not create them).
+No own setup flow — `work` piggybacks on the `issue` skill's config + cache and only adds the `work.*` keys. The lifecycle labels must already **exist** on the configured tracker's catalog (the agent filters by them, it does not create them) — on [`local`](#tracker--local-files) there is no catalog and nothing to create, because the state is a field in the file rather than a name in a list.
 
-**When `issue` is `false`.** The work skills lean on the `issue` section three ways — `work.tracker` falls back to `issue.tracker`, `work.linear.team` to `issue.linear.team`, and the [catalog cache](#catalog-cache) is the `issue` skill's. A repo may disable the `issue` skill (`issue: false`) while still running the queue; then none of those inheritances hold. So a repo that sets `issue: false` **and** enables `work` must set `work.tracker` (and, on Linear, `work.linear.team`) explicitly, and the cache is populated by the work run itself rather than inherited. If both are needed but `work.tracker` is absent, stop and report rather than guess.
+**When `issue` is `false`.** The work skills lean on the `issue` section four ways — `work.tracker` falls back to `issue.tracker`, `work.linear.team` to `issue.linear.team`, `work.local.dir` to `issue.local.dir`, and the [catalog cache](#catalog-cache) is the `issue` skill's. A repo may disable the `issue` skill (`issue: false`) while still running the queue; then none of those inheritances hold. So a repo that sets `issue: false` **and** enables `work` must set `work.tracker` (and, on Linear, `work.linear.team`) explicitly, and the cache is populated by the work run itself rather than inherited. On `local` nothing further is required — every key there has a default — but a repo whose directory is not `.agents/issues` must restate it under `work.local.dir`, since the `issue` section it was borrowing is gone. If both are needed but `work.tracker` is absent, stop and report rather than guess.

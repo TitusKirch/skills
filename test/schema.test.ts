@@ -225,6 +225,45 @@ describe('the accepted/done split in the Linear state map', () => {
   });
 });
 
+// ADR-0020 added a third tracker whose store is a directory of committed files. The
+// asymmetry worth pinning is that `local` needs no companion key: `linear` cannot be
+// used without a team, because a team name is underivable, while every local key has a
+// default. So a bare {tracker:"local"} has to validate at the ROOT — not only inside a
+// profile, which is where the bare linear fragment is confined.
+describe('the local file tracker', () => {
+  test('a bare {tracker:local} is valid at the root, unlike linear', () => {
+    accepts({ issue: { tracker: 'local' } }, 'root issue, no companion key');
+    accepts({ work: { tracker: 'local' } }, 'root work, no companion key');
+  });
+
+  test('the directory is an optional non-empty string on both sections', () => {
+    accepts(
+      { issue: { tracker: 'local', local: { dir: 'docs/issues' } } },
+      'issue.local.dir'
+    );
+    accepts(
+      { work: { tracker: 'local', local: { dir: '.agents/issues' } } },
+      'work.local.dir'
+    );
+    accepts({ work: { tracker: 'local', local: {} } }, 'dir left to default');
+    rejects({ work: { local: { dir: '' } } }, 'empty dir');
+    rejects({ issue: { local: { dir: 1 } } }, 'numeric dir');
+    rejects({ work: { local: { path: '.agents/issues' } } }, 'unknown key');
+  });
+
+  test('the linear constraints are not extended to it', () => {
+    accepts(
+      { work: { tracker: 'local', labels: { ready: 'ai: ready' } } },
+      'no linear/labels.repo/statuses demanded of a local tracker'
+    );
+  });
+
+  test('an unknown tracker is still rejected', () => {
+    rejects({ work: { tracker: 'files' } }, 'files is not the name');
+    rejects({ issue: { tracker: 'gitea' } }, 'no forge doubles as a tracker');
+  });
+});
+
 describe('nothing about existing configs changed', () => {
   test('a config with no profiles key is still valid', () => {
     accepts({ language: 'en', pr: { base: 'dev' } }, 'plain config');

@@ -409,8 +409,8 @@
       "properties": {
         "tracker": {
           "type": "string",
-          "enum": ["github", "linear"],
-          "description": "Active issue tracker (github = GitHub Issues, linear = Linear). Set by the guided setup; never guessed silently. Distinct from the forge axis (root forge), which stays GitHub even when the tracker is Linear."
+          "enum": ["github", "linear", "local"],
+          "description": "Active issue tracker (github = GitHub Issues, linear = Linear, local = committed issue files under issue.local.dir). Set by the guided setup; never guessed silently. Distinct from the forge axis (root forge), which stays GitHub even when the tracker is Linear or local — a repo can file its issues in-tree and still open its pull requests on GitHub."
         },
         "language": {
           "$ref": "#/$defs/language",
@@ -444,6 +444,19 @@
             "defaultState": {
               "type": ["string", "null"],
               "description": "Default workflow state on create."
+            }
+          }
+        },
+        "local": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Local file-tracker options (used when tracker = local). Needs nothing set: unlike linear, whose team cannot be derived, every key here has a default, so tracker = local is complete on its own and the schema requires no companion.",
+          "properties": {
+            "dir": {
+              "type": "string",
+              "minLength": 1,
+              "default": ".agents/issues",
+              "description": "Repo-relative directory holding the issue files, one NNNN-slug.md per issue. Committed on purpose — being reviewable and shareable is the reason for choosing files over a service — and a sibling of .agents/handoffs/ for the same reason. Default: \".agents/issues\"."
             }
           }
         },
@@ -512,8 +525,8 @@
       "properties": {
         "tracker": {
           "type": "string",
-          "enum": ["github", "linear"],
-          "description": "Active tracker for working issues (github = GitHub Issues, linear = Linear). Falls back to issue.tracker."
+          "enum": ["github", "linear", "local"],
+          "description": "Active tracker for working issues (github = GitHub Issues, linear = Linear, local = committed issue files under work.local.dir). Falls back to issue.tracker."
         },
         "cap": {
           "type": "integer",
@@ -595,7 +608,19 @@
             "minLength": 1
           },
           "uniqueItems": true,
-          "description": "GitHub priority labels, highest first (e.g. [\"urgent\", \"high\", \"medium\", \"low\"]). Linear uses its native priority field and ignores these."
+          "description": "GitHub priority labels, highest first (e.g. [\"urgent\", \"high\", \"medium\", \"low\"]). Linear uses its native priority field and ignores these. The local tracker reads this same ladder, matching an issue file's `priority` field against it, so the ordering is configured once for both label-shaped trackers."
+        },
+        "local": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Local file-tracker options (used when tracker = local). Every key has a default, so unlike linear this section may be omitted entirely and the root's if/then requires nothing alongside tracker = local.",
+          "properties": {
+            "dir": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Repo-relative directory holding the issue files. Falls back to issue.local.dir, then to \".agents/issues\" — the same two-step fallback linear.team takes to issue.linear.team, so the directory is stated once for both skills."
+            }
+          }
         },
         "linear": {
           "type": "object",

@@ -232,6 +232,8 @@ test -n "$review" && gh issue list --state open --label "$review" --json number,
 
 **Never pass `--label "$review"` unguarded.** With `labels.reviewRequested: false` the label mechanic is off and the PR's existence is the signal — select on that instead; do **not** fall through to a label query with an empty value.
 
+**`local`** — the queue is a `grep` over the issue directory, matching the **config key** in each file's `state` field rather than a label string (`grep -lE "^state: '(reviewRequested)'" "$dir"/*.md`). The empty-result trap is the same shape and worse: a missing directory globs to nothing and reads exactly like a drained queue, so assert `<dir>` exists before selecting. Layout, fields and the transition write: **Tracker — local (files)** in `work-implement`'s REFERENCE.
+
 ## The `reviewing` lease
 
 `work.labels.reviewing` is the review loop's lease — the tracker-global claim `working` is for the implement loop, giving cross-clone mutual exclusion the checkout-local review lock cannot (the lock only proves no live reviewer **in this checkout**; a second clone's reviewer holds its own lock, invisible here). Two clones draining the review queue would otherwise both select the same `reviewRequested` issue and write **competing** verdicts (one `done`, one `changes-requested`, last-write-wins).
@@ -271,6 +273,8 @@ fi
 **A reclaim can over-count by one.** Flipping a `reviewing` orphan back to `reviewRequested` re-adds a `reviewRequested` label event — as does the implement reconcile's crash-after-push `working → reviewRequested` advance. Both inflate the derived count by one. This is left as a documented caveat, **not** de-duplicated: over-counting only escalates to `needs human` **earlier**, the safe direction `maxRounds` exists to guarantee, and telling a reclaim re-add apart from a genuine hand-off would add a second, driftable signal for no safety gain.
 
 **Linear** — read the issue's history/activity and count the state/label changes onto the `reviewRequested` state. Before deciding `changes-requested`, compare the count to `work.review.maxRounds`: at or above it, escalate to `needs human` instead — with a comment summarising the still-unresolved feedback.
+
+**`local`** — a file has no event log, so the count is read from the **verdicts themselves**: one `## AI review — round N` heading per round, appended by this loop ([Feedback recipes](#feedback-recipes)), counted with `grep -c '^## AI review — round '`. That is why the verdict is appended to the issue rather than carried in a commit — the artifact that makes the count derivable is the same one the next implement round has to read. `grep -c` answers `0` on a file with no verdicts yet, which is a genuine zero; a **missing or unreadable file** is the unreadable case and escalates to `needs human`, exactly as an unreachable timeline does. `git log` on the file would be the tempting second source and is not used: a rebase, a squash or a hand-edit rewrites it, while the headings travel with the content.
 
 ## Escalation to `needs human`
 
@@ -347,10 +351,22 @@ gh issue comment "$n" --body "AI review — changes requested (commit <sha>): �
 
 Then move the label to `work.labels.changesRequested`. For `done`/`needs human`/`blocked`, move the label and comment the reasoning. **Linear** — post the comment via the MCP and set the label (plus the mapped `work.linear.states` state when configured), in one `save_issue` call where possible (create and update are one tool, keyed on the issue `id` — there is no separate `update_issue`).
 
+**`local`** — there is no comment stream, so the verdict is **appended to the issue file**, newest last, under its own heading:
+
+```markdown
+## AI review — round 2 · changes requested
+
+…what to change and why, in the same words a PR review would carry…
+```
+
+Append the section **and** rewrite the `state` field in the **same** command, so a crash cannot leave a verdict with no state or a state with no reasoning. Both go through the temp-file-and-`mv` write in **Tracker — local (files)**. A sibling feedback file was the alternative and loses twice: it splits one document, and the next implement round — which re-reads the body for scope — would have to know to look for the other half. The heading is also the [round count](#round-count), so its wording is load-bearing: keep the `## AI review — round N` prefix exactly.
+
 **De-dupe on re-review.** Because review is idempotent, before posting feedback check whether an equivalent comment from a prior crashed run already exists; update or skip rather than double-post.
 
 ## Tracker recipes
 
 Label moves mirror the implement loop's own **Tracker — GitHub (`gh`)** recipes. The reviewer writes the **lease** label `reviewing` on claim (only when `labels.reviewing` is configured — flip `reviewRequested → reviewing`, `--add-assignee`), then the **verdict** labels (`done` / `changesRequested` / `needsHuman` / `blocked`) and their mapped Linear states; the review reconcile writes `reviewRequested` when it reclaims a `reviewing` orphan (dropping the assignee). It never writes `working`/`ready` (those are the implement loop's). On **Linear** the `reviewing` lease sets the label via `save_issue`; `work.linear.states` has no `reviewing` mapping, so the workflow state is left untouched (the "unmapped step leaves the state alone" rule in the implement REFERENCE).
+
+**On `local` a "label move" is a frontmatter write.** The same transitions, the same order — lease first (`reviewRequested → reviewing`, writing `assignee`), verdict after — but each is one rewritten `state:` line, guarded by the state it expects to replace and committed by a `mv` (**Tracker — local (files)** in `work-implement`'s REFERENCE). `work.linear.states` is inert there, so the verdict writes the lifecycle key and nothing else.
 
 **The verdict labels and their Linear states do not share a name.** Three map straight through — `changesRequested` → `states.changesRequested`, `needsHuman` → `states.needsHuman`, and `blocked` carries no state at all. The fourth does not: the `done` verdict writes **`states.accepted`**, and `states.done` is the shipped state neither loop writes ([Accepted is not shipped](#accepted-is-not-shipped)). A repo whose `states` maps `done` but not `accepted` gets the "unmapped step" outcome — label written, board untouched — which is the intended failure direction.
