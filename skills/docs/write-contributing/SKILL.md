@@ -44,7 +44,7 @@ What each statement is derived **from** is the derivation table in [REFERENCE.md
 | It exists + "update / fix / align / reconcile it"              | **reconcile** |
 | It exists + "document X in it" (a new contributor-facing step) | **add**       |
 
-Verb shortcuts: `/write-contributing init`, `/write-contributing reconcile`. Otherwise infer from repo state and the request. **Always: plan → confirm → apply.**
+Verb shortcuts: `/write-contributing init`, `/write-contributing add <step>`, `/write-contributing reconcile`. Otherwise infer from repo state and the request. **Always: plan → confirm → apply.**
 
 **Plan-only triggers** — "just show me", "dry run", "plan only", "nur den Plan", "nicht schreiben": print the plan and the derivation table, write nothing.
 
@@ -81,6 +81,16 @@ Verb shortcuts: `/write-contributing init`, `/write-contributing reconcile`. Oth
 3. **Pick the sections** — the structure above, dropping each whose signal the repo does not show, and naming the drops in the plan.
 4. **Show the plan**: the section list, plus the derived facts as `fact → value → the file it came from`. That table is the part a human can actually check; the prose is the part they cannot.
 5. **On confirm** — fill [`templates/CONTRIBUTING.template.md`](templates/CONTRIBUTING.template.md) and write `CONTRIBUTING.md`.
+
+## Add — the guide exists, document one more step
+
+A human asks for a contributor-facing step the guide has never carried: a one-time setup command the install does not do, a second intake route, the path for adding a new unit. **Distinct from the reconcile pass's [Add](#reconcile--the-guide-exists) bullet** — that one is a _derived_ span whose owner already exists and the guide merely never mentioned, found by the pass itself; this one is a request, and its content may have no owning file at all.
+
+1. **Place it by the catalogue, not by the request's wording.** The step belongs in whichever [structure](#structure--the-house-order) row it matches. A step matching **no** row gets a section of its own, at the position the [catalogue](REFERENCE.md#section-catalogue) suggests, and the plan says so rather than deciding quietly.
+2. **The right section may not exist yet.** A repo that has just grown a release flow carries no Releases section. Then this job **creates that one section**, in house order — and no other.
+3. **Derive whatever the new text states.** The [derivation table](REFERENCE.md#derivation-table) binds here exactly as in a scaffold: a step that names a branch, a command or a file reads it from the owning file, never from how the request phrased it. A fact with no owner is **asked about**, not assumed.
+4. **Everything around it stays byte-identical.** Authored prose in the same section is untouched, and no other section is re-derived — re-deriving the whole guide is the **reconcile** job, and the user asked for this step. Drift noticed in passing is **named in the report**, never fixed here; offer the reconcile pass instead.
+5. **Plan → confirm → apply** — show the placement, the derived values with their sources, and the diff.
 
 ## Reconcile — the guide exists
 
