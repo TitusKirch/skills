@@ -151,9 +151,27 @@ A reference that is a **call** — the run hands work to that skill, or depends 
 
 A reference that is only a **mention** — naming another skill as whose job something is ("committing is `atomic-commit`'s job", "the complement to `write-readme`") — is **not** a call and needs no declaration. What decides it is whether the run _hands over work_, not whether the name appears: adding a required/optional declaration to a mention is as wrong as omitting one from a call.
 
+## Two shapes: full and thin
+
+Every skill in the catalogue is a **full** skill — an intro, an opt-out paragraph, a numbered workflow, guardrails, a config block and a reference pointer — and that is the shape to reach for. It is not the only one permitted. A skill with nothing to sequence takes the **thin** shape: a named second form, not a smaller version of the first and not a full one somebody stopped writing.
+
+**One criterion decides which shape a skill takes:**
+
+> A skill is **thin** when it has **no multi-step procedure** — it carries a single rule, or it reaches for exactly one other skill. The moment it has an ordered workflow, it is a **full** skill and takes the full shape.
+
+That line is what the form is for. Without it, "thin" becomes the word for "unfinished": the next author opens a two-paragraph `SKILL.md` and reads abandoned work to complete rather than a complete skill to leave alone.
+
+What changes for a thin skill, and what does not:
+
+- **The frontmatter contract is unchanged**, house field included. `name` and `description` are required by the standard, and `metadata.summary` is read by `pnpm skills:sync` to build the README tables — so a thin skill that drops it breaks the generated artifacts rather than merely looking sparse. There is nothing to relax here.
+- **The opt-out paragraph and the `<skills-config>` block fall away by themselves**, and need no exception written for them. Both exist only in a skill that reads `.tituskirch-skills.json`; a thin skill reads none, so it is simply absent from the mirrored-block rosters in [`test/isolation.test.ts`](../test/isolation.test.ts) — the same as every other config-free skill here today. A thin skill that _did_ read config would be carrying a procedure, which the criterion above already sends to the full shape.
+- **Reaching for one other skill is still a call**, so it declares [required or optional](#a-call-declares-required-or-optional) and what happens when that skill is absent. In a thin skill that declaration is most of the body rather than a line inside it.
+
+**Nothing takes this shape today**, and that is not an argument against having it: the form exists so the first skill that qualifies is written as complete, instead of being padded into the full shape or shipped looking half-done. [ADR-0020](../docs/99.adr/0020-permit-a-thin-shape-for-alias-style-skills.md) records the decision and the alternative it beat.
+
 ## Adding a new skill
 
-Create `<category>/<skill-name>/SKILL.md` per the frontmatter contract above (use an existing skill as a structural reference), then run `pnpm skills:sync` to regenerate the root [`README.md`](../README.md) skills table, the category's `README.md`, the `skills` array in [`.claude-plugin/plugin.json`](../.claude-plugin/plugin.json) and the groupings in [`skills.sh.json`](../skills.sh.json) — never hand-edit any of them. Full workflow: [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+Create `<category>/<skill-name>/SKILL.md` per the frontmatter contract above — in the full shape unless it meets the [thin criterion](#two-shapes-full-and-thin), and using an existing skill of that shape as a structural reference — then run `pnpm skills:sync` to regenerate the root [`README.md`](../README.md) skills table, the category's `README.md`, the `skills` array in [`.claude-plugin/plugin.json`](../.claude-plugin/plugin.json) and the groupings in [`skills.sh.json`](../skills.sh.json) — never hand-edit any of them. Full workflow: [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
 ## Known deviations / open by design
 
