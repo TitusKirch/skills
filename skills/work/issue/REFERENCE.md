@@ -40,7 +40,7 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two trackers (GitHub
 
 **An explicit `null` is not the same as absent, and it is terminal.** `"template": null` means _no forced template_ — the skill chooses per issue by reading the templates — and it **ends the lookup**: it does not fall through to `issue.github.template`. Only an **absent** `issue.template` reaches that fallback. This is the merge rule ([Reading the config](#reading-the-config)) applied here — "an explicit `null` sets null rather than deleting a key" — so a profile can clear a forced template the base config sets, and clearing it must not resurrect the deprecated key it was migrated away from.
 
-`language` is a shared root key; `issue.*` is this skill's section (`commit.*`/`pr.*` belong to the other skills). `issue.instructions` mirrors `commit.instructions` / `pr.instructions` — additive wording guidance that never overrides the tracker rules, template, or guardrails. On Linear it also reads the cross-skill key `work.labels.repo` to pin a repo-scope tag on create. Full schema: the repo-root `tituskirch-skills.schema.json`.
+`language` is a shared root key; `issue.*` is this skill's section (`commit.*`/`pr.*` belong to the other skills). `issue.instructions` mirrors `commit.instructions` / `pr.instructions` — additive wording guidance that never overrides the tracker rules, template, or guardrails. On Linear it also reads the cross-skill key `work.labels.repo` to pin a repo-scope tag on create, and on both trackers `work.labels.needsTriage` — the repo's untriaged marker, which is [withheld from an authorized author's issue](#the-untriaged-marker-is-not-for-an-author-who-would-triage-it). Full schema: the repo-root `tituskirch-skills.schema.json`.
 
 The `null`-versus-absent distinction above has to survive the read, and `// empty` destroys it — that collapses both into the same empty string. **Ask whether the key is there before reading its value:**
 
@@ -249,6 +249,22 @@ This is not a nicety on GitHub — it is the difference between filing the issue
 
 **The preview is the safety net.** Name the chosen template in the [plan](#plan-output) beside title, body and labels, with how it was chosen (forced by config / matched on its description). The match need not be perfect automatically — it needs to be **visible before the write**, so a human can redirect it.
 
+### The untriaged marker is not for an author who would triage it
+
+`work.labels.needsTriage` names the repo's own untriaged marker — `needs triage`, `triage`, however the repo spells it — and is **off unless the repo sets it**. A template declares that marker to everyone, because a template cannot tell who is filing: a drive-by reporter and the person who would do the triaging get the identical label set. **Author authority can tell them apart**, and it is the same check this file already states for third-party text ([Author authority](#author-authority)).
+
+So, on **create** and for **this one label**: an issue filed by an **authorized** author — GitHub, the authenticated account holding repo `admin`/`maintain`/`write`; Linear, a workspace member and not a guest — is assessed by definition, and the marker is **withheld** from the create call. Every other author's issue carries it exactly as the template declares.
+
+The exception is deliberately narrow, and each clause carries weight:
+
+- **This label only.** What a template declares is already decided, and that stands unchanged for every other label. The rule is a statement about an _unknown_ submitter — and this is the one label whose whole meaning is that unknown-ness.
+- **Established authorship only.** Unauthorized, unknown, or a permission call that fails or cannot be read → **apply** the label. Authority is proven, never assumed, and an unreadable permission is not proof of one.
+- **Withheld, not removed.** This governs the create call. It never strips the label from an existing issue, and an **explicit request** for it ("file it and mark it needs triage") wins — the human is the authority the check stands in for.
+- **Off unless configured.** `needsTriage` absent or `false` — the default — means no such rule and the template's labels apply verbatim, as before. Same when `work` is `false`, which puts the key out of reach.
+- **Visible in the plan.** Withholding is a **field decision**, so it appears in the [plan](#plan-output) with its reason, the way an unresolvable label does — never silently.
+
+Why it earns an exception at all: the cost of the alternative is measured, not assumed. The marker was cleared by hand on eight issues in a single pass in this repo, every one filed by the maintainer — noise for the person who would triage it, and load-bearing for a stranger.
+
 ## Default body structure
 
 No template fits, or the repo ships none — the body still has a shape, and it is **this skill's own**, on either tracker. It is the [altitude rule](SKILL.md#4-draft-the-content) written down as sections: **outcome, context, open questions**.
@@ -324,6 +340,7 @@ issue plan
   title   : Login fails on expired session
   labels  : bug                   (from template)
           + area:auth             (from catalog)
+          - needs triage          (declared by the template — withheld: filed by an authorized maintainer)
           ! triage                (declared by the template, not in the catalog — skipped)
   body ▼
     ## Summary
