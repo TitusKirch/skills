@@ -237,6 +237,22 @@ minutes, and doing that per tree is the real cost of running several trees at on
 
 </skills-verify-isolated>
 
+## Test discipline (tdd)
+
+The section above is a **gate, not a discipline**. It says whether the tree still passes; it says nothing about how the code got written — whether a test came before the implementation, what was tested, or what a test worth keeping looks like. An unattended loop can satisfy that gate with tests that pass **by construction**: mocked internal collaborators, an assertion that recomputes the expected value the way the code does, a bulk of tests written afterwards against the shape that was already built. The checks go green, and the review loop sees a green run. The `tdd` skill (upstream `mattpocock/skills`, not shipped by this repo) carries what a gate cannot — red before green, one vertical slice at a time, tests at **seams** rather than internals, and the anti-patterns named outright (implementation-coupled, tautological, horizontal slicing) — so [step 6](SKILL.md) **drives it** instead of restating a weaker copy here.
+
+**The issue body stands in for the human.** `tdd`'s rule is that the seams under test are written down and **confirmed** before any test is written, and unattended there is nobody to confirm them. The body is that confirmation: `ai: ready` is a human's approval of a **scoped** issue, so the issue's **requirements and acceptance criteria are the agreed seams**. This is the [label-vs-body split](#label-vs-body-precedence) applied one level down — the label says the work may happen, the body says what the work is, and where the tests go is part of _what_.
+
+**No seams, with code behind them → `blocked`.** Picking its own seams is the one move the run must not make: seams chosen after the implementation exists land exactly where the implementation is, which is the failure this whole section exists to prevent. So where code is touched and the body yields no seams, take the `blocked` side-exit — comment the reason on the issue and stop. That is a **substance** block (the requirements are genuinely ambiguous), the kind the [label-vs-body rule](#label-vs-body-precedence) explicitly leaves intact, never a body line's opinion about eligibility.
+
+**The whole loop, but only where tests reach.** Red-green and vertical slices apply in full whenever the change touches code a test can observe. A **prose-only** change — a `SKILL.md` edit, a README, a config comment — drives `tdd` **not at all**, and that is a defined outcome rather than a degraded one: a missing seam blocks only when there is code behind it. (In this repo that is most changes; the ratio is a property of the repo, not of the rule.)
+
+**Red is separated by the step, not by the colour.** `tdd` runs **entirely inside step 6**, where a failing test is the loop working as designed — nothing there consults the lifecycle, and no red inside the loop ever reaches `blocked`. **Step 7 remains the only gate**, unchanged: it runs the repo's checks on the finished slice set. Because the two live in different steps, nothing about the cycle has to be carried as state — which keeps the worker [stateless and resumable](#principle) exactly as before.
+
+**`work-review` is told, not bound.** What the pass drove and what came of it is recorded on the issue / PR at [step 8](SKILL.md), so the reviewer reads it as evidence. It does **not** change the verdict's basis: `work-review` still judges the **diff against the requirements**, exactly as today. Weighing tests _as_ evidence of quality is the review loop's own question, not this section's.
+
+**Optional, like every other helper.** `tdd` is a separate skill this repo does not ship, so it may be absent. Treat it as **optional**: drive it when installed, and when it is not, **implement exactly as today** — no test discipline driven, no block. It is model-invocable upstream, which is what makes it drivable at all; the user-facing on-ramps to other engines (`grill-me`, say) declare `disable-model-invocation: true` and cannot be called from a skill. The absence of `tdd` degrades the run, it never fails it — the same rule `atomic-commit` and `pull-request` follow at step 8.
+
 ## Catalog cache
 
 Reuses the `issue` cache verbatim — `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (labels, teams, projects, states), so label names resolve to ids and teams/states are looked up without re-fetching. Same TTL (~3 days) and `--refresh`.
