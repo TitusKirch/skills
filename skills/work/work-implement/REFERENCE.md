@@ -579,7 +579,7 @@ Skip that rule and the failure is **silent**, which is the shape this driver is 
 Two consequences follow from there being exactly one writable copy:
 
 - **Only one side ever edits the file, so the merge stays clean.** Transitions are written and committed in the main working tree, on whatever branch it holds; a per-issue branch carries the issue file exactly as it was cut and never touches it. A file changed on one side only merges without a conflict — that is precisely what the never-write-the-worktree rule buys, and precisely what is lost the moment a worker edits its own copy.
-- **`branch:<name>` raises no such question.** There is one tree, the shared branch is its branch, and the store and the work are the same checkout. The rule is written for `worktree` and costs `branch:<name>` nothing.
+- **Exactly one cell of the two-by-two escapes the question: `branch:<name>` + `parallel: false`.** There the shared branch is the main tree's branch and the store and the work are the same checkout, so the rule costs that configuration nothing. **`branch:<name>` + `parallel: true` does not escape it** — [Branch strategy](#branch-strategy) says that combination produces its work **in isolated worktrees** and lands it serialized, which is exactly why `branch:dev` + `parallel` is the race-free pairing — so the store is split there precisely as it is under `worktree`, and the rule applies unchanged. `parallel: true` **is** worktrees whatever `branch` says; read the rule off that axis, never off `branch` alone.
 
 The main working tree is also the one place the two drains agree on **without exchanging state**. A repo whose main tree sits on a branch that lacks `<dir>` is not a special case: the existence check below reports it as the setup problem it is.
 
