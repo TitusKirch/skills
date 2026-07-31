@@ -464,6 +464,10 @@ Without it the rule lives in whoever wrote the `/loop` prompt — retyped every 
 
 **The state is reported after the lock is released.** Waiting happens **between** drains, never inside one, so a driver sitting out a `backpressure` interval holds nothing and blocks neither loop.
 
+**Re-query the tracker before waiting at all.** Work that became eligible **during** the last issue is already on the tracker, so a drain that finishes an issue and drops straight into a wait sits out a whole interval on input that exists right now. The order is: **finish an issue → query the tracker again → wait only if that query comes back empty.** This is the [fresh fetch each iteration](#lease--race-rules) rule carried past the drain's last issue, and it holds on both paths — a parallel drain re-queries once its final worker has landed, not while it still has one in flight.
+
+**An empty query that immediately follows a finished issue is expected, and is not evidence the queue is quiet.** The counterpart has had no time to produce anything yet; nothing may read that emptiness as `quiescent`. Only a check that follows a **wait** is that evidence, which is why the wait comes before the verdict rather than after it.
+
 ### What counts as backpressure
 
 Narrower than "something is still open". `done`, `blocked` and `needs human` are **terminal for both loops** — they produce no further input, so none of them may keep a loop alive (`needs human` waits on a person, who is not a producer a loop can wait for). The condition is:
@@ -475,19 +479,30 @@ Narrower than "something is still open". `done`, `blocked` and `needs human` are
 | implement | `ready`, `changesRequested` | `reviewRequested`, `reviewing`         | a review can return `changes-requested`      |
 | review    | `reviewRequested`           | `ready`, `changesRequested`, `working` | an implementation produces `reviewRequested` |
 
-### The bound is the counterpart's lock, not a round count
+### The bound is the counterpart's heartbeat, not a round count
 
-Waiting is only worth anything while something is actually producing, so read the **counterpart loop's** [single-flight lock](#the-single-flight-lock) — the implement loop reads `…/work/review.lock`, the review loop reads `…/work/implement.lock`. Its `refreshed` heartbeat is re-stamped once per iteration, which is exactly the question here answered:
+Waiting is only worth anything while something is actually producing, so read the **counterpart loop's** [single-flight lock](#the-single-flight-lock) — the implement loop reads `…/work/review.lock`, the review loop reads `…/work/implement.lock`. Its `refreshed` heartbeat is re-stamped once per iteration, which answers exactly the question a waiter has: **is anyone producing my input?**
 
-| The counterpart's lock                       | Meaning                            | Action                                                                          |
-| :------------------------------------------- | :--------------------------------- | :------------------------------------------------------------------------------ |
-| **absent**                                   | nobody is running the counterpart  | **stop** — and report how many issues sit in the waited-on states unattended    |
-| **`refreshed` advancing**                    | the counterpart is making progress | **keep waiting**, however long it takes                                         |
-| **`refreshed` frozen past the stale window** | the counterpart crashed            | **stop** and report; the next counterpart drain's reconcile reclaims its orphan |
+**An absent lock does not answer it.** The lock is visible only within one checkout, so its absence means no more than "nobody is running the counterpart **here**" — and two ordinary situations produce that while the work is very much outstanding:
 
-A **round count cannot do this**: a single large issue sits in `working` for an hour with no label moving at all, and a count would abort on it — whereas the heartbeat separates **slow** from **dead**, which is the distinction it was built for.
+- **The restart gap.** `work.cap` defaults to 10, so a counterpart with 20 eligible issues hits the cap, reports `work remaining`, and **releases its lock** before its driver starts it again. Stopping on the absent lock stops in a gap of seconds with half the work still queued.
+- **The other host.** The two drains may run on different servers. That is safe by construction — the locks are separate (`implement.lock` / `review.lock`) and each loop is alone on its host, so nothing is worked twice; two drains of the **same** kind on two hosts is the genuinely unsafe case, because [the label flip is not a true compare-and-swap](#lease--race-rules), and it stays out of scope. But a lock on another host is **invisible**, so stopping on the absent lock stops **both** loops immediately while both are running.
 
-**The lock's boundary applies here too.** It is visible only within one checkout, so an absent lock means "nobody is running the counterpart **here**" — a drain in another clone is invisible to this check. Report it in those words rather than as "the other loop is dead".
+So the tracker is consulted **first** and the lock only sharpens it, with the issues' `updatedAt` as the cross-host stand-in for the heartbeat — coarser, because it moves only on real tracker writes, but visible from every host and already there:
+
+| Counterpart lock                                       | Tracker                                                                  | Verdict                                       | Action                                                                          |
+| :----------------------------------------------------- | :----------------------------------------------------------------------- | :-------------------------------------------- | :------------------------------------------------------------------------------ |
+| **readable**, `refreshed` advancing                    | —                                                                        | backpressure, **local**                       | **wait**, however long it takes                                                 |
+| **readable**, `refreshed` frozen past the stale window | —                                                                        | the counterpart **crashed**                   | **stop** and report; the next counterpart drain's reconcile reclaims its orphan |
+| **absent**                                             | issues in the waited-on states, `updatedAt` fresh                        | backpressure — **remote host or restart gap** | **wait**                                                                        |
+| **absent**                                             | issues in the waited-on states, `updatedAt` frozen past the stale window | **orphaned**                                  | **stop** and report how many sit unattended                                     |
+| **absent**                                             | terminal states only (`done` / `blocked` / `needs human`)                | `quiescent`                                   | **stop**                                                                        |
+
+The two rows that used to be one verdict — the restart gap and the remote host — are the same row here, which is why one table settles both.
+
+A **round count cannot do any of this**: a single large issue sits in `working` for an hour with no label moving at all, and a count would abort on it — whereas the heartbeat separates **slow** from **dead**, which is the distinction it was built for.
+
+**Cross-host is supported but degraded**, and that is worth stating rather than leaving to be discovered. The `updatedAt` fallback needs a **generous** window — hours, like the lock's own stale window — because a long review or implementation writes nothing to the tracker while it runs, so a genuinely crashed remote loop holds a waiter for that whole window before it reads as orphaned. A real cross-host heartbeat would need shared storage, which the lock spec deliberately puts [outside skill prose](#the-single-flight-lock); that boundary stays where it is. Report an absent lock in those words — "nobody is running the counterpart **here**" — never as "the other loop is dead".
 
 ### The wait interval is not the stale window
 
