@@ -34,7 +34,7 @@ Before building the queue, two idempotent sweeps:
 **(a) Out-of-band human actions on the PR** — for every issue in `reviewRequested`, check whether a human acted on its PR out-of-band:
 
 - **PR merged** → set `done` — a human merge is implicit acceptance.
-- **PR closed, unmerged** → set `blocked` + comment — a human closed it without merging.
+- **PR closed, unmerged** → set `blocked` + comment at the configured feedback destination (`work.feedback`; a closed PR still takes a comment) — a human closed it without merging.
 - **PR open / no PR** → leave it — it is a normal review candidate (the drain will review it).
 
 **(b) Stale review leases** — when `work.labels.reviewing` is configured, reclaim **`reviewing` orphans**: an issue leased `reviewRequested → reviewing` but abandoned when a reviewer crashed. A review pushes **no artifact**, so there is no crash-before/after-push split — the orphan **always returns to `reviewRequested`** (dropping the assignee). Gate it on the **same assignee/age guard the implement reconcile uses**: a `reviewing` issue assigned to a **different** runner — or, under one shared bot identity, to this runner — is presumed **live** and left alone unless the weaker age fallback clears it; only an **unassigned** one (or, with distinct per-runner identities, this runner's own crashed lease) is flipped back to `reviewRequested`. Full rules: **Reconcile** in `work-implement`'s REFERENCE. With `labels.reviewing` off this sweep is inert.

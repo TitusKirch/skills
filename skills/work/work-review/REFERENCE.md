@@ -12,15 +12,16 @@ The two loops meet at two hand-off labels: `reviewRequested` (implement → revi
 
 Reads the shared `work.*` section (schema: **Config** in `work-implement`'s REFERENCE). Review-specific keys:
 
-| Key                            | Effect                                                                                                                                                                                                                                             |
-| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `work.review.maxRounds`        | Max AI-review rounds before escalating to `needs human` instead of `changes-requested`. Default: **3**.                                                                                                                                            |
-| `work.labels.reviewRequested`  | The "awaiting AI review" label — the review queue's **input**. Default `ai: review requested`; a repo that labels differently pins its own string under this key.                                                                                  |
-| `work.labels.reviewing`        | The review loop's **lease** label — claimed `reviewRequested → reviewing` before reviewing, the tracker-global counterpart of `working`. **Opt-in: defaults to off**; when off, the review loop uses its lock alone (today's behaviour, no lease). |
-| `work.labels.changesRequested` | The "review requested changes" label — hands back to the implement loop.                                                                                                                                                                           |
-| `work.labels.needsHuman`       | The "escalated to a human" label.                                                                                                                                                                                                                  |
-| `work.labels.done`             | Terminal "accepted" — the AI is finished with this issue, **not** "shipped". On Linear its state is `work.linear.states.accepted`; `states.done` is the shipped state, and the reviewer never writes it ([why](#accepted-is-not-shipped)).         |
-| `verify` _(root)_              | The repo's own check command, run here against the **pushed head** — the review establishes green rather than inheriting the implementer's. Reading and detection: [Running the repo's checks](#running-the-repos-checks).                         |
+| Key                            | Effect                                                                                                                                                                                                                                                                                  |
+| :----------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `work.review.maxRounds`        | Max AI-review rounds before escalating to `needs human` instead of `changes-requested`. Default: **3**.                                                                                                                                                                                 |
+| `work.feedback`                | Where the verdict's comment is written — `pr` (the pull request's thread) or `issue`. **No fixed default**: it follows `work.branch`, so a PR-opening loop writes to the PR and a shared-branch loop to the issue. Full rule: **Feedback destination** in `work-implement`'s REFERENCE. |
+| `work.labels.reviewRequested`  | The "awaiting AI review" label — the review queue's **input**. Default `ai: review requested`; a repo that labels differently pins its own string under this key.                                                                                                                       |
+| `work.labels.reviewing`        | The review loop's **lease** label — claimed `reviewRequested → reviewing` before reviewing, the tracker-global counterpart of `working`. **Opt-in: defaults to off**; when off, the review loop uses its lock alone (today's behaviour, no lease).                                      |
+| `work.labels.changesRequested` | The "review requested changes" label — hands back to the implement loop.                                                                                                                                                                                                                |
+| `work.labels.needsHuman`       | The "escalated to a human" label.                                                                                                                                                                                                                                                       |
+| `work.labels.done`             | Terminal "accepted" — the AI is finished with this issue, **not** "shipped". On Linear its state is `work.linear.states.accepted`; `states.done` is the shipped state, and the reviewer never writes it ([why](#accepted-is-not-shipped)).                                              |
+| `verify` _(root)_              | The repo's own check command, run here against the **pushed head** — the review establishes green rather than inheriting the implementer's. Reading and detection: [Running the repo's checks](#running-the-repos-checks).                                                              |
 
 Every key, type and default lives once in the repo-root [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json).
 
@@ -335,17 +336,18 @@ git worktree remove "$(git rev-parse --git-common-dir)/tituskirch-skills/work/re
 
 ## Feedback recipes
 
-The verdict is a **label move + a comment**. Post the feedback where the artifact is:
+The verdict is a **label move + a comment**, and the comment's destination is **configured, not chosen per verdict** — `work.feedback`, resolved as **Feedback destination** in `work-implement`'s REFERENCE states (`pr` or `issue`, defaulting from `work.branch`). The label always stays on the issue; only the prose moves.
 
 ```bash
-# PR present — a real review with the changes-requested verdict (inline comments via the API)
-gh pr review "$n" --request-changes --body "…what to change and why…"
+# feedback=pr — the review lives on the pull request ($pr is the PR for this issue)
+gh pr review "$pr" --request-changes --body "…what to change and why…"   # changes-requested
+gh pr comment "$pr" --body "AI review — accepted: …"                     # done / needs human / blocked
 
-# No PR (branch:<name>) — an issue comment referencing the reviewed commit(s)
+# feedback=issue — an issue comment referencing the reviewed commit(s)
 gh issue comment "$n" --body "AI review — changes requested (commit <sha>): …"
 ```
 
-Then move the label to `work.labels.changesRequested`. For `done`/`needs human`/`blocked`, move the label and comment the reasoning. **Linear** — post the comment via the MCP and set the label (plus the mapped `work.linear.states` state when configured), in one `save_issue` call where possible (create and update are one tool, keyed on the issue `id` — there is no separate `update_issue`).
+`pr` mode with **no** pull request — a `branch:<name>` loop, or an issue whose PR was never opened — falls back to the issue comment and names the fallback in the run report, because a verdict that reaches nobody is worse than one in the wrong thread. Then move the label to `work.labels.changesRequested`; for `done`/`needs human`/`blocked`, move the label and comment the reasoning the same way. **Linear** — the code PR is a GitHub PR, so `pr` mode writes there with `gh` (the url comes from the issue's PR attachment) while the label and any mapped `work.linear.states` state still go through `save_issue`; `issue` mode posts the comment via the MCP and sets the label in one `save_issue` call where possible (create and update are one tool, keyed on the issue `id` — there is no separate `update_issue`).
 
 **De-dupe on re-review.** Because review is idempotent, before posting feedback check whether an equivalent comment from a prior crashed run already exists; update or skip rather than double-post.
 
