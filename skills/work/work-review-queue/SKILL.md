@@ -67,6 +67,14 @@ Release the lock. Summarise each issue and its verdict, what the reconcile close
 - **`needs human`** — the drain's **actual ask**: each wants a human verdict (via `/work-review <n>`) to reach `done` or go back for changes.
 - **`blocked`** — need a human call.
 
+**Then name the queue's state**, so a repeating driver (`/loop`, cron, a human) knows whether to run again, wait, or stop — instead of that rule living in whoever typed the loop prompt. Decide it **in this order**:
+
+1. **Stopped on `work.cap` with issues still in `reviewRequested` → `work remaining`.** Run again **immediately**, never wait: a cap-ended drain is not an empty queue.
+2. **Nothing to review, but issues sit in `ready`/`changesRequested`/`working` → `backpressure`.** An implementation produces `reviewRequested`, which is this loop's input. Wait `work.loop.wait` (default 120 s) and re-check — but only while the **implement** lock's `refreshed` heartbeat keeps advancing. That lock **absent** (nobody is implementing in this checkout) or **frozen past the stale window** (the implement drain crashed) → **stop and report** instead, naming how many issues wait unattended. `work.loop.maxWait` (default 1800 s) is the loud backstop.
+3. **Otherwise → `quiescent`.** Stop. `done`, `blocked` and `needs human` are terminal and never keep the loop alive — `needs human` waits on a person, not on this drain.
+
+The wait happens **between** drains, after the lock is released, so a waiting driver blocks nothing. Full rule — the states, what each loop waits on, and why the bound is the counterpart's heartbeat rather than a round count: **Queue state** in `work-implement`'s REFERENCE.
+
 ## Config
 
 <skills-config>
