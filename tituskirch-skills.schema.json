@@ -614,12 +614,12 @@
                 "minLength": 1
               },
               "uniqueItems": true,
-              "description": "Workflow states that count as startable (e.g. [\"Todo\", \"In Progress\"]). ANDed with the label filter, so every state an eligible issue can legitimately sit in has to appear here — the ones states.ready and states.changesRequested name, plus states.accepted, which is where a human hands an already-accepted issue back from. A state the mapping can produce but this list omits takes the issue out of the queue for good, silently."
+              "description": "Workflow states that count as startable (e.g. [\"Todo\", \"In Progress\"]). ANDed with the label filter, so every state an eligible issue can legitimately sit in has to appear here — the ones states.ready and states.changesRequested name, plus states.accepted, which is where a human hands an already-accepted issue back from. A state the mapping can produce but this list omits takes the issue out of the queue for good, silently — and the mapping is not the only writer, so while Linear's GitHub integration moves states on pull-request events, whatever it writes belongs here too."
             },
             "states": {
               "type": "object",
               "additionalProperties": false,
-              "description": "Linear workflow state names, written alongside the lifecycle label. State names are per-team and cannot be derived, so there is no default: an unmapped step leaves the workflow state untouched, and omitting the key drives the lifecycle by label alone. Never guess a state name. Every key but `done` is a step the work loop writes; `done` is the terminal shipped state, which the work loop deliberately never writes.",
+              "description": "Linear workflow state names, written alongside the lifecycle label. State names are per-team and cannot be derived, so there is no default: an unmapped step leaves the workflow state untouched, and omitting the key drives the lifecycle by label alone. Never guess a state name. Every key but `done` is a step the work loop writes; `done` is the terminal shipped state, which the work loop deliberately never writes. Each state is a BEST-EFFORT write, not a state these skills maintain: Linear's own GitHub integration writes the same field on any event on the linked pull request, label-blind, and no reconcile sweep puts it back — so keep statuses wide enough to cover what the integration writes, turn that integration's pull-request state automation off, or leave this key unmapped.",
               "properties": {
                 "ready": {
                   "type": "string",
