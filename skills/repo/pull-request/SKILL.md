@@ -2,7 +2,7 @@
 name: pull-request
 metadata:
   summary: Opens a pull request from the current branch via gh; forge chosen by config (github in v1).
-description: Creates a pull request from the current branch in the repo's own conventions — an umbrella Conventional-Commits title and a body filled from the repo's PR template. Forge chosen per-repo by config (root `forge`); v1 is GitHub via the gh CLI. Presents the full plan first and creates only after confirmation; plan-only when asked. Updates your own existing PR instead of duplicating, and never touches PRs opened by others or automation. Use when the user wants to open, create, or raise a pull request or merge request, mentions a PR/MR or a conventional PR, or says things like "open a PR", "create a pull request", "PR for this branch", "PR erstellen", "mach einen PR".
+description: Creates a pull request from the current branch in the repo's own conventions — an umbrella Conventional-Commits title and a body filled from the repo's PR template. Forge chosen per-repo by config (root `forge`); v1 is GitHub via the gh CLI. Presents the full plan first and creates only after confirmation; plan-only when asked. Updates your own existing PR instead of duplicating, and never touches PRs opened by others or automation. Recognises a branch stacked on another open PR's branch and bases the PR there rather than on the trunk, stopping instead of opening a mis-based one where the chain cannot be read cleanly. Use when the user wants to open, create, or raise a pull request or merge request, mentions a PR/MR or a conventional PR, or says things like "open a PR", "create a pull request", "PR for this branch", "PR erstellen", "mach einen PR".
 allowed-tools:
   - Read
   - Grep
@@ -18,6 +18,7 @@ allowed-tools:
   - Bash(grep:*)
   - Bash(git rev-parse:*)
   - Bash(git branch --show-current:*)
+  - Bash(git merge-base:*)
   - Bash(git log:*)
   - Bash(git diff:*)
   - Bash(gh pr list:*)
@@ -39,6 +40,7 @@ Turn the current branch into a pull request that follows the repo's own conventi
 
 - **Forge** — from the root `forge` key (v1: only `github` is implemented; any other value → say it's not supported yet and stop). For GitHub, confirm the repo is reachable: `gh repo view --json nameWithOwner,defaultBranchRef`. If it fails (no GitHub remote, or `gh` not authenticated), **stop** with a clear message.
 - **Base ← head** — base = `pr.base` from `.tituskirch-skills.json` if set, else `defaultBranchRef.name`; head = current branch (`git branch --show-current`). Never hardcode `main`/`dev`; show `base ← head` in the plan and let the user override.
+- **Stacked branch?** — a branch built on **another open PR's branch** belongs on _that_ branch, not the trunk: based on the trunk, its diff carries the other PR's unmerged commits as if this change had made them, and nothing errors to say so. So before settling the base, check whether an open PR's head branch is an **ancestor** of this one; the **nearest** such branch is the base. Where the chain can't be read cleanly — an ambiguous parent, a parent rebased out from under this branch, a cross-fork one — **stop and say so** instead of opening a mis-based PR. A base the user named explicitly wins outright and needs no check. Detection, the refusal cases, and why this reads git rather than the stacks preview API: [REFERENCE.md](REFERENCE.md#stacked-branches).
 - **PR template** — find `.github/pull_request_template.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/PULL_REQUEST_TEMPLATE/*.md`, or a root/`docs/` variant. Use it verbatim as the body skeleton and fill its sections; if none, fall back to Summary / Changes / Related issues.
 - **Title convention** — Conventional Commits when the repo uses them. Read it from the **shared convention cache** (`$(git rev-parse --git-common-dir)/tituskirch-skills/conventions`, written by `atomic-commit` or by this skill — same detection, memoized); if the cache is missing/stale, detect it (commitlint config + history) and write the block yourself. Honor the cached `header_max_length` for the title — PR titles are commonly linted too. `pr.title.convention: plain` in `.tituskirch-skills.json` forces a non-Conventional title.
 - **Existing PR** — `gh pr list --head <branch> --state open` and check its author (step 5).
@@ -50,6 +52,7 @@ Detection recipes and the shared cache: [REFERENCE.md](REFERENCE.md#detecting-co
 
 - Commits since base: `git log <base>..HEAD` (subjects and bodies for the summary).
 - Change shape: `git diff --stat <base>...HEAD`.
+- Both read the base **step 1 resolved** — on a stacked branch that is the branch below, so the summary and the diff describe this layer alone.
 - Linked issues: scan commit messages and the branch name for `#123` / `Closes #…` / `Fixes #…`.
 - If the branch isn't pushed (or its upstream is behind), offer to `git push` first — `gh pr create` needs the head on the remote. Ask before pushing.
 
@@ -60,7 +63,7 @@ Detection recipes and the shared cache: [REFERENCE.md](REFERENCE.md#detecting-co
 
 ### 4. Present the plan (always, before creating)
 
-Show: title · `base ← head` · ready/draft · existing-PR status · the rendered body. Flag anything missing (unpushed branch, guessed base, no linked issue). Format in [REFERENCE.md](REFERENCE.md#plan-output).
+Show: title · `base ← head` · ready/draft · existing-PR status · the rendered body. Where the base is another PR's branch, say so on the `base ← head` line — the human is being told the merge is gated on the PR below. Flag anything missing (unpushed branch, guessed base, no linked issue). Format in [REFERENCE.md](REFERENCE.md#plan-output).
 
 ### 5. Create — update your own — or stop
 
@@ -106,7 +109,8 @@ of a file.
 - **Never force-push; never merge** unless explicitly asked. Push the head branch only after confirmation.
 - **No secrets in the body.** Scan the summary and diff for `.env`, keys, tokens; warn and exclude.
 - **Respect the base.** Show the detected `base ← head` and confirm before creating; don't assume `main`/`dev`.
+- **Never guess a stacked base.** A branch sitting on another open PR's branch takes that branch as its base. Where the chain is ambiguous, out of sync, or cross-fork, **stop** — a mis-based PR fails silently, and a wrong diff costs more to unpick than a run that asked. **Read stacks, never write them:** this skill does not create, extend, dissolve or reorder a stack, and it never re-targets an existing PR's base — in a stack GitHub moves that itself when the PR below merges.
 
 ## Reference
 
-GitHub-forge detection recipes, the umbrella-title heuristics, template-filling rules, the plan-output format, and worked examples: [REFERENCE.md](REFERENCE.md).
+GitHub-forge detection recipes, stacked-branch detection and its refusal cases, the umbrella-title heuristics, template-filling rules, the plan-output format, and worked examples: [REFERENCE.md](REFERENCE.md).
