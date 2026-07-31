@@ -65,12 +65,13 @@ Issues, the two AI work loops (implement and review), and handing work between s
 
 Generate and maintain project documentation, READMEs and terminal demos in the house style.
 
-| Skill                                                   | Description                                                                                               |
-| :------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------- |
-| [`compact-readme`](skills/docs/compact-readme/SKILL.md) | Slims down an existing overstuffed README without losing information.                                     |
-| [`vhs-demo`](skills/docs/vhs-demo/SKILL.md)             | Creates and maintains a reproducible terminal-demo GIF from a VHS tape.                                   |
-| [`write-docs`](skills/docs/write-docs/SKILL.md)         | Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format. |
-| [`write-readme`](skills/docs/write-readme/SKILL.md)     | Generates project READMEs in the kirchDev house style.                                                    |
+| Skill                                                           | Description                                                                                                    |
+| :-------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------- |
+| [`compact-readme`](skills/docs/compact-readme/SKILL.md)         | Slims down an existing overstuffed README without losing information.                                          |
+| [`vhs-demo`](skills/docs/vhs-demo/SKILL.md)                     | Creates and maintains a reproducible terminal-demo GIF from a VHS tape.                                        |
+| [`write-contributing`](skills/docs/write-contributing/SKILL.md) | Writes and reconciles CONTRIBUTING.md in the house style, deriving every repo fact from the file that owns it. |
+| [`write-docs`](skills/docs/write-docs/SKILL.md)                 | Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format.      |
+| [`write-readme`](skills/docs/write-readme/SKILL.md)             | Generates project READMEs in the kirchDev house style.                                                         |
 
 ### Meta
 
