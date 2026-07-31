@@ -63,7 +63,7 @@ Write it **self-contained**:
 
 Commit the new file via `atomic-commit` and push. Until it is pushed, the handoff has not happened. Report the id, the path and the branch.
 
-**`atomic-commit` is optional** — here and at step 2. Not installed, commit directly in the repo's own Conventional Commits conventions and push as usual. A handoff that never lands because a helper skill is absent is the one failure this step cannot afford.
+**`atomic-commit` is optional** — at every commit this skill makes: the work at step 2, the handoff here, and the deletion at [step 8](#8-delete-the-handoff-when-the-work-is-done). Not installed, commit directly in the repo's own Conventional Commits conventions and push as usual. A handoff that never lands — or never clears — because a helper skill is absent is the one failure these steps cannot afford.
 
 ### 6. Find the handoff to resume
 
@@ -97,7 +97,7 @@ Resumed work that is being parked again **updates the existing document** — sa
 ## Guardrails
 
 - **Reachable or honest.** Never write a handoff that implies work is available elsewhere when it was never pushed ([step 2](#2-make-the-work-reachable--before-writing-anything)).
-- **`atomic-commit` is optional, never a precondition.** It is the preferred way to commit the work and the handoff, but if it is not installed, commit in the repo's own conventions and push anyway — a missing helper must not be why the handoff fails to land.
+- **`atomic-commit` is optional, never a precondition.** It is the preferred way to commit the work, the handoff and the deletion that closes it, but if it is not installed, commit in the repo's own conventions and push anyway — a missing helper must not be why the handoff fails to land or fails to clear.
 - **Self-contained or worthless.** The reader has none of your session. Every reference is resolvable from the document alone.
 - **Delete on done, never on read** ([step 8](#8-delete-the-handoff-when-the-work-is-done)). The file survives every intermediate failure, by design.
 - **Never guess which handoff** ([step 6](#6-find-the-handoff-to-resume)). Explicit id, or the single unambiguous one, or ask.
