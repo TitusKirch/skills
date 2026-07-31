@@ -40,7 +40,7 @@ Before building the queue, reclaim issues an earlier implement-run crashed on: a
 
 ### 4. Announce the batch — then drain
 
-**`ai: ready` is already the human's approval** to work an issue — the label means "scoped + approved for an AI agent to pick up". So the drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, branch strategy and parallel mode (call out any **dependency-forced order**, plus issues **deferred** or **skipped**), then drain. Under `/loop` it runs unattended.
+**`ai: ready` is already the human's approval** to work an issue — the label means "scoped + approved for an AI agent to pick up". So the drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, branch strategy and parallel mode — with the **concurrency** it will run at when that mode is `parallel` (call out any **dependency-forced order**, plus issues **deferred** or **skipped**), then drain. Under `/loop` it runs unattended.
 
 - **Plan-only triggers** ("just show me", "dry run", "nur den Plan", "don't run") still stop after the plan.
 - If the ready-gate is **widened** (`labels.ready: false`, so issues were never explicitly opted-in), confirm before working those — there is no per-issue approval to lean on.
@@ -50,7 +50,9 @@ Before building the queue, reclaim issues an earlier implement-run crashed on: a
 For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-implement` on exactly that issue:
 
 - **sequential** (`parallel: false`) — one worker at a time; **re-fetch** the next eligible issue each iteration.
-- **parallel** (`parallel: true`) — N workers in isolated git worktrees; for a `branch:<name>` target, pushes are integrated **serialized**; dependent issues never run concurrently. A worktree holds **tracked files only**, so each worker installs the repo's dependencies in its own tree before verifying — a real per-worker cost to weigh when raising N. Mechanics: **Branch strategy** in `work-implement`'s REFERENCE.
+- **parallel** (`parallel: true`) — up to **`work.concurrency`** workers at a time in isolated git worktrees, the rest queued behind them; for a `branch:<name>` target, pushes are integrated **serialized**; dependent issues never run concurrently. A worktree holds **tracked files only**, so each worker installs the repo's dependencies in its own tree before verifying — the per-worker cost `work.concurrency` exists to bound. Mechanics: **Branch strategy** in `work-implement`'s REFERENCE.
+
+**`cap` and `concurrency` are two bounds, not one.** `cap` is how many issues the **run** works; `work.concurrency` is how many workers are alive **at once** — it defaults to `cap` (unchanged behaviour for a config that omits it), never raises it, and is inert when `parallel` is `false`. **Cap and concurrency** in `work-implement`'s REFERENCE.
 
 **Heartbeat the lock each iteration.** The lock is held for the whole batch, which no single shell process spans, so the drain **re-stamps** the implement lock's `refreshed` timestamp once per iteration (one cheap command) — that is what keeps a **live** drain from being misread as a crashed one by the **heartbeat-timestamp** stale rule (**The single-flight lock** below). The lock is released **explicitly** at step 6, not by a shell-lifetime trap.
 
@@ -206,7 +208,7 @@ of a file.
 - **Single-flight** — one implement-drain per checkout at a time (separate from the review lock; mutual exclusion is within one checkout, not across clones).
 - **Reconcile first, select second** — never re-work an issue the sweep is about to reclaim.
 - **Claim-before-work, fresh fetch each iteration** — the worker leases each issue; the loop never snapshots the queue.
-- **The cap is mandatory** — never drain unbounded, and apply it **after** the ordering.
+- **The cap is mandatory** — never drain unbounded, and apply it **after** the ordering. It bounds the **run**; `work.concurrency` bounds how many workers are alive **at once** and never raises it.
 - **Never work a dependent before its prerequisite** — order the graph, defer what depends on work not landing this run, skip cycles for a human.
 - **This loop never reviews.** It produces `reviewRequested`/`blocked` only; `done`/`changes-requested`/`needs human` are the review loop's and the human's.
 - Inherits `work-implement`'s attribution-free, secret-free, only-this-issue guardrails.

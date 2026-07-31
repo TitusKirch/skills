@@ -519,7 +519,12 @@
           "type": "integer",
           "minimum": 1,
           "default": 10,
-          "description": "Max issues a single drain works (mandatory bound). Default: 10."
+          "description": "Max issues a single drain works across the whole run (mandatory bound) — throughput, not simultaneity. How many of them run at once is work.concurrency. Default: 10."
+        },
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Max workers a drain runs at the same time under parallel: true — the ceiling the machine can stand (each worker costs a worktree, a full dependency install, CPU and tracker rate limit), which is a different question from how many issues the run may work in total. Never raises cap: the effective concurrency is the lower of the two. Inert when parallel is false, where one worker at a time is the construction. No static default — it defaults to work.cap, so a config that does not set it behaves exactly as before this key existed."
         },
         "branch": {
           "oneOf": [

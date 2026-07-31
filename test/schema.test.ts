@@ -181,6 +181,39 @@ describe('the reviewing lease label (opt-in review-loop lease)', () => {
   });
 });
 
+// `cap` bounds the run, `concurrency` the moment. The pair only earns its keep if
+// omitting `concurrency` stays valid — that absence is what makes it default to `cap`,
+// and a schema that required it would break every config written before it existed.
+describe('the concurrency bound beside the run cap', () => {
+  test('it is optional, and an integer of at least one when present', () => {
+    accepts({ work: { cap: 20 } }, 'cap alone — concurrency defaults to it');
+    accepts({ work: { cap: 20, concurrency: 3 } }, 'the pair the key is for');
+    accepts({ work: { concurrency: 1 } }, 'concurrency alone');
+    accepts(
+      { work: { cap: 2, concurrency: 8 } },
+      'above cap is legal and simply inert — the lower of the two wins'
+    );
+  });
+
+  test('it takes the same shape as cap, and no looser', () => {
+    rejects({ work: { concurrency: 0 } }, 'concurrency minimum');
+    rejects({ work: { concurrency: 2.5 } }, 'not an integer');
+    rejects({ work: { concurrency: false } }, 'not a labelOrOff');
+    rejects({ work: { concurrency: '3' } }, 'not a numeric string');
+  });
+
+  test('it can be overlaid in a profile, like every other work key', () => {
+    accepts(
+      { profiles: { ci: { work: { concurrency: 4 } } } },
+      'profile concurrency fragment'
+    );
+    rejects(
+      { profiles: { ci: { work: { concurrency: 0 } } } },
+      'the minimum still applies inside a profile'
+    );
+  });
+});
+
 // ADR-0018 split the tail of the Linear map in two: `accepted` is what the review
 // verdict writes, `done` is the shipped state no work skill writes. The keys are
 // independent — a repo can map either, both, or neither — because a config that maps
