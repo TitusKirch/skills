@@ -32,6 +32,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
       "needsHuman": "ai: needs human",
       "done": "ai: done",
       "blocked": "ai: blocked",
+      "needsTriage": false,
       "repo": false
     },
     "priorityLabels": ["urgent", "high", "medium", "low"],
@@ -53,26 +54,27 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 }
 ```
 
-| Key                                         | Effect                                                                                                                |
-| :------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------- |
-| `work.tracker`                              | `github` or `linear`; falls back to `issue.tracker`                                                                   |
-| `work.cap`                                  | max issues a single drain works (mandatory bound; default 10)                                                         |
-| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)        |
-| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))            |
-| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                 |
-| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                       |
-| `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review |
-| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"   |
-| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                       |
-| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                     |
-| `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                   |
-| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                    |
-| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                      |
-| `work.linear.states`                        | Linear workflow state names; **no default** — see below and [AI-accepted is not shipped](#ai-accepted-is-not-shipped) |
+| Key                                         | Effect                                                                                                                                 |
+| :------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------- |
+| `work.tracker`                              | `github` or `linear`; falls back to `issue.tracker`                                                                                    |
+| `work.cap`                                  | max issues a single drain works (mandatory bound; default 10)                                                                          |
+| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)                         |
+| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))                             |
+| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                                  |
+| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                                        |
+| `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review                  |
+| `work.labels.needsTriage`                   | the "nobody has assessed this yet" label (labelOrOff); **opt-in — defaults to off**; see [contradictory labels](#contradictory-labels) |
+| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"                    |
+| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                                        |
+| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                                      |
+| `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                                    |
+| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                                     |
+| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                                       |
+| `work.linear.states`                        | Linear workflow state names; **no default** — see below and [AI-accepted is not shipped](#ai-accepted-is-not-shipped)                  |
 
-**`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.reviewRequested: false` → the PR's existence is the signal; `labels.reviewing: false` → **no review lease** — the review loop relies on its lock alone, with no cross-clone claim (this is the **default**, so an unset `reviewing` keeps today's behaviour); `labels.blocked: false` → comment only / Linear state; `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
+**`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.reviewRequested: false` → the PR's existence is the signal; `labels.reviewing: false` → **no review lease** — the review loop relies on its lock alone, with no cross-clone claim (this is the **default**, so an unset `reviewing` keeps today's behaviour); `labels.blocked: false` → comment only / Linear state; `labels.needsTriage: false` → **no contradiction check** — the loop cannot see an untriaged flag it was never given (this is the **default**); `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
 
-**`reviewing` is the one label that defaults _off_, not to a string.** Every other `labels.*` key has a default string, so absent means "use the default"; `reviewing` defaults to **off**, so a repo gains the review lease only by setting it to a label string (`ai: reviewing`). This keeps every existing adopter's review loop unchanged until it opts in.
+**Two labels default _off_, not to a string — `reviewing` and `needsTriage`.** Every other `labels.*` key has a default string, so absent means "use the default"; these two default to **off**, so a repo gains the mechanic only by naming its label. `reviewing` off keeps every existing adopter's review loop unchanged until it opts in. `needsTriage` is off because it is **not a lifecycle state at all** — it is a repo's own triage convention (`needs triage`, `triage`, `unassessed`, or nothing), the loop neither writes it nor moves it, and guessing a string would make the [contradiction check](#contradictory-labels) fire on a label the repo never meant. A skill cannot honour a label it was never told about, and it must not invent one either.
 
 **`linear.states` needs no `false` — absent already means off.** Every `labels.*` key has a **default** (`ai: ready` …), so absent means "use the default" and `false` is the only way to say "off". `linear.states` has **no default**: Linear state names are per-team (`In Progress` / `Doing` / `Started` …) and nothing in the skill can derive them. So the mapping is off unless the repo writes it, and each step is independent:
 
@@ -348,11 +350,34 @@ Label and body are **both live**, and they can disagree — a body written at cr
 
 This does not disarm the `blocked` side-exit: work whose **requirements** are genuinely ambiguous, or that genuinely needs a human call, still exits to `blocked` — on the **substance** of the work, never on the body's opinion about eligibility.
 
+### Contradictory labels
+
+The rule above settles label **against body**, where the label wins because it is the deliberate act. It says nothing about two **labels** contradicting each other, and one pair does exactly that: `labels.needsTriage` — "nobody has assessed this yet" — on the same issue as a lifecycle label that says the opposite. `ready` means _scoped and approved for an agent_; `changesRequested` means _reviewed and handed back_. Both claim an assessment the triage flag says has not happened.
+
+The pairing is **one forgotten flag away** wherever a repo's issue templates declare the label, because then every issue carries it from creation and only a human's triage pass clears it: `gh issue edit <n> --add-label 'ai: ready'` without the matching `--remove-label` produces the contradiction, which is precisely the slip a hurried triage pass makes.
+
+**Surface it, never obey it.** Two humans' claims disagree and the disagreement _is_ the finding, so the loop refuses the issue **visibly** rather than picking whichever label is more permissive:
+
+| The issue carries                              | The loop does                                                                        |
+| :--------------------------------------------- | :----------------------------------------------------------------------------------- |
+| `needsTriage` **+** `ready`/`changesRequested` | **skip it** — unleased, unlabelled, unassigned — and **name it** in the run's report |
+| `needsTriage` alone                            | nothing — it was never eligible; no contradiction, nothing to report                 |
+| a lifecycle label alone                        | the normal path                                                                      |
+
+Three properties of that row are deliberate:
+
+- **Not `blocked`.** `blocked` is a lifecycle state, and writing one onto an issue whose only fault is a labelling mistake makes the loop the author of a claim about the _work_. Nothing is wrong with the work; a label is wrong. The queue's job here is to refuse the issue and let a human clear it in one edit — which a `blocked` label would then also have to be undone.
+- **Nothing is written at all.** No lease, no assignee, no comment, no relabel: the issue is left exactly as the human left it. That keeps the refusal **idempotent** and keeps the report the only artifact.
+- **Which label is "right" is not guessed.** Both are claims by a human. Removing the triage flag would assert the issue is assessed; dropping the lifecycle label would assert it is not. The agent flags, the human adjudicates — the same posture as [label vs body](#label-vs-body-precedence) and the [author-authority rule](#author-authority) take on every other contradiction.
+
+**Off by default, so this is inert until a repo names the label** ([Config](#config)). With `labels.needsTriage` unset the check does not run and the queue behaves exactly as it did before — the loop cannot honour a triage flag it was never told about, and must not invent a string to look for.
+
 ## Selection query
 
 Eligible = matches **all** configured filters. Self-select (one issue) and drain (all, ordered) use the same query.
 
 - **labels** — the implement loop selects issues with `labels.ready` **or** `labels.changesRequested` (its two inputs; skip a label that is `false`); never already `working`/`blocked` by someone else. Labels are the **only** eligibility input — issue text is never read for consent ([label vs body](#label-vs-body-precedence)). (The review loop's input is `labels.reviewRequested` — see `work-review`.)
+- **triage contradiction** — a selected issue that _also_ carries `labels.needsTriage` (when configured) is **withheld** from the queue and reported, not worked ([contradictory labels](#contradictory-labels)). This is a **partition of the result, not a filter in the query**: the whole point is to name those issues, and a `-label:` qualifier would make them invisible to the very report that has to list them. The labels needed to partition are already on the rows the query returned, so it costs no extra call.
 - **repo scope** — Linear only: has `labels.repo` (unless `false`). Skipped on GitHub (repo-local by nature).
 - **team** — Linear only: `work.linear.team`.
 - **status** — Linear: state ∈ `work.linear.statuses`. GitHub: `--state open`.
@@ -368,6 +393,9 @@ ready=$(printf '%s' "$resolved" | jq -er '.work.labels.ready | select(. != null)
 chreq=$(printf '%s' "$resolved" | jq -er '.work.labels.changesRequested | select(. != null) | tostring' 2>/dev/null) || chreq=
 [ -n "$chreq" ] || chreq='ai: changes requested'
 [ "$chreq" = 'false' ] && chreq=
+# needsTriage has NO default string — absent means the check is off, not "use a guess"
+triage=$(printf '%s' "$resolved" | jq -er '.work.labels.needsTriage | select(. != null) | tostring' 2>/dev/null) || triage=
+[ "$triage" = 'false' ] && triage=
 
 # GitHub — implement-loop inputs (ready OR changes-requested); comma = OR within a search qualifier
 gh issue list --state open \
@@ -377,9 +405,18 @@ gh issue list --state open \
 
 Both inputs empty means **no eligible query exists** — report that as a config problem, never as an empty queue. Skip a label that is `false` and build the search from the remaining one.
 
+**Then partition the result on `$triage`** (skip when empty) — the rows already carry `labels`, so this is local:
+
+```bash
+# withheld: eligible AND untriaged → report, never work. queue: the rest.
+printf '%s' "$issues" | jq --arg t "$triage" \
+  '{ withheld: [ .[] | select([.labels[].name] | index($t)) ],
+     queue:    [ .[] | select([.labels[].name] | index($t) | not) ] }'
+```
+
 **Ready-gate off** (`labels.ready: false`): the query above can't filter by a ready label — list open issues and instead **exclude** the in-flight ones (`--search "-label:<working> -label:<blocked>"`), so "never already `working`/`blocked`" still holds without a gate to lean on.
 
-Linear: `list_issues` filtered by team + label(s) + states; order by the native priority field.
+Linear: `list_issues` filtered by team + label(s) + states; order by the native priority field. The triage partition is the same rule on the labels `list_issues` already returns — Linear labels are team-scoped, so `labels.needsTriage` names a label of the configured team.
 
 ## Lease & race rules
 

@@ -16,7 +16,7 @@ allowed-tools:
 
 Take **one** tracked issue, implement it, and push it so a **different** agent can review it — the stateless implement-unit behind `work-implement-queue`. One issue, one tracker (**GitHub** via `gh` or **Linear** via its MCP), picked per-repo by the same committed config the `issue` skill uses. State lives in the issue's **lifecycle label**, never in the agent — so a crashed run **resumes** instead of restarting.
 
-This skill is the **implement half** of a two-loop workflow: it builds and pushes; `work-review` then reviews the pushed work. It **never reviews its own output** and never sets `done` — its terminal outputs are `reviewRequested` (handed to the review loop) or `blocked`.
+This skill is the **implement half** of a two-loop workflow: it builds and pushes; `work-review` then reviews the pushed work. It **never reviews its own output** and never sets `done` — its terminal outputs are `reviewRequested` (handed to the review loop), `blocked`, or `skipped` (contradictory labels — reported, tracker untouched).
 
 **Opted out?** If the repo config sets `work` to `false`, this skill is **disabled** for the repo (as are the other `work-*` skills) — stop immediately and tell the user the work skills are turned off in `.tituskirch-skills.json`. An _absent_ `work` block is **not** disabled (it falls back to defaults). Check `.work == false` on the resolved config before any action — and before indexing `.work.*`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
@@ -41,6 +41,8 @@ The lifecycle label decides what this run does — this skill is a **state machi
 - **re-work** (`changes-requested`) → claim and implement from the body **plus the review feedback** (the reviewer's PR review / issue comment) — steps 4–8.
 - **resume** (`working`) → a previous run leased it and crashed; continue where it left off (re-assert a clean tree first).
 - **not ours** (`reviewRequested` / `reviewing` / `needs human` / `done`) → nothing to do here; `reviewRequested`, `reviewing` and `needs human` belong to `work-review` and the human. `blocked` → leave it unless the user explicitly re-runs it; report why it was blocked.
+
+**Read the whole label set, not just the lifecycle one.** An issue carrying `labels.needsTriage` (when the repo configures it) _alongside_ `ready` or `changes-requested` is two humans contradicting each other — "nobody has assessed this" against "approved, pick it up". **Skip it: no lease, no label, no assignee, no comment** — and name the contradiction in the run's report so a human clears it. Do **not** obey the more permissive label, and do **not** write `blocked` — the work is not blocked, a label is wrong ([contradictory labels](REFERENCE.md#contradictory-labels)). This is a third terminal output alongside `reviewRequested` and `blocked`, and the one that leaves the tracker untouched. The check runs here, at claim time, even when a drain already partitioned the queue — the label can be added between the queue build and the lease.
 
 ### 4. Claim the issue (lease) — before any work
 
@@ -85,10 +87,11 @@ Inside a `work-implement-queue` drain nobody waits on this worker — return `re
 - **Push before handoff.** Only flip to `reviewRequested` once the work is pushed and visible to a reviewer; local-only work stays `working`.
 - **Stateless & resumable.** Read state from the tracker + git every run; carry nothing between runs.
 - **Only this issue.** Never touch sibling issues, never merge, never close anything you were not asked to.
-- **Never review your own work.** This skill only produces `reviewRequested` or `blocked`; it never sets `done`, `changes-requested`, or `needs human`.
+- **Never review your own work.** This skill only produces `reviewRequested`, `blocked` or `skipped`; it never sets `done`, `changes-requested`, or `needs human`.
+- **Contradicting labels are refused, not resolved.** `needsTriage` plus a lifecycle label → skip and report, writing nothing to the tracker. Never work the issue on the more permissive label, never mark it `blocked`, never strip either label to settle it.
 - **A missing hand-off helper degrades, never blocks.** `atomic-commit` and `pull-request` are **optional** calls, not preconditions: without them, commit in the repo's own conventions and open the PR with the forge CLI. Verified work is never left uncommitted or unpushed because a helper skill is absent — the push is what the lifecycle turns on.
 - **Attribution-free & secret-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in branches, commits, PRs or comments; scan the change and context for secrets and exclude them.
-- **`ai: ready` is the approval.** A human marking an issue `ai: ready` ("scoped + approved for an AI agent to pick up") is the opt-in, so the drain — and a direct `/work-implement 42` on an already-`ready`/`changes-requested` issue — works it **without re-confirming**. Confirm first only when there is no such opt-in (an issue not in an approved state, or a ready-gate widened to `false`).
+- **`ai: ready` is the approval.** A human marking an issue `ai: ready` ("scoped + approved for an AI agent to pick up") is the opt-in, so the drain — and a direct `/work-implement 42` on an already-`ready`/`changes-requested` issue — works it **without re-confirming**. Confirm first only when there is no such opt-in (an issue not in an approved state, or a ready-gate widened to `false`) — and treat it as **no opt-in at all** when `needsTriage` sits beside it, since the two labels then disagree about whether anyone assessed the issue.
 
 ## Reference
 
