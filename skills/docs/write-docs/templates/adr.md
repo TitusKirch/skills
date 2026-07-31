@@ -32,12 +32,3 @@ date: '{YYYY-MM-DD}'
 ## Alternatives considered
 
 {One short block per option that lost — what it was, and the reason it lost. Not a survey; only the options that were genuinely in play.}
-
-<!-- Later information that does NOT change the decision is appended below, never edited in:
-
-     ## Amendment {YYYY-MM-DD}
-
-     {What became clear since. Adds to the record; the sections above stay exactly as written,
-     and status/date stay as they are.}
-
-     If the addition would change the decision, it is a new ADR that supersedes this one. -->

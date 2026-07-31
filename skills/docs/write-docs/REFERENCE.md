@@ -163,14 +163,14 @@ In that order, the optional one last.
 
 - **The three required sections are Nygard's** — cite him and no one else. MADR requires a **different** set (`Context and Problem Statement`, `Considered Options`, `Decision Outcome`, with `Consequences` merely optional), so naming it alongside would claim a backing this shape does not have.
 - **`Alternatives considered` is optional on purpose.** The reasoning it holds is what a later reader comes back for, and without a home it ends up buried mid-`Decision` or dropped entirely — but required is the one thing it must not be: the lifecycle below is append-only, so a section made mandatory today could never be added to the records already written, and it would freeze every one of them out of conformance permanently. An ADR whose alternatives are genuinely covered inside `Decision` omits the section rather than padding it.
+- **Optional is about writing it, not about editing it later.** Once the record is accepted this section is as immutable as the three above it — the [lifecycle](#lifecycle--append-only) governs the whole body, so an omitted `Alternatives considered` is not an invitation to add one to an accepted ADR afterwards.
 
 ### Lifecycle — append-only
 
-An ADR is **immutable once accepted**. The log records what was decided and when, so a superseded decision has to survive intact — that record is the whole value. Append-only is not the same as never-touched: there are **two** ways to carry a record forward, and which one applies turns on whether the decision still stands.
+An ADR is **immutable once accepted**. The log records what was decided and when, so a superseded decision has to survive intact — that record is the whole value.
 
 - **Overturning a decision writes a new ADR.** The old one keeps its prose and only flips `status` to `superseded`, gains a `Superseded by ADR-NNNN` pointer under its H1, and updates `date`. The new ADR points back (`Supersedes ADR-NNNN`).
-- **Adding to a standing decision amends it.** Information that arrives later without changing what was decided — a consequence that showed up in practice, a constraint discovered since, a clarification — is **appended** as a final `## Amendment YYYY-MM-DD` H2, below every existing section. It adds; it does not touch a word above it, and `status` and `date` stay as they are (the amendment carries its own date in its heading). A whole new record for every refinement is noise the log does not need — but the moment the addition would _change_ the decision it is a supersede, not an amendment.
-- **Never** rewrite an accepted ADR's `Context`/`Decision`/`Consequences`/`Alternatives considered`, delete an ADR, or renumber one. Typo fixes, link fixes and an appended amendment are the only in-place edits.
+- **Never** rewrite an accepted ADR's Context/Decision/Consequences, delete an ADR, or renumber one. Typo and link fixes are the only in-place edits.
 - The general page rules **do not apply**: no edit-in-place for a changed decision, no one-topic-per-page dedupe (several ADRs may touch the same topic — that is the log working, not duplication), and no prose reconcile.
 
 ## Reconcile rules
@@ -272,8 +272,7 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 - ❌ An unprefixed `docs/adr/`, or any prefix other than `99`, for the ADR section.
 - ❌ An ADR id that is renumbered, reused, gap-filled, or written in the house `N.title.md` dot-schema.
 - ❌ An ADR title that names the topic (`0021-adr-format`) instead of stating the decision as an imperative (`0021-drop-the-legacy-queue`).
-- ❌ Rewriting an accepted ADR to reflect a new decision instead of superseding it — or filing a decision that overturns an older one as an amendment to it.
-- ❌ An amendment that edits the sections above it rather than being appended below them.
+- ❌ Rewriting an accepted ADR to reflect a new decision instead of superseding it.
 - ❌ Context/decision/consequences as ADR frontmatter fields instead of body sections.
 - ❌ MADR fields (`decision-makers`, `consulted`, `informed`) or MADR's section names on an ADR — the shape here is Nygard's.
 - ❌ A how-to without a closing checklist.
