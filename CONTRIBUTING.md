@@ -51,7 +51,7 @@ CI runs the same commands, one step per command, so a single run reports every f
 
 ## Branching & PRs
 
-1. **Don't push directly to `main`.** Branch off `main` for every change.
+1. **Branch off `dev`, and target `dev`.** `dev` is the integration branch every PR goes into; `main` is the release branch and takes only the `dev → main` rollup PR that CI keeps open. Never push to either directly.
 2. **Conventional Commits required.** Commitlint enforces this on every commit. Examples:
    - `feat(skill-name): add new skill`
    - `fix(skill-name): correct example prompt`
@@ -74,7 +74,7 @@ If a hook fails, fix the issue and commit again. **Don't `--no-verify`** unless 
 
 ## Releases
 
-Releases are automated via [release-please](https://github.com/googleapis/release-please). When your `feat:`/`fix:` commits land on `main`, release-please opens a PR with the next version bump and CHANGELOG entry.
+Releases are automated via [release-please](https://github.com/googleapis/release-please). Your `feat:`/`fix:` commits land on `dev` first and reach `main` through the rollup PR; release-please then opens a PR with the next version bump and CHANGELOG entry. Nothing to do on your side beyond the commit message.
 
 ## License
 
