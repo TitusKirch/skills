@@ -62,11 +62,15 @@ Branch naming, parallel/worktree handling and serialized integration: [REFERENCE
 - **fresh** → do the work the body describes.
 - **re-work** (`changes-requested`) → **read the review feedback first** (the reviewer's `changes-requested` PR review or issue/Linear comment), address exactly that, then the body. The feedback is why this issue came back.
 
+**When the issue itself is a bug, the work _is_ the diagnosis** — drive `diagnosing-bugs` and build a feedback loop that goes red on this bug **before** hypothesising, instead of reading code for a theory. **Optional call**: not installed, implement as today. What it changes here, and the rung of its ladder an unattended run cannot reach: [REFERENCE.md](REFERENCE.md#diagnosis-discipline).
+
 Keep the change scoped to this one issue.
 
 ### 7. Verify
 
-Run the repo's checks (the root `verify` key, else detected — tests, lint, build). **Working in a worktree** (`parallel: true`) means a tree with **no dependencies installed** — `git worktree` checks out tracked files only — so **install from the lockfile there first**, or the gate never touches the versions this branch pins ([how](REFERENCE.md#running-the-repos-checks)). A run in the working tree already has them and skips it. Green → continue. **Red and unfixable, spec ambiguous, or a genuine human decision needed → set `blocked`**, comment the reason on the issue, stop. `blocked` is a real outcome, not a failure to hide.
+Run the repo's checks (the root `verify` key, else detected — tests, lint, build). **Working in a worktree** (`parallel: true`) means a tree with **no dependencies installed** — `git worktree` checks out tracked files only — so **install from the lockfile there first**, or the gate never touches the versions this branch pins ([how](REFERENCE.md#running-the-repos-checks)). A run in the working tree already has them and skips it. Green → continue.
+
+Red is the one limb of the block clause with a procedure behind it: **red → drive `diagnosing-bugs` before calling it unfixable.** "Unfixable" is the cheapest legitimate exit from a drain — it ends a run without failing it — so it is **earned by a loop that was actually built**, never asserted. **Spec ambiguous or a genuine human decision needed → set `blocked` straight away**; neither is a bug case, and no reproduction answers them. When the diagnosis lands on a cause outside this issue's scope, or **no loop can be constructed at all** (the skill's own stop rule), **set `blocked`** — commenting **which loop constructions were tried and how each failed**, not merely the conclusion — and stop. **Optional call**: not installed, block exactly as today. `blocked` is a real outcome, not a failure to hide. Entry points, the unreachable rung and what the comment carries: [REFERENCE.md](REFERENCE.md#diagnosis-discipline).
 
 ### 8. Commit, PUSH, hand off to review
 
@@ -86,6 +90,7 @@ Inside a `work-implement-queue` drain nobody waits on this worker — return `re
 - **Stateless & resumable.** Read state from the tracker + git every run; carry nothing between runs.
 - **Only this issue.** Never touch sibling issues, never merge, never close anything you were not asked to.
 - **Never review your own work.** This skill only produces `reviewRequested` or `blocked`; it never sets `done`, `changes-requested`, or `needs human`.
+- **"Unfixable" is earned, not asserted.** Red exits to `blocked` only after a diagnosis loop was attempted, and the **attempt** is what the issue comment records — which loop constructions were tried, how each failed, and that the human-in-the-loop rung was unreachable unattended. A `blocked` with a failed loop construction behind it is **evidence**; one without is an opinion, and the two read identically on the issue.
 - **A missing hand-off helper degrades, never blocks.** `atomic-commit` and `pull-request` are **optional** calls, not preconditions: without them, commit in the repo's own conventions and open the PR with the forge CLI. Verified work is never left uncommitted or unpushed because a helper skill is absent — the push is what the lifecycle turns on.
 - **Attribution-free & secret-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in branches, commits, PRs or comments; scan the change and context for secrets and exclude them.
 - **`ai: ready` is the approval.** A human marking an issue `ai: ready` ("scoped + approved for an AI agent to pick up") is the opt-in, so the drain — and a direct `/work-implement 42` on an already-`ready`/`changes-requested` issue — works it **without re-confirming**. Confirm first only when there is no such opt-in (an issue not in an approved state, or a ready-gate widened to `false`).

@@ -237,6 +237,37 @@ minutes, and doing that per tree is the real cost of running several trees at on
 
 </skills-verify-isolated>
 
+## Diagnosis discipline
+
+Two moments in this skill turn on a judgement about a bug, and neither had a procedure behind it:
+
+| Moment                                            | What it is                                                                        |
+| :------------------------------------------------ | :-------------------------------------------------------------------------------- |
+| **Step 6, when the issue itself is a bug**        | the work _is_ the diagnosis — the body describes a symptom, not a change to make  |
+| **Step 7's red branch** — "red and **unfixable**" | a verdict that ends the run without failing it, and so the cheapest exit there is |
+
+`diagnosing-bugs` is driven at **both**. Its Phase 1 is the join: **build a feedback loop before hypothesising**, with ten construction techniques given in order of preference — a failing test at whatever seam reaches the bug, a curl/HTTP script, a CLI invocation diffed against a known-good fixture, a headless-browser script, replaying a captured trace, a throwaway harness, a property/fuzz loop, a bisection harness, a differential loop, and a human-in-the-loop script as the last resort — plus rules for **tightening** a loop (faster, sharper signal, more deterministic: pin time, seed RNG, freeze network) and, for a non-deterministic bug, raising the **reproduction rate** rather than demanding a clean repro.
+
+**Optional call.** It is a separate skill this repo does not ship, so it may simply not be installed. Invoke it when it is available; when it is not, **step 6 implements as today and step 7 blocks as today** — the run degrades to the status quo, it never fails for want of the skill. (Name the skill, never a path — an agent that has it can open it, one that does not gains nothing from a pointer.)
+
+**The other two limbs keep blocking immediately.** _Spec ambiguous_ and _a genuine human decision needed_ are not bug cases: routing them through a diagnosis loop spends a run on a question no reproduction can answer. Only **red** takes this path.
+
+**The last rung is unreachable unattended, and that is worth saying out loud.** Technique 10 drives a **human at a terminal** through the skill's own HITL script. In a drain there is nobody at that terminal, so that rung is **gone**, not merely expensive. An exhausted ladder whose final rung was never reachable is itself a legitimate reason to set `blocked` — and **stating** it is what stops a run from improvising around the gap, or from reading the gap as a licence to hypothesise anyway.
+
+**The stop rule is already ours.** The skill explicitly **refuses to speculate** when no loop can be constructed, and says so instead, listing what it tried. That maps exactly onto `blocked`. The call therefore does **not** make `blocked` rarer — it makes it **checkable**: a `blocked` with a failed loop construction behind it is evidence, where an unaided one is an assertion, and on the issue the two are indistinguishable.
+
+**What lands on the issue changes.** Today the block comments _the reason_. With a diagnosis behind it, it carries the **attempt**:
+
+- which loop constructions were **tried**, and **how each failed** — the ladder, not a summary of it;
+- that the **HITL rung was unreachable** in an unattended run, where the ladder got that far;
+- where the cause **landed**, when the loop was built and the cause proved to sit outside this issue's scope.
+
+That is what makes the block actionable for whoever picks the issue up, and it is the difference between a run that built a reproduction and one that guessed twice and moved on.
+
+**A diagnosis is not a licence to widen scope.** Step 6's rule — keep the change scoped to this one issue — still holds: a cause that proves to sit outside the issue's scope is a **finding to block on**, not a second issue to implement here.
+
+**The review loop is told, not bound.** The evidence sits on the issue; a review verdict still rests on the diff and the issue's requirements, and a `blocked` issue goes to a **human** rather than into the review loop at all. Whether a reviewer should re-derive a `blocked` claim the way it already re-derives green is a change to the **review** skill, and is deliberately not settled here.
+
 ## Catalog cache
 
 Reuses the `issue` cache verbatim — `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (labels, teams, projects, states), so label names resolve to ids and teams/states are looked up without re-fetching. Same TTL (~3 days) and `--refresh`.
