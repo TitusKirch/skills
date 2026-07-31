@@ -7,7 +7,10 @@ date: '{YYYY-MM-DD}'
 
 # ADR-{NNNN} — {The decision, in a few words}
 
-<!-- Once superseded, keep the prose untouched, set status: superseded, refresh date,
+<!-- The filename and this title are a present-tense imperative verb phrase — what was
+     decided, as something done: "let-the-review-establish-green", never "review-policy".
+
+     Once superseded, keep the prose untouched, set status: superseded, refresh date,
      and add the pointer here:  > **Superseded by** [ADR-{NNNN}]({NNNN-slug}.md) -->
 
 ## Context
@@ -16,8 +19,25 @@ date: '{YYYY-MM-DD}'
 
 ## Decision
 
-{What was decided, in the active voice — "We will …". Name the options that lost and the reason each lost; that reasoning is what a later reader comes back for.}
+{What was decided, in the active voice — "We will …". Keep this the decision itself; the options that lost go in the optional section below, unless naming one here is what makes the decision legible.}
 
 ## Consequences
 
 {What follows — what becomes easier, what becomes harder, and the trade-offs now accepted. Include the ones that hurt.}
+
+<!-- Optional fourth section. Keep it when there were real alternatives — that reasoning is
+     what a later reader comes back for. Drop the whole H2 when there were none; it is never
+     required, so an existing ADR without it is not out of contract. -->
+
+## Alternatives considered
+
+{One short block per option that lost — what it was, and the reason it lost. Not a survey; only the options that were genuinely in play.}
+
+<!-- Later information that does NOT change the decision is appended below, never edited in:
+
+     ## Amendment {YYYY-MM-DD}
+
+     {What became clear since. Adds to the record; the sections above stay exactly as written,
+     and status/date stay as they are.}
+
+     If the addition would change the decision, it is a new ADR that supersedes this one. -->
