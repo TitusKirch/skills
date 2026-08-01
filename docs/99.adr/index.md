@@ -5,7 +5,7 @@ description: 'The decision log — every architecture decision recorded for this
 
 # Architecture decisions
 
-A decision earns an ADR when it constrains work that comes later and its reasoning would otherwise be lost: a choice between real alternatives, a convention every skill has to follow, a trade-off that looks like a mistake until the reason is known. Records are append-only — a reversed decision is written as a new ADR that supersedes the old one, never as an edit to it.
+A decision earns an ADR when it constrains work that comes later and its reasoning would otherwise be lost: a choice between real alternatives, a convention every skill has to follow, a trade-off that looks like a mistake until the reason is known. Records are append-only — a reversed decision is written as a new ADR that supersedes the old one, never as an edit to it. Superseding is reserved for that reversal: a record whose decision still stands but whose stated reasoning has been overtaken is **amended** instead, by a dated addendum appended to it that adds what was learned without altering what already stands. Status and date stay put — the addendum carries its own date, so the Date column below still means the day the status last changed.
 
 | ADR                                                                 | Decision                                                    | Status   | Date       |
 | :------------------------------------------------------------------ | :---------------------------------------------------------- | :------- | :--------- |
