@@ -62,11 +62,13 @@ Branch naming, parallel/worktree handling and serialized integration: [REFERENCE
 - **fresh** → do the work the body describes.
 - **re-work** (`changes-requested`) → **read the review feedback first** (the reviewer's `changes-requested` PR review or issue/Linear comment), address exactly that, then the body. The feedback is why this issue came back.
 
+**Test-drive whatever a test can reach.** Where the change touches **code**, drive the `tdd` skill and run its loop in full — red before green, one vertical slice at a time, tests at seams rather than internals. `tdd` has the human confirm the seams before any test is written, and unattended there is nobody to ask: **the issue body stands in for the human**, so the requirements and acceptance criteria _are_ the agreed seams (`ai: ready` is already a human's approval). **Code touched and the body yields no seams → `blocked`** (step 7's exit) — never seams the run picked for itself. A **prose-only** change (a `SKILL.md` edit, a README) drives `tdd` **not at all**, and that is explicitly not a block: a missing seam only blocks when there is code behind it. Red **inside this step** is the loop working as designed and never blocks — step 7 stays the only gate. **`tdd` is optional**: not installed → implement exactly as today, no discipline driven and no block. Note what was driven, and what came of it, on the issue / PR at step 8 — it tells `work-review`, it does not bind its verdict. Mechanics: [REFERENCE.md](REFERENCE.md#test-discipline-tdd).
+
 Keep the change scoped to this one issue.
 
 ### 7. Verify
 
-Run the repo's checks (the root `verify` key, else detected — tests, lint, build). **Working in a worktree** (`parallel: true`) means a tree with **no dependencies installed** — `git worktree` checks out tracked files only — so **install from the lockfile there first**, or the gate never touches the versions this branch pins ([how](REFERENCE.md#running-the-repos-checks)). A run in the working tree already has them and skips it. Green → continue. **Red and unfixable, spec ambiguous, or a genuine human decision needed → set `blocked`**, comment the reason on the issue, stop. `blocked` is a real outcome, not a failure to hide.
+Run the repo's checks (the root `verify` key, else detected — tests, lint, build). **Working in a worktree** (`parallel: true`) means a tree with **no dependencies installed** — `git worktree` checks out tracked files only — so **install from the lockfile there first**, or the gate never touches the versions this branch pins ([how](REFERENCE.md#running-the-repos-checks)). A run in the working tree already has them and skips it. Green → continue. **Red and unfixable, spec ambiguous, or a genuine human decision needed → set `blocked`**, comment the reason on the issue, stop — a code change whose body yields no [seams](REFERENCE.md#test-discipline-tdd) is one such ambiguity, raised at step 6 and exiting here. `blocked` is a real outcome, not a failure to hide.
 
 ### 8. Commit, PUSH, hand off to review
 
@@ -74,6 +76,7 @@ The **push** is the moment the work becomes reviewable — it is the boundary be
 
 - Commit via `atomic-commit`; reference the issue so the tracker links it (`Refs #42` / the Linear key). **`atomic-commit` is optional** — not installed, commit directly in the repo's own Conventional Commits conventions, carrying the same reference line.
 - **PUSH** the work: open/update the PR via `pull-request` (worktree), or push the commit(s) to the shared branch (`branch:<name>`). **`pull-request` is optional too**, and only the `worktree` path reaches it at all — not installed, open the PR with the forge CLI directly, same base and head. Until this succeeds the issue stays `working` (a crash before the push is reclaimed as a [working-orphan](REFERENCE.md#reconcile)).
+- Record what [step 6's test discipline](REFERENCE.md#test-discipline-tdd) did — the seams read out of the body and the slices `tdd` drove, or that the change was prose-only or `tdd` absent — in the PR body (`worktree`) or an issue comment (`branch:<name>`). It **informs** the reviewer; it is never a verdict, and `work-review` still judges the diff against the requirements.
 - Move the label `working → reviewRequested` — the handoff to `work-review`. Report the issue id / PR url.
 - The skill **never merges**, never reviews, and **never sets `done`, `changes-requested` or `needs human`** — those are the review loop's and the human's outputs.
 
@@ -87,9 +90,10 @@ Inside a `work-implement-queue` drain nobody waits on this worker — return `re
 - **Only this issue.** Never touch sibling issues, never merge, never close anything you were not asked to.
 - **Never review your own work.** This skill only produces `reviewRequested` or `blocked`; it never sets `done`, `changes-requested`, or `needs human`.
 - **A missing hand-off helper degrades, never blocks.** `atomic-commit` and `pull-request` are **optional** calls, not preconditions: without them, commit in the repo's own conventions and open the PR with the forge CLI. Verified work is never left uncommitted or unpushed because a helper skill is absent — the push is what the lifecycle turns on.
+- **Test-drive code, not prose.** A change touching code runs `tdd`'s red-green loop with the issue body as the confirmed seams; a prose-only change runs it not at all, and that is not a block. Code with no seams in the body **is** a block — the run never picks its own seams, because seams chosen after the fact land exactly where the implementation already is. A missing `tdd` degrades to implementing as today, never to a block.
 - **Attribution-free & secret-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in branches, commits, PRs or comments; scan the change and context for secrets and exclude them.
 - **`ai: ready` is the approval.** A human marking an issue `ai: ready` ("scoped + approved for an AI agent to pick up") is the opt-in, so the drain — and a direct `/work-implement 42` on an already-`ready`/`changes-requested` issue — works it **without re-confirming**. Confirm first only when there is no such opt-in (an issue not in an approved state, or a ready-gate widened to `false`).
 
 ## Reference
 
-Config schema, the lifecycle state machine, selection query, lease & race rules, branch strategies (`worktree` / `branch:<name>`, sequential & parallel) and the two tracker recipes: [REFERENCE.md](REFERENCE.md). Why it is shaped this way: [DESIGN.md](DESIGN.md).
+Config schema, the lifecycle state machine, selection query, lease & race rules, the test discipline `tdd` carries, branch strategies (`worktree` / `branch:<name>`, sequential & parallel) and the two tracker recipes: [REFERENCE.md](REFERENCE.md). Why it is shaped this way: [DESIGN.md](DESIGN.md).

@@ -11,6 +11,7 @@ allowed-tools:
   - Grep
   - Bash(jq:*)
   - Bash(grep:*)
+  - Bash(git log:*)
 ---
 
 # write-docs
@@ -62,7 +63,7 @@ A real feature usually spans several types: how-it-works (`concepts`) + usage (`
 
 **The `reference` row is the one to challenge.** Lookup values earn a page only where nothing machine-readable already holds them — an HTTP API with no published schema, env vars with no `.env.example`. Where a schema, a manifest or `--help` is the real answer, the reference page is one sentence naming it plus whatever it cannot say (which values are safe to change, which combinations conflict). A transcribed option table is the single most common stale page in any repo. **Lead with how-it-works and how-to-use; push every lookup value to `reference` and link to it.** Page type is implied by section + template — it is **not** a frontmatter field. Catalogue, core sections and presets: [REFERENCE.md](REFERENCE.md).
 
-**ADRs are the standing exception.** They live in `docs/99.adr/` (fixed prefix, flat), are named `NNNN-title.md` for a permanent decision id, carry `status` + `date` on top of the house frontmatter, and are **append-only** — a reversed decision writes a new ADR and marks the old one `superseded`, never edits it. A concept page explains how a thing works _today_; an ADR records why it was chosen, _then_. Full contract: [REFERENCE.md](REFERENCE.md#architecture-decision-records).
+**ADRs are the standing exception.** They live in `docs/99.adr/` (fixed prefix, flat), are named `NNNN-title.md` — a permanent decision id plus an imperative verb phrase — carry `status` + `date` on top of the house frontmatter, run `Context` / `Decision` / `Consequences` (Nygard) with an optional `Alternatives considered`, and are **append-only** — a reversed decision writes a new ADR and marks the old one `superseded`, never edits it. A concept page explains how a thing works _today_; an ADR records why it was chosen, _then_. Full contract: [REFERENCE.md](REFERENCE.md#architecture-decision-records).
 
 ## When a decision earns an ADR
 
@@ -109,10 +110,11 @@ Desired-state, idempotent — like a `--fix` linter for the docs tree.
 2. Diff against the convention and group the plan:
    - **Auto-fix (mechanical)** — numbering gaps/dupes, missing `index.md`, removed/unknown frontmatter keys, `N.kebab.md` filename normalization, unambiguous broken relative links.
    - **Prompt (value-needing)** — a missing required field (`title`/`description`): derive a candidate from the H1 / first paragraph and confirm.
+   - **Import (value-needing)** — a **dedicated ADR directory outside `99.adr/`** (`docs/adr/` and near variants): decisions recorded in someone else's format, which every other category misses, so they are missing from the decision log while the log still reads as complete. Measure **each file** against [the threshold](#when-a-decision-earns-an-adr) first — it governs an adopted record exactly as it governs a written one, and this is the last moment it can be asked, because an append-only log cannot be pruned afterwards. What clears it is proposed as **one** operation — move, rename to `NNNN-title.md`, the log's row, the missing frontmatter, the body under the required H2s — applied only on confirmation. What does not clear it is routed as an ordinary docs page or reported and left alone, in the same plan. Detection rule, the threshold gate, the `date` derivation and what is report-only instead: [REFERENCE.md](REFERENCE.md#foreign-adrs--a-decision-log-written-elsewhere).
    - **Report only** — a how-to without a checklist, a page that fits no section, suspected duplication of an upstream source **or of a file in the repo**, any secret detected. Never auto-edited.
-3. Show the **plan + diff**; on confirm apply **only structure + frontmatter**. **Never rewrite prose. Only touch files inside `docs/`.**
+3. Show the **plan + diff**; on confirm apply **only structure + frontmatter**. **Never rewrite prose. Only touch files inside `docs/`.** The one exception is an **imported** ADR, whose body is **re-homed** under the required H2s — the author's sentences are moved, never rewritten.
 
-`99.adr/` is **exempt** — links and the decision log only. An ADR id is permanent, so never renumber one, never rename it to the dot-schema, never close a gap in the sequence ([REFERENCE.md](REFERENCE.md#reconcile-rules)).
+`99.adr/` is **exempt** — links and the decision log only. An ADR id is permanent, so never renumber one, never rename it to the dot-schema, never close a gap in the sequence ([REFERENCE.md](REFERENCE.md#reconcile-rules)). A **foreign** ADR is outside that exemption: it was never accepted _in this log_, so giving it an id is a first assignment rather than a renumbering, and shaping it on entry is not an edit to an accepted record.
 
 <skills-plan>
 
