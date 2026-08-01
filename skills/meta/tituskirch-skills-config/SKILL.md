@@ -89,7 +89,7 @@ of a file.
 - **Forge/tracker is never guessed or auto-selected** — always asked, with the offered options gated to what actually works here (see Setup).
 - **Minimal config** — resolution order means defaults need not be written.
 - **Valid before writing** — the result must be valid JSON and validate against the schema. Only ever touch `.tituskirch-skills.json`.
-- **Commit via `atomic-commit`**, not from here.
+- **Commit via `atomic-commit`**, not from here. **`atomic-commit` is optional** — not installed, commit the config change directly in the repo's own Conventional Commits conventions; a missing helper never leaves a written config uncommitted.
 
 ## Reference
 

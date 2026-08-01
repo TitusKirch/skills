@@ -237,6 +237,22 @@ minutes, and doing that per tree is the real cost of running several trees at on
 
 </skills-verify-isolated>
 
+## Test discipline (tdd)
+
+The section above is a **gate, not a discipline**. It says whether the tree still passes; it says nothing about how the code got written — whether a test came before the implementation, what was tested, or what a test worth keeping looks like. An unattended loop can satisfy that gate with tests that pass **by construction**: mocked internal collaborators, an assertion that recomputes the expected value the way the code does, a bulk of tests written afterwards against the shape that was already built. The checks go green, and the review loop sees a green run. The `tdd` skill (upstream `mattpocock/skills`, not shipped by this repo) carries what a gate cannot — red before green, one vertical slice at a time, tests at **seams** rather than internals, and the anti-patterns named outright (implementation-coupled, tautological, horizontal slicing) — so [step 6](SKILL.md) **drives it** instead of restating a weaker copy here.
+
+**The issue body stands in for the human.** `tdd`'s rule is that the seams under test are written down and **confirmed** before any test is written, and unattended there is nobody to confirm them. The body is that confirmation: `ai: ready` is a human's approval of a **scoped** issue, so the issue's **requirements and acceptance criteria are the agreed seams**. This is the [label-vs-body split](#label-vs-body-precedence) applied one level down — the label says the work may happen, the body says what the work is, and where the tests go is part of _what_.
+
+**No seams, with code behind them → `blocked`.** Picking its own seams is the one move the run must not make: seams chosen after the implementation exists land exactly where the implementation is, which is the failure this whole section exists to prevent. So where code is touched and the body yields no seams, take the `blocked` side-exit — comment the reason on the issue and stop. That is a **substance** block (the requirements are genuinely ambiguous), the kind the [label-vs-body rule](#label-vs-body-precedence) explicitly leaves intact, never a body line's opinion about eligibility.
+
+**The whole loop, but only where tests reach.** Red-green and vertical slices apply in full whenever the change touches code a test can observe. A **prose-only** change — a `SKILL.md` edit, a README, a config comment — drives `tdd` **not at all**, and that is a defined outcome rather than a degraded one: a missing seam blocks only when there is code behind it. (In this repo that is most changes; the ratio is a property of the repo, not of the rule.)
+
+**Red is separated by the step, not by the colour.** `tdd` runs **entirely inside step 6**, where a failing test is the loop working as designed — nothing there consults the lifecycle, and no red inside the loop ever reaches `blocked`. **Step 7 remains the only gate**, unchanged: it runs the repo's checks on the finished slice set. Because the two live in different steps, nothing about the cycle has to be carried as state — which keeps the worker [stateless and resumable](#principle) exactly as before.
+
+**`work-review` is told, not bound.** What the pass drove and what came of it is recorded on the issue / PR at [step 8](SKILL.md), so the reviewer reads it as evidence. It does **not** change the verdict's basis: `work-review` still judges the **diff against the requirements**, exactly as today. Weighing tests _as_ evidence of quality is the review loop's own question, not this section's.
+
+**Optional, like every other helper.** `tdd` is a separate skill this repo does not ship, so it may be absent. Treat it as **optional**: drive it when installed, and when it is not, **implement exactly as today** — no test discipline driven, no block. It is model-invocable upstream, which is what makes it drivable at all; the user-facing on-ramps to other engines (`grill-me`, say) declare `disable-model-invocation: true` and cannot be called from a skill. The absence of `tdd` degrades the run, it never fails it — the same rule `atomic-commit` and `pull-request` follow at step 8.
+
 ## Catalog cache
 
 Reuses the `issue` cache verbatim — `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (labels, teams, projects, states), so label names resolve to ids and teams/states are looked up without re-fetching. Same TTL (~3 days) and `--refresh`.
@@ -356,6 +372,7 @@ Eligible = matches **all** configured filters. Self-select (one issue) and drain
 - **repo scope** — Linear only: has `labels.repo` (unless `false`). Skipped on GitHub (repo-local by nature).
 - **team** — Linear only: `work.linear.team`.
 - **status** — Linear: state ∈ `work.linear.statuses`. GitHub: `--state open`.
+- **prerequisites** — an issue whose prerequisite is **unsatisfied** is **deferred**, and this filter applies under **both** branch strategies. What _satisfies_ an edge differs by strategy — a shared branch can discharge one by working the prerequisite first, a worktree run cannot — so the test, and what deferring does and does not write, live in [dependency ordering](#dependency-ordering). Edges come from the tracker's own relations, never from the issue text.
 - **order** — by priority. Linear native priority field; GitHub by `work.priorityLabels` (highest first), then creation order. Under `branch:<name>` this order is then re-sorted so prerequisites come first — [dependency ordering](#dependency-ordering).
 
 **Resolve every label before it reaches the query** — a bare `$(jq …)` inside the search string yields `label:"",""` when `jq` is missing, which matches nothing and drains an empty queue in silence:
@@ -454,16 +471,29 @@ Two **independent** knobs — `work.branch` (where work lands) × `work.parallel
 | **`worktree`**        | own branch + PR per issue, one tree, hops | own branch + PR per issue, **each in its own git worktree** |
 | **`branch:<name>`**   | all issues on `<name>`, sequential        | work in worktrees, **integrated serialized** onto `<name>`  |
 
+**`worktree` + `parallel: true` leaves collision avoidance to the human**, and that is stated here because here is where the mode is chosen. Each worker branches off the same clean `pr.base` and never sees another's tree; that isolation is what makes the mode safe to _run_, and it is exactly why nothing in the run notices two workers rewriting the same file. The ordering rules below are [`branch:<name>` only](#dependency-ordering), and there is no serialized integration to fail loudly, so **which issues share a concurrent batch is the only control there is** — and composing that batch is the human's job, not the drain's. What comes out otherwise is two green PRs whose conflict surfaces at **merge**, after both workers have already spent their run.
+
+**So treat the batch as the unit.** Keep a concurrent batch **free of shared files** — two issues rewriting the same file belong in different runs, in either order, since neither needs to precede the other. Where they cannot be separated, **stagger the `ready` labels**: mark the second one ready once the first has landed on `pr.base`. And expect a **refactoring batch to overlap by construction** — a set of behaviour-preserving changes over one codebase is the workload these skills suit best and the one where collisions are the norm rather than the exception, so the safely concurrent subset is usually far smaller than the queue. Under `parallel: false` none of this applies: one worker at a time, each branching off a `pr.base` that already carries whatever landed before it.
+
 - **Worktrees are the mechanism of `parallel: true`**, not a separate mode. Sequential runs need none.
 - **A worktree starts with nothing installed**, so [step 7's verify](#running-the-repos-checks) installs the lockfile there **first**. `git worktree` checks out **tracked** files only: `node_modules`, `vendor` and every other gitignored directory are absent, however completely installed the tree the drain was invoked from is. Skip the install and the gate resolves against whatever is on `PATH` — accidentally green, accidentally red, and either way not the versions this branch pins. A run that stays in the **working tree** (sequential, on a shared branch or hopping branches in place) needs none of this; what is installed there is already the right thing. This is why the skill carries the **isolated** check-command block rather than the base one.
 - **Every extra worktree pays a full install** — the real price of concurrency, and on a repo whose dependencies run to hundreds of megabytes the install can outlast the implementation it gates. Worth weighing before raising the worker count, and the reason a concurrency bound is a different knob from `cap`. Making that cheaper — copying or linking the heavy directories into a new worktree — is the repo's own call, never something a worker does behind the run's back: one `node_modules` shared by two live workers is one install either of them can leave wrong for the other.
 - **Serialized integration** — for a shared `branch:<name>` target under `parallel: true`, parallel work is produced in isolated worktrees and landed one commit at a time (push → rebase → retry). This is what makes `branch:dev` + `parallel` race-free.
 - **`worktree`** branches off `pr.base`; the worktree with committed+pushed work is removed after the PR is opened (commits live on the remote/branch).
-- **Dependencies** — under `branch:<name>` the drain works prerequisites first within the run ([dependency ordering](#dependency-ordering)); the shared branch accumulates, so the dependent issue just sees the code. Under `worktree` each issue branches off a clean `pr.base` and sees nothing of its siblings, so the `ready` gate stays the mechanism — a dependent issue is not `ready` until its parent merges. Stacked branches are a **v2** concern — deferred, with the rationale recorded in this skill's `DESIGN.md`.
+- **Dependencies** — the tracker's relations are read under **both** strategies; what differs is what a run can do about them. Under `branch:<name>` the drain works prerequisites first within the run ([dependency ordering](#dependency-ordering)); the shared branch accumulates, so the dependent issue just sees the code. Under `worktree` each issue branches off a clean `pr.base` and sees nothing of its siblings, so **no order the run picks can satisfy an edge** — the dependent is **deferred** until its prerequisite lands on `pr.base`. Stacked branches remain a **v2** concern — deferred, with the rationale recorded in this skill's `DESIGN.md`.
 
 ## Dependency ordering
 
-**`branch:<name>` only.** A shared branch **accumulates** — every issue commits onto the same branch, so a dependent issue sees its prerequisite's work by simply being worked **after** it. No branch-off-parent, no PR base retarget, no rebase cascade — those are worktree-mode stacking, deferred to v2. Single-branch mode needs only the **right order**. Under `worktree` this whole section is inert: each issue branches off a clean `pr.base`, so the `ready` gate remains the dependency mechanism.
+**Relations are read under both strategies.** What differs is what a run can _do_ with an unlanded prerequisite:
+
+| `work.branch`   | An unlanded prerequisite means           | Because                                                                   |
+| :-------------- | :--------------------------------------- | :------------------------------------------------------------------------ |
+| `branch:<name>` | **work it first** — order the queue      | the branch accumulates, so being worked earlier _is_ the edge's discharge |
+| `worktree`      | **defer the dependent** — do not work it | each issue branches off a clean `pr.base`; nothing accumulates            |
+
+So a shared branch needs the **right order** (the topological sort below); a worktree run needs only the **gate** — decline to select an issue whose prerequisite has not landed and report it as deferred. **Neither is branch stacking**: no branch-off-parent, no PR base retarget, no rebase cascade — that is worktree-mode stacking, still deferred to v2 (this skill's `DESIGN.md`). Declining to select needs none of that machinery.
+
+**Reading the relation is the point, on both paths.** The alternative is not "the `ready` gate handles it" — that is a human remembering not to mark a dependent issue `ready` early, with nothing surfacing the moment they forget. Modelling a dependency in the tracker and having the drain work the issue anyway is exactly the silent failure this file refuses elsewhere. One query per candidate buys the difference.
 
 ### Edges
 
@@ -491,7 +521,25 @@ gh api graphql -f query='
 
 **Linear** — `list_issues` does **not** return relations; fan out `get_issue(id, includeRelations: true)` per candidate and read the `blocked by` relations plus `parent`.
 
+**Only the prerequisite edge gates selection.** The gate below defers on `blockedBy` / `blocked by` alone; `parent` is an **ordering** input under `branch:<name>` and nothing more. A parent issue is routinely the epic that closes _after_ its children, so gating a child on it would stall every sub-issue of every open epic — a stall the tracker data never asked for. Where a parent genuinely must land first, that is a prerequisite and is modelled as one.
+
+### When an edge is satisfied
+
+An edge **A → B** is satisfied only when A's work is **on the base B will be built on** — never merely because A carries `labels.done`, which means [AI-accepted, not shipped](#terminal-done):
+
+| A's state                                                               | Satisfied?                                                                |
+| :---------------------------------------------------------------------- | :------------------------------------------------------------------------ |
+| **closed**, or its PR **merged into `pr.base`**                         | **yes**, under either strategy                                            |
+| **worked earlier in this run**                                          | **`branch:<name>` only** — the branch accumulates; under `worktree` never |
+| anything else (open, `working`, `reviewRequested`, `done`-but-unmerged) | **no** — B is **deferred**                                                |
+
+**The merged-PR check is the one that usually answers.** With a non-default `pr.base` (e.g. `dev`) GitHub's `Closes #<n>` never fires, so an accepted issue stays **open** indefinitely — reading "closed" alone would defer every dependent forever. Ask the forge for the prerequisite's PRs with the same `closedByPullRequestsReferences` query the [reconcile](#reconcile) runs, and count the edge satisfied when one is `merged` with `baseRefName` = `pr.base`. On **Linear**, read the linked PR from the issue's attachments and ask GitHub for its state, as the reconcile does.
+
+**Deferred is not `blocked`.** `blocked` is a verdict about the work — checks unfixable, a human call needed — and it is a lifecycle label a human must clear. Deferred is a statement about the clock: nothing is wrong, the prerequisite simply has not landed yet. So a deferred issue is **not leased, not labelled and not commented on** — it is named in the run's report and becomes selectable on a later run, by itself, once its prerequisite lands.
+
 ### Building the order
+
+**`branch:<name>` only** — under `worktree` there is no order to build; every unsatisfied edge simply defers its dependent, and the surviving candidates keep their priority order.
 
 1. **Candidates** — the eligible issues from the [selection query](#selection-query), in priority order.
 2. **Fetch edges** per candidate (the fan-out above).
@@ -503,18 +551,21 @@ gh api graphql -f query='
 
 ### Cross-set prerequisites
 
-A prerequisite that is **not** in the candidate set:
+A prerequisite that is **not** in the candidate set is judged by exactly the test above — [when an edge is satisfied](#when-an-edge-is-satisfied) — with the same two outcomes: **satisfied** (closed, or merged into `pr.base`) → ignore the edge; **unsatisfied** (open and unlanded, whatever its lifecycle label) → **defer the dependent**, unleased and unlabelled, named in the report.
 
-- **closed / merged** → already on the branch, edge satisfied — ignore it.
-- **open but not eligible** (not `ready`, `blocked`, someone else's `working`) → its code is _not_ on the branch, so the dependent issue's premise is false. **Defer the dependent issue** — do not work it this run, do not lease it, do not label it `blocked`; report it as deferred. It becomes eligible on a later run once the prerequisite lands.
+**Under `worktree` every prerequisite is effectively cross-set**, because being in the candidate set is what a shared branch's accumulation makes meaningful and a worktree run has no accumulation. That is the whole of the worktree gate: it needs the satisfaction test and nothing else from this section.
 
 ### Cycles
 
 A dependency cycle (A → B → A) has no valid order and is a **tracker-data error a human must fix**. Detect it, **skip every issue in the cycle** for this run — unleased, unlabelled — and name them in the drain report. Never break a cycle by guessing.
 
+Under `worktree` the gate already defers every issue in a cycle (each has an unlanded prerequisite), so nothing runs regardless — but **report it as a cycle, not as a plain deferral**: a deferral says "come back later", and this one never clears on its own.
+
 ### Parallel
 
 `branch:<name>` + `parallel: true` — dependent issues **cannot** run concurrently. Process the graph in **topological levels**: each level holds mutually independent issues that may run in parallel; levels run **sequentially**, with each level's [serialized integration](#branch-strategy) landing on the branch before the next starts. A chain therefore degenerates to sequential, which is the point.
+
+`worktree` + `parallel: true` needs no levelling: the gate has already removed every issue with an unlanded prerequisite, so whatever remains is mutually independent by construction.
 
 ## Tracker — GitHub (`gh`)
 

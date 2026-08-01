@@ -113,6 +113,8 @@ Values: `in development` · `planned` · `deprecated` — a shipped page omits t
 
 An **ADR** records one architectural decision and the reasoning behind it. It is a **structurally distinct artifact** — its own filename schema, extra frontmatter and an append-only lifecycle. Everything here **overrides** the general page contract above.
 
+This section is the artifact's contract — what an ADR looks like once there is one to write. **Whether a decision earns one at all** is the threshold in [SKILL.md](SKILL.md#when-a-decision-earns-an-adr), asked before routing.
+
 ### Section
 
 ADRs live in **`docs/99.adr/`** — a numbered house section like any other, never an unprefixed `docs/adr/`.
@@ -127,6 +129,7 @@ ADRs live in **`docs/99.adr/`** — a numbered house section like any other, nev
 `NNNN-title.md` — 4-digit zero-padded id, **hyphen**, kebab title (`0007-drop-the-legacy-queue.md`). The H1 is `ADR-{NNNN} — {title}`.
 
 - The id is a **permanent decision identifier**, taken once from the next free value. It is what cross-references point at (`superseded by ADR-0007`), so it is **never reused, renumbered or gap-filled**.
+- **The title is a present-tense imperative verb phrase** — `0012-let-the-review-establish-green`, not `0012-review-green-policy`. A decision is something a project _did_, so the filename says what was done; a noun phrase names the topic instead and reads like a concept page. The H1 and the `title` frontmatter carry the same phrase, capitalized (`Let the review establish green`).
 - This is deliberately **not** the house `N.kebab.md` dot-schema: that prefix is reading order and may be renumbered by the reconciler — a decision id may not. The hyphen keeps the two schemas impossible to confuse.
 - **`index.md` is the decision log** — a table of every ADR (id, decision, status, date), in id order. Update it in the same change that adds an ADR. Template: [`templates/adr-index.md`](templates/adr-index.md).
 
@@ -145,7 +148,30 @@ date: 2026-07-15
 
 - **`status`** — `proposed` · `accepted` · `rejected` · `deprecated` · `superseded`.
 - **`date`** — ISO `YYYY-MM-DD`; the day the status last changed.
-- **Context, decision and consequences are body sections, not frontmatter** — they are prose, and prose belongs where it renders. Required H2s in order: `Context`, `Decision`, `Consequences` (Nygard / MADR). Template: [`templates/adr.md`](templates/adr.md).
+- **Nothing else.** MADR's `decision-makers` / `consulted` / `informed` are a deliberate **no**: who decided is already recorded, timestamped and unforgeable, on the issue and pull request the ADR came out of, and a retyped list only goes stale beside it.
+
+### Body
+
+Context, decision and consequences are **body sections, not frontmatter** — they are prose, and prose belongs where it renders. Template: [`templates/adr.md`](templates/adr.md).
+
+| H2                        | Required     | Holds                                                             |
+| :------------------------ | :----------- | :---------------------------------------------------------------- |
+| `Context`                 | **yes**      | the forces at play, neutral — no verdict yet                      |
+| `Decision`                | **yes**      | what was decided, active voice                                    |
+| `Consequences`            | **yes**      | what becomes easier, what becomes harder, the trade-offs accepted |
+| `Alternatives considered` | **optional** | the options that lost, and why each lost                          |
+
+In that order, the optional one last.
+
+- **The three required sections are Nygard's** — cite him and no one else. MADR requires a **different** set (`Context and Problem Statement`, `Considered Options`, `Decision Outcome`, with `Consequences` merely optional), so naming it alongside would claim a backing this shape does not have.
+- **`Alternatives considered` is optional on purpose.** The reasoning it holds is what a later reader comes back for, and without a home it ends up buried mid-`Decision` or dropped entirely — but required is the one thing it must not be: the lifecycle below is append-only, so a section made mandatory today could never be added to the records already written, and it would freeze every one of them out of conformance permanently. An ADR whose alternatives are genuinely covered inside `Decision` omits the section rather than padding it.
+- **Optional is about writing it, not about editing it later.** Once the record is accepted this section is as immutable as the three above it — the [lifecycle](#lifecycle--append-only) governs the whole body, so an omitted `Alternatives considered` is not an invitation to add one to an accepted ADR afterwards.
+
+### Size
+
+**An ADR can be a single paragraph. The value is in recording that a decision was made and why — not in filling out sections.** The three H2s are required as _headings_, not as a word budget: any of them may be one sentence, and "the consequences are the obvious ones" is a complete `Consequences` section.
+
+This is a **permission, not a ceiling** — no word count in either direction. A decision with four rejected alternatives earns the words it takes to name them, and append-only means an over-long record cannot be trimmed later anyway. The permission exists because the cost of a mandatory-looking section is paid at the moment of **writing**, where a record that feels like paperwork is a record that does not get made — and an unwritten ADR is the only failure mode this contract cannot recover from.
 
 ### Lifecycle — append-only
 
@@ -156,6 +182,52 @@ An ADR is **immutable once accepted**. The log records what was decided and when
 - **Never** rewrite an accepted ADR's Context/Decision/Consequences, delete an ADR, or renumber one. Typo fixes, link fixes and an appended amendment are the only in-place edits.
 - The general page rules **do not apply**: no edit-in-place for a changed decision, no one-topic-per-page dedupe (several ADRs may touch the same topic — that is the log working, not duplication), and no prose reconcile.
 
+### Foreign ADRs — a decision log written elsewhere
+
+A repo may already hold ADRs that were written **somewhere else, in someone else's format** — another tool's `docs/adr/0001-slug.md` with no frontmatter and a two-sentence body, a migrated repo's log, a human contributor following a different convention. Such a file matches no category in [Reconcile rules](#reconcile-rules): it is not a numbering gap, not a missing `index.md`, not an unknown key on a page we own. It is a page the job never looks at, so the decision it records is **absent from the decision log** — the one failure a log must not have, because an incomplete log still reads as complete.
+
+The **reconcile** job therefore recognizes such a directory and offers to bring it into the contract.
+
+**Detection is a dedicated ADR directory, and nothing else.** Inside `docs/`, a directory whose whole content is decision records: `adr/`, `adrs/`, `decisions/`, `architecture-decisions/` and near variants of those names.
+
+- **Never match on filenames.** A page called `adr-caching.md` sitting in a section, or an `adr/` holding a mix of decisions and other material, is **report only** — filename matching starts collecting documents nobody meant as decision records, and a wrong import is far more expensive than a missed one. Unsure → report, don't import.
+- **A decision directory outside `docs/`** (a root-level `adr/`) is likewise **report only**: the reconcile blast radius stops at `docs/`, so name it in the report and leave the move to a human.
+
+**The import is one proposal, and nothing moves unasked.** Move, rename, index row and the missing values are presented **together** and applied only on confirmation. Splitting the move out as a mechanical first step saves nothing — `title` / `description` / `status` have to be asked for anyway — and buys a half-imported log, which is worse than an unimported one.
+
+#### The threshold governs adopted records too
+
+**Finding the directory is not the decision to admit it.** Admission is judged **per file**, against the same bar a record written here has to clear — [when a decision earns an ADR](SKILL.md#when-a-decision-earns-an-adr), as the target repo's own `99.adr/index.md` states it. A threshold that governs which decisions earn an ADR governs adopted ones no differently; nothing about arriving in another tool's format earns a record a place this log would not otherwise give it.
+
+**The gate belongs at the import step and nowhere later.** The log is [append-only](#lifecycle--append-only), so a record admitted wrongly can never be pruned — faithfully importing another tool's noise into a log that cannot be trimmed is a worse outcome than the blind spot the import exists to close. Ask it before the id is assigned, because after that there is no undo.
+
+A record that does **not** clear the bar has two outcomes, proposed in the same plan as the ones that do:
+
+| Outcome                            | When                                                                                                                                                                                          |
+| :--------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Route as an ordinary docs page** | the content is worth keeping but is not a decision this log records — it goes through the [routing matrix](SKILL.md#routing-matrix--what-you-changed--page-type--section) like any other page |
+| **Report and leave it alone**      | there is nothing to keep, or the call is genuinely the human's — named in the report, not moved, not imported                                                                                 |
+
+**Borderline is the human's call.** Name it in the plan and let them answer; never resolve it by importing "just in case", since that is the direction with no way back. Nothing is deleted either way — a record the reconciler declines to import stays exactly where it is.
+
+| The import supplies    | From                                                                                                                                               |
+| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Path + name            | `docs/99.adr/NNNN-title.md`, `NNNN` the next free id — one per admitted file, in the source directory's own order                                  |
+| `title`/`description`  | proposed from the H1 / first paragraph, confirmed like any other missing required field                                                            |
+| `status`               | proposed (`accepted` for a decision evidently in force, `proposed` while any required section is empty), confirmed — never silently defaulted      |
+| `date`                 | the file's **first commit** is the decision date: `git log --follow --diff-filter=A --reverse --format=%as -- <file>`, first line. No guess needed |
+| Body                   | the existing text **re-homed** under the required `Context` / `Decision` / `Consequences` H2s                                                      |
+| The decision log's row | `99.adr/index.md`, in the same change                                                                                                              |
+
+- **`date` is the decision's date, not the import's.** The field records when the `status` last changed, and a record entering the log unchanged last changed when it was written — so the first commit, never the day it moved.
+- **`--follow` is not optional here.** `git log` stops at a rename without it, and a foreign ADR directory has usually been moved at least once already — that is often how it ended up where the reconciler found it. Drop the flag and the one value this section claims needs no guess quietly becomes the date of a move.
+- **Untracked, or no commit for the file** → git has no answer; fall back to a date the file itself states, else propose today's and say which of the two it is.
+- **The title states the decision, not the source's topic.** A foreign H1 is characteristically a noun phrase (`ADR-0003: Caching strategy`); the imported filename and `title` restate it in this log's shape — the [file schema](#file-schema)'s naming rule applies to an adopted record exactly as to a written one. Entry is the **only** chance to get it right: the reconciler may never rename a record once it is in `99.adr/`.
+- **Re-homing is not rewriting.** The sentences are the author's and stay the author's — they move under the H2 they belong to, and a section the source never wrote is left empty rather than invented. Everything the reconciler cannot place goes in the plan for a human to place — and an empty required section decides the `status` the record enters at (next bullet).
+- **A record never lands `accepted` with a required section empty.** Immutability starts the moment the file enters `99.adr/`, so an empty `Context` / `Decision` / `Consequences` admitted at `accepted` is a hole append-only forbids ever filling. Either the human fills it **in the same plan, before the change is applied**, or the record lands `status: proposed` — the honest description of an incomplete one, and the status that leaves it free to be completed and accepted later. Empty **and** accepted is the one combination the import must not produce.
+- **Assigning an id does not break [append-only](#lifecycle--append-only).** The file was never accepted _in this log_, so the id is a **first assignment**, not a renumbering, and shaping it on entry is not an edit to an accepted record. From the moment it lands in `99.adr/` it is immutable like every other ADR.
+- **Idempotent** — an admitted record is gone from the source directory, so a second run has nothing left to propose for it. What the threshold declined is still there and is **reported** again, never re-proposed as an import; a directory emptied of everything admitted disappears from the job entirely.
+
 ## Reconcile rules
 
 Desired-state and idempotent. Blast radius: **structure + frontmatter only, prose untouched, inside `docs/` only, plan + diff first** (see SKILL.md). Categorize each deviation:
@@ -163,10 +235,12 @@ Desired-state and idempotent. Blast radius: **structure + frontmatter only, pros
 | Category      | Examples                                                                                                                              | Action          |
 | :------------ | :------------------------------------------------------------------------------------------------------------------------------------ | :-------------- |
 | Mechanical    | numbering gaps/dupes · missing `index.md` · removed/unknown frontmatter keys · `N.kebab.md` rename · unambiguous broken relative link | auto-fix        |
-| Value-needing | missing required `title`/`description`                                                                                                | propose + ask   |
+| Value-needing | missing required `title`/`description` · a [foreign ADR directory](#foreign-adrs--a-decision-log-written-elsewhere) to import         | propose + ask   |
 | Report only   | how-to without a checklist · page fits no section · suspected upstream duplication · secret found                                     | report, no edit |
 
-**`99.adr/` is exempt.** There the reconciler may only fix broken links and a missing/stale `index.md` row. It must **never** renumber an ADR, normalize `NNNN-title.md` to the dot-schema, close a numbering gap, or touch body prose or `status` — ids are permanent and gaps are not deviations. A missing `title`/`description` is still worth proposing; everything else in an ADR is report-only.
+**`99.adr/` is exempt.** There the reconciler may only fix broken links and a missing/stale `index.md` row. It must **never** renumber an ADR, normalize `NNNN-title.md` to the dot-schema, close a numbering gap, rename a record whose title is not imperative, add a missing `Alternatives considered`, or touch body prose or `status` — ids are permanent, gaps are not deviations, and the body is append-only. A missing `title`/`description` is still worth proposing; everything else in an ADR is report-only.
+
+**The exemption covers the log, not what is outside it.** A [foreign ADR](#foreign-adrs--a-decision-log-written-elsewhere) has never entered `99.adr/`, so importing one is not an exception to the rule above — there is no id to renumber and no accepted record to edit. It is the single case where the reconciler moves a file into `99.adr/` and re-homes body prose, and it does so only as one confirmed proposal.
 
 Read the whole tree fresh every run — it is live state and is **never cached**.
 
@@ -254,10 +328,12 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 - ❌ A second page on a topic that already has one — edit in place. (ADRs excepted — a new decision is a new ADR.)
 - ❌ An unprefixed `docs/adr/`, or any prefix other than `99`, for the ADR section.
 - ❌ An ADR id that is renumbered, reused, gap-filled, or written in the house `N.title.md` dot-schema.
+- ❌ An ADR title that names the topic (`0021-adr-format`) instead of stating the decision as an imperative (`0021-drop-the-legacy-queue`).
 - ❌ Rewriting an accepted ADR to reflect a new decision instead of superseding it.
 - ❌ Context/decision/consequences as ADR frontmatter fields instead of body sections.
+- ❌ MADR fields (`decision-makers`, `consulted`, `informed`) or MADR's section names on an ADR — the shape here is Nygard's.
 - ❌ A how-to without a closing checklist.
 - ❌ Restating upstream/framework behavior instead of linking it.
-- ❌ Rewriting prose during a reconcile, or touching anything outside `docs/`.
+- ❌ Rewriting prose during a reconcile, or touching anything outside `docs/`. (Re-homing an [imported ADR](#foreign-adrs--a-decision-log-written-elsewhere)'s own sentences under the required H2s is the sole carve-out — the prose **moves**, it is never rewritten, and it never leaves `docs/`.)
 - ❌ Emoji in generated headings, landing pages, or prose — output is plain text.
 - ❌ Naming a specific docs tool/generator in the pages or the convention.

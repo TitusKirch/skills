@@ -2,7 +2,7 @@
 name: work-implement-queue
 metadata:
   summary: Drains the ready/changes-requested queue — implements each issue to a pushed, reviewable state.
-description: Drains a repo's queue of implementable issues across GitHub (gh) or Linear (MCP) — selects every issue that is ready or has changes requested, orders them by priority (and, on a shared branch, by dependency), then implements each one to a pushed, reviewable state by delegating to work-implement. It hands each issue to the review loop (label review); the separate work-review-queue reviews them. Starts by reclaiming issues an earlier run crashed mid-implementation. Honours a per-run cap, runs sequentially or in parallel per config, single-flight-locked. Use when the user wants to batch-process, drain, or auto-implement the ready issues, run the implement loop, says things like "work the issues", "arbeite die Issues ab", "drain the queue", or runs it under /loop.
+description: Drains a repo's queue of implementable issues across GitHub (gh) or Linear (MCP) — selects every issue that is ready or has changes requested, defers any whose prerequisite has not landed, orders the rest by priority (and, on a shared branch, by dependency), then implements each one to a pushed, reviewable state by delegating to work-implement. It hands each issue to the review loop (label review); the separate work-review-queue reviews them. Starts by reclaiming issues an earlier run crashed mid-implementation. Honours a per-run cap, runs sequentially or in parallel per config, single-flight-locked. Use when the user wants to batch-process, drain, or auto-implement the ready issues, run the implement loop, says things like "work the issues", "arbeite die Issues ab", "drain the queue", or runs it under /loop.
 allowed-tools:
   - Bash
   - Read
@@ -36,7 +36,8 @@ Before building the queue, reclaim issues an earlier implement-run crashed on: a
 ### 3. Build the queue
 
 - The **selection query** (`work-implement`'s REFERENCE) → every eligible issue (`ready` **or** `changes-requested`) → ordered by priority (Linear native priority; GitHub `work.priorityLabels`).
-- **`branch:<name>` → re-sort into dependency order** (**Dependency ordering** in `work-implement`'s REFERENCE) — prerequisites before dependents, priority as the tiebreak; **order first, then apply the cap**. Under `worktree` skip this.
+- **Read each candidate's prerequisites** (**Dependency ordering** in `work-implement`'s REFERENCE) — from the tracker's own relations, under **both** branch strategies. An issue whose prerequisite is **unsatisfied** is **deferred**: dropped from this run's queue, unleased and unlabelled, and named in the report. Satisfied means the prerequisite is closed or its PR merged into `pr.base` — under `branch:<name>`, also that it is in this run's queue and worked first. Deferred is not `blocked`: it clears itself once the prerequisite lands.
+- **`branch:<name>` → re-sort the survivors into dependency order** — prerequisites before dependents, priority as the tiebreak; **order first, then apply the cap**. Under `worktree` there is no re-sort: nothing accumulates, so an in-run prerequisite satisfies nothing and the gate above has already removed every dependent it would have ordered.
 
 ### 4. Announce the batch — then drain
 
@@ -50,7 +51,7 @@ Before building the queue, reclaim issues an earlier implement-run crashed on: a
 For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-implement` on exactly that issue:
 
 - **sequential** (`parallel: false`) — one worker at a time; **re-fetch** the next eligible issue each iteration.
-- **parallel** (`parallel: true`) — N workers in isolated git worktrees; for a `branch:<name>` target, pushes are integrated **serialized**; dependent issues never run concurrently. A worktree holds **tracked files only**, so each worker installs the repo's dependencies in its own tree before verifying — a real per-worker cost to weigh when raising N. Mechanics: **Branch strategy** in `work-implement`'s REFERENCE.
+- **parallel** (`parallel: true`) — N workers in isolated git worktrees; for a `branch:<name>` target, pushes are integrated **serialized**, and **there** dependent issues never run concurrently. Under **`worktree`** neither holds: every issue branches off a clean `pr.base`, nothing is ordered and nothing is integrated, so two issues touching the same code can run side by side and their conflict surfaces at merge — **keeping a concurrent batch collision-free is the human's**. A worktree holds **tracked files only**, so each worker installs the repo's dependencies in its own tree before verifying — a real per-worker cost to weigh when raising N. Mechanics, and how to manage the collisions: **Branch strategy** in `work-implement`'s REFERENCE.
 
 **Heartbeat the lock each iteration.** The lock is held for the whole batch, which no single shell process spans, so the drain **re-stamps** the implement lock's `refreshed` timestamp once per iteration (one cheap command) — that is what keeps a **live** drain from being misread as a crashed one by the **heartbeat-timestamp** stale rule (**The single-flight lock** below). The lock is released **explicitly** at step 6, not by a shell-lifetime trap.
 
@@ -207,7 +208,7 @@ of a file.
 - **Reconcile first, select second** — never re-work an issue the sweep is about to reclaim.
 - **Claim-before-work, fresh fetch each iteration** — the worker leases each issue; the loop never snapshots the queue.
 - **The cap is mandatory** — never drain unbounded, and apply it **after** the ordering.
-- **Never work a dependent before its prerequisite** — order the graph, defer what depends on work not landing this run, skip cycles for a human.
+- **Never work a dependent before its prerequisite — under `branch:<name>`**, the mode that can act on it: order the graph, defer what depends on work not landing this run, skip cycles for a human. Under **`worktree`** the ordering step is skipped entirely (nothing accumulates for a dependent to see), so the `ready` gate — a human's — is the only thing keeping a dependent out of the run.
 - **This loop never reviews.** It produces `reviewRequested`/`blocked` only; `done`/`changes-requested`/`needs human` are the review loop's and the human's.
 - Inherits `work-implement`'s attribution-free, secret-free, only-this-issue guardrails.
 
