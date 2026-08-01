@@ -122,6 +122,7 @@ const VERIFY_CARRIERS: Record<'base' | 'isolated', string[]> = {
  */
 const PLAN_CARRIERS = [
   'docs/compact-readme',
+  'docs/write-contributing',
   'docs/write-docs',
   'docs/write-readme',
   'meta/tituskirch-skills-config',
@@ -142,7 +143,7 @@ describe('the generated config block is self-contained', () => {
   test('it is present in the skills that read config, and nowhere else by accident', () => {
     assert.equal(
       withConfigBlock.length,
-      14,
+      15,
       `found: ${withConfigBlock.join(', ')}`
     );
   });
@@ -289,6 +290,10 @@ const authorityClass: Record<
   'docs/vhs-demo': {
     tier: 'none',
     reason: "the repo's own CLI and tape — no third-party text"
+  },
+  'docs/write-contributing': {
+    tier: 'none',
+    reason: "the repo's own files and its existing guide — no third-party text"
   },
   'docs/write-docs': {
     tier: 'none',

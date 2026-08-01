@@ -94,6 +94,7 @@ Resolution per setting: **config → native/detected → built-in default** — 
 - [`update-deps`](repo/update-deps/REFERENCE.md#config) — `language`, `verify` (owns no section of its own)
 - [`prune-comments`](repo/prune-comments/REFERENCE.md#config) — `language`, `verify`, `pr.base` (owns no section of its own)
 - [`handoff`](work/handoff/REFERENCE.md#config) — `language` (owns no section of its own)
+- [`write-contributing`](docs/write-contributing/REFERENCE.md#config) — `language`, `verify`, `pr.base` (owns no section of its own)
 - [`write-docs`](docs/write-docs/REFERENCE.md#config) — `language`, `docs.*`
 - [`compact-readme`](docs/compact-readme/REFERENCE.md#config) — `docs` (owns no section of its own)
 - [`work-implement`](work/work-implement/REFERENCE.md#config) — `language`, `verify`, `work.*`, `pr.base`
