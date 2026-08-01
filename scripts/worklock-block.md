@@ -4,9 +4,16 @@ drifts. Edit it here, never in a skill.
 
 Everything below is self-contained on purpose: a skill can be installed on its own, so it
 must not link to another skill or to a file at the repo root. That is why this text is
-mirrored rather than cited — the two queues used to point at `work-implement`'s REFERENCE
-for it, which resolves to nothing on an installed copy, and then wrote the load-bearing
-half out again anyway, in two wordings.
+mirrored rather than cited — the two queues used to point at a **path** in
+`work-implement`'s REFERENCE, which resolves to nothing on an installed copy, and then
+wrote the load-bearing half out again anyway, in two wordings.
+
+It is mirrored into the two work-loop **units** (`work-implement`, `work-review`), not into
+the two queues. A queue cannot run without its worker — it names that worker and verifies it
+before any state change — so it **names** the worker's REFERENCE for this spec, which is a
+name and not a path, and keeps 9 KB out of a `SKILL.md` that has no `REFERENCE.md` to hold
+it. A unit has no such sibling: `work-implement` is invoked directly as well as by a drain,
+so its copy is the one every reader ends up at.
 
 <!-- worklock:body -->
 
