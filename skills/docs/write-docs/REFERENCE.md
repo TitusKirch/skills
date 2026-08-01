@@ -127,6 +127,7 @@ ADRs live in **`docs/99.adr/`** — a numbered house section like any other, nev
 `NNNN-title.md` — 4-digit zero-padded id, **hyphen**, kebab title (`0007-drop-the-legacy-queue.md`). The H1 is `ADR-{NNNN} — {title}`.
 
 - The id is a **permanent decision identifier**, taken once from the next free value. It is what cross-references point at (`superseded by ADR-0007`), so it is **never reused, renumbered or gap-filled**.
+- **The title is a present-tense imperative verb phrase** — `0012-let-the-review-establish-green`, not `0012-review-green-policy`. A decision is something a project _did_, so the filename says what was done; a noun phrase names the topic instead and reads like a concept page. The H1 and the `title` frontmatter carry the same phrase, capitalized (`Let the review establish green`).
 - This is deliberately **not** the house `N.kebab.md` dot-schema: that prefix is reading order and may be renumbered by the reconciler — a decision id may not. The hyphen keeps the two schemas impossible to confuse.
 - **`index.md` is the decision log** — a table of every ADR (id, decision, status, date), in id order. Update it in the same change that adds an ADR. Template: [`templates/adr-index.md`](templates/adr-index.md).
 
@@ -145,7 +146,24 @@ date: 2026-07-15
 
 - **`status`** — `proposed` · `accepted` · `rejected` · `deprecated` · `superseded`.
 - **`date`** — ISO `YYYY-MM-DD`; the day the status last changed.
-- **Context, decision and consequences are body sections, not frontmatter** — they are prose, and prose belongs where it renders. Required H2s in order: `Context`, `Decision`, `Consequences` (Nygard / MADR). Template: [`templates/adr.md`](templates/adr.md).
+- **Nothing else.** MADR's `decision-makers` / `consulted` / `informed` are a deliberate **no**: who decided is already recorded, timestamped and unforgeable, on the issue and pull request the ADR came out of, and a retyped list only goes stale beside it.
+
+### Body
+
+Context, decision and consequences are **body sections, not frontmatter** — they are prose, and prose belongs where it renders. Template: [`templates/adr.md`](templates/adr.md).
+
+| H2                        | Required     | Holds                                                             |
+| :------------------------ | :----------- | :---------------------------------------------------------------- |
+| `Context`                 | **yes**      | the forces at play, neutral — no verdict yet                      |
+| `Decision`                | **yes**      | what was decided, active voice                                    |
+| `Consequences`            | **yes**      | what becomes easier, what becomes harder, the trade-offs accepted |
+| `Alternatives considered` | **optional** | the options that lost, and why each lost                          |
+
+In that order, the optional one last.
+
+- **The three required sections are Nygard's** — cite him and no one else. MADR requires a **different** set (`Context and Problem Statement`, `Considered Options`, `Decision Outcome`, with `Consequences` merely optional), so naming it alongside would claim a backing this shape does not have.
+- **`Alternatives considered` is optional on purpose.** The reasoning it holds is what a later reader comes back for, and without a home it ends up buried mid-`Decision` or dropped entirely — but required is the one thing it must not be: the lifecycle below is append-only, so a section made mandatory today could never be added to the records already written, and it would freeze every one of them out of conformance permanently. An ADR whose alternatives are genuinely covered inside `Decision` omits the section rather than padding it.
+- **Optional is about writing it, not about editing it later.** Once the record is accepted this section is as immutable as the three above it — the [lifecycle](#lifecycle--append-only) governs the whole body, so an omitted `Alternatives considered` is not an invitation to add one to an accepted ADR afterwards.
 
 ### Lifecycle — append-only
 
@@ -165,7 +183,7 @@ Desired-state and idempotent. Blast radius: **structure + frontmatter only, pros
 | Value-needing | missing required `title`/`description`                                                                                                | propose + ask   |
 | Report only   | how-to without a checklist · page fits no section · suspected upstream duplication · secret found                                     | report, no edit |
 
-**`99.adr/` is exempt.** There the reconciler may only fix broken links and a missing/stale `index.md` row. It must **never** renumber an ADR, normalize `NNNN-title.md` to the dot-schema, close a numbering gap, or touch body prose or `status` — ids are permanent and gaps are not deviations. A missing `title`/`description` is still worth proposing; everything else in an ADR is report-only.
+**`99.adr/` is exempt.** There the reconciler may only fix broken links and a missing/stale `index.md` row. It must **never** renumber an ADR, normalize `NNNN-title.md` to the dot-schema, close a numbering gap, rename a record whose title is not imperative, add a missing `Alternatives considered`, or touch body prose or `status` — ids are permanent, gaps are not deviations, and the body is append-only. A missing `title`/`description` is still worth proposing; everything else in an ADR is report-only.
 
 Read the whole tree fresh every run — it is live state and is **never cached**.
 
@@ -253,8 +271,10 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 - ❌ A second page on a topic that already has one — edit in place. (ADRs excepted — a new decision is a new ADR.)
 - ❌ An unprefixed `docs/adr/`, or any prefix other than `99`, for the ADR section.
 - ❌ An ADR id that is renumbered, reused, gap-filled, or written in the house `N.title.md` dot-schema.
+- ❌ An ADR title that names the topic (`0021-adr-format`) instead of stating the decision as an imperative (`0021-drop-the-legacy-queue`).
 - ❌ Rewriting an accepted ADR to reflect a new decision instead of superseding it.
 - ❌ Context/decision/consequences as ADR frontmatter fields instead of body sections.
+- ❌ MADR fields (`decision-makers`, `consulted`, `informed`) or MADR's section names on an ADR — the shape here is Nygard's.
 - ❌ A how-to without a closing checklist.
 - ❌ Restating upstream/framework behavior instead of linking it.
 - ❌ Rewriting prose during a reconcile, or touching anything outside `docs/`.
