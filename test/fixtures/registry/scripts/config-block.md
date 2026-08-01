@@ -5,4 +5,5 @@ not mirrored; everything below it is.
 
 ### Reading the config
 
-Fixture config body.
+Fixture config body, naming [`templates/resolve-config.sh`](templates/resolve-config.sh) the way
+the canonical contract does — that mention is what ships the script.

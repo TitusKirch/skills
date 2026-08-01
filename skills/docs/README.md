@@ -6,6 +6,7 @@ Generate and maintain project documentation, READMEs and terminal demos in the h
 
 - **[compact-readme](./compact-readme/SKILL.md)** — Slims down an existing overstuffed README without losing information.
 - **[vhs-demo](./vhs-demo/SKILL.md)** — Creates and maintains a reproducible terminal-demo GIF from a VHS tape.
+- **[write-contributing](./write-contributing/SKILL.md)** — Writes and reconciles CONTRIBUTING.md in the house style, deriving every repo fact from the file that owns it.
 - **[write-docs](./write-docs/SKILL.md)** — Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format.
 - **[write-readme](./write-readme/SKILL.md)** — Generates project READMEs in the kirchDev house style.
 
