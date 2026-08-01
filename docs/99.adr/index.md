@@ -31,3 +31,4 @@ A decision earns an ADR when it constrains work that comes later and its reasoni
 | [ADR-0020](0020-separate-installable-alone-from-runnable-alone.md)  | Separate installable alone from runnable alone              | accepted | 2026-07-31 |
 | [ADR-0021](0021-state-when-a-decision-earns-an-adr.md)              | State when a decision earns an ADR                          | accepted | 2026-07-31 |
 | [ADR-0022](0022-permit-a-thin-shape-for-alias-style-skills.md)      | Permit a thin shape for alias-style skills                  | accepted | 2026-07-31 |
+| [ADR-0023](0023-back-the-local-tracker-with-committed-files.md)     | Back the local tracker with committed issue files           | accepted | 2026-07-31 |
