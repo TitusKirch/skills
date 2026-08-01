@@ -565,7 +565,7 @@
         "labels": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Lifecycle label names. Each is a label string, or false to disable that mechanic.",
+          "description": "Label names the work skills reason about. Each is a label string, or false to disable that mechanic. Most are lifecycle states the loops write; repo and needsTriage are markers the loops only read.",
           "properties": {
             "ready": {
               "$ref": "#/$defs/labelOrOff"
