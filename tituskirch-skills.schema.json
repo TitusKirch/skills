@@ -593,6 +593,10 @@
             "blocked": {
               "$ref": "#/$defs/labelOrOff"
             },
+            "needsTriage": {
+              "$ref": "#/$defs/labelOrOff",
+              "description": "The repo's \"nobody has assessed this yet\" label (e.g. \"needs triage\"), which the work loops never write and only read. Naming it turns on the contradiction check: an issue carrying it alongside a lifecycle label (ready / changesRequested) claims both \"unassessed\" and \"approved for an agent\", so the implement queue withholds that issue and names it in the run's report rather than obeying the more permissive label — it is not worked, and it is not marked blocked, because nothing is wrong with the work. Opt-in: unlike the lifecycle labels it defaults to false (off), because it is a repo's own triage convention rather than a state the loop owns, and guessing a string would fire the check on a label the repo never meant."
+            },
             "repo": {
               "$ref": "#/$defs/labelOrOff"
             }
