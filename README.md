@@ -56,6 +56,7 @@ Issues, the two AI work loops (implement and review), and handing work between s
 | :------------------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------- |
 | [`handoff`](skills/work/handoff/SKILL.md)                           | Hands off in-progress work to another agent or session via a committed handoff document.                              |
 | [`issue`](skills/work/issue/SKILL.md)                               | Creates/updates/searches issues across GitHub (gh), Linear (MCP) or local issue files, tracker chosen by config.      |
+| [`refine-issue`](skills/work/refine-issue/SKILL.md)                 | Takes one filed issue to the point a human can approve it for the AI loop — finds the open decisions and closes them. |
 | [`work-implement`](skills/work/work-implement/SKILL.md)             | Implements one tracked issue and pushes it for AI review — claim, implement, verify, push, hand off.                  |
 | [`work-implement-queue`](skills/work/work-implement-queue/SKILL.md) | Drains the ready/changes-requested queue — implements each issue to a pushed, reviewable state.                       |
 | [`work-review`](skills/work/work-review/SKILL.md)                   | Reviews one issue's pushed work as an independent agent — verdict routes to done, changes, needs-human, or blocked.   |
