@@ -2,11 +2,12 @@
 
 # Tracked work
 
-Issues, the two AI work loops (implement and review), and handing work between sessions.
+Issues, the two AI work loops (implement and review), handing work between sessions, and summarising one.
 
 - **[handoff](./handoff/SKILL.md)** — Hands off in-progress work to another agent or session via a committed handoff document.
 - **[issue](./issue/SKILL.md)** — Creates/updates/searches issues across GitHub (gh), Linear (MCP) or local issue files, tracker chosen by config.
 - **[refine-issue](./refine-issue/SKILL.md)** — Takes one filed issue to the point a human can approve it for the AI loop — finds the open decisions and closes them.
+- **[tldr](./tldr/SKILL.md)** — Summarises the last answer, the task just finished, or the whole session into a fixed section order.
 - **[work-implement](./work-implement/SKILL.md)** — Implements one tracked issue and pushes it for AI review — claim, implement, verify, push, hand off.
 - **[work-implement-queue](./work-implement-queue/SKILL.md)** — Drains the ready/changes-requested queue — implements each issue to a pushed, reviewable state.
 - **[work-review](./work-review/SKILL.md)** — Reviews one issue's pushed work as an independent agent — verdict routes to done, changes, needs-human, or blocked.

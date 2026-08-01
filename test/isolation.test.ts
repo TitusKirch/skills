@@ -119,6 +119,11 @@ const VERIFY_CARRIERS: Record<'base' | 'isolated', string[]> = {
  * The four skills deliberately absent present no plan to answer: `handoff` and `vhs-demo`
  * deliver a file, and `work-implement` / `work-review` are single units a drain invokes, whose
  * output is a short outcome rather than something a human reads to decide.
+ *
+ * `tldr` carries it while waiting for no answer at all, and that is the criterion rather than an
+ * exception to it: what the block binds is the message a human reads in a terminal, and for `tldr`
+ * that message *is* the whole product — a sectioned report, which is precisely the shape that
+ * arrives folded.
  */
 const PLAN_CARRIERS = [
   'docs/compact-readme',
@@ -136,6 +141,7 @@ const PLAN_CARRIERS = [
   'repo/update-deps',
   'work/issue',
   'work/refine-issue',
+  'work/tldr',
   'work/work-implement-queue',
   'work/work-review-queue'
 ];
@@ -144,7 +150,7 @@ describe('the generated config block is self-contained', () => {
   test('it is present in the skills that read config, and nowhere else by accident', () => {
     assert.equal(
       withConfigBlock.length,
-      16,
+      17,
       `found: ${withConfigBlock.join(', ')}`
     );
   });
@@ -326,6 +332,11 @@ const authorityClass: Record<
     tier: 'none',
     reason:
       "the branch's own commits and the repo's PR template — no third-party text"
+  },
+  'work/tldr': {
+    tier: 'none',
+    reason:
+      "the session's own conversation and the repo's own git state — no third-party text"
   }
 };
 

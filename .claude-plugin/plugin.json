@@ -20,6 +20,7 @@
     "./skills/work/handoff",
     "./skills/work/issue",
     "./skills/work/refine-issue",
+    "./skills/work/tldr",
     "./skills/work/work-implement",
     "./skills/work/work-implement-queue",
     "./skills/work/work-review",
