@@ -128,7 +128,7 @@ The resolver exists because a repo may define **profiles** — named overlays me
 
 ## Referring to another skill
 
-Every skill installs **on its own**, so a reference to a sibling is the one place a skill assumes something about its install environment — the referenced skill may simply not be there. Two rules follow, one about the **form** of the reference and one about its **kind**. Both are house rules: the open standard says nothing about either, so `validate-skills` reports a breach as a **house-style** finding, never a spec violation.
+Every skill installs **on its own**, so a reference to a sibling is the one place a skill assumes something about its install environment — the referenced skill may simply not be there. Three rules follow: one about the **form** of the reference, one about **declaring** its kind, and one about **which kind it may be**. All three are house rules: the open standard says nothing about any of them, so `validate-skills` reports a breach as a **house-style** finding, never a spec violation.
 
 ### Name the skill, never a path
 
@@ -150,6 +150,22 @@ A reference that is a **call** — the run hands work to that skill, or depends 
 - **Optional** → the **fallback** is stated: what the run does instead — degrade, skip that pass, carry on. `issue` → `grilling` is the model to copy: "If the `grilling` skill is not installed, skip this pass and draft as today."
 
 A reference that is only a **mention** — naming another skill as whose job something is ("committing is `atomic-commit`'s job", "the complement to `write-readme`") — is **not** a call and needs no declaration. What decides it is whether the run _hands over work_, not whether the name appears: adding a required/optional declaration to a mention is as wrong as omitting one from a call.
+
+### Optional is the default; required is the exception
+
+**Which** of the two a call may be is not the author's free choice. [ADR-0003](../docs/99.adr/0003-mirror-shared-content-into-each-skill.md) turned a runtime dependency between skills down for the reason above — an installed skill may not have its sibling — so making one a **precondition** is what has to earn itself. That is the axis the two words name: **required** means the sibling is checked **before any work starts**, and there is no degraded run to have; **optional** means the run starts regardless and takes a stated fallback at the call site. So the default runs one way:
+
+| The call names                                                                                                  | Kind                | Why                                                                                                                                                                                                             |
+| :-------------------------------------------------------------------------------------------------------------- | :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A skill this repo does not ship** — `grilling`, and every other external skill                                | **always optional** | Nothing here decides whether it is installed, and the calling skill did its job before the pass existed. Absent → skip that pass and carry on with the behaviour it would have had without it.                  |
+| **A sibling in this repo** — `atomic-commit`, `pull-request`, `write-docs`, …                                   | **optional**        | Same degradation, same reason: each skill installs alone, so a sibling is an assumption about the install environment, never a precondition.                                                                    |
+| **A queue skill's own worker** — `work-implement-queue` → `work-implement`, `work-review-queue` → `work-review` | **required**        | The **only** exception. The drain implements and reviews nothing itself, so there is no degraded run left to have. Checked **before any state changes**, so absence costs a stopped run and not a leased issue. |
+
+**Optional is not a promise the run survives.** The two words say _when_ the absence is discovered and _whether a degraded run exists_ — not that every degradation is painless. An optional call's fallback is whatever the **caller's own** rules already say for that situation, and where those rules end the run the fallback is that ending: `work-implement` answers a rebase conflict it cannot resolve with `blocked` whether or not `resolving-merge-conflicts` is installed, so that call is optional and its stated fallback is a lifecycle stop. What the shape guarantees is that every absence has a **defined** outcome, not that every absence is survivable. **Required** is the different claim — the skill has no job at all without the sibling, so it checks first and attempts nothing, rather than stopping partway through work it has already begun.
+
+Two things follow. A **required** call earns its own scrutiny — anything the skill could plainly carry on without is optional, however costly the fallback. And the degradation is stated **where the sibling is named**, in the skill's own text, so a reader never has to infer it: the safe-looking inference is "abort", and that is the wrong one.
+
+**Prose, not frontmatter.** The declaration lives in the body beside the call, and there is no frontmatter key listing a skill's optional siblings. A new key would be a client extension no client reads ([ADR-0007](../docs/99.adr/0007-permit-claude-code-frontmatter-extensions.md)), so nothing would act on it — and a list at the top of the file is a second copy of what the body says, free to drift from it while the agent follows the body. The place the agent reads is the place the rule belongs.
 
 ## Adding a new skill
 
