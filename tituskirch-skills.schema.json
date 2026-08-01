@@ -409,8 +409,8 @@
       "properties": {
         "tracker": {
           "type": "string",
-          "enum": ["github", "linear"],
-          "description": "Active issue tracker (github = GitHub Issues, linear = Linear). Set by the guided setup; never guessed silently. Distinct from the forge axis (root forge), which stays GitHub even when the tracker is Linear."
+          "enum": ["github", "linear", "local"],
+          "description": "Active issue tracker (github = GitHub Issues, linear = Linear, local = committed issue files under issue.local.dir). Set by the guided setup; never guessed silently. Distinct from the forge axis (root forge), which stays GitHub even when the tracker is Linear or local — a repo can file its issues in-tree and still open its pull requests on GitHub."
         },
         "language": {
           "$ref": "#/$defs/language",
@@ -444,6 +444,19 @@
             "defaultState": {
               "type": ["string", "null"],
               "description": "Default workflow state on create."
+            }
+          }
+        },
+        "local": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Local file-tracker options (used when tracker = local). Needs nothing set: unlike linear, whose team cannot be derived, every key here has a default, so tracker = local is complete on its own and the schema requires no companion.",
+          "properties": {
+            "dir": {
+              "type": "string",
+              "minLength": 1,
+              "default": ".agents/issues",
+              "description": "Repo-relative directory holding the issue files, one NNNN-slug.md per issue. Committed on purpose — being reviewable and shareable is the reason for choosing files over a service — and a sibling of .agents/handoffs/ for the same reason. Default: \".agents/issues\"."
             }
           }
         },
@@ -512,14 +525,19 @@
       "properties": {
         "tracker": {
           "type": "string",
-          "enum": ["github", "linear"],
-          "description": "Active tracker for working issues (github = GitHub Issues, linear = Linear). Falls back to issue.tracker."
+          "enum": ["github", "linear", "local"],
+          "description": "Active tracker for working issues (github = GitHub Issues, linear = Linear, local = committed issue files under work.local.dir). Falls back to issue.tracker."
         },
         "cap": {
           "type": "integer",
           "minimum": 1,
           "default": 10,
-          "description": "Max issues a single drain works (mandatory bound). Default: 10."
+          "description": "Max issues a single drain works across the whole run (mandatory bound) — throughput, not simultaneity. How many of them run at once is work.concurrency. Default: 10."
+        },
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Max workers a drain runs at the same time under parallel: true — the ceiling the machine can stand (each worker costs a worktree, a full dependency install, CPU and tracker rate limit), which is a different question from how many issues the run may work in total. Never raises cap: the effective concurrency is the lower of the two. Inert when parallel is false, where one worker at a time is the construction. No static default — it defaults to work.cap, so a config that does not set it behaves exactly as before this key existed."
         },
         "branch": {
           "oneOf": [
@@ -538,6 +556,11 @@
           "type": "boolean",
           "default": false,
           "description": "Run workers concurrently in isolated git worktrees instead of sequentially. Independent of branch. Default: false."
+        },
+        "feedback": {
+          "type": "string",
+          "enum": ["pr", "issue"],
+          "description": "Where the two loops write their round-by-round output — review verdicts and their rationale, the implementer's blocked reason, a surfaced label/body conflict. \"pr\" puts it on the pull request, leaving the issue its requirement, its lifecycle label and a link to the thread; \"issue\" puts it in the issue's comments, for a loop that opens no pull request. No fixed default: it follows work.branch, so worktree defaults to \"pr\" and branch:<name> to \"issue\". In \"pr\" mode with no pull request to post to, the feedback falls back to the issue rather than being dropped, and a formal review the forge refuses on a self-authored pull request falls back to a plain pull-request comment."
         },
         "labels": {
           "type": "object",
@@ -570,12 +593,12 @@
             "blocked": {
               "$ref": "#/$defs/labelOrOff"
             },
-            "repo": {
-              "$ref": "#/$defs/labelOrOff"
-            },
             "needsTriage": {
               "$ref": "#/$defs/labelOrOff",
-              "description": "The repo's own untriaged marker — \"nobody has assessed this issue yet\". Not a lifecycle state and never written by the work loops: it is named here so a skill can reason about a label the repo already uses, which is the whole of it — a skill cannot honour a label it was never told about. Opt-in, like reviewing: it defaults to false (off), because unlike the ai: * states, whose spelling these skills own, this one is the repo's and is spelled however the repo spells it (\"needs triage\", \"triage\", \"status: needs-triage\"); a default string would guess, and acting on a guessed label is the failure this key exists to prevent. Set it to the repo's exact string to switch the mechanic on. Read by issue, which withholds it from a template's declared labels when the filing author is an authorized maintainer — an issue filed by the person who would triage it is assessed by definition."
+              "description": "The repo's \"nobody has assessed this yet\" label (e.g. \"needs triage\"), which the work loops never write and only read. Naming it turns on the contradiction check: an issue carrying it alongside a lifecycle label (ready / changesRequested) claims both \"unassessed\" and \"approved for an agent\", so the implement queue withholds that issue and names it in the run's report rather than obeying the more permissive label — it is not worked, and it is not marked blocked, because nothing is wrong with the work. Opt-in: unlike the lifecycle labels it defaults to false (off), because it is a repo's own triage convention rather than a state the loop owns, and guessing a string would fire the check on a label the repo never meant."
+            },
+            "repo": {
+              "$ref": "#/$defs/labelOrOff"
             }
           }
         },
@@ -592,6 +615,25 @@
             }
           }
         },
+        "loop": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "How a repeating driver (/loop, cron, a human) paces re-runs of a queue drain that ended in backpressure — nothing eligible right now, but the counterpart loop can still produce this loop's input. Read by work-implement-queue and work-review-queue only; the units never wait. A drain that ended on the cap is work remaining, not backpressure, and re-runs immediately without consulting these. Deliberately not the single-flight lock's stale window, which is crash detection measured in hours: two jobs, two numbers.",
+          "properties": {
+            "wait": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 120,
+              "description": "Seconds to wait before re-checking the queue when a drain ends in backpressure. Calibrated to one counterpart iteration, which runs in minutes (a fresh worktree installs its dependencies before the gate, and the model reads the issue and the diff before either), so the usual 60 s driver floor would poll 3-5x per counterpart issue and re-read the skill each time. Default: 120."
+            },
+            "maxWait": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1800,
+              "description": "Total seconds a driver may stay in backpressure before giving up and reporting loudly. A backstop only: a counterpart that drains empty releases its lock and ends the wait by itself, and a crashed one is caught by its frozen heartbeat, so reaching this means something nobody predicted. Default: 1800."
+            }
+          }
+        },
         "priorityLabels": {
           "type": "array",
           "items": {
@@ -599,7 +641,19 @@
             "minLength": 1
           },
           "uniqueItems": true,
-          "description": "GitHub priority labels, highest first (e.g. [\"urgent\", \"high\", \"medium\", \"low\"]). Linear uses its native priority field and ignores these."
+          "description": "GitHub priority labels, highest first (e.g. [\"urgent\", \"high\", \"medium\", \"low\"]). Linear uses its native priority field and ignores these. The local tracker reads this same ladder, matching an issue file's `priority` field against it, so the ordering is configured once for both label-shaped trackers."
+        },
+        "local": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Local file-tracker options (used when tracker = local). Every key has a default, so unlike linear this section may be omitted entirely and the root's if/then requires nothing alongside tracker = local.",
+          "properties": {
+            "dir": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Repo-relative directory holding the issue files. Falls back to issue.local.dir, then to \".agents/issues\" — the same two-step fallback linear.team takes to issue.linear.team, so the directory is stated once for both skills."
+            }
+          }
         },
         "linear": {
           "type": "object",
@@ -618,17 +672,17 @@
                 "minLength": 1
               },
               "uniqueItems": true,
-              "description": "Workflow states that count as startable (e.g. [\"Todo\", \"In Progress\"]). ANDed with the label filter, so every state an eligible issue can legitimately sit in has to appear here — the ones states.ready and states.changesRequested name, plus states.accepted, which is where a human hands an already-accepted issue back from. A state the mapping can produce but this list omits takes the issue out of the queue for good, silently."
+              "description": "Workflow states that count as startable (e.g. [\"Todo\", \"In Progress\"]). ANDed with the label filter, so every state an eligible issue can legitimately sit in has to appear here — the ones states.ready and states.changesRequested name, plus states.accepted, which is where a human hands an already-accepted issue back from. A state the mapping can produce but this list omits takes the issue out of the queue for good, silently. That much is required, and stays required however the board is written — a human moving a card writes this same field, with no automation to switch off. Covering what Linear's GitHub integration writes on pull-request events is a SEPARATE, optional widening, and worth it only where labels.ready is a real label: the label filter is what absorbs a foreign state landing INSIDE this list. Under labels.ready: false this list is the sole positive gate, so widening hands the queue to whatever the integration writes; there, silence that integration's pull-request state automation or restore a positive label gate instead. Omitting linear.states is not an answer to that: this key is separate, required, and read regardless."
             },
             "states": {
               "type": "object",
               "additionalProperties": false,
-              "description": "Linear workflow state names, written alongside the lifecycle label. State names are per-team and cannot be derived, so there is no default: an unmapped step leaves the workflow state untouched, and omitting the key drives the lifecycle by label alone. Never guess a state name. Every key but `done` is a step the work loop writes; `done` is the terminal shipped state, which the work loop deliberately never writes.",
+              "description": "Linear workflow state names, written alongside the lifecycle label. State names are per-team and cannot be derived, so there is no default: an unmapped step leaves the workflow state untouched, and omitting the key drives the lifecycle by label alone. Never guess a state name. Every key but `done` is a step the work loop writes; `done` is the terminal shipped state, which the work loop deliberately never writes. Each state is a BEST-EFFORT write, not a state these skills maintain: Linear's own GitHub integration writes the same field on any event on the linked pull request, label-blind, and no reconcile sweep inspects a workflow state, let alone puts a drifted one back — so turn that integration's pull-request state automation off, keep statuses wide enough to cover what the integration writes (only where labels.ready is a real label), or leave this key unmapped. Turning that automation off removes the automated writer, not every one: a human moving a card writes this same field. Leaving this key unmapped settles what the BOARD claims and nothing about the queue — statuses is a separate, required key the selection query reads either way — so under labels.ready: false it has to be paired with silencing that automation.",
               "properties": {
                 "ready": {
                   "type": "string",
                   "minLength": 1,
-                  "description": "State a human parks a startable issue in; the anchor for statuses. Read as documentation, never written by the worker."
+                  "description": "State a human parks a startable issue in; the anchor for statuses. Read as documentation on the normal path — the one exception is the implement reconcile, which writes it when it flips a crashed pre-push lease back to ready."
                 },
                 "working": {
                   "type": "string",

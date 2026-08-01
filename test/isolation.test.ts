@@ -75,6 +75,10 @@ const READS_AUTHORED =
   /gh (issue|pr) view[^`]{0,80}(body|comments)|gh api[^`]{0,80}comments|list_comments|get_issue\b|handoff document/;
 
 const withConfigBlock = skillsWithTag('<skills-config>');
+// The resolver is a file a skill *runs*, so it follows the mention, not the block: every
+// block host names it, plus the two queue skills, which delegate the contract's prose to
+// their worker's REFERENCE and still have to execute the script themselves.
+const withResolver = skillsWithTag('templates/resolve-config.sh');
 // `<skills-authority>` is a strict prefix of `<skills-authority-reduced>` only up to
 // the `-`, so the trailing `>` in each literal keeps the two sets from overlapping.
 const withAuthorityFull = skillsWithTag('<skills-authority>');
@@ -115,9 +119,15 @@ const VERIFY_CARRIERS: Record<'base' | 'isolated', string[]> = {
  * The four skills deliberately absent present no plan to answer: `handoff` and `vhs-demo`
  * deliver a file, and `work-implement` / `work-review` are single units a drain invokes, whose
  * output is a short outcome rather than something a human reads to decide.
+ *
+ * `tldr` carries it while waiting for no answer at all, and that is the criterion rather than an
+ * exception to it: what the block binds is the message a human reads in a terminal, and for `tldr`
+ * that message *is* the whole product — a sectioned report, which is precisely the shape that
+ * arrives folded.
  */
 const PLAN_CARRIERS = [
   'docs/compact-readme',
+  'docs/write-contributing',
   'docs/write-docs',
   'docs/write-readme',
   'meta/tituskirch-skills-config',
@@ -130,6 +140,8 @@ const PLAN_CARRIERS = [
   'repo/release',
   'repo/update-deps',
   'work/issue',
+  'work/refine-issue',
+  'work/tldr',
   'work/work-implement-queue',
   'work/work-review-queue'
 ];
@@ -138,9 +150,14 @@ describe('the generated config block is self-contained', () => {
   test('it is present in the skills that read config, and nowhere else by accident', () => {
     assert.equal(
       withConfigBlock.length,
-      16,
+      17,
       `found: ${withConfigBlock.join(', ')}`
     );
+  });
+
+  test('every block host also ships the resolver the block points at', () => {
+    const missing = withConfigBlock.filter((p) => !withResolver.includes(p));
+    assert.deepEqual(missing, [], 'the block links a resolver the skill lacks');
   });
 
   test('no link inside the block leaves the skill folder', () => {
@@ -187,15 +204,28 @@ describe('the generated config block is self-contained', () => {
     }
   });
 
-  test('the resolver ships with every skill that carries the block', () => {
-    for (const path of withConfigBlock) {
+  test('the resolver ships with every skill that names it', () => {
+    for (const path of withResolver) {
       assert.ok(
         existsSync(
           join(ROOT, 'skills', path, 'templates', 'resolve-config.sh')
         ),
-        `${path} has the block but no resolver`
+        `${path} names the resolver but does not ship it`
       );
     }
+  });
+
+  test('no skill ships a resolver it does not name', () => {
+    // The other half of the contract, checked against the real registry rather than a
+    // fixture: the mention is what the sync keys shipping on, so a copy left behind by a
+    // skill that stopped naming the script is checked by nothing above — every assertion
+    // here iterates the skills that *do* name it.
+    const orphans = allSkills().filter(
+      (path) =>
+        !withResolver.includes(path) &&
+        existsSync(join(ROOT, 'skills', path, 'templates', 'resolve-config.sh'))
+    );
+    assert.deepEqual(orphans, [], 'shipped resolver that nothing points at');
   });
 
   test('all shipped resolvers are byte-identical to the canonical one', () => {
@@ -203,7 +233,7 @@ describe('the generated config block is self-contained', () => {
       join(ROOT, 'scripts', 'resolve-config.sh'),
       'utf8'
     );
-    for (const path of withConfigBlock) {
+    for (const path of withResolver) {
       const copy = readFileSync(
         join(ROOT, 'skills', path, 'templates', 'resolve-config.sh'),
         'utf8'
@@ -241,6 +271,11 @@ const authorityClass: Record<
   'repo/merge-deps': { tier: 'full', reads: "a Dependabot PR's author" },
   'work/handoff': { tier: 'full', reads: 'a handoff document author' },
   'work/issue': { tier: 'full', reads: 'issue and comment authors' },
+  'work/refine-issue': {
+    tier: 'full',
+    reads:
+      'an issue body and its comments, including a rescope someone else wrote'
+  },
   'work/work-implement': {
     tier: 'full',
     reads: 'an issue body and review feedback'
@@ -268,6 +303,10 @@ const authorityClass: Record<
     tier: 'none',
     reason: "the repo's own CLI and tape — no third-party text"
   },
+  'docs/write-contributing': {
+    tier: 'none',
+    reason: "the repo's own files and its existing guide — no third-party text"
+  },
   'docs/write-docs': {
     tier: 'none',
     reason: "the repo's own code and docs — no third-party text"
@@ -293,6 +332,11 @@ const authorityClass: Record<
     tier: 'none',
     reason:
       "the branch's own commits and the repo's PR template — no third-party text"
+  },
+  'work/tldr': {
+    tier: 'none',
+    reason:
+      "the session's own conversation and the repo's own git state — no third-party text"
   }
 };
 
@@ -356,11 +400,14 @@ describe('the author-authority tier follows the criterion, not a name list', () 
     );
   });
 
-  test('every authority-carrier also carries the config block, so it ships the resolver it needs to read trustedBots', () => {
+  test('every authority-carrier ships the resolver it needs to read trustedBots', () => {
+    // The resolver, not the block: `trustedBots` is read by running the script, and a skill
+    // whose worker's REFERENCE states the contract still ships the script itself. Asserting
+    // the block here would only say where the prose lives, which is not what the rule needs.
     for (const path of [...withAuthorityFull, ...withAuthorityReduced]) {
       assert.ok(
-        withConfigBlock.includes(path),
-        `${path} carries the authority block but not the config block/resolver`
+        withResolver.includes(path),
+        `${path} carries the authority block but ships no resolver`
       );
     }
   });
@@ -474,6 +521,64 @@ describe('nothing a skill ships points out of its folder', () => {
     }
     assert.deepEqual(broken, [], 'intra-skill links must not dangle');
   });
+});
+
+/**
+ * The two skills that cannot run alone, and the sibling each requires.
+ *
+ * Installable alone still holds for both — nothing they ship points out of their folder, which
+ * the suite above checks. What they do not do is *run* alone: each names its worker and verifies
+ * it is installed before any state change, so there is no execution path on which it needs the
+ * worker's rules with the worker absent. That is what lets them name the worker's REFERENCE for
+ * the config contract and the lock spec instead of mirroring ~12.5 KB of both into a `SKILL.md`
+ * that has no `REFERENCE.md` to keep it out of the unconditional load path.
+ *
+ * Declared, because both failure directions are silent on disk: a re-grown block pays the
+ * duplication again on every unattended pass, and dropped naming leaves a rule the skill still
+ * relies on with nowhere to read it.
+ */
+const DELEGATES_TO_WORKER: Record<string, string> = {
+  'work/work-implement-queue': 'work-implement',
+  'work/work-review-queue': 'work-review'
+};
+
+describe('a skill that cannot run alone names its worker instead of mirroring', () => {
+  for (const [path, worker] of Object.entries(DELEGATES_TO_WORKER)) {
+    test(`${path} carries neither mirrored block`, () => {
+      const text = shippedText(path);
+      for (const tag of ['<skills-config>', '<skills-worklock>']) {
+        assert.ok(
+          !text.includes(tag),
+          `${path} re-grew ${tag} — ${worker}'s REFERENCE already states it`
+        );
+      }
+    });
+
+    test(`${path} names ${worker}'s REFERENCE for both rules`, () => {
+      const text = shippedText(path);
+      assert.ok(
+        text.includes(`\`${worker}\`'s REFERENCE`),
+        `${path} must name ${worker}'s REFERENCE as where the rules live`
+      );
+      for (const rule of ['Reading the config', 'The single-flight lock']) {
+        assert.ok(
+          text.includes(rule),
+          `${path} no longer names "${rule}" — the rule has nowhere to be read from`
+        );
+      }
+    });
+
+    test(`${path} still ships the resolver it runs`, () => {
+      // Naming a sibling's prose is not the same as reaching for a sibling's file: the
+      // contract may be read from the worker, the script has to be in this folder.
+      assert.ok(
+        existsSync(
+          join(ROOT, 'skills', path, 'templates', 'resolve-config.sh')
+        ),
+        `${path} delegated the contract and lost the script with it`
+      );
+    });
+  }
 });
 
 // The plan-only trigger phrases are user-facing vocabulary: whichever skill a user is

@@ -29,7 +29,7 @@ The two styles are not a house invention on either side. Laravel Boost writes a 
 - **An HTML comment, where a machine replaces a region in a rendered document.** The README's table is generated, not instruction; nobody should read between those markers as a rule to follow, and a visible tag would sit in the middle of the rendered page.
 - **An HTML comment in the `scripts/` sources too**, for a third reason: the marker is deliberately excluded from what gets mirrored. `configBody()` slices from _after_ it, so the marker never reaches the copy.
 
-Rejected: **comments everywhere**, which hides instruction text behind a signal that invites skipping it — the failure the element exists to prevent. Rejected: **elements everywhere**, which puts a tag in the rendered README and would carry the source-file markers into all sixteen mirrored copies.
+Rejected: **comments everywhere**, which hides instruction text behind a signal that invites skipping it — the failure the element exists to prevent. Rejected: **elements everywhere**, which puts a tag in the rendered README and would carry the source-file markers into every mirrored copy.
 
 ## Consequences
 

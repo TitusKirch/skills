@@ -26,7 +26,8 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two trackers (GitHub
 
 | Key                                   | Effect                                                                                                                                                                                                                     |
 | :------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `issue.tracker`                       | `github` or `linear` — the active tracker (set by setup, never guessed silently)                                                                                                                                           |
+| `issue.tracker`                       | `github`, `linear` or `local` — the active tracker (set by setup, never guessed silently)                                                                                                                                  |
+| `issue.local.dir`                     | `local` issue directory — repo-relative, default `.agents/issues` ([Tracker — local](#tracker--local-files)); the only key that tracker takes, and it has a default                                                        |
 | `issue.language`                      | title/body language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`                                                                                                                  |
 | `issue.title.convention`              | `plain` (default — most trackers) or `conventional` (`type: subject`)                                                                                                                                                      |
 | `issue.instructions`                  | free-text wording guidance for the title/body — additive, never overrides tracker rules or guardrails                                                                                                                      |
@@ -40,7 +41,7 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two trackers (GitHub
 
 **An explicit `null` is not the same as absent, and it is terminal.** `"template": null` means _no forced template_ — the skill chooses per issue by reading the templates — and it **ends the lookup**: it does not fall through to `issue.github.template`. Only an **absent** `issue.template` reaches that fallback. This is the merge rule ([Reading the config](#reading-the-config)) applied here — "an explicit `null` sets null rather than deleting a key" — so a profile can clear a forced template the base config sets, and clearing it must not resurrect the deprecated key it was migrated away from.
 
-`language` is a shared root key; `issue.*` is this skill's section (`commit.*`/`pr.*` belong to the other skills). `issue.instructions` mirrors `commit.instructions` / `pr.instructions` — additive wording guidance that never overrides the tracker rules, template, or guardrails. On Linear it also reads the cross-skill key `work.labels.repo` to pin a repo-scope tag on create, and on both trackers `work.labels.needsTriage` — the repo's untriaged marker, which is [withheld from an authorized author's issue](#the-untriaged-marker-is-not-for-an-author-who-would-triage-it). Full schema: the repo-root `tituskirch-skills.schema.json`.
+`language` is a shared root key; `issue.*` is this skill's section (`commit.*`/`pr.*` belong to the other skills). `issue.instructions` mirrors `commit.instructions` / `pr.instructions` — additive wording guidance that never overrides the tracker rules, template, or guardrails. On Linear it also reads the cross-skill key `work.labels.repo` to pin a repo-scope tag on create. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
 The `null`-versus-absent distinction above has to survive the read, and `// empty` destroys it — that collapses both into the same empty string. **Ask whether the key is there before reading its value:**
 
@@ -249,22 +250,6 @@ This is not a nicety on GitHub — it is the difference between filing the issue
 
 **The preview is the safety net.** Name the chosen template in the [plan](#plan-output) beside title, body and labels, with how it was chosen (forced by config / matched on its description). The match need not be perfect automatically — it needs to be **visible before the write**, so a human can redirect it.
 
-### The untriaged marker is not for an author who would triage it
-
-`work.labels.needsTriage` names the repo's own untriaged marker — `needs triage`, `triage`, however the repo spells it — and is **off unless the repo sets it**. A template declares that marker to everyone, because a template cannot tell who is filing: a drive-by reporter and the person who would do the triaging get the identical label set. **Author authority can tell them apart**, and it is the same check this file already states for third-party text ([Author authority](#author-authority)).
-
-So, on **create** and for **this one label**: an issue filed by an **authorized** author — GitHub, the authenticated account holding repo `admin`/`maintain`/`write`; Linear, a workspace member and not a guest — is assessed by definition, and the marker is **withheld** from the create call. Every other author's issue carries it exactly as the template declares.
-
-The exception is deliberately narrow, and each clause carries weight:
-
-- **This label only.** What a template declares is already decided, and that stands unchanged for every other label. The rule is a statement about an _unknown_ submitter — and this is the one label whose whole meaning is that unknown-ness.
-- **Established authorship only.** Unauthorized, unknown, or a permission call that fails or cannot be read → **apply** the label. Authority is proven, never assumed, and an unreadable permission is not proof of one.
-- **Withheld, not removed.** This governs the create call. It never strips the label from an existing issue, and an **explicit request** for it ("file it and mark it needs triage") wins — the human is the authority the check stands in for.
-- **Off unless configured.** `needsTriage` absent or `false` — the default — means no such rule and the template's labels apply verbatim, as before. Same when `work` is `false`, which puts the key out of reach.
-- **Visible in the plan.** Withholding is a **field decision**, so it appears in the [plan](#plan-output) with its reason, the way an unresolvable label does — never silently.
-
-Why it earns an exception at all: the cost of the alternative is measured, not assumed. The marker was cleared by hand on eight issues in a single pass in this repo, every one filed by the maintainer — noise for the person who would triage it, and load-bearing for a stranger.
-
 ## Default body structure
 
 No template fits, or the repo ships none — the body still has a shape, and it is **this skill's own**, on either tracker. It is the [altitude rule](SKILL.md#4-draft-the-content) written down as sections: **outcome, context, open questions**.
@@ -327,6 +312,40 @@ The Linear MCP server's registered name varies per setup (`mcp__claude_ai_Linear
 
 > **`allowed-tools` note.** This skill declares `Bash, Read, Grep, Glob` only — no MCP entry. `allowed-tools` does **not** restrict which tools are callable; it only pre-approves the listed ones. The Linear MCP tools therefore remain fully callable, governed by the user's permission settings (they may prompt). They are omitted deliberately: the MCP server name varies per setup (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …), and the varying `mcp__<server>__` prefix cannot be wildcarded, so no single pattern pre-approves those tools reliably — omitting them is correct. (Tool-argument wildcards like `Bash(git:*)` are supported; it is the MCP server-name segment that is not.)
 
+## Tracker — local (files)
+
+The issues are **committed markdown files** in the repo — `<dir>/NNNN-slug.md`, `<dir>` being `issue.local.dir` (default `.agents/issues`), a sibling of `.agents/handoffs/` and committed for the same reason: an issue nobody can review or share is not worth filing. No service, no auth, no network. The layout, the frontmatter fields and how the work loop transitions them: **Tracker — local (files)** in `work-implement`'s REFERENCE; this section is the create/update/search half.
+
+- **Availability** — `<dir>` exists, or this is the repo's first local issue and the create makes it. There is nothing to authenticate and nothing to be unreachable, which is the point of the tracker. Resolve it to the absolute `$store` below before touching it — never use the repo-relative value as a path.
+- **Catalogs** — none. There is no label, milestone or project catalog to cache or resolve against, so `issue.labels.exclude` has nothing to exclude and a plan never lists unresolved catalog items. Labels are free text in the file's `labels` field and carry no lifecycle meaning.
+- **Templates still apply.** `.github/ISSUE_TEMPLATE/` is a **repo** convention, not a GitHub feature — the same argument the Linear section makes — so the body is composed from the chosen template exactly as it would be for a forge, and only where it lands differs.
+- **Update** — rewrite the file. Frontmatter fields are one line each; the body is prose. Never touch `state` or `assignee` here: those are the work loop's, and writing them from this skill hands an issue to a queue behind the queue's back.
+- **Close** — there is no close. `state: 'done'` (or `'blocked'`) is the terminal marker and the file stays where it is; deleting or moving it is the repo's own housekeeping, never this skill's.
+- **Search/list** — `grep -rl` over `$store`, or a title match on the filenames. A plain-text store is the one place where searching the **body** is trivial and needs no query language. Frontmatter fields are matched **quote-tolerantly** (`state: ready` and `state: 'ready'` are the same value) — the rule and its one exception are stated in **The file**, in `work-implement`'s REFERENCE.
+- **Sub-issues** — the child's `parent:` field, holding the parent's number. One field instead of GitHub's separate REST calls, and read by the work loop as the same edge.
+
+**`local.dir` is repo-relative, so anchor it before using it.** Each of these commands runs in its own process with no guaranteed cwd, and the work loop reads the **same** store from inside its worktrees — so both halves must resolve to one absolute directory or they file into different trees. The anchor is the **main working tree**, for the reason **Which tree is the tracker** in `work-implement`'s REFERENCE gives: the issue files are committed, so a linked worktree holds a stale copy of every one of them.
+
+**Allocating the number is then the only race.** Numbers are sequential, so two creates can pick the same one:
+
+```sh
+main=$(git worktree list --porcelain | sed -n '1s/^worktree //p')
+[ -n "$main" ] || { echo "cannot resolve the main working tree" >&2; exit 1; }
+dir=$(printf '%s' "$resolved" | jq -er '.issue.local.dir // empty' 2>/dev/null) || dir=
+[ -n "$dir" ] || dir=.agents/issues
+case "$dir" in /*) store=$dir ;; *) store=$main/$dir ;; esac
+mkdir -p "$store"
+
+# highest existing number, then claim the next one atomically — noclobber makes the
+# create fail rather than overwrite, so a lost race retries instead of eating an issue.
+last=$(ls "$store" | sed -n 's/^\([0-9][0-9]*\)-.*\.md$/\1/p' | sort -n | tail -1)
+n=$(( ${last:-0} + 1 ))
+f=$(printf '%s/%04d-%s.md' "$store" "$n" "$slug")
+( set -C; : > "$f" ) || { echo "number taken, retry"; }
+```
+
+`set -C` is the same atomic create-or-fail the work loop's single-flight lock rests on, used here for the same reason: a test-then-create reopens the very window it is meant to close. Retry with the next free number rather than reporting a failure — the collision is expected on a busy repo, not exceptional.
+
 ## Plan output
 
 Present this before any write:
@@ -340,7 +359,6 @@ issue plan
   title   : Login fails on expired session
   labels  : bug                   (from template)
           + area:auth             (from catalog)
-          - needs triage          (declared by the template — withheld: filed by an authorized maintainer)
           ! triage                (declared by the template, not in the catalog — skipped)
   body ▼
     ## Summary
