@@ -21,6 +21,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
   "work": {
     "tracker": "github",
     "cap": 10,
+    "concurrency": 3,
     "branch": "worktree",
     "parallel": false,
     "labels": {
@@ -36,6 +37,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
     },
     "priorityLabels": ["urgent", "high", "medium", "low"],
     "reviewRequested": { "maxRounds": 3 },
+    "loop": { "wait": 120, "maxWait": 1800 },
     "linear": {
       "team": "Engineering",
       "statuses": ["Todo", "In Progress", "Changes Requested", "Accepted"],
@@ -53,22 +55,25 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 }
 ```
 
-| Key                                         | Effect                                                                                                                |
-| :------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------- |
-| `work.tracker`                              | `github` or `linear`; falls back to `issue.tracker`                                                                   |
-| `work.cap`                                  | max issues a single drain works (mandatory bound; default 10)                                                         |
-| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)        |
-| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))            |
-| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                 |
-| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                       |
-| `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review |
-| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"   |
-| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                       |
-| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                     |
-| `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                   |
-| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                    |
-| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                      |
-| `work.linear.states`                        | Linear workflow state names; **no default** — see below and [AI-accepted is not shipped](#ai-accepted-is-not-shipped) |
+| Key                                         | Effect                                                                                                                         |
+| :------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------- |
+| `work.tracker`                              | `github` or `linear`; falls back to `issue.tracker`                                                                            |
+| `work.cap`                                  | max issues a single drain works across the run (mandatory bound; default 10) — see [Cap and concurrency](#cap-and-concurrency) |
+| `work.concurrency`                          | max workers running **at once** under `parallel: true`; defaults to `work.cap`, inert when `parallel` is `false`               |
+| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)                 |
+| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))                     |
+| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                          |
+| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                                |
+| `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review          |
+| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"            |
+| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                                |
+| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                              |
+| `work.loop.wait`                            | seconds a repeating driver waits before re-checking a drain that ended in [backpressure](#queue-state); default 120            |
+| `work.loop.maxWait`                         | seconds of waiting after which that driver gives up and reports loudly; default 1800                                           |
+| `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                            |
+| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                             |
+| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                               |
+| `work.linear.states`                        | Linear workflow state names; **no default** — see below and [AI-accepted is not shipped](#ai-accepted-is-not-shipped)          |
 
 **`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.reviewRequested: false` → the PR's existence is the signal; `labels.reviewing: false` → **no review lease** — the review loop relies on its lock alone, with no cross-clone claim (this is the **default**, so an unset `reviewing` keeps today's behaviour); `labels.blocked: false` → comment only / Linear state; `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
 
@@ -87,6 +92,17 @@ Leaving the state untouched is a defined outcome, not a degraded one — the lab
 **`states` and `statuses` have to be read together.** They point in opposite directions — `states` is what the loop _writes_, `statuses` is what it will _select_ — and the [selection query](#selection-query) ANDs them, so a state this mapping can produce that `statuses` omits takes the issue out of the queue for good. The trap is `changesRequested`, because it is the loop's second input: map it to a state outside `statuses` and a review that requests changes hands the issue back to a queue that can no longer see it — the label is right, the board is right, and nothing ever picks it up. The same applies to whichever state an escalated issue is left in, since a human resolving `needsHuman` by hand moves the label but not the state.
 
 So: **every state an eligible issue can legitimately sit in belongs in `statuses`** — the ones `states.ready` and `states.changesRequested` name, plus wherever `reviewRequested` leaves an issue that a human may hand back and `states.accepted`, which is where a human hands an **already-accepted** issue back from. Being generous costs nothing; the label filter is what actually gates eligibility, and it already excludes `working`, `reviewing` and `blocked`. Being too narrow costs a silent stall.
+
+### Cap and concurrency
+
+Two bounds, two questions. **`cap` bounds the run** — how many issues this drain may work before it stops, the mandatory ceiling on throughput. **`concurrency` bounds the moment** — how many workers may be alive at the same time, the ceiling the _machine_ can stand: under `worktree` + `parallel` each live worker costs a full worktree and a full dependency install ([branch strategy](#branch-strategy)), and every worker in flight is also tracker API calls against the same rate limit.
+
+They move for different reasons. "Work up to 20 issues this run" is a decision about how much the queue should shrink; "never more than 3 at a time" is a decision about disk, CPU and rate limits. Welding them together means the only way to run gently is to run briefly — the drain is invoked more often to do the same work, and each invocation re-pays the reconcile and the queue build.
+
+- **`concurrency` defaults to `cap`**, so a config that never sets it behaves exactly as it did before the key existed: the run bound is the only bound, as it was.
+- **It never raises `cap`.** Effective concurrency is the lower of the two — `cap: 2` with `concurrency: 8` runs at most two workers, because there are only ever two issues to run. Setting it above `cap` is legal and simply inert.
+- **It is inert when `parallel` is `false`.** One worker at a time is the construction there, not a limit to configure ([lease & race rules](#lease--race-rules)).
+- **Under `branch:<name>` + `parallel` it caps the width of a level, not the graph.** [Topological levels](#parallel) already serialize dependents; `concurrency` bounds how many of a level's independent issues run together, so a wide level is worked in successive batches rather than all at once.
 
 ### AI-accepted is not shipped
 
@@ -237,6 +253,53 @@ minutes, and doing that per tree is the real cost of running several trees at on
 
 </skills-verify-isolated>
 
+## Test discipline (tdd)
+
+The section above is a **gate, not a discipline**. It says whether the tree still passes; it says nothing about how the code got written — whether a test came before the implementation, what was tested, or what a test worth keeping looks like. An unattended loop can satisfy that gate with tests that pass **by construction**: mocked internal collaborators, an assertion that recomputes the expected value the way the code does, a bulk of tests written afterwards against the shape that was already built. The checks go green, and the review loop sees a green run. The `tdd` skill (upstream `mattpocock/skills`, not shipped by this repo) carries what a gate cannot — red before green, one vertical slice at a time, tests at **seams** rather than internals, and the anti-patterns named outright (implementation-coupled, tautological, horizontal slicing) — so [step 6](SKILL.md) **drives it** instead of restating a weaker copy here.
+
+**The issue body stands in for the human.** `tdd`'s rule is that the seams under test are written down and **confirmed** before any test is written, and unattended there is nobody to confirm them. The body is that confirmation: `ai: ready` is a human's approval of a **scoped** issue, so the issue's **requirements and acceptance criteria are the agreed seams**. This is the [label-vs-body split](#label-vs-body-precedence) applied one level down — the label says the work may happen, the body says what the work is, and where the tests go is part of _what_.
+
+**No seams, with code behind them → `blocked`.** Picking its own seams is the one move the run must not make: seams chosen after the implementation exists land exactly where the implementation is, which is the failure this whole section exists to prevent. So where code is touched and the body yields no seams, take the `blocked` side-exit — comment the reason on the issue and stop. That is a **substance** block (the requirements are genuinely ambiguous), the kind the [label-vs-body rule](#label-vs-body-precedence) explicitly leaves intact, never a body line's opinion about eligibility.
+
+**The whole loop, but only where tests reach.** Red-green and vertical slices apply in full whenever the change touches code a test can observe. A **prose-only** change — a `SKILL.md` edit, a README, a config comment — drives `tdd` **not at all**, and that is a defined outcome rather than a degraded one: a missing seam blocks only when there is code behind it. (In this repo that is most changes; the ratio is a property of the repo, not of the rule.)
+
+**Red is separated by the step, not by the colour.** `tdd` runs **entirely inside step 6**, where a failing test is the loop working as designed — nothing there consults the lifecycle, and no red inside the loop ever reaches `blocked`. **Step 7 remains the only gate**, unchanged: it runs the repo's checks on the finished slice set. Because the two live in different steps, nothing about the cycle has to be carried as state — which keeps the worker [stateless and resumable](#principle) exactly as before.
+
+**`work-review` is told, not bound.** What the pass drove and what came of it is recorded on the issue / PR at [step 8](SKILL.md), so the reviewer reads it as evidence. It does **not** change the verdict's basis: `work-review` still judges the **diff against the requirements**, exactly as today. Weighing tests _as_ evidence of quality is the review loop's own question, not this section's.
+
+**Optional, like every other helper.** `tdd` is a separate skill this repo does not ship, so it may be absent. Treat it as **optional**: drive it when installed, and when it is not, **implement exactly as today** — no test discipline driven, no block. It is model-invocable upstream, which is what makes it drivable at all; the user-facing on-ramps to other engines (`grill-me`, say) declare `disable-model-invocation: true` and cannot be called from a skill. The absence of `tdd` degrades the run, it never fails it — the same rule `atomic-commit` and `pull-request` follow at step 8.
+
+## Diagnosis discipline
+
+Two moments in this skill turn on a judgement about a bug, and neither had a procedure behind it:
+
+| Moment                                            | What it is                                                                        |
+| :------------------------------------------------ | :-------------------------------------------------------------------------------- |
+| **Step 6, when the issue itself is a bug**        | the work _is_ the diagnosis — the body describes a symptom, not a change to make  |
+| **Step 7's red branch** — "red and **unfixable**" | a verdict that ends the run without failing it, and so the cheapest exit there is |
+
+`diagnosing-bugs` is driven at **both**. Its Phase 1 is the join: **build a feedback loop before hypothesising**, with ten construction techniques given in order of preference — a failing test at whatever seam reaches the bug, a curl/HTTP script, a CLI invocation diffed against a known-good fixture, a headless-browser script, replaying a captured trace, a throwaway harness, a property/fuzz loop, a bisection harness, a differential loop, and a human-in-the-loop script as the last resort — plus rules for **tightening** a loop (faster, sharper signal, more deterministic: pin time, seed RNG, freeze network) and, for a non-deterministic bug, raising the **reproduction rate** rather than demanding a clean repro.
+
+**Optional call.** It is a separate skill this repo does not ship, so it may simply not be installed. Invoke it when it is available; when it is not, **step 6 implements as today and step 7 blocks as today** — the run degrades to the status quo, it never fails for want of the skill. (Name the skill, never a path — an agent that has it can open it, one that does not gains nothing from a pointer.)
+
+**The other two limbs keep blocking immediately.** _Spec ambiguous_ and _a genuine human decision needed_ are not bug cases: routing them through a diagnosis loop spends a run on a question no reproduction can answer. Only **red** takes this path.
+
+**The last rung is unreachable unattended, and that is worth saying out loud.** Technique 10 drives a **human at a terminal** through the skill's own HITL script. In a drain there is nobody at that terminal, so that rung is **gone**, not merely expensive. An exhausted ladder whose final rung was never reachable is itself a legitimate reason to set `blocked` — and **stating** it is what stops a run from improvising around the gap, or from reading the gap as a licence to hypothesise anyway.
+
+**The stop rule is already ours.** The skill explicitly **refuses to speculate** when no loop can be constructed, and says so instead, listing what it tried. That maps exactly onto `blocked`. The call therefore does **not** make `blocked` rarer — it makes it **checkable**: a `blocked` with a failed loop construction behind it is evidence, where an unaided one is an assertion, and on the issue the two are indistinguishable.
+
+**What lands on the issue changes.** Today the block comments _the reason_. With a diagnosis behind it, it carries the **attempt**:
+
+- which loop constructions were **tried**, and **how each failed** — the ladder, not a summary of it;
+- that the **HITL rung was unreachable** in an unattended run, where the ladder got that far;
+- where the cause **landed**, when the loop was built and the cause proved to sit outside this issue's scope.
+
+That is what makes the block actionable for whoever picks the issue up, and it is the difference between a run that built a reproduction and one that guessed twice and moved on.
+
+**A diagnosis is not a licence to widen scope.** Step 6's rule — keep the change scoped to this one issue — still holds: a cause that proves to sit outside the issue's scope is a **finding to block on**, not a second issue to implement here.
+
+**The review loop is told, not bound.** The evidence sits on the issue; a review verdict still rests on the diff and the issue's requirements, and a `blocked` issue goes to a **human** rather than into the review loop at all. Whether a reviewer should re-derive a `blocked` claim the way it already re-derives green is a change to the **review** skill, and is deliberately not settled here.
+
 ## Optional skill calls
 
 Three of this loop's steps hand work to a **separate skill**, and every skill installs on its own — so a sibling is never a given. All three are **optional calls** in the same shape: **invoke the skill when it is installed; when it is absent, take the stated fallback and carry on.** The rule lives here once and each call site references it, so a missing skill never leaves a run **undefined** — and never becomes a silent skip either, because the run **names the fallback it took** in its report. **Stated is not the same as graceful.** Two of the three fallbacks carry the work through unchanged; the third **is** `blocked`, so an absent `resolving-merge-conflicts` meeting a conflict does end that run with the work unpushed. What the shape guarantees is that every absence has a **defined** outcome, not that every absence is survivable.
@@ -371,6 +434,7 @@ Eligible = matches **all** configured filters. Self-select (one issue) and drain
 - **repo scope** — Linear only: has `labels.repo` (unless `false`). Skipped on GitHub (repo-local by nature).
 - **team** — Linear only: `work.linear.team`.
 - **status** — Linear: state ∈ `work.linear.statuses`. GitHub: `--state open`.
+- **prerequisites** — an issue whose prerequisite is **unsatisfied** is **deferred**, and this filter applies under **both** branch strategies. What _satisfies_ an edge differs by strategy — a shared branch can discharge one by working the prerequisite first, a worktree run cannot — so the test, and what deferring does and does not write, live in [dependency ordering](#dependency-ordering). Edges come from the tracker's own relations, never from the issue text.
 - **order** — by priority. Linear native priority field; GitHub by `work.priorityLabels` (highest first), then creation order. Under `branch:<name>` this order is then re-sorted so prerequisites come first — [dependency ordering](#dependency-ordering).
 
 **Resolve every label before it reaches the query** — a bare `$(jq …)` inside the search string yields `label:"",""` when `jq` is missing, which matches nothing and drains an empty queue in silence:
@@ -460,6 +524,73 @@ The **window** is longer than any **legitimate gap between refreshes** — longe
 
 </skills-worklock>
 
+## Queue state
+
+Every drain ends. **Why** it ended is what a repeating driver — `/loop`, a cron job, a human — needs next, and from outside all the endings look the same. So each queue skill's final step names the queue's state as exactly one of these, alongside the per-issue outcomes:
+
+| State            | Means                                                                              | What a repeating driver does           |
+| :--------------- | :--------------------------------------------------------------------------------- | :------------------------------------- |
+| `work remaining` | the run stopped on `work.cap` with eligible issues still in the queue              | **run again immediately** — never wait |
+| `backpressure`   | nothing eligible now, but the counterpart loop can still produce this loop's input | **wait, then re-check** (below)        |
+| `quiescent`      | nothing eligible, and nothing anywhere can still become eligible                   | **stop**                               |
+
+Without it the rule lives in whoever wrote the `/loop` prompt — retyped every run, worded differently each time, and silently wrong when it is not typed at all. The failure it prevents is the **false finish**: an implement drain stops because its own queue is empty while the review loop is mid-issue and about to hand an issue back as `changes-requested`. The more the two loops cooperate, the more often that happens.
+
+**Cap reached is not queue empty.** `work.cap` defaults to 10, so ending with eligible issues left is ordinary, not exceptional — that is `work remaining`, and treating it as an empty queue stalls a queue that has work in it right now. Settle the cap question **first**; only a genuinely empty selection can be one of the other two states.
+
+**The state is reported after the lock is released.** Waiting happens **between** drains, never inside one, so a driver sitting out a `backpressure` interval holds nothing and blocks neither loop.
+
+**Re-query the tracker before waiting at all.** Work that became eligible **during** the last issue is already on the tracker, so a drain that finishes an issue and drops straight into a wait sits out a whole interval on input that exists right now. The order is: **finish an issue → query the tracker again → wait only if that query comes back empty.** This is the [fresh fetch each iteration](#lease--race-rules) rule carried past the drain's last issue, and it holds on both paths — a parallel drain re-queries once its final worker has landed, not while it still has one in flight.
+
+**An empty query that immediately follows a finished issue is expected, and is not evidence the queue is quiet.** The counterpart has had no time to produce anything yet; nothing may read that emptiness as `quiescent`. Only a check that follows a **wait** is that evidence, which is why the wait comes before the verdict rather than after it.
+
+### What counts as backpressure
+
+Narrower than "something is still open". `done`, `blocked` and `needs human` are **terminal for both loops** — they produce no further input, so none of them may keep a loop alive (`needs human` waits on a person, who is not a producer a loop can wait for). The condition is:
+
+> Wait while any issue sits in a state that can still transition **into this loop's own input state**.
+
+| Loop      | Own input                   | Waits on                               | Because that becomes its input               |
+| :-------- | :-------------------------- | :------------------------------------- | :------------------------------------------- |
+| implement | `ready`, `changesRequested` | `reviewRequested`, `reviewing`         | a review can return `changes-requested`      |
+| review    | `reviewRequested`           | `ready`, `changesRequested`, `working` | an implementation produces `reviewRequested` |
+
+### The bound is the counterpart's heartbeat, not a round count
+
+Waiting is only worth anything while something is actually producing, so read the **counterpart loop's** [single-flight lock](#the-single-flight-lock) — the implement loop reads `…/work/review.lock`, the review loop reads `…/work/implement.lock`. Its `refreshed` heartbeat is re-stamped once per iteration, which answers exactly the question a waiter has: **is anyone producing my input?**
+
+**An absent lock does not answer it.** The lock is visible only within one checkout, so its absence means no more than "nobody is running the counterpart **here**" — and two ordinary situations produce that while the work is very much outstanding:
+
+- **The restart gap.** `work.cap` defaults to 10, so a counterpart with 20 eligible issues hits the cap, reports `work remaining`, and **releases its lock** before its driver starts it again. Stopping on the absent lock stops in a gap of seconds with half the work still queued.
+- **The other host.** The two drains may run on different servers. That is safe by construction — the locks are separate (`implement.lock` / `review.lock`) and each loop is alone on its host, so nothing is worked twice; two drains of the **same** kind on two hosts is the genuinely unsafe case, because [the label flip is not a true compare-and-swap](#lease--race-rules), and it stays out of scope. But a lock on another host is **invisible**, so stopping on the absent lock stops **both** loops immediately while both are running.
+
+So the tracker is consulted **first** and the lock only sharpens it, with the issues' `updatedAt` as the cross-host stand-in for the heartbeat — coarser, because it moves only on real tracker writes, but visible from every host and already there:
+
+| Counterpart lock                                       | Tracker                                                                  | Verdict                                       | Action                                                                          |
+| :----------------------------------------------------- | :----------------------------------------------------------------------- | :-------------------------------------------- | :------------------------------------------------------------------------------ |
+| **readable**, `refreshed` advancing                    | —                                                                        | backpressure, **local**                       | **wait**, however long it takes                                                 |
+| **readable**, `refreshed` frozen past the stale window | —                                                                        | the counterpart **crashed**                   | **stop** and report; the next counterpart drain's reconcile reclaims its orphan |
+| **absent**                                             | issues in the waited-on states, `updatedAt` fresh                        | backpressure — **remote host or restart gap** | **wait**                                                                        |
+| **absent**                                             | issues in the waited-on states, `updatedAt` frozen past the stale window | **orphaned**                                  | **stop** and report how many sit unattended                                     |
+| **absent**                                             | terminal states only (`done` / `blocked` / `needs human`)                | `quiescent`                                   | **stop**                                                                        |
+
+The two rows that used to be one verdict — the restart gap and the remote host — are the same row here, which is why one table settles both.
+
+A **round count cannot do any of this**: a single large issue sits in `working` for an hour with no label moving at all, and a count would abort on it — whereas the heartbeat separates **slow** from **dead**, which is the distinction it was built for.
+
+**Cross-host is supported but degraded**, and that is worth stating rather than leaving to be discovered. The `updatedAt` fallback needs a **generous** window — hours, like the lock's own stale window — because a long review or implementation writes nothing to the tracker while it runs, so a genuinely crashed remote loop holds a waiter for that whole window before it reads as orphaned. A real cross-host heartbeat would need shared storage, which the lock spec deliberately puts [outside skill prose](#the-single-flight-lock); that boundary stays where it is. Report an absent lock in those words — "nobody is running the counterpart **here**" — never as "the other loop is dead".
+
+### The wait interval is not the stale window
+
+Two numbers, two jobs — unify them and one of them breaks. The stale window is **crash detection**, deliberately hours rather than minutes; the wait below is a **poll interval**, and polling hourly makes the loop useless.
+
+| Key                 |    Default | Why                                                                                                                                                                                                                                                                                                            |
+| :------------------ | ---------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `work.loop.wait`    |  **120** s | One counterpart iteration runs in minutes: a fresh worktree installs its dependencies before the gate, and the model reads the issue and the diff before either. The usual 60 s driver floor polls 3–5× per counterpart issue, each poll re-reading the skill and re-querying the tracker; 120 s lands at 1–2. |
+| `work.loop.maxWait` | **1800** s | A backstop, not the normal exit — a counterpart that drains empty releases its lock and ends the wait by itself, and a crashed one is caught by its frozen heartbeat. Reaching it means something nobody predicted, so it **reports loudly** instead of ending quietly.                                        |
+
+**Naming the state is the whole mechanism.** The skill reports the state and the recommended action in prose and calls no driver API, so `/loop`, a cron job and a human can all act on the same report and no skill acquires a dependency on a client-specific loop mechanism.
+
 ## Branch strategy
 
 Two **independent** knobs — `work.branch` (where work lands) × `work.parallel` (how it runs):
@@ -469,12 +600,17 @@ Two **independent** knobs — `work.branch` (where work lands) × `work.parallel
 | **`worktree`**        | own branch + PR per issue, one tree, hops | own branch + PR per issue, **each in its own git worktree** |
 | **`branch:<name>`**   | all issues on `<name>`, sequential        | work in worktrees, **integrated serialized** onto `<name>`  |
 
-- **Worktrees are the mechanism of `parallel: true`**, not a separate mode. Sequential runs need none.
+**`worktree` + `parallel: true` leaves collision avoidance to the human**, and that is stated here because here is where the mode is chosen. Each worker branches off the same clean `pr.base` and never sees another's tree; that isolation is what makes the mode safe to _run_, and it is exactly why nothing in the run notices two workers rewriting the same file. The ordering rules below are [`branch:<name>` only](#dependency-ordering), and there is no serialized integration to fail loudly, so **which issues share a concurrent batch is the only control there is** — and composing that batch is the human's job, not the drain's. What comes out otherwise is two green PRs whose conflict surfaces at **merge**, after both workers have already spent their run.
+
+**So treat the batch as the unit.** Keep a concurrent batch **free of shared files** — two issues rewriting the same file belong in different runs, in either order, since neither needs to precede the other. Where they cannot be separated, **stagger the `ready` labels**: mark the second one ready once the first has landed on `pr.base`. And expect a **refactoring batch to overlap by construction** — a set of behaviour-preserving changes over one codebase is the workload these skills suit best and the one where collisions are the norm rather than the exception, so the safely concurrent subset is usually far smaller than the queue. Under `parallel: false` none of this applies: one worker at a time, each branching off a `pr.base` that already carries whatever landed before it.
+
+- **Worktrees are the mechanism of `parallel: true`**, not a separate mode. Sequential runs need none. **How many run at once is `work.concurrency`** (default `cap`) — the width of the `true` column, and inert in the `false` one ([cap and concurrency](#cap-and-concurrency)).
 - **A worktree starts with nothing installed**, so [step 7's verify](#running-the-repos-checks) installs the lockfile there **first**. `git worktree` checks out **tracked** files only: `node_modules`, `vendor` and every other gitignored directory are absent, however completely installed the tree the drain was invoked from is. Skip the install and the gate resolves against whatever is on `PATH` — accidentally green, accidentally red, and either way not the versions this branch pins. A run that stays in the **working tree** (sequential, on a shared branch or hopping branches in place) needs none of this; what is installed there is already the right thing. This is why the skill carries the **isolated** check-command block rather than the base one.
-- **Every extra worktree pays a full install** — the real price of concurrency, and on a repo whose dependencies run to hundreds of megabytes the install can outlast the implementation it gates. Worth weighing before raising the worker count, and the reason a concurrency bound is a different knob from `cap`. Making that cheaper — copying or linking the heavy directories into a new worktree — is the repo's own call, never something a worker does behind the run's back: one `node_modules` shared by two live workers is one install either of them can leave wrong for the other.
-- **Serialized integration** — for a shared `branch:<name>` target under `parallel: true`, parallel work is produced in isolated worktrees and landed one commit at a time (push → rebase → retry). This is what makes `branch:dev` + `parallel` race-free. The retry answers a **race**; a rebase that stops with **conflicted files** is a different question, answered in [rebase conflicts](#rebase-conflicts) below.
+- **Every extra worktree pays a full install** — the real price of concurrency, and on a repo whose dependencies run to hundreds of megabytes the install can outlast the implementation it gates. This is the cost `work.concurrency` exists to bound, and the reason it is a knob of its own rather than a second meaning for `cap` ([cap and concurrency](#cap-and-concurrency)): how many workers a machine can carry at once is not how many issues a run should work. Making that cheaper — copying or linking the heavy directories into a new worktree — is the repo's own call, never something a worker does behind the run's back: one `node_modules` shared by two live workers is one install either of them can leave wrong for the other.
+- **Serialized integration** — for a shared `branch:<name>` target under `parallel: true`, parallel work is produced in isolated worktrees and landed one commit at a time (push → rebase → retry). This is what makes `branch:dev` + `parallel` race-free.
+- **Mutex** — two issues a human has declared **order-free but colliding** (`mutex: <group>` on GitHub, `related` on Linear) never share a concurrent batch under `parallel: true`, in **either** branch mode; they run in different waves of the **same** run ([parallel-batch mutex](#parallel-batch-mutex)). Under `parallel: false` there is nothing to enforce.
 - **`worktree`** branches off `pr.base`; the worktree with committed+pushed work is removed after the PR is opened (commits live on the remote/branch).
-- **Dependencies** — under `branch:<name>` the drain works prerequisites first within the run ([dependency ordering](#dependency-ordering)); the shared branch accumulates, so the dependent issue just sees the code. Under `worktree` each issue branches off a clean `pr.base` and sees nothing of its siblings, so the `ready` gate stays the mechanism — a dependent issue is not `ready` until its parent merges. Stacked branches are a **v2** concern — deferred, with the rationale recorded in this skill's `DESIGN.md`.
+- **Dependencies** — the tracker's relations are read under **both** strategies; what differs is what a run can do about them. Under `branch:<name>` the drain works prerequisites first within the run ([dependency ordering](#dependency-ordering)); the shared branch accumulates, so the dependent issue just sees the code. Under `worktree` each issue branches off a clean `pr.base` and sees nothing of its siblings, so **no order the run picks can satisfy an edge** — the dependent is **deferred** until its prerequisite lands on `pr.base`. Stacked branches remain a **v2** concern — deferred, with the rationale recorded in this skill's `DESIGN.md`.
 
 ### Rebase conflicts
 
@@ -489,7 +625,16 @@ Two **independent** knobs — `work.branch` (where work lands) × `work.parallel
 
 ## Dependency ordering
 
-**`branch:<name>` only.** A shared branch **accumulates** — every issue commits onto the same branch, so a dependent issue sees its prerequisite's work by simply being worked **after** it. No branch-off-parent, no PR base retarget, no rebase cascade — those are worktree-mode stacking, deferred to v2. Single-branch mode needs only the **right order**. Under `worktree` this whole section is inert: each issue branches off a clean `pr.base`, so the `ready` gate remains the dependency mechanism.
+**Relations are read under both strategies.** What differs is what a run can _do_ with an unlanded prerequisite:
+
+| `work.branch`   | An unlanded prerequisite means           | Because                                                                   |
+| :-------------- | :--------------------------------------- | :------------------------------------------------------------------------ |
+| `branch:<name>` | **work it first** — order the queue      | the branch accumulates, so being worked earlier _is_ the edge's discharge |
+| `worktree`      | **defer the dependent** — do not work it | each issue branches off a clean `pr.base`; nothing accumulates            |
+
+So a shared branch needs the **right order** (the topological sort below); a worktree run needs only the **gate** — decline to select an issue whose prerequisite has not landed and report it as deferred. **Neither is branch stacking**: no branch-off-parent, no PR base retarget, no rebase cascade — that is worktree-mode stacking, still deferred to v2 (this skill's `DESIGN.md`). Declining to select needs none of that machinery.
+
+**Reading the relation is the point, on both paths.** The alternative is not "the `ready` gate handles it" — that is a human remembering not to mark a dependent issue `ready` early, with nothing surfacing the moment they forget. Modelling a dependency in the tracker and having the drain work the issue anyway is exactly the silent failure this file refuses elsewhere. One query per candidate buys the difference.
 
 ### Edges
 
@@ -517,7 +662,25 @@ gh api graphql -f query='
 
 **Linear** — `list_issues` does **not** return relations; fan out `get_issue(id, includeRelations: true)` per candidate and read the `blocked by` relations plus `parent`.
 
+**Only the prerequisite edge gates selection.** The gate below defers on `blockedBy` / `blocked by` alone; `parent` is an **ordering** input under `branch:<name>` and nothing more. A parent issue is routinely the epic that closes _after_ its children, so gating a child on it would stall every sub-issue of every open epic — a stall the tracker data never asked for. Where a parent genuinely must land first, that is a prerequisite and is modelled as one.
+
+### When an edge is satisfied
+
+An edge **A → B** is satisfied only when A's work is **on the base B will be built on** — never merely because A carries `labels.done`, which means [AI-accepted, not shipped](#terminal-done):
+
+| A's state                                                               | Satisfied?                                                                |
+| :---------------------------------------------------------------------- | :------------------------------------------------------------------------ |
+| **closed**, or its PR **merged into `pr.base`**                         | **yes**, under either strategy                                            |
+| **worked earlier in this run**                                          | **`branch:<name>` only** — the branch accumulates; under `worktree` never |
+| anything else (open, `working`, `reviewRequested`, `done`-but-unmerged) | **no** — B is **deferred**                                                |
+
+**The merged-PR check is the one that usually answers.** With a non-default `pr.base` (e.g. `dev`) GitHub's `Closes #<n>` never fires, so an accepted issue stays **open** indefinitely — reading "closed" alone would defer every dependent forever. Ask the forge for the prerequisite's PRs with the same `closedByPullRequestsReferences` query the [reconcile](#reconcile) runs, and count the edge satisfied when one is `merged` with `baseRefName` = `pr.base`. On **Linear**, read the linked PR from the issue's attachments and ask GitHub for its state, as the reconcile does.
+
+**Deferred is not `blocked`.** `blocked` is a verdict about the work — checks unfixable, a human call needed — and it is a lifecycle label a human must clear. Deferred is a statement about the clock: nothing is wrong, the prerequisite simply has not landed yet. So a deferred issue is **not leased, not labelled and not commented on** — it is named in the run's report and becomes selectable on a later run, by itself, once its prerequisite lands.
+
 ### Building the order
+
+**`branch:<name>` only** — under `worktree` there is no order to build; every unsatisfied edge simply defers its dependent, and the surviving candidates keep their priority order.
 
 1. **Candidates** — the eligible issues from the [selection query](#selection-query), in priority order.
 2. **Fetch edges** per candidate (the fan-out above).
@@ -529,23 +692,67 @@ gh api graphql -f query='
 
 ### Cross-set prerequisites
 
-A prerequisite that is **not** in the candidate set:
+A prerequisite that is **not** in the candidate set is judged by exactly the test above — [when an edge is satisfied](#when-an-edge-is-satisfied) — with the same two outcomes: **satisfied** (closed, or merged into `pr.base`) → ignore the edge; **unsatisfied** (open and unlanded, whatever its lifecycle label) → **defer the dependent**, unleased and unlabelled, named in the report.
 
-- **closed / merged** → already on the branch, edge satisfied — ignore it.
-- **open but not eligible** (not `ready`, `blocked`, someone else's `working`) → its code is _not_ on the branch, so the dependent issue's premise is false. **Defer the dependent issue** — do not work it this run, do not lease it, do not label it `blocked`; report it as deferred. It becomes eligible on a later run once the prerequisite lands.
+**Under `worktree` every prerequisite is effectively cross-set**, because being in the candidate set is what a shared branch's accumulation makes meaningful and a worktree run has no accumulation. That is the whole of the worktree gate: it needs the satisfaction test and nothing else from this section.
 
 ### Cycles
 
 A dependency cycle (A → B → A) has no valid order and is a **tracker-data error a human must fix**. Detect it, **skip every issue in the cycle** for this run — unleased, unlabelled — and name them in the drain report. Never break a cycle by guessing.
 
+Under `worktree` the gate already defers every issue in a cycle (each has an unlanded prerequisite), so nothing runs regardless — but **report it as a cycle, not as a plain deferral**: a deferral says "come back later", and this one never clears on its own.
+
 ### Parallel
 
 `branch:<name>` + `parallel: true` — dependent issues **cannot** run concurrently. Process the graph in **topological levels**: each level holds mutually independent issues that may run in parallel; levels run **sequentially**, with each level's [serialized integration](#branch-strategy) landing on the branch before the next starts. A chain therefore degenerates to sequential, which is the point.
+
+**`work.concurrency` bounds a level's width, never the levels.** A level wider than it is worked in successive batches; the level still finishes and integrates before the next one starts. The two limits compose — the graph says what _may_ run together, `concurrency` says how much of that the machine will actually run at once ([cap and concurrency](#cap-and-concurrency)).
+`worktree` + `parallel: true` needs no levelling: the gate has already removed every issue with an unlanded prerequisite, so whatever remains is **ordering**-independent by construction. That is a statement about edges that carry an order, and the only one this section makes — two issues with no prerequisite between them may still collide, which is what the [mutex](#parallel-batch-mutex) below splits.
+
+## Parallel-batch mutex
+
+Some issues carry **no ordering at all** and still must not run **at the same time** — two issues that rewrite the same file, either order fine, neither a prerequisite for the other. `blockedBy` is the wrong tool for that: it invents an order that does not exist and gates one behind the other permanently. So the constraint gets its **own**, order-free relation, read as a **mutex** — two issues joined by it are never selected into the **same parallel batch**, and the order between them stays free.
+
+**This is not [dependency ordering](#dependency-ordering).** That section answers _which one first_; a mutex answers _not together_. It is **symmetric**, so it reads the same from either end, and it never contributes an edge to the topological sort — a mutex can no more create a cycle than it can create an order.
+
+### The carrier
+
+The two trackers differ here, because only one of them has an order-free relation to lend:
+
+| Tracker    | Carrier                                   | Shape                                          |
+| :--------- | :---------------------------------------- | :--------------------------------------------- |
+| **GitHub** | the label convention **`mutex: <group>`** | a **group** — every issue carrying that label  |
+| **Linear** | the native **`related`** relation         | a **pair** — one edge joins exactly two issues |
+
+**GitHub has no order-free relation**, confirmed against the API: its native issue relationships are `blocked_by` / `blocking` (both ordered) and sub-issues (ordered), and nothing else. So the carrier there is a **label convention** — visible in the UI where the human declaring the collision is already working, filterable with a plain `gh issue list --label "mutex: <group>"`, and needing no API GitHub does not have. It is also **free to read**: labels already ride along on the [selection query](#selection-query)'s `--json … labels`, so the groups are known without one extra call. The group name is the human's, and any label matching the `mutex: ` prefix is one — nothing in the config enumerates them.
+
+**On Linear the read rides an existing fan-out.** `list_issues` returns no relations, so `related` comes from the same per-candidate `get_issue(id, includeRelations: true)` call [dependency ordering](#dependency-ordering) already makes under **both** branch strategies — read both relation kinds from that one response, never as a second pass. Nothing extra is owed here: the prerequisite gate pays for the fan-out even under `worktree`, where the dependency re-sort is skipped. What the mutex adds is only that `related` is read **from** it (`work-implement-queue` step 3); drop that and the mutex is inert on Linear, silently, while the same call is being made anyway.
+
+**The two shapes genuinely differ, and that is not a defect.** A GitHub label is an **equivalence class**: every issue wearing `mutex: reference-md` collides with every other one, by construction. A Linear `related` edge is **pairwise and not transitive** — A related B and B related C says nothing about A and C — so **never take connected components** of the `related` graph; that would serialize a pair no human joined. Judge each edge on its own.
+
+**Neither carrier is ever written by these skills.** A `mutex:` label must already exist on the tracker and is applied by the human who knows the collision; the drain reads it and never creates, adds or removes one — the same stance the lifecycle labels take. Likewise `related` on Linear. An issue may sit in **several** groups (several `mutex:` labels, several `related` partners); it then collides with the union of them.
+
+### What it changes
+
+**Only batch composition, and only under `parallel: true`** — that is the whole blast radius:
+
+| Mode                               | Effect                                                                                           |
+| :--------------------------------- | :----------------------------------------------------------------------------------------------- |
+| `parallel: false`                  | **inert** — a sequential run already works one issue at a time, which is all the mutex asks for  |
+| `worktree` + `parallel: true`      | split the concurrent batch — joined issues land in **different waves** of the same run           |
+| `branch:<name>` + `parallel: true` | split **within** a [topological level](#parallel) — that level runs as two or more waves instead |
+
+**A mutex never removes an issue from the queue.** It is neither [deferral](#cross-set-prerequisites) nor `blocked`: no label is written, nothing is dropped, nothing waits for a later run. The held-back issue runs **later in this same run**, once its partner's worker has finished — the whole difference between "must not run _together_" and "must not run _yet_".
+
+**Priority decides which of the two goes first**, ordering between them being free by definition. The split is otherwise ordinary wave logic: walk the batch in order, place each issue in the current wave unless a partner is already in it, and open the next wave with what did not fit. A group larger than the concurrency bound therefore degenerates to sequential — which is exactly what declaring the group meant.
+
+**The boundary is the [lock's boundary](#the-single-flight-lock).** The mutex is enforced by the drain that composes the waves, so it holds over precisely what that drain controls: one checkout, whose implement lock a second drain — and a direct `/work-implement 42` — already honours. A worker in **another clone** is invisible here for the same reason the lock cannot see it, and a directly-invoked single-issue run has no batch to split, so the mutex is inert there too. Cross-clone coordination needs a central arbiter and stays out of scope.
 
 ## Tracker — GitHub (`gh`)
 
 - **Lifecycle** — labels are flat (`ai: ready` …); flip with `gh issue edit <n> --add-label <x> --remove-label <y>`, assign with `--add-assignee`.
 - **Dependencies** — `blockedBy` / `parent`, GraphQL-only (see [dependency ordering](#dependency-ordering)).
+- **Mutex** — the `mutex: <group>` label convention (GitHub has no order-free relation); read straight off the labels `gh issue list --json …,labels` already returns, so it costs no extra call ([parallel-batch mutex](#parallel-batch-mutex)).
 - **Eligible** — `gh issue list --state open --label …`. Priority via `work.priorityLabels`.
 - **PR link** — `Closes #<n>` in the PR body links the PR to the issue, and auto-closes it on merge **into the default branch only**. With a non-default `pr.base` (e.g. `dev`) that merge fires neither, so the keyword is **traceability, not the route to [`done`](#terminal-done)**.
 - **Reconcile** — find an issue's PRs with `closedByPullRequestsReferences` (see [reconcile](#reconcile)).
@@ -558,6 +765,7 @@ Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — disco
 - **Lifecycle** — `save_issue` with the issue's `id` (create and update are one tool, keyed on the `id`) to set the lifecycle label + assignee, plus that step's `work.linear.states` state when one is mapped — **one atomic call**, so label and state never drift. Step unmapped, or no `states` at all → write the label + assignee and **leave the state alone**. Never invent a state name: the map is the only source, and `statuses` is an eligibility filter, not a mapping.
 - **Eligible** — `list_issues` by team + `labels.ready` + `labels.repo` + `work.linear.statuses`; order by native priority.
 - **Dependencies** — `list_issues` returns no relations; fan out `get_issue(includeRelations: true)` (see [dependency ordering](#dependency-ordering)).
+- **Mutex** — the native `related` relation, read from that **same** fan-out response; pairwise, never transitive, and no `mutex:` label is needed on this tracker ([parallel-batch mutex](#parallel-batch-mutex)).
 - **Which steps write a state** — the **implement loop** writes `states.working` on the lease and `states.reviewRequested` after the push. The **review loop** writes `states.accepted` / `states.changesRequested` / `states.needsHuman` on its verdict; the implement reconcile writes `states.ready` when it reclaims a pre-push orphan. **`states.done` is written by neither** — it is the terminal shipped state, left to Linear's integration or the `release` skill ([AI-accepted is not shipped](#ai-accepted-is-not-shipped)). Linear's integration may also move the issue on a default-branch merge — a bonus, never the signal waited on. `states.ready` is otherwise not written by the worker — it records where a human parks a startable issue, the anchor `statuses` should contain. The `blocked` side-exit is carried by `labels.blocked`.
 - **PR lives on GitHub** — even for a Linear-tracked repo, the code PR is a GitHub PR. The branch name / PR carries the **Linear key** (`ENG-123`) so Linear's GitHub integration **links** it. That link is traceability: on a non-default `pr.base` the integration never moves the issue at all, so [`done`](#terminal-done) comes from the sign-off or the reconcile — never from waiting on Linear.
 - **Team is required**; resolve `work.linear.team` to its id via the cache. `states` is optional — resolve each mapped name to its id via the cache; a name that matches **no** state in the team is a config error → report it, do not fall back to a guess.
