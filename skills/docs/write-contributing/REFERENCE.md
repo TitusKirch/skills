@@ -54,7 +54,7 @@ Enough to read each owner without guessing. All are reads; nothing here writes.
 base=$(printf '%s' "$resolved" | jq -er '.pr.base // empty' 2>/dev/null) || base=
 [ -n "$base" ] || base=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
 # …and where the forge CLI is available and origin/HEAD is unset:
-#   gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
+[ -n "$base" ] || base=$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name' 2>/dev/null)
 
 # Package manager — the lockfile is the fact; the pin is only the version.
 #   pnpm-lock.yaml → pnpm · package-lock.json → npm · bun.lock/bun.lockb → bun · yarn.lock → yarn
