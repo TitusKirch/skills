@@ -5,7 +5,7 @@ status: 'accepted'
 date: '2026-07-31'
 ---
 
-# ADR-0020 — Permit a thin shape for alias-style skills
+# ADR-0022 — Permit a thin shape for alias-style skills
 
 ## Context
 
