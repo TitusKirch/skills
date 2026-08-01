@@ -5,7 +5,7 @@ status: 'accepted'
 date: '2026-07-31'
 ---
 
-# ADR-0020 — Back the local tracker with committed issue files
+# ADR-0023 — Back the local tracker with committed issue files
 
 ## Context
 
