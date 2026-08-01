@@ -62,6 +62,102 @@ gh pr list --head "$(git branch --show-current)" --state open \
 - `author.login == $me` → offer to **update its body only**.
 - `author.login != $me` (a teammate, or a `*[bot]` / automation such as a `dev → main` rollup) → **leave it untouched**; report number + author and stop.
 
+### Stacked branches
+
+GitHub's [stacked pull requests](https://docs.github.com/en/pull-requests/get-started/about-stacked-prs) are a chain: the bottom PR targets the trunk, and **"each subsequent pull request targets the branch of the pull request below it."** This skill **reads** that shape to pick a base. It never creates, extends, dissolves or reorders a stack — that is the forge's job and `gh stack`'s, not this skill's.
+
+**Why it has to look at all.** Base a PR on the trunk when the branch is really built on another open PR's branch, and the diff carries that PR's unmerged commits as if this change had made them. Nothing errors: a PR opens, it is simply wrong, and the reviewer reads a diff that is mostly someone else's work. Because the failure is silent, the check runs on **every** branch — there is no "this repo uses stacks" flag to gate it on, and a branch built on a colleague's open PR has the same wrong diff whether or not anyone called it a stack.
+
+**The signal is git ancestry, read through branch names.** Only two things are consulted: which branches the open PRs point at, and which commits this branch descends from. No PR body, title or comment is read, so nothing here rests on prose a third party wrote — and nothing rests on a preview API either.
+
+```bash
+base=<the base step 1 resolved>          # pr.base, else defaultBranchRef.name
+head=$(git branch --show-current)
+default=$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name)
+
+git fetch origin                          # ancestry is judged against origin/*, so refresh them first
+                                          # NOT pre-approved — it asks; declined, carry on with the refs on hand
+
+# Candidate parents: open PRs in THIS repository whose head is neither this branch,
+# the base, nor the default branch. Excluding the last two matters — a dev → main
+# rollup PR has head `dev`, an ancestor of everything.
+# --limit 100 because gh pages at 30 by default and truncates in silence (below).
+gh pr list --state open --limit 100 --json number,headRefName,baseRefName,isCrossRepository \
+  --jq ".[] | select(.isCrossRepository != true) | select(.headRefName != \"$head\" and .headRefName != \"$base\" and .headRefName != \"$default\")"
+
+# Then classify each candidate branch B against HEAD:
+tip=$(git rev-parse --verify -q "origin/$B") || continue   # no such ref after the fetch → skip this candidate
+if git merge-base --is-ancestor "$tip" "origin/$base"; then
+  continue # B's tip is already contained in the trunk → it has nothing this branch could be stacked on
+fi
+mb=$(git merge-base "origin/$B" HEAD)
+if [ "$mb" = "$tip" ]; then
+  : # B is an ancestor of HEAD → a real parent candidate
+elif [ "$mb" = "$(git rev-parse HEAD)" ]; then
+  : # HEAD is an ancestor of B → B sits ABOVE this branch, not below → ignore it
+elif git merge-base --is-ancestor "$mb" "origin/$base"; then
+  : # they meet on the trunk only → unrelated branch, not a parent
+else
+  : # they share commits that are NOT on the trunk → out of sync (below)
+fi
+```
+
+**Two of these arms drop a candidate rather than refusing, and the difference is the point.** A refusal stops the whole run, so it is only ever right for a candidate that _might_ be this branch's parent and cannot be judged. A candidate that provably cannot be one — cross-fork, or a tip already contained in the trunk — is filtered out, and a candidate that cannot be seen at all after a fetch is skipped:
+
+- **Cross-fork is filtered in the query.** GitHub states plainly that "Stacked pull requests require all branches to be in the same repository. Cross-fork stacks are not supported" — so an outside contributor's PR is not a possible parent, and on any repo that invites fork PRs there is usually one open. Turning that into a refusal would take a branch stacked on nothing and refuse to open a PR for it, which is the opposite of the harm this section exists to prevent.
+- **A missing `origin/<B>` is skipped, not fatal.** The fetch above is what makes that safe: after it, a ref still missing is a branch this remote does not have, not one this tree merely had not seen. Skip that candidate and say so in the plan; do not end the run. **The fetch is the one command here that is not pre-approved** — `git fetch` carries the same `--upload-pack=<cmd>` exec route that keeps `git push` out of [`allowed-tools`](#config), so it asks. Declined or failing, judge against the refs already present and **name every skipped candidate in the plan**, so the human sees which branches were not judged rather than being told, wrongly, that nothing was found.
+- **A tip already on the trunk is filtered.** An open PR whose commits have since landed on the base is an ancestor of every branch cut after it, and without this arm it would read as a parent for all of them. A genuine parent always carries commits the trunk does not.
+
+**The list is paged, and a truncated page is the one drop nobody sees.** `gh pr list` returns **30** PRs by default, so past thirty open PRs the candidate set is cut off with no error and no signal — and a genuine parent outside the page is never considered, which lands exactly the mis-based PR this section exists to prevent. Every other drop above is knowing: cross-fork is filtered on a stated rule, a missing ref is named in the plan, a trunk-contained tip is filtered on a stated rule. Truncation drops a candidate without anyone learning there was one, so the asymmetry the rest of this section argues for does not hold for it. Hence `--limit 100` in the query — and, because that is a bigger page rather than a guarantee, **a page that comes back full is itself worth a line in the plan**: at that count the set may be a prefix, so say so instead of reporting "no parent found" as if the whole list had been read. The [existing-PR check](#existing-pr-and-who-owns-it) needs none of this — it is `--head`-scoped, so it is bounded already.
+
+The refusal that stays is the one that earns it: a candidate sharing history that is **not** on the trunk, whose tip is nevertheless no ancestor of this branch. That one may well be the parent, moved out from under this branch, and guessing there is exactly what produces the wrong diff.
+
+**The direction matters as much as the overlap.** Only a branch **below** this one is a base; a branch someone stacked **on top** shares exactly the same commits, differing only in which is the ancestor of which — hence the second arm above. Skipping that test turns every branch with a layer above it into an out-of-sync refusal, which would block the bottom of a healthy stack from ever opening its PR.
+
+**The nearest candidate is the base**, not the first one found: in a chain each layer is an ancestor of the one above, so several may qualify. The nearest is the candidate that has **every other candidate as its own ancestor** — settle it pairwise with `git merge-base --is-ancestor origin/A origin/B`, never by counting commits.
+
+| What the candidates say                                                                | Base               | Action                                                                                                                                                                           |
+| :------------------------------------------------------------------------------------- | :----------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **None** — no open PR's branch is an ancestor                                          | the resolved trunk | proceed exactly as before; this is the ordinary case and it stays silent                                                                                                         |
+| **A unique nearest** candidate                                                         | that branch        | proceed; the plan names the PR below (see [Plan output](#plan-output))                                                                                                           |
+| **Two or more**, none an ancestor of the others                                        | —                  | **stop**: name both PRs and ask for an explicit `--base`; a merge in the history makes "below" undefined                                                                         |
+| **Out of sync** — shared commits that are not on the trunk, but the tip is no ancestor | —                  | **stop**: the branch below moved (a rebase, or the bottom PR merging), so this branch's parent no longer exists as pushed. Ask for a rebase onto the current parent, then re-run |
+| **Cross-fork** (`isCrossRepository: true`)                                             | unaffected         | **skip the candidate** — cross-fork stacks are not supported, so it cannot be the parent. Filtered in the query; never a refusal                                                 |
+| **`origin/<B>` still missing** after `git fetch origin`                                | unaffected         | **skip the candidate** and name it in the plan — the ref is not on this remote, so it is not a branch this one is stacked on                                                     |
+| **B's tip already contained in the trunk**                                             | unaffected         | **skip the candidate** — its commits are on the base already, so it carries nothing this branch could sit on                                                                     |
+| **The candidate page came back full** (`--limit` reached)                              | unaffected         | **note it in the plan** — the set may be a prefix, so a parent beyond the page was never judged; this is the one drop that is otherwise invisible                                |
+
+Only the first four rows decide the base; the last four leave that to the remaining candidates — three by dropping one, the last by saying the list may not have held them all. **Every refusal row stops before creating anything** and says which PRs it saw — while a skipped candidate never stops anything, because a run that refuses on a branch stacked on nothing is a broken skill, not a careful one. That asymmetry is the whole design: the cost of stopping is one round trip, the cost of guessing is a PR whose diff is someone else's work — but the cost of stopping on a candidate that was never a parent is a skill that cannot open a PR at all.
+
+**A base the user named wins outright.** An explicit `--base <branch>` (or a base given in the request) is an answer, not a guess — take it, skip the detection, and mention at most in passing what the check would have picked. The refusals above exist because there is no answer, so they never override one.
+
+**Merge order and re-targeting belong to the forge — but a base chain is not yet a stack.** Stacked PRs "must merge from the bottom up", and when the bottom merges "the remaining branches are automatically rebased so the next pull request targets the default base branch." Read that quote precisely twice over, because both halves are narrower than they look:
+
+- **"Default base branch" there is the _stack's trunk_, not the repository's default branch.** The same page says the trunk is "usually your repository's default branch, such as `main`, though it can be any branch, such as a release branch." In a repo whose `pr.base` is `dev`, reading the quote as `main` points at the wrong branch — which is why the recipe above keeps `$base` and `$default` as separate variables throughout.
+- **That rebase is a _stack_ behaviour, and this skill never makes a stack.** GitHub exposes endpoints to create, extend and dissolve one precisely because a chain of PRs is not automatically a stack; somebody makes it one, in the web UI or via `gh stack`. What this skill opens is a plain base chain, so the automatic **rebase** never fires on it. **Re-targeting still might** — by an older mechanism that has nothing to do with stacks.
+
+**Three things can move the base of the PR above, and this skill is none of them:**
+
+| Mover                               | Fires when                                                                                                                                 | What moves                                                                                                                                                                                                                                                                            |
+| :---------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **A confirmed stack**               | the bottom PR merges                                                                                                                       | the branches above are rebased and the next PR is re-targeted onto the **stack's trunk** — the quote above                                                                                                                                                                            |
+| **Deleting the merged head branch** | the merged branch is deleted — the button GitHub offers the moment a PR merges, or the repo's _Automatically delete head branches_ setting | GitHub "checks for any open pull requests in the same repository that specify the deleted branch as their base branch" and re-targets each to "the merged pull request's base branch" (_Managing branches within your repository_). **No stack, no preview feature, no confirmation** |
+| **Nothing**                         | no stack was confirmed **and** the merged branch is kept                                                                                   | nothing — the PR above is left pointing at a branch that has already merged                                                                                                                                                                                                           |
+
+Deletion is the ordinary path, not an exotic one, so "no stack ⇒ nothing re-targets" is as wrong as reading the stack quote as universal: which of the three applies is a property of the repo — whether the chain was promoted, and whether merged branches are deleted — not something this skill can settle or should assume. Its own behaviour, **report the difference and change nothing**, is correct under all three.
+
+Two consequences here, both about staying out of the way:
+
+- The plan says the PR is stacked so the human knows its merge is gated on the one below. This skill [never merges](SKILL.md), so ordering is theirs to act on — including whether to promote the chain to a real stack.
+- An **existing** PR whose base is not what this run would compute is **not** drift to correct. The skill leaves an existing PR's base alone unless asked, and moving a base is the forge's or the human's act, never a side effect of writing a PR body. **Report the difference, change nothing** — and note that the report is the whole value in the third row above: with no stack confirmed and the merged branch kept, nothing will re-target the PR on its own.
+
+**Why not the stacks preview API.** The preview also exposes read-only `stack` fields on a pull request in GraphQL, plus REST endpoints to list, create, extend and dissolve stacks — reachable with plain `gh api`, no extension needed. This skill uses neither, for two reasons pointing the same way:
+
+- The feature is stated to be **"in public preview and subject to change"**, while git ancestry is not. Reading the base chain is stable ground; the fields describing it are not yet.
+- Reaching them means granting `Bash(gh api graphql:*)`, which pre-approves every GraphQL **mutation** — precisely the surface the [`gh api user` narrowing](#config) exists to keep shut — to learn something ancestry already answers. `git merge-base` buys the same fact with a read-only grant.
+
+The `gh stack` CLI extension is out for a third reason: every other call this skill makes is plain `gh`, which is present wherever the skill runs, and an extension is not. Requiring one would trade a silent mis-based PR for a skill that cannot run at all.
+
 ## Config
 
 `.tituskirch-skills.json` at the repo root (`$(git rev-parse --show-toplevel)`) is an optional, committed config shared across TitusKirch skills. Absent → behave exactly as before. **Resolve it before reading it** — [Reading the config](#reading-the-config) is the single statement of how, including what happens when `jq` is absent. Resolution per setting: **config → native → built-in default**.
@@ -87,7 +183,7 @@ instructions=$(printf '%s' "$resolved" | jq -er '.pr.instructions // empty' 2>/d
 
 `language` is a shared root key; `pr.*` are this skill's section. `pr.language` overrides the root `language` for the PR title/body, mirroring `commit.language` / `issue.language`. `pr.instructions` mirrors `commit.instructions` / `issue.instructions` — additive wording guidance that never overrides the template, detection, or guardrails. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
-**What the grant leaves out, and why that is the point.** This skill's `allowed-tools` names the commands it drives rather than granting `Bash` outright — `git rev-parse`, `git branch --show-current`, `git log` and `git diff` for the branch and its commits, `gh pr list` / `view` / `diff`, `gh repo view` and `gh api user` for the forge side, plus `jq`, `printf` and `mkdir` for the config and the shared conventions cache, and the `date`, `ls`, `head`, `cksum`, `cut` and `grep` that cache's own hash and TTL check runs on every invocation. **`gh pr create`, `gh pr edit`, `gh pr ready` and `git push` are deliberately absent.** Everything that reads is pre-approved; everything that changes the forge or the remote asks, which matches a skill that [presents the full plan and creates only after confirmation](SKILL.md). The `git branch` grant is written at `--show-current` for that same reason: the branch is only ever read here, while the bare subcommand would also pre-approve the creation, deletion, rename and upstream rewiring this skill never performs. `git push` is also an exec route in its own right (`--receive-pack=<cmd>`), so no clear could cover it.
+**What the grant leaves out, and why that is the point.** This skill's `allowed-tools` names the commands it drives rather than granting `Bash` outright — `git rev-parse`, `git branch --show-current`, `git log`, `git diff` and `git merge-base` for the branch, its commits and the [ancestry a stacked base rests on](#stacked-branches), `gh pr list` / `view` / `diff`, `gh repo view` and `gh api user` for the forge side, plus `jq`, `printf` and `mkdir` for the config and the shared conventions cache, and the `date`, `ls`, `head`, `cksum`, `cut` and `grep` that cache's own hash and TTL check runs on every invocation. **`gh pr create`, `gh pr edit`, `gh pr ready` and `git push` are deliberately absent.** Everything that reads is pre-approved; everything that changes the forge or the remote asks, which matches a skill that [presents the full plan and creates only after confirmation](SKILL.md). The `git branch` grant is written at `--show-current` for that same reason: the branch is only ever read here, while the bare subcommand would also pre-approve the creation, deletion, rename and upstream rewiring this skill never performs. `git push` is also an exec route in its own right (`--receive-pack=<cmd>`), so no clear could cover it. **`git fetch` is absent for that same reason, and deliberately** — the [stacked-branch check runs one](#stacked-branches), but `--upload-pack=<cmd>` runs a command on the far side exactly as `--receive-pack` does, so no prefix rule can scope it safely. It asks, which is the right answer for the one command in this skill that touches the network on the reader's behalf; the check degrades cleanly when it is declined.
 
 **`gh api` is written at `gh api user`, and that narrowing is real without being complete.** The skill's one call is `gh api user --jq .login`, while the bare `Bash(gh api:*)` would pre-approve `gh api repos/{owner}/{repo}/pulls --method POST` — which **creates a pull request**, the very action the paragraph above names first as one that must ask. `gh pr create` asking while the same act spelled as an API call did not was the gap, and the narrowed rule closes it. What it does **not** close: a permission rule matches the command **string**, so `gh api user` also covers `gh api user/repos --method POST`. That surface is small and it is not nothing, and on a page whose subject is grants that describe themselves accurately it belongs here rather than in the next reviewer's notes.
 
@@ -170,6 +266,37 @@ Run: gh pr create --base main --head feat/cache --title "…" --body-file <tmp>
 ```
 
 For an existing PR you own: `existing : #42 by you → will update body`, and the command becomes `gh pr edit 42 --body-file <tmp>`. For a PR owned by someone else: `existing : #42 by github-actions[bot] → leaving untouched` and stop.
+
+On a [stacked branch](#stacked-branches) the base line carries the PR below, so the human reads the merge order off the plan:
+
+```text
+  base ← head : feat/api-client ← feat/api-cache   (stacked on #41 — merges after it)
+```
+
+A **skipped** candidate is a note on an otherwise ordinary plan, not a stop — the run proceeds on the base it resolved:
+
+```text
+  base ← head : dev ← feat/api-cache   (base = pr.base)
+  skipped     : #57 (fix/typo, fork) — cross-fork, cannot be a stack parent
+                #61 (feat/queue) — origin/feat/queue absent after fetch
+```
+
+A **full candidate page** is a note on the same footing — the run proceeds, and the human learns the set may have been a prefix rather than the whole list:
+
+```text
+  base ← head : dev ← feat/api-cache   (base = pr.base)
+  candidates  : 100 open PRs read (page full) — a parent beyond it was not judged
+```
+
+A refusal prints the same header and then stops, naming what it saw rather than a bare "cannot determine":
+
+```text
+PR plan
+  base ← head : ? ← feat/api-cache
+  stacked     : ambiguous — #41 (feat/api-client) and #43 (feat/api-store) are both ancestors,
+                neither below the other
+  → not creating. Name the base explicitly (--base <branch>) and re-run.
+```
 
 ## Worked example
 
