@@ -22,7 +22,7 @@ This skill is the **review half** of the two-loop workflow. It **never implement
 
 ### 1. Load config & resolve tracker
 
-Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included); the `work.*` section holds tracker, labels, and `work.review.maxRounds` (default 3). Resolve the tracker (`work.tracker`, falling back to `issue.tracker`); reuse the `issue` catalog cache. Config + mechanics: [REFERENCE.md](REFERENCE.md).
+Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included); the `work.*` section holds tracker, labels, `work.review.maxRounds` (default 3) and `work.feedback` — where the verdict's comment is written ([feedback recipes](REFERENCE.md#feedback-recipes); it defaults from `work.branch`, the full rule being **Feedback destination** in `work-implement`'s REFERENCE). Resolve the tracker (`work.tracker`, falling back to `issue.tracker`); reuse the `issue` catalog cache. Config + mechanics: [REFERENCE.md](REFERENCE.md).
 
 ### 2. Resolve the target issue
 
@@ -44,7 +44,7 @@ If `work.labels.reviewing` resolves to a **label string**, flip `reviewRequested
 
 ### 5. Gather the work
 
-- **Requirements** — re-read the issue **body** (what was asked) and any **prior review feedback** on the issue/PR (so a re-review checks the last round was addressed).
+- **Requirements** — re-read the issue **body** (what was asked) and any **prior review feedback** on the issue **and** the PR (so a re-review checks the last round was addressed). Look in both regardless of `work.feedback`: it routes where feedback is _written_, never where it is read, and rounds written before the mode changed stay where they were posted.
 - **The pushed diff** — the artifact to review, scoped to _this_ issue:
   - **PR present** (`worktree`) → the PR's diff (`gh pr diff <n>`).
   - **No PR** (`branch:<name>`, e.g. `branch:dev`) → the issue's own commit range on the branch (the commits referencing this issue since it was last picked up). See [review-after-land](REFERENCE.md#review-after-land).
@@ -68,12 +68,14 @@ You are the skeptic. Judge, in this order:
 
 Count the review rounds first — the number of times this issue has entered `reviewRequested` ([recipe](REFERENCE.md#round-count)) — and compare to `work.review.maxRounds`. A count that could not be read is **not** zero rounds: escalate to `needs human` rather than let the loop run uncapped. Then:
 
-| Verdict                 | When                                                                                                           | Action                                                                                                                                                                                      |
-| :---------------------- | :------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **`done`**              | correct, complete, low-risk                                                                                    | set `done` — accepted                                                                                                                                                                       |
-| **`needs human`**       | correct but **risky/sensitive**, OR you cannot confidently judge, OR round ≥ `maxRounds` and still not passing | set `needs human` + comment why a human is needed                                                                                                                                           |
-| **`changes-requested`** | fixable problems, round < `maxRounds`                                                                          | **post the feedback** (`gh pr review --request-changes` with inline comments, or an issue/Linear comment referencing the commit), then set `changes-requested` — back to the implement loop |
-| **`blocked`**           | broken beyond a fixable change / a hard human call                                                             | set `blocked` + comment                                                                                                                                                                     |
+| Verdict                 | When                                                                                                           | Action                                                                                                                                                                              |
+| :---------------------- | :------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`done`**              | correct, complete, low-risk                                                                                    | set `done` — accepted                                                                                                                                                               |
+| **`needs human`**       | correct but **risky/sensitive**, OR you cannot confidently judge, OR round ≥ `maxRounds` and still not passing | set `needs human` + comment why a human is needed                                                                                                                                   |
+| **`changes-requested`** | fixable problems, round < `maxRounds`                                                                          | **post the feedback** at the configured destination (`gh pr comment`, or an issue/Linear comment referencing the commit), then set `changes-requested` — back to the implement loop |
+| **`blocked`**           | broken beyond a fixable change / a hard human call                                                             | set `blocked` + comment                                                                                                                                                             |
+
+**The label move always lands on the issue; the comment goes where `work.feedback` says** — the PR's thread (`pr`) or the issue's comments (`issue`), so a three-round review does not turn the requirement into a log ([recipes](REFERENCE.md#feedback-recipes)). In `pr` mode the **comment** (`gh pr comment`) is the primitive that carries every verdict; `gh pr review --request-changes` is an optional upgrade GitHub **refuses on a self-authored PR**, which is the normal case wherever both loops run as one identity. Two fallbacks, both reported in the run: **no PR to write to** → post to the issue; **the review call refused** → post the same body as a PR comment.
 
 Report the verdict and the reasoning. Inside a `work-review-queue` drain, return the verdict and let the drain move on.
 

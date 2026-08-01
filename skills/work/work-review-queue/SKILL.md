@@ -34,7 +34,7 @@ Before building the queue, two idempotent sweeps:
 **(a) Out-of-band human actions on the PR** — for every issue in `reviewRequested`, check whether a human acted on its PR out-of-band:
 
 - **PR merged** → set `done` — a human merge is implicit acceptance.
-- **PR closed, unmerged** → set `blocked` + comment — a human closed it without merging.
+- **PR closed, unmerged** → set `blocked` + comment at the configured feedback destination (`work.feedback`; a closed PR still takes a comment) — a human closed it without merging.
 - **PR open / no PR** → leave it — it is a normal review candidate (the drain will review it).
 
 **(b) Stale review leases** — when `work.labels.reviewing` is configured, reclaim **`reviewing` orphans**: an issue leased `reviewRequested → reviewing` but abandoned when a reviewer crashed. A review pushes **no artifact**, so there is no crash-before/after-push split — the orphan **always returns to `reviewRequested`** (dropping the assignee). Gate it on the **same assignee/age guard the implement reconcile uses**: a `reviewing` issue assigned to a **different** runner — or, under one shared bot identity, to this runner — is presumed **live** and left alone unless the weaker age fallback clears it; only an **unassigned** one (or, with distinct per-runner identities, this runner's own crashed lease) is flipped back to `reviewRequested`. Full rules: **Reconcile** in `work-implement`'s REFERENCE. With `labels.reviewing` off this sweep is inert.
@@ -51,7 +51,7 @@ Issues in `reviewRequested` were pushed by the implement loop **for exactly this
 
 ### 5. Drain
 
-For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-review` on exactly that issue. **Sequential** re-fetches the next `reviewRequested` issue each iteration; **parallel** reviews N concurrently (review is read-only, so no integration race).
+For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-review` on exactly that issue. **Sequential** re-fetches the next `reviewRequested` issue each iteration; **parallel** reviews up to **`work.concurrency`** at a time (review is read-only, so no integration race). `cap` bounds the **run**, `work.concurrency` how many reviewers are alive **at once** — it defaults to `cap`, never raises it, and is inert when `parallel` is `false`. **Cap and concurrency** in `work-implement`'s REFERENCE.
 
 **Per-issue lease.** When `work.labels.reviewing` is configured, each worker **claims** its issue — flip `reviewRequested → reviewing` + assign — **before** reviewing, and the verdict clears the lease; this is the tracker-global claim that makes the drain safe **across clones** (a second clone's review-drain sees the `reviewing` label and skips), which the per-checkout lock cannot provide. With `labels.reviewing` off, workers review straight off `reviewRequested` as before — the drain relies on its lock alone.
 
@@ -66,6 +66,14 @@ Release the lock. Summarise each issue and its verdict, what the reconcile close
 - **`changes-requested`** — back in the implement queue; the next implement-drain re-works them.
 - **`needs human`** — the drain's **actual ask**: each wants a human verdict (via `/work-review <n>`) to reach `done` or go back for changes.
 - **`blocked`** — need a human call.
+
+**Then name the queue's state**, so a repeating driver (`/loop`, cron, a human) knows whether to run again, wait, or stop — instead of that rule living in whoever typed the loop prompt. **Query the tracker again first**: work that became reviewable while the last issue was being reviewed is already there, and waiting on input that exists wastes an interval. Then decide **in this order**:
+
+1. **Stopped on `work.cap` with issues still in `reviewRequested` → `work remaining`.** Run again **immediately**, never wait: a cap-ended drain is not an empty queue.
+2. **Nothing to review, but issues sit in `ready`/`changesRequested`/`working` → `backpressure`.** An implementation produces `reviewRequested`, which is this loop's input. Wait `work.loop.wait` (default 120 s), then re-check. The **implement** lock's `refreshed` heartbeat advancing means keep waiting; frozen past the stale window means the implement drain crashed → **stop and report**. That lock **absent** is **not** by itself a reason to stop — it also means a counterpart between cap-ended runs, or one on another host — so fall back to the waited-on issues' `updatedAt`: fresh → keep waiting; frozen past the stale window → stop, naming how many wait unattended. `work.loop.maxWait` (default 1800 s) is the loud backstop.
+3. **Otherwise — only terminal states left (`done`/`blocked`/`needs human`) → `quiescent`.** Stop; none of them ever keeps the loop alive — `needs human` waits on a person, not on this drain. An empty query taken **straight after** finishing an issue is not this: only a check that follows a **wait** is evidence the queue is quiet.
+
+The wait happens **between** drains, after the lock is released, so a waiting driver blocks nothing. Full rule — the states, what each loop waits on, why the bound is the counterpart's heartbeat rather than a round count, and how cross-host degrades: **Queue state** in `work-implement`'s REFERENCE.
 
 ## Config
 
