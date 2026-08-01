@@ -21,6 +21,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
   "work": {
     "tracker": "github",
     "cap": 10,
+    "concurrency": 3,
     "branch": "worktree",
     "parallel": false,
     "labels": {
@@ -54,24 +55,25 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 }
 ```
 
-| Key                                         | Effect                                                                                                                |
-| :------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------- |
-| `work.tracker`                              | `github` or `linear`; falls back to `issue.tracker`                                                                   |
-| `work.cap`                                  | max issues a single drain works (mandatory bound; default 10)                                                         |
-| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)        |
-| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))            |
-| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                 |
-| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                       |
-| `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review |
-| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"   |
-| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                       |
-| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                     |
-| `work.loop.wait`                            | seconds a repeating driver waits before re-checking a drain that ended in [backpressure](#queue-state); default 120   |
-| `work.loop.maxWait`                         | seconds of waiting after which that driver gives up and reports loudly; default 1800                                  |
-| `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                   |
-| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                    |
-| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                      |
-| `work.linear.states`                        | Linear workflow state names; **no default** — see below and [AI-accepted is not shipped](#ai-accepted-is-not-shipped) |
+| Key                                         | Effect                                                                                                                         |
+| :------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------- |
+| `work.tracker`                              | `github` or `linear`; falls back to `issue.tracker`                                                                            |
+| `work.cap`                                  | max issues a single drain works across the run (mandatory bound; default 10) — see [Cap and concurrency](#cap-and-concurrency) |
+| `work.concurrency`                          | max workers running **at once** under `parallel: true`; defaults to `work.cap`, inert when `parallel` is `false`               |
+| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)                 |
+| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))                     |
+| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                          |
+| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                                |
+| `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review          |
+| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"            |
+| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                                |
+| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                              |
+| `work.loop.wait`                            | seconds a repeating driver waits before re-checking a drain that ended in [backpressure](#queue-state); default 120            |
+| `work.loop.maxWait`                         | seconds of waiting after which that driver gives up and reports loudly; default 1800                                           |
+| `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                            |
+| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                             |
+| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                               |
+| `work.linear.states`                        | Linear workflow state names; **no default** — see below and [AI-accepted is not shipped](#ai-accepted-is-not-shipped)          |
 
 **`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.reviewRequested: false` → the PR's existence is the signal; `labels.reviewing: false` → **no review lease** — the review loop relies on its lock alone, with no cross-clone claim (this is the **default**, so an unset `reviewing` keeps today's behaviour); `labels.blocked: false` → comment only / Linear state; `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
 
@@ -90,6 +92,17 @@ Leaving the state untouched is a defined outcome, not a degraded one — the lab
 **`states` and `statuses` have to be read together.** They point in opposite directions — `states` is what the loop _writes_, `statuses` is what it will _select_ — and the [selection query](#selection-query) ANDs them, so a state this mapping can produce that `statuses` omits takes the issue out of the queue for good. The trap is `changesRequested`, because it is the loop's second input: map it to a state outside `statuses` and a review that requests changes hands the issue back to a queue that can no longer see it — the label is right, the board is right, and nothing ever picks it up. The same applies to whichever state an escalated issue is left in, since a human resolving `needsHuman` by hand moves the label but not the state.
 
 So: **every state an eligible issue can legitimately sit in belongs in `statuses`** — the ones `states.ready` and `states.changesRequested` name, plus wherever `reviewRequested` leaves an issue that a human may hand back and `states.accepted`, which is where a human hands an **already-accepted** issue back from. Being generous costs nothing; the label filter is what actually gates eligibility, and it already excludes `working`, `reviewing` and `blocked`. Being too narrow costs a silent stall.
+
+### Cap and concurrency
+
+Two bounds, two questions. **`cap` bounds the run** — how many issues this drain may work before it stops, the mandatory ceiling on throughput. **`concurrency` bounds the moment** — how many workers may be alive at the same time, the ceiling the _machine_ can stand: under `worktree` + `parallel` each live worker costs a full worktree and a full dependency install ([branch strategy](#branch-strategy)), and every worker in flight is also tracker API calls against the same rate limit.
+
+They move for different reasons. "Work up to 20 issues this run" is a decision about how much the queue should shrink; "never more than 3 at a time" is a decision about disk, CPU and rate limits. Welding them together means the only way to run gently is to run briefly — the drain is invoked more often to do the same work, and each invocation re-pays the reconcile and the queue build.
+
+- **`concurrency` defaults to `cap`**, so a config that never sets it behaves exactly as it did before the key existed: the run bound is the only bound, as it was.
+- **It never raises `cap`.** Effective concurrency is the lower of the two — `cap: 2` with `concurrency: 8` runs at most two workers, because there are only ever two issues to run. Setting it above `cap` is legal and simply inert.
+- **It is inert when `parallel` is `false`.** One worker at a time is the construction there, not a limit to configure ([lease & race rules](#lease--race-rules)).
+- **Under `branch:<name>` + `parallel` it caps the width of a level, not the graph.** [Topological levels](#parallel) already serialize dependents; `concurrency` bounds how many of a level's independent issues run together, so a wide level is worked in successive batches rather than all at once.
 
 ### AI-accepted is not shipped
 
@@ -545,9 +558,9 @@ Two **independent** knobs — `work.branch` (where work lands) × `work.parallel
 
 **So treat the batch as the unit.** Keep a concurrent batch **free of shared files** — two issues rewriting the same file belong in different runs, in either order, since neither needs to precede the other. Where they cannot be separated, **stagger the `ready` labels**: mark the second one ready once the first has landed on `pr.base`. And expect a **refactoring batch to overlap by construction** — a set of behaviour-preserving changes over one codebase is the workload these skills suit best and the one where collisions are the norm rather than the exception, so the safely concurrent subset is usually far smaller than the queue. Under `parallel: false` none of this applies: one worker at a time, each branching off a `pr.base` that already carries whatever landed before it.
 
-- **Worktrees are the mechanism of `parallel: true`**, not a separate mode. Sequential runs need none.
+- **Worktrees are the mechanism of `parallel: true`**, not a separate mode. Sequential runs need none. **How many run at once is `work.concurrency`** (default `cap`) — the width of the `true` column, and inert in the `false` one ([cap and concurrency](#cap-and-concurrency)).
 - **A worktree starts with nothing installed**, so [step 7's verify](#running-the-repos-checks) installs the lockfile there **first**. `git worktree` checks out **tracked** files only: `node_modules`, `vendor` and every other gitignored directory are absent, however completely installed the tree the drain was invoked from is. Skip the install and the gate resolves against whatever is on `PATH` — accidentally green, accidentally red, and either way not the versions this branch pins. A run that stays in the **working tree** (sequential, on a shared branch or hopping branches in place) needs none of this; what is installed there is already the right thing. This is why the skill carries the **isolated** check-command block rather than the base one.
-- **Every extra worktree pays a full install** — the real price of concurrency, and on a repo whose dependencies run to hundreds of megabytes the install can outlast the implementation it gates. Worth weighing before raising the worker count, and the reason a concurrency bound is a different knob from `cap`. Making that cheaper — copying or linking the heavy directories into a new worktree — is the repo's own call, never something a worker does behind the run's back: one `node_modules` shared by two live workers is one install either of them can leave wrong for the other.
+- **Every extra worktree pays a full install** — the real price of concurrency, and on a repo whose dependencies run to hundreds of megabytes the install can outlast the implementation it gates. This is the cost `work.concurrency` exists to bound, and the reason it is a knob of its own rather than a second meaning for `cap` ([cap and concurrency](#cap-and-concurrency)): how many workers a machine can carry at once is not how many issues a run should work. Making that cheaper — copying or linking the heavy directories into a new worktree — is the repo's own call, never something a worker does behind the run's back: one `node_modules` shared by two live workers is one install either of them can leave wrong for the other.
 - **Serialized integration** — for a shared `branch:<name>` target under `parallel: true`, parallel work is produced in isolated worktrees and landed one commit at a time (push → rebase → retry). This is what makes `branch:dev` + `parallel` race-free.
 - **Mutex** — two issues a human has declared **order-free but colliding** (`mutex: <group>` on GitHub, `related` on Linear) never share a concurrent batch under `parallel: true`, in **either** branch mode; they run in different waves of the **same** run ([parallel-batch mutex](#parallel-batch-mutex)). Under `parallel: false` there is nothing to enforce.
 - **`worktree`** branches off `pr.base`; the worktree with committed+pushed work is removed after the PR is opened (commits live on the remote/branch).
@@ -636,6 +649,7 @@ Under `worktree` the gate already defers every issue in a cycle (each has an unl
 
 `branch:<name>` + `parallel: true` — dependent issues **cannot** run concurrently. Process the graph in **topological levels**: each level holds mutually independent issues that may run in parallel; levels run **sequentially**, with each level's [serialized integration](#branch-strategy) landing on the branch before the next starts. A chain therefore degenerates to sequential, which is the point.
 
+**`work.concurrency` bounds a level's width, never the levels.** A level wider than it is worked in successive batches; the level still finishes and integrates before the next one starts. The two limits compose — the graph says what _may_ run together, `concurrency` says how much of that the machine will actually run at once ([cap and concurrency](#cap-and-concurrency)).
 `worktree` + `parallel: true` needs no levelling: the gate has already removed every issue with an unlanded prerequisite, so whatever remains is **ordering**-independent by construction. That is a statement about edges that carry an order, and the only one this section makes — two issues with no prerequisite between them may still collide, which is what the [mutex](#parallel-batch-mutex) below splits.
 
 ## Parallel-batch mutex

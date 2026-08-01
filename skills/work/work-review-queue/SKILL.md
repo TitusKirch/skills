@@ -51,7 +51,7 @@ Issues in `reviewRequested` were pushed by the implement loop **for exactly this
 
 ### 5. Drain
 
-For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-review` on exactly that issue. **Sequential** re-fetches the next `reviewRequested` issue each iteration; **parallel** reviews N concurrently (review is read-only, so no integration race).
+For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-review` on exactly that issue. **Sequential** re-fetches the next `reviewRequested` issue each iteration; **parallel** reviews up to **`work.concurrency`** at a time (review is read-only, so no integration race). `cap` bounds the **run**, `work.concurrency` how many reviewers are alive **at once** — it defaults to `cap`, never raises it, and is inert when `parallel` is `false`. **Cap and concurrency** in `work-implement`'s REFERENCE.
 
 **Per-issue lease.** When `work.labels.reviewing` is configured, each worker **claims** its issue — flip `reviewRequested → reviewing` + assign — **before** reviewing, and the verdict clears the lease; this is the tracker-global claim that makes the drain safe **across clones** (a second clone's review-drain sees the `reviewing` label and skips), which the per-checkout lock cannot provide. With `labels.reviewing` off, workers review straight off `reviewRequested` as before — the drain relies on its lock alone.
 
