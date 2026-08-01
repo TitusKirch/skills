@@ -1,6 +1,6 @@
 ---
 name: gamma
-description: The third fixture skill — carries the worklock and plan blocks and nothing else.
+description: The third fixture skill — carries the worklock and plan blocks, and names the resolver without hosting the config block.
 metadata:
   summary: carries the worklock and plan blocks
 allowed-tools:
@@ -8,6 +8,8 @@ allowed-tools:
 ---
 
 # gamma
+
+Runs `templates/resolve-config.sh` but leaves the contract's prose to a required sibling.
 
 ## The single-flight lock
 

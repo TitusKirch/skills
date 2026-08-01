@@ -182,7 +182,7 @@ describe('installed in isolation', () => {
   });
 });
 
-// The block above `scripts/config-block.md` is mirrored into sixteen skills and
+// The block above `scripts/config-block.md` is mirrored into fourteen skills and
 // drift-checked against that source, and the resolver beside it is copied byte-exact —
 // but nothing held the source honest about the script it describes. Change the fallback
 // profile or the exit code in the sh and the prose in every skill stays confidently
