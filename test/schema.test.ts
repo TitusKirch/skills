@@ -181,6 +181,33 @@ describe('the reviewing lease label (opt-in review-loop lease)', () => {
   });
 });
 
+// work.loop paces a repeating driver between drains. Both keys are optional and
+// independent — a repo tuning the poll interval must not be forced to restate the
+// backstop — and both are whole seconds, so the seconds/milliseconds mix-up that a
+// bare number invites is at least caught at the "0 means spin" end.
+describe('the loop pacing keys', () => {
+  test('accepts either key alone, and both together', () => {
+    accepts({ work: { loop: { wait: 120 } } }, 'wait alone');
+    accepts({ work: { loop: { maxWait: 1800 } } }, 'maxWait alone');
+    accepts({ work: { loop: { wait: 60, maxWait: 600 } } }, 'both keys');
+    accepts({ work: { loop: {} } }, 'an empty loop section');
+  });
+
+  test('rejects a non-positive, fractional or misspelled value', () => {
+    rejects({ work: { loop: { wait: 0 } } }, 'a wait of zero');
+    rejects({ work: { loop: { maxWait: -1 } } }, 'a negative maxWait');
+    rejects({ work: { loop: { wait: 1.5 } } }, 'a fractional wait');
+    rejects({ work: { loop: { interval: 120 } } }, 'an unknown loop key');
+  });
+
+  test('it is writable inside a profile, like every other work key', () => {
+    accepts(
+      { profiles: { ci: { work: { loop: { wait: 300 } } } } },
+      'loop fragment in a profile'
+    );
+  });
+});
+
 // ADR-0018 split the tail of the Linear map in two: `accepted` is what the review
 // verdict writes, `done` is the shipped state no work skill writes. The keys are
 // independent — a repo can map either, both, or neither — because a config that maps

@@ -588,6 +588,25 @@
             }
           }
         },
+        "loop": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "How a repeating driver (/loop, cron, a human) paces re-runs of a queue drain that ended in backpressure — nothing eligible right now, but the counterpart loop can still produce this loop's input. Read by work-implement-queue and work-review-queue only; the units never wait. A drain that ended on the cap is work remaining, not backpressure, and re-runs immediately without consulting these. Deliberately not the single-flight lock's stale window, which is crash detection measured in hours: two jobs, two numbers.",
+          "properties": {
+            "wait": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 120,
+              "description": "Seconds to wait before re-checking the queue when a drain ends in backpressure. Calibrated to one counterpart iteration, which runs in minutes (a fresh worktree installs its dependencies before the gate, and the model reads the issue and the diff before either), so the usual 60 s driver floor would poll 3-5x per counterpart issue and re-read the skill each time. Default: 120."
+            },
+            "maxWait": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1800,
+              "description": "Total seconds a driver may stay in backpressure before giving up and reporting loudly. A backstop only: a counterpart that drains empty releases its lock and ends the wait by itself, and a crashed one is caught by its frozen heartbeat, so reaching this means something nobody predicted. Default: 1800."
+            }
+          }
+        },
         "priorityLabels": {
           "type": "array",
           "items": {
