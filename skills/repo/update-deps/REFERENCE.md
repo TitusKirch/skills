@@ -1,6 +1,6 @@
 # update-deps — Reference
 
-Mechanics for the [`update-deps`](SKILL.md) skill. Scope is **Node** (npm / pnpm / bun), **PHP** (Composer) and **Rust** (Cargo), monorepos included. The updater is **detected from the repo**, never configured — see [Decisions](#decisions).
+Mechanics for the [`update-deps`](SKILL.md) skill. Scope is **Node** (npm / pnpm / bun), **PHP** (Composer), **Rust** (Cargo) and **Go** (modules), monorepos included. The updater is **detected from the repo**, never configured — see [Decisions](#decisions).
 
 ## Config
 
@@ -109,23 +109,27 @@ Lockfile-driven, with `packageManager` as the override:
 | `package-lock.json`               | Node      | npm      |
 | `composer.lock` / `composer.json` | PHP       | Composer |
 | `Cargo.lock` / `Cargo.toml`       | Rust      | Cargo    |
+| `go.mod` / `go.sum`               | Go        | `go`     |
 
 - **`packageManager` in `package.json` wins** over the lockfile guess — it is the repo's explicit statement, and under `packageManagerStrict: true` a wrong manager is **rejected**, not merely discouraged.
 - **`taze` in `devDependencies` outranks the native updater** for the Node side, whichever manager it is — taze rewrites `package.json` and installs through the repo's own manager, so it is manager-agnostic.
 - **A `src-tauri/Cargo.toml` is a real Cargo manifest** — a Tauri app carries its Rust crate there, not at the root, so detection looks below the root too. It is its own ecosystem run, alongside the Node manifest a Tauri repo also has.
+- **`go.mod` is both manifest and lockfile** — it records an exact version per module, so there is no separate lock to consult and `go.sum` holds checksums rather than a resolution. The signal is the **module file**; `go.sum` merely accompanies it. There is no updater to outrank the toolchain: Go ships `go get` and nothing taze-shaped exists for it.
 - **Several ecosystems at once** → each is its own run, plan and report section. Never let one ecosystem's range leak into another's.
 
 ## Range → command
 
 **Only taze has real range granularity.** Every native Node updater collapses to "within the declared range" or "latest", with nothing in between:
 
-| Range               | taze (preferred) | pnpm / npm             | bun                   | Composer                        | Cargo                          |
-| :------------------ | :--------------- | :--------------------- | :-------------------- | :------------------------------ | :----------------------------- |
-| `patch`             | `taze patch -w`  | `pnpm update`¹         | `bun update`¹         | `composer update`¹              | `cargo update`¹                |
-| `minor` _(default)_ | `taze minor -w`  | `pnpm update`¹         | `bun update`¹         | `composer update`¹              | `cargo update`¹                |
-| `major`             | `taze major -w`  | `pnpm update --latest` | `bun update --latest` | `composer require <pkg>:^<new>` | `cargo upgrade --incompatible` |
+| Range               | taze (preferred) | pnpm / npm             | bun                   | Composer                        | Cargo                          | Go                      |
+| :------------------ | :--------------- | :--------------------- | :-------------------- | :------------------------------ | :----------------------------- | :---------------------- |
+| `patch`             | `taze patch -w`  | `pnpm update`¹         | `bun update`¹         | `composer update`¹              | `cargo update`¹                | `go get -u=patch ./...` |
+| `minor` _(default)_ | `taze minor -w`  | `pnpm update`¹         | `bun update`¹         | `composer update`¹              | `cargo update`¹                | `go get -u ./...`       |
+| `major`             | `taze major -w`  | `pnpm update --latest` | `bun update --latest` | `composer require <pkg>:^<new>` | `cargo upgrade --incompatible` | **report and stop**²    |
 
 ¹ **Within the declared range only** — the manifest is not rewritten. Under `^1.2.0` that lands the newest 1.x (a minor, achieved); under `~1.2.0` it lands patches only; under an exact pin it does nothing. **The declared range is doing the ranging**, which is why native `patch` and `minor` share a command: the repo already said which it wanted. Cargo is a native updater in the same sense — `cargo update` moves the lock within `Cargo.toml`'s constraints — see [Cargo's constraint model](#cargos-constraint-model).
+
+² **Go is the exception in this table** — its ranging lives in the **flag**, not the manifest (`go.mod` has no ranges to declare), and its `major` is not a version bump at all but a **module-path** change. Name the available `/vN` and stop — see [Go's version model](#gos-version-model). Follow every Go write with `go mod tidy`, which is what reconciles `go.mod` and `go.sum` after a `go get`.
 
 Useful taze flags (`taze --help` is the authority; all verified against `taze@19.14.1`):
 
@@ -231,11 +235,41 @@ A dependency declared without an operator (`oxfmt: 0.57.0`) is **locked**. Two c
 - **Constraint rewriting is an explicit `major` only** — `cargo upgrade --incompatible` (from **cargo-edit**; `cargo upgrade` alone only modernises within-compatible requirements). It rewrites `Cargo.toml` to the new major, each reported **separately as breaking**. If cargo-edit is absent, report the available majors and stop — installing a toolchain component is a human's call, not the skill's.
 - **`0.x` is special-cased, as in npm.** `serde = "0.9"` is `^0.9` → `>=0.9.0, <0.10.0`: the major lives in the middle number, so a caret on `0.x` floats patches only. Read a `0.x` bump the way you read one under npm's caret.
 - **Report with** `pnpm cargo:outdated` where the repo defines that script, else `cargo outdated` (from **cargo-outdated**) — it lists what the constraints are holding back, the parallel of `composer outdated --direct`.
-- **No release-age gate to honour.** The `minimumReleaseAge` machinery is pnpm-specific; Cargo has no native equivalent, so there is no gated-vs-ungated diff to run and no held-by-gate row for the Rust side.
+- **No release-age gate to honour.** The `minimumReleaseAge` machinery is pnpm-specific; Cargo has no native equivalent, so there is no gated-vs-ungated diff to run and no held-by-gate row for the Rust side. Report that section **not applicable** rather than omitting it — see [the same rule for Go](#gos-version-model).
+
+## Go's version model
+
+**Go has no ranges.** `go.mod` records an **exact** version per module — `require github.com/spf13/cobra v1.8.1` — with no `^`, no `~` and nothing for a native updater to move _within_. Every other ecosystem here lets the manifest do the ranging; Go moves that job into the command:
+
+| Range               | Command                 | Reaches                                          |
+| :------------------ | :---------------------- | :----------------------------------------------- |
+| `patch`             | `go get -u=patch ./...` | newest patch of each module's current minor      |
+| `minor` _(default)_ | `go get -u ./...`       | newest minor+patch below the next major          |
+| `major`             | —                       | **not performed** — reported and stopped (below) |
+
+- **`go mod tidy` follows every write.** `go get` updates `go.mod` and `go.sum`; `tidy` is what prunes what is no longer imported and adds what is. Treat it as part of the update, not as cleanup afterwards.
+- **`go get -u ./...` never crosses a major**, because a Go major is a different module path — the command has no way to reach it even if it wanted to. That is the property the `minor` default rests on.
+- **Report with `go list -u -m all`**, which lists each module with the newest version available — the parallel of `composer outdated --direct` and `cargo outdated`.
+
+### A major is an import-path change, so the run reports and stops
+
+From `/v2` onward Go encodes the major **in the module path** (`github.com/foo/bar/v2`). Moving to it therefore means editing the `require` line **and every file that imports the module** — a source rewrite, not a version bump, and one no flag performs.
+
+That collides head-on with the skill's **never widen a constraint** guardrail: the guardrail was written for ecosystems where an update is a version string, and rewriting imports is a categorically larger act than anything it contemplates. So a `major` run on Go:
+
+- **names the available `/vN`** for each module that has one, with the path it would move to,
+- **leaves `go.mod` and every source file untouched**, and
+- reports the majors as **held — major is a module-path change**, alongside every other held row.
+
+This is the same shape as the missing-toolchain rule elsewhere (`cargo upgrade` without cargo-edit): where the act exceeds what the skill may do on its own, the answer is a report. A human performing the `/vN` migration — by hand or with a tool like `gomajor` — is the sanctioned path, and naming it is the run's job.
+
+**No release-age gate exists for Go.** The module proxy has no `minimumReleaseAge` equivalent, so the [gated-versus-ungated diff](#the-release-age-gate) has nothing to compare and there is no held-by-gate row for the Go side. **Report it as _not applicable_, never omit it** — a step silently skipped is indistinguishable from a step that ran and found nothing withheld, and telling those two apart is the whole point of the gate section.
+
+**Advisories are the one part that needs no special case.** `govulncheck ./...` (from `golang.org/x/vuln`) satisfies the [security step](#security) as-is, and it is sharper than most: it reports only vulnerabilities the code actually _reaches_. Like `cargo audit`, it is a **separate tool** — a missing `govulncheck` is reported, never auto-installed.
 
 ## Monorepos
 
-- **pnpm** — `packages:` in `pnpm-workspace.yaml`. **npm / bun** — `workspaces` in `package.json`. **Composer** — path repositories. **Cargo** — `[workspace]` in `Cargo.toml`; `cargo update` at the workspace root resolves the whole member tree into one `Cargo.lock`.
+- **pnpm** — `packages:` in `pnpm-workspace.yaml`. **npm / bun** — `workspaces` in `package.json`. **Composer** — path repositories. **Cargo** — `[workspace]` in `Cargo.toml`; `cargo update` at the workspace root resolves the whole member tree into one `Cargo.lock`. **Go** — `go.work`; each member keeps its **own** `go.mod`, so an update is per-module and there is no single lock to resolve at the root.
 - **taze `-r`** walks every workspace `package.json`. Note `--ignore-other-workspaces` defaults to **true** — a nested package with its own `.git`/`pnpm-workspace.yaml` is a different repo and is skipped, which is the correct default.
 - **Keep a shared dependency on one version across packages** — a version skew introduced by an update is a finding, not an outcome.
 - **Resolve the lockfile once, at the root**, with one install after all manifests are written.
@@ -245,13 +279,14 @@ A dependency declared without an operator (`oxfmt: 0.57.0`) is **locked**. Two c
 Run **every time**, independent of the range, and before declaring the run clean:
 
 ```bash
-pnpm audit          # or: npm audit | bun audit | composer audit | cargo audit
+pnpm audit          # or: npm audit | bun audit | composer audit | cargo audit | govulncheck ./...
 ```
 
 | Situation                           | Action                                                                 |
 | :---------------------------------- | :--------------------------------------------------------------------- |
 | Fix is inside the run's range       | it lands with the run — name it in the report as an advisory fix       |
 | Fix needs a **major**, run is minor | **report loudly**; never widen the range on your own initiative        |
+| Fix needs a Go **`/vN`** move       | report the path and stop — the migration is a human's, not the skill's |
 | Fix is blocked by the **gate**      | report advisory + fix + age + `minimumReleaseAgeExclude`; do not write |
 | **No fix available**                | report it every run — a vulnerability nobody can patch stays visible   |
 
@@ -277,5 +312,6 @@ The issue that specified this skill left its defaults open. What was settled, an
 - **`--include-locked`, not `latest`, is how a pin moves** — the obvious-looking advice for a pinned dep is `taze latest -w`, and the specifying issue and this repo's `CLAUDE.md` both carried it. Measured against the real tree it conflates two axes and buys more than it was asked for: `latest` is a **mode** spanning majors, and at the time of writing it targeted `oxfmt 0.57.0 → 0.58.0` (a 0.x major) and `packageManager` pnpm → a `12.0.0-alpha.9` **prerelease** — from a request that only meant "include the pinned ones". Scope (`-l`) and range (the mode) are orthogonal, so `taze minor -l` is the honest "minor run, pins included". `CLAUDE.md` was corrected alongside this skill.
 - **Composer is constraint-respecting in v1** — under a caret, `composer update` already achieves the newest minor, so v1 needs no constraint rewriting to deliver its headline promise. Rewriting (`composer bump`, `composer require pkg:^7`) is reserved for an explicit `major`, because for a library it narrows what consumers may install — a decision, not a refresh.
 - **Cargo is Composer-shaped, not npm-shaped** — added so a Tauri repo's `src-tauri/` crate is not silently skipped next to its Node frontend. `cargo update` moves the lock within `Cargo.toml`'s constraints and never rewrites them, so it slots into the existing native-updater, constraint-respecting path with **no new machinery** — a detection row and a command column, exactly as the Yarn note predicts for an added ecosystem. Constraint rewriting stays an explicit `major` (`cargo upgrade --incompatible`), and because that and `cargo audit` / `cargo outdated` are **separate tools** (cargo-edit, cargo-audit, cargo-outdated), a missing one is reported, never auto-installed — the same "the repo's tooling decides, the skill does not reach past it" rule that governs the gate. The default caret on a bare version (the inverse of npm's bare-is-pinned) is the one genuine footgun, so it earns its own line in the model.
+- **Go is in scope, but its `major` is not** — a Go repo carries `go.mod`/`go.sum`, which matched no detection signal, so a run on one ended with no ecosystem found: no error, no output, and an ecosystem the skill cannot see reports nothing at all — the one failure mode this skill exists to prevent. Adding it costs a detection row, a command column and a version-model section, exactly as Cargo did. The `major` column is where Go stops resembling the others: from `/v2` on, the major lives in the **module path**, so moving to it edits every importing file. That is a source rewrite, categorically larger than the constraint edit "never widen a constraint" was written to forbid, and no flag performs it. So a `major` run **names the available `/vN` and stops** — the same answer the skill already gives when `cargo upgrade` needs an absent cargo-edit: where the act exceeds what the skill may do alone, the deliverable is a report. Rejected doing the rewrite: a `/vN` bump commonly carries API changes beyond the path, so the ordinary outcome would be a tree that no longer builds, produced by an edit nobody asked for. Two consequences follow and are recorded rather than papered over — the **release-age gate reports _not applicable_** for Go (the module proxy has no `minimumReleaseAge` equivalent, and a silently skipped step reads identically to a passed one), and **`govulncheck` satisfies the advisory step unchanged**. Rejected leaving Go to Dependabot: that is today's behaviour and fine for repos running it, but it does not cover the local, on-demand update this skill exists for. `merge-deps` needs nothing here — it names no ecosystem anywhere, and Dependabot supports Go natively.
 - **`packageManager` is a toolchain change, not a dependency** — taze offers it like any other row, but bumping it re-points every contributor and CI, and `packageManagerStrict` makes a mismatch fatal rather than cosmetic. It gets its own line in the plan; it never rides along inside "3 minor updates".
 - **Yarn is out of scope in v1** — the issue scoped Node to npm/pnpm/bun plus Composer. taze already reads yarn's config, so adding it later is a detection row, not a reshape.

@@ -2,7 +2,7 @@
 name: write-docs
 metadata:
   summary: Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format.
-description: Scaffolds, extends, and reconciles a project's `docs/` tree in the TitusKirch docs format — one stack-agnostic convention shared across all repos, ADRs included (append-only decision records in `docs/99.adr/`). Routes by state — scaffolds when `docs/` is missing, adds to the right section when it exists, reconciles existing pages when asked (never rewriting prose). Always previews a plan and writes only after confirmation. Use when the user wants to write, add, scaffold, or update documentation, set up a docs/ tree, document a feature, record or supersede an architecture decision, or says things like "write the docs", "add a docs page", "document this", "reconcile the docs", "write an ADR", "record this decision", "Doku schreiben", "docs aktualisieren". Also trigger proactively once a feature has cleared review and final approval — when the work is settled, not when implementation finishes — to document the shipped result.
+description: Scaffolds, extends, and reconciles a project's `docs/` tree in the TitusKirch docs format — one stack-agnostic convention shared across all repos, ADRs included (append-only records in `docs/99.adr/`). Routes by state — scaffolds when `docs/` is missing, adds to the right section when it exists, reconciles pages when asked (never rewriting prose). Always previews a plan, writing only after confirmation. Use when the user wants to write, add, scaffold, or update documentation, set up docs/, document a feature, record or supersede an architecture decision, or says things like "write the docs", "add a docs page", "document this", "reconcile the docs", "write an ADR", "record this decision", "Doku schreiben", "docs aktualisieren". Also trigger proactively once a feature has cleared review and final approval — when the work is settled, not when implementation ends — to document the shipped result, and offer an ADR when a decision clearly earns one.
 allowed-tools:
   - Read
   - Write
@@ -11,6 +11,7 @@ allowed-tools:
   - Grep
   - Bash(jq:*)
   - Bash(grep:*)
+  - Bash(git log:*)
 ---
 
 # write-docs
@@ -29,7 +30,7 @@ The TitusKirch **docs format** — one opinionated, stack-agnostic convention fo
 
 Optional verb shortcuts: `/write-docs init`, `/write-docs add <topic>`, `/write-docs reconcile`. Otherwise infer from state and the request. **Always: plan → confirm → apply.**
 
-**Proactive trigger** — don't wait to be asked. Once a feature has passed all its reviews and reached final approval (signed off or merged), engage this skill yourself and run the **route/add** job for that feature. Trigger on _final approval_, not on _implementation finished_ — code still facing review is too early, and a feature that gets reworked shouldn't be documented twice. The write still follows plan → confirm → apply.
+**Proactive trigger** — don't wait to be asked. Once a feature has passed all its reviews and reached final approval (signed off or merged), engage this skill yourself and run the **route/add** job for that feature. Trigger on _final approval_, not on _implementation finished_ — code still facing review is too early, and a feature that gets reworked shouldn't be documented twice. The write still follows plan → confirm → apply. An ADR has its own proactive moment, on its own trigger: [when a decision earns one](#when-a-decision-earns-an-adr).
 
 ## What belongs in docs at all
 
@@ -62,7 +63,21 @@ A real feature usually spans several types: how-it-works (`concepts`) + usage (`
 
 **The `reference` row is the one to challenge.** Lookup values earn a page only where nothing machine-readable already holds them — an HTTP API with no published schema, env vars with no `.env.example`. Where a schema, a manifest or `--help` is the real answer, the reference page is one sentence naming it plus whatever it cannot say (which values are safe to change, which combinations conflict). A transcribed option table is the single most common stale page in any repo. **Lead with how-it-works and how-to-use; push every lookup value to `reference` and link to it.** Page type is implied by section + template — it is **not** a frontmatter field. Catalogue, core sections and presets: [REFERENCE.md](REFERENCE.md).
 
-**ADRs are the standing exception.** They live in `docs/99.adr/` (fixed prefix, flat), are named `NNNN-title.md` for a permanent decision id, carry `status` + `date` on top of the house frontmatter, and are **append-only** — a reversed decision writes a new ADR and marks the old one `superseded`, never edits it. A concept page explains how a thing works _today_; an ADR records why it was chosen, _then_. Full contract: [REFERENCE.md](REFERENCE.md#architecture-decision-records).
+**ADRs are the standing exception.** They live in `docs/99.adr/` (fixed prefix, flat), are named `NNNN-title.md` — a permanent decision id plus an imperative verb phrase — carry `status` + `date` on top of the house frontmatter, run `Context` / `Decision` / `Consequences` (Nygard) with an optional `Alternatives considered`, and are **append-only** — a reversed decision writes a new ADR and marks the old one `superseded`, never edits it; a decision that still stands but whose reasoning has been overtaken grows a dated addendum under its own `## Amendments`, the one thing an accepted record may gain in place. A concept page explains how a thing works _today_; an ADR records why it was chosen, _then_. Full contract: [REFERENCE.md](REFERENCE.md#architecture-decision-records).
+
+## When a decision earns an ADR
+
+The matrix above says _where_ a decision goes; this says _whether_ there is one to record. Ask it **before** routing — the `adr` row is the only one whose page cannot be pruned later, because the log is append-only.
+
+**The threshold.** A decision earns an ADR when it **constrains work that comes later** and **its reasoning would otherwise be lost**: a choice between real alternatives, a convention every part of the project has to follow, a trade-off that looks like a mistake until the reason is known. Both halves have to hold — a constraint whose reason is obvious from the code needs no record, and a well-argued call that binds nothing later is a comment, not an ADR.
+
+Decisions that typically clear it: architectural shape · integration patterns between parts · technology choices carrying lock-in · boundary and scope decisions · deliberate deviations from the obvious path · constraints invisible in the code · alternatives rejected for non-obvious reasons. A list of the usual suspects, not a checklist — the threshold above is what decides.
+
+**Three signs of a certain ADR** — hard to reverse, surprising without context, the result of a real trade-off. All three together are **sufficient**: write the record, no further argument needed. They are **never necessary** — the cheapest convention in the repo still earns an ADR if it binds later work and its reason would otherwise be lost, and gating on reversal cost alone would exclude exactly the decisions that are easiest to break by accident.
+
+**Size is not the gate, and never a reason to skip one.** _An ADR can be a single paragraph. The value is in recording that a decision was made and why — not in filling out sections._ The required H2s stay, and any of them may be one sentence ([contract](REFERENCE.md#architecture-decision-records)).
+
+**Offer an ADR proactively** once a decision clearly clears the threshold — same shape as the proactive trigger above: propose the record, plan → confirm → apply, and never write one unasked. _Clearly_ is the bar; a borderline call is the human's to make, so name it and let them answer.
 
 ## Scaffold — `docs/` is missing
 
@@ -95,10 +110,11 @@ Desired-state, idempotent — like a `--fix` linter for the docs tree.
 2. Diff against the convention and group the plan:
    - **Auto-fix (mechanical)** — numbering gaps/dupes, missing `index.md`, removed/unknown frontmatter keys, `N.kebab.md` filename normalization, unambiguous broken relative links.
    - **Prompt (value-needing)** — a missing required field (`title`/`description`): derive a candidate from the H1 / first paragraph and confirm.
+   - **Import (value-needing)** — a **dedicated ADR directory outside `99.adr/`** (`docs/adr/` and near variants): decisions recorded in someone else's format, which every other category misses, so they are missing from the decision log while the log still reads as complete. Measure **each file** against [the threshold](#when-a-decision-earns-an-adr) first — it governs an adopted record exactly as it governs a written one, and this is the last moment it can be asked, because an append-only log cannot be pruned afterwards. What clears it is proposed as **one** operation — move, rename to `NNNN-title.md`, the log's row, the missing frontmatter, the body under the required H2s — applied only on confirmation. What does not clear it is routed as an ordinary docs page or reported and left alone, in the same plan. Detection rule, the threshold gate, the `date` derivation and what is report-only instead: [REFERENCE.md](REFERENCE.md#foreign-adrs--a-decision-log-written-elsewhere).
    - **Report only** — a how-to without a checklist, a page that fits no section, suspected duplication of an upstream source **or of a file in the repo**, any secret detected. Never auto-edited.
-3. Show the **plan + diff**; on confirm apply **only structure + frontmatter**. **Never rewrite prose. Only touch files inside `docs/`.**
+3. Show the **plan + diff**; on confirm apply **only structure + frontmatter**. **Never rewrite prose. Only touch files inside `docs/`.** The one exception is an **imported** ADR, whose body is **re-homed** under the required H2s — the author's sentences are moved, never rewritten.
 
-`99.adr/` is **exempt** — links and the decision log only. An ADR id is permanent, so never renumber one, never rename it to the dot-schema, never close a gap in the sequence ([REFERENCE.md](REFERENCE.md#reconcile-rules)).
+`99.adr/` is **exempt** — links and the decision log only. An ADR id is permanent, so never renumber one, never rename it to the dot-schema, never close a gap in the sequence ([REFERENCE.md](REFERENCE.md#reconcile-rules)). A **foreign** ADR is outside that exemption: it was never accepted _in this log_, so giving it an id is a first assignment rather than a renumbering, and shaping it on entry is not an edit to an accepted record.
 
 <skills-plan>
 
