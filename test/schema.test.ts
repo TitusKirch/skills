@@ -218,6 +218,66 @@ describe('the needsTriage label (opt-in contradiction check)', () => {
   });
 });
 
+// `cap` bounds the run, `concurrency` the moment. The pair only earns its keep if
+// omitting `concurrency` stays valid — that absence is what makes it default to `cap`,
+// and a schema that required it would break every config written before it existed.
+describe('the concurrency bound beside the run cap', () => {
+  test('it is optional, and an integer of at least one when present', () => {
+    accepts({ work: { cap: 20 } }, 'cap alone — concurrency defaults to it');
+    accepts({ work: { cap: 20, concurrency: 3 } }, 'the pair the key is for');
+    accepts({ work: { concurrency: 1 } }, 'concurrency alone');
+    accepts(
+      { work: { cap: 2, concurrency: 8 } },
+      'above cap is legal and simply inert — the lower of the two wins'
+    );
+  });
+
+  test('it takes the same shape as cap, and no looser', () => {
+    rejects({ work: { concurrency: 0 } }, 'concurrency minimum');
+    rejects({ work: { concurrency: 2.5 } }, 'not an integer');
+    rejects({ work: { concurrency: false } }, 'not a labelOrOff');
+    rejects({ work: { concurrency: '3' } }, 'not a numeric string');
+  });
+
+  test('it can be overlaid in a profile, like every other work key', () => {
+    accepts(
+      { profiles: { ci: { work: { concurrency: 4 } } } },
+      'profile concurrency fragment'
+    );
+    rejects(
+      { profiles: { ci: { work: { concurrency: 0 } } } },
+      'the minimum still applies inside a profile'
+    );
+  });
+});
+
+// work.loop paces a repeating driver between drains. Both keys are optional and
+// independent — a repo tuning the poll interval must not be forced to restate the
+// backstop — and both are whole seconds, so the seconds/milliseconds mix-up that a
+// bare number invites is at least caught at the "0 means spin" end.
+describe('the loop pacing keys', () => {
+  test('accepts either key alone, and both together', () => {
+    accepts({ work: { loop: { wait: 120 } } }, 'wait alone');
+    accepts({ work: { loop: { maxWait: 1800 } } }, 'maxWait alone');
+    accepts({ work: { loop: { wait: 60, maxWait: 600 } } }, 'both keys');
+    accepts({ work: { loop: {} } }, 'an empty loop section');
+  });
+
+  test('rejects a non-positive, fractional or misspelled value', () => {
+    rejects({ work: { loop: { wait: 0 } } }, 'a wait of zero');
+    rejects({ work: { loop: { maxWait: -1 } } }, 'a negative maxWait');
+    rejects({ work: { loop: { wait: 1.5 } } }, 'a fractional wait');
+    rejects({ work: { loop: { interval: 120 } } }, 'an unknown loop key');
+  });
+
+  test('it is writable inside a profile, like every other work key', () => {
+    accepts(
+      { profiles: { ci: { work: { loop: { wait: 300 } } } } },
+      'loop fragment in a profile'
+    );
+  });
+});
+
 // ADR-0018 split the tail of the Linear map in two: `accepted` is what the review
 // verdict writes, `done` is the shipped state no work skill writes. The keys are
 // independent — a repo can map either, both, or neither — because a config that maps
@@ -259,6 +319,75 @@ describe('the accepted/done split in the Linear state map', () => {
       { work: { linear: { states: { shipped: 'Done' } } } },
       'shipped was the rejected alternative and is not a key'
     );
+  });
+});
+
+// ADR-0023 added a third tracker whose store is a directory of committed files. The
+// asymmetry worth pinning is that `local` needs no companion key: `linear` cannot be
+// used without a team, because a team name is underivable, while every local key has a
+// default. So a bare {tracker:"local"} has to validate at the ROOT — not only inside a
+// profile, which is where the bare linear fragment is confined.
+describe('the local file tracker', () => {
+  test('a bare {tracker:local} is valid at the root, unlike linear', () => {
+    accepts({ issue: { tracker: 'local' } }, 'root issue, no companion key');
+    accepts({ work: { tracker: 'local' } }, 'root work, no companion key');
+  });
+
+  test('the directory is an optional non-empty string on both sections', () => {
+    accepts(
+      { issue: { tracker: 'local', local: { dir: 'docs/issues' } } },
+      'issue.local.dir'
+    );
+    accepts(
+      { work: { tracker: 'local', local: { dir: '.agents/issues' } } },
+      'work.local.dir'
+    );
+    accepts({ work: { tracker: 'local', local: {} } }, 'dir left to default');
+    rejects({ work: { local: { dir: '' } } }, 'empty dir');
+    rejects({ issue: { local: { dir: 1 } } }, 'numeric dir');
+    rejects({ work: { local: { path: '.agents/issues' } } }, 'unknown key');
+  });
+
+  test('the linear constraints are not extended to it', () => {
+    accepts(
+      { work: { tracker: 'local', labels: { ready: 'ai: ready' } } },
+      'no linear/labels.repo/statuses demanded of a local tracker'
+    );
+  });
+
+  test('an unknown tracker is still rejected', () => {
+    rejects({ work: { tracker: 'files' } }, 'files is not the name');
+    rejects({ issue: { tracker: 'gitea' } }, 'no forge doubles as a tracker');
+  });
+});
+
+// work.feedback routes the loops' round-by-round output to the PR or the issue. Its
+// default is derived from work.branch rather than written into the schema, so the
+// key has to stay omittable — a config that never sets it is the normal one.
+describe('the feedback destination', () => {
+  test('accepts either mode, at the root and in a profile', () => {
+    accepts({ work: { feedback: 'pr' } }, 'feedback on the pull request');
+    accepts(
+      { work: { feedback: 'issue' } },
+      "feedback in the issue's comments"
+    );
+    accepts(
+      { profiles: { ci: { work: { feedback: 'pr' } } } },
+      'a profile may switch the destination for its context'
+    );
+  });
+
+  test('omitting it stays valid — the default comes from work.branch', () => {
+    accepts({ work: { branch: 'branch:dev' } }, 'no feedback key');
+  });
+
+  test('rejects anything that is not one of the two modes', () => {
+    rejects(
+      { work: { feedback: 'both' } },
+      'both was the rejected alternative'
+    );
+    rejects({ work: { feedback: '' } }, 'empty destination');
+    rejects({ work: { feedback: false } }, 'feedback is not a labelOrOff');
   });
 });
 

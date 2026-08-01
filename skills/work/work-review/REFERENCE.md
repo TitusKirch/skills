@@ -12,15 +12,18 @@ The two loops meet at two hand-off labels: `reviewRequested` (implement → revi
 
 Reads the shared `work.*` section (schema: **Config** in `work-implement`'s REFERENCE). Review-specific keys:
 
-| Key                            | Effect                                                                                                                                                                                                                                             |
-| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `work.review.maxRounds`        | Max AI-review rounds before escalating to `needs human` instead of `changes-requested`. Default: **3**.                                                                                                                                            |
-| `work.labels.reviewRequested`  | The "awaiting AI review" label — the review queue's **input**. Default `ai: review requested`; a repo that labels differently pins its own string under this key.                                                                                  |
-| `work.labels.reviewing`        | The review loop's **lease** label — claimed `reviewRequested → reviewing` before reviewing, the tracker-global counterpart of `working`. **Opt-in: defaults to off**; when off, the review loop uses its lock alone (today's behaviour, no lease). |
-| `work.labels.changesRequested` | The "review requested changes" label — hands back to the implement loop.                                                                                                                                                                           |
-| `work.labels.needsHuman`       | The "escalated to a human" label.                                                                                                                                                                                                                  |
-| `work.labels.done`             | Terminal "accepted" — the AI is finished with this issue, **not** "shipped". On Linear its state is `work.linear.states.accepted`; `states.done` is the shipped state, and the reviewer never writes it ([why](#accepted-is-not-shipped)).         |
-| `verify` _(root)_              | The repo's own check command, run here against the **pushed head** — the review establishes green rather than inheriting the implementer's. Reading and detection: [Running the repo's checks](#running-the-repos-checks).                         |
+| Key                            | Effect                                                                                                                                                                                                                                                                                                                                                  |
+| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `work.review.maxRounds`        | Max AI-review rounds before escalating to `needs human` instead of `changes-requested`. Default: **3**.                                                                                                                                                                                                                                                 |
+| `work.feedback`                | Where the verdict's comment is written — `pr` (the pull request's thread) or `issue`. **No fixed default**: it follows `work.branch`, so a PR-opening loop writes to the PR and a shared-branch loop to the issue. Full rule: **Feedback destination** in `work-implement`'s REFERENCE.                                                                 |
+| `work.labels.reviewRequested`  | The "awaiting AI review" label — the review queue's **input**. Default `ai: review requested`; a repo that labels differently pins its own string under this key.                                                                                                                                                                                       |
+| `work.labels.reviewing`        | The review loop's **lease** label — claimed `reviewRequested → reviewing` before reviewing, the tracker-global counterpart of `working` — **except on [`local`](#the-reviewing-lease), where it is not tracker-global and is best left off**. **Opt-in: defaults to off**; when off, the review loop uses its lock alone (today's behaviour, no lease). |
+| `work.labels.changesRequested` | The "review requested changes" label — hands back to the implement loop.                                                                                                                                                                                                                                                                                |
+| `work.labels.needsHuman`       | The "escalated to a human" label.                                                                                                                                                                                                                                                                                                                       |
+| `work.labels.done`             | Terminal "accepted" — the AI is finished with this issue, **not** "shipped". On Linear its state is `work.linear.states.accepted`; `states.done` is the shipped state, and the reviewer never writes it ([why](#accepted-is-not-shipped)).                                                                                                              |
+| `work.loop.wait`               | Seconds a repeating driver waits before re-checking a review drain that ended in **backpressure** (nothing to review, but the implement loop can still produce input). Default: **120**. Full rule: **Queue state** in `work-implement`'s REFERENCE.                                                                                                    |
+| `work.loop.maxWait`            | Seconds of waiting after which that driver gives up and reports loudly. Default: **1800**.                                                                                                                                                                                                                                                              |
+| `verify` _(root)_              | The repo's own check command, run here against the **pushed head** — the review establishes green rather than inheriting the implementer's. Reading and detection: [Running the repo's checks](#running-the-repos-checks).                                                                                                                              |
 
 Every key, type and default lives once in the repo-root [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json).
 
@@ -232,6 +235,18 @@ test -n "$review" && gh issue list --state open --label "$review" --json number,
 
 **Never pass `--label "$review"` unguarded.** With `labels.reviewRequested: false` the label mechanic is off and the PR's existence is the signal — select on that instead; do **not** fall through to a label query with an empty value.
 
+**`local`** — the queue is a `grep` over the issue directory, matching the **config key** in each file's `state` field rather than a label string:
+
+```sh
+# $store is the ABSOLUTE store path — the main working tree's issue directory, resolved
+# as in "Tracker — local (files)" (work-implement's REFERENCE). Never a bare "$dir":
+# it is repo-relative and each of these commands runs in its own process with no
+# guaranteed cwd. Quotes are optional in the file, so the match tolerates them.
+grep -lE "^state:[[:space:]]*['\"]?reviewRequested['\"]?[[:space:]]*$" "$store"/*.md 2>/dev/null
+```
+
+The empty-result trap is the same shape and worse: a missing directory globs to nothing and reads exactly like a drained queue, so assert `$store` exists before selecting. Layout, fields, the anchoring and the transition write: **Tracker — local (files)** in `work-implement`'s REFERENCE.
+
 ## The `reviewing` lease
 
 `work.labels.reviewing` is the review loop's lease — the tracker-global claim `working` is for the implement loop, giving cross-clone mutual exclusion the checkout-local review lock cannot (the lock only proves no live reviewer **in this checkout**; a second clone's reviewer holds its own lock, invisible here). Two clones draining the review queue would otherwise both select the same `reviewRequested` issue and write **competing** verdicts (one `done`, one `changes-requested`, last-write-wins).
@@ -245,6 +260,12 @@ reviewing=$(printf '%s' "$resolved" | jq -er '.work.labels.reviewing | select(. 
 ```
 
 When it resolves to a **string**: flip `reviewRequested → reviewing` **and assign** before reading the diff; the verdict then moves the label off `reviewing` (to `done` / `changesRequested` / `needsHuman` / `blocked`). A **`reviewing` orphan** (a reviewer that crashed mid-judgment) is reclaimed to `reviewRequested` by the review reconcile (`work-review-queue`) — a review pushes **no artifact**, so there is no crash-before/after-push split: it **always** returns to `reviewRequested`, gated by the assignee/age guard so a live review in another clone is never killed. When `reviewing` is empty, skip the lease and the reclaim entirely.
+
+**On `local` the lease is _not_ tracker-global, and the guarantee this section opens with does not transfer.** What makes `reviewing` reach past the review lock on the other two trackers is that the tracker is **one server both clones write to**; on `local` the store is a directory **inside the checkout**, so a `state: 'reviewing'` field is visible to exactly the clones the lock is already visible to. Its domain **collapses onto the lock's**, and the competing-verdict hazard above is fully reopened: two clones that do not share the filesystem both read `reviewRequested`, both lease, and both write a verdict — precisely as they would with the lease off.
+
+**The reconcile's assignee/age guard is not the mitigation.** That guard keeps a sweep from reclaiming a review another clone is **live** on; nothing in it adjudicates a `done` written in one clone against a `changes-requested` written in the other, and no sweep ever sees both. Nor does the `assignee` field help: **Tracker — local (files)** in `work-implement`'s REFERENCE states it is only as distinct as the runner's own git identity, which forces the weaker age-gated path — and an age gate reading a file the other clone cannot see decides nothing about that clone.
+
+So the honest reading is that **on `local` the lease buys nothing the review lock does not already give — leave `work.labels.reviewing` off**, which is already its default. Setting it breaks nothing: the flip, the verdict and the orphan reclaim all work as written, and the reclaim is still worth having **within** a checkout. It must simply not be mistaken for a cross-clone claim, because on `local` there is no such thing to be had — that limit is the [single-flight lock's boundary](#the-single-flight-lock), and on this tracker the lease sits inside it rather than outside.
 
 ## Round count
 
@@ -272,12 +293,14 @@ fi
 
 **Linear** — read the issue's history/activity and count the state/label changes onto the `reviewRequested` state. Before deciding `changes-requested`, compare the count to `work.review.maxRounds`: at or above it, escalate to `needs human` instead — with a comment summarising the still-unresolved feedback.
 
+**`local`** — a file has no event log, so the count is read from the **verdicts themselves**: one `## AI review — round N` heading per round, appended by this loop ([Feedback recipes](#feedback-recipes)), counted with `grep -c '^## AI review — round '` against the file in the **main working tree's** store (a per-issue worktree's copy is a stale checkout artifact — **Tracker — local (files)** in `work-implement`'s REFERENCE). That is why the verdict is appended to the issue rather than carried in a commit — the artifact that makes the count derivable is the same one the next implement round has to read. `grep -c` answers `0` on a file with no verdicts yet, which is a genuine zero; a **missing or unreadable file** is the unreadable case and escalates to `needs human`, exactly as an unreachable timeline does. `git log` on the file would be the tempting second source and is not used: a rebase, a squash or a hand-edit rewrites it, while the headings travel with the content.
+
 ## Escalation to `needs human`
 
 The reviewer escalates on **judgment**, guided by existing repo signals rather than a config paths-list:
 
 - **CODEOWNERS** — the change touches paths a human owner is required to review (`.github/CODEOWNERS` / repo root / `docs/`). → escalate.
-- **Branch protection / required reviews** — where the base enforces a human review, the AI never self-approves. → escalate.
+- **Branch protection / required reviews** — where the base enforces a human review, the AI never self-approves. → escalate. This is a **policy** stance about the verdict, and it is not the same thing as GitHub **mechanically** refusing `gh pr review --approve`/`--request-changes` on a self-authored PR ([feedback recipes](#feedback-recipes)): that refusal is about the _call_, is routine on a single-identity repo, and is answered by posting the same body as a PR comment — never by escalating a verdict the reviewer was able to reach.
 - **Ambiguous intent** — the diff is plausible but you cannot confirm it matches what the issue actually wants. → escalate, don't guess.
 - **Size / risk** — a change too large or consequential to sign off confidently. → escalate.
 - **Red without a clear cause, or a gate that could not be run at all** — → escalate (or `blocked` if clearly broken). A red the diff does not explain — a shared branch failing on someone else's commits — escalates too: it is a real finding that this issue cannot fix ([attribution](#verifying-the-pushed-head)).
@@ -298,9 +321,11 @@ Under `worktree`, the PR is the artifact: review its diff, and a `changes-reques
 
 ## Accepted is not shipped
 
-`done` is the **verdict**, not the ship. Under either branch strategy the accepted work sits on `pr.base` — unmerged into the default branch, unreleased — and on a non-default `pr.base` no tracker automation ever fires to correct that later. So on Linear the accept verdict writes **`work.linear.states.accepted`** (an `Accepted` / `Ready for release` column), **never `states.done`**, which is the terminal shipped state written by whatever observes the default branch: Linear's own GitHub integration where `pr.base` **is** the default branch, otherwise the `release` skill at the promotion edge that lands there. Full rule, including what an unmapped key does: **AI-accepted is not shipped** in `work-implement`'s REFERENCE.
+`done` is the **verdict**, not the ship. Under either branch strategy the accepted work sits on `pr.base` — unmerged into the default branch, unreleased — and on a non-default `pr.base` no tracker automation ever fires to mark the ship later. So on Linear the accept verdict writes **`work.linear.states.accepted`** (an `Accepted` / `Ready for release` column), **never `states.done`**, which is the terminal shipped state written by whatever observes the default branch: Linear's own GitHub integration where `pr.base` **is** the default branch, otherwise the `release` skill at the promotion edge that lands there. Full rule, including what an unmapped key does: **AI-accepted is not shipped** in `work-implement`'s REFERENCE.
 
 The **label** is unaffected: `work.labels.done` keeps its string and its meaning. Only the Linear state the verdict writes alongside it changed, because only the board was claiming something the work had not earned.
+
+**Every verdict state is a best-effort write.** Linear's own GitHub integration writes the same field on **any** event on the issue's pull request — a comment, a check — within seconds, and **label-blind**, so it overwrites a verdict state as readily as an in-flight one, `needsHuman` included even when that step is deliberately unmapped. No reconcile puts it back: neither sweep **inspects** a workflow state, so neither detects a drifted one, let alone repairs it. That costs the review loop nothing **while a positive label gate is configured** — the **label** carries every verdict, and the label is what the loops read — but do not promise a repo that the board holds, and note that a human moving a card is a second writer of that field too, with no automation to switch off. What the mapping is worth, where the label gate stops covering for it, and the ways a repo makes it hold: **The board has a second writer**, in `work-implement`'s REFERENCE.
 
 ## Verifying the pushed head
 
@@ -335,22 +360,44 @@ git worktree remove "$(git rev-parse --git-common-dir)/tituskirch-skills/work/re
 
 ## Feedback recipes
 
-The verdict is a **label move + a comment**. Post the feedback where the artifact is:
+The verdict is a **label move + a comment**, and the comment's destination is **configured, not chosen per verdict** — `work.feedback`, resolved as **Feedback destination** in `work-implement`'s REFERENCE states (`pr` or `issue`, defaulting from `work.branch`). The label always stays on the issue; only the prose moves.
 
 ```bash
-# PR present — a real review with the changes-requested verdict (inline comments via the API)
-gh pr review "$n" --request-changes --body "…what to change and why…"
+# feedback=pr — the review lives on the pull request ($pr is the PR for this issue).
+# gh pr comment is the primitive: it carries EVERY verdict and always succeeds, own PR included.
+gh pr comment "$pr" --body "AI review — changes requested (round <r> of <max>, head <sha>): …"
+gh pr comment "$pr" --body "AI review — accepted: …"   # done / needs human / blocked
 
-# No PR (branch:<name>) — an issue comment referencing the reviewed commit(s)
+# Optional upgrade, ONLY where the reviewer identity differs from the PR's author.
+# On a self-authored PR GitHub refuses this — fall back to the gh pr comment above.
+gh pr review "$pr" --request-changes --body "…what to change and why…"
+
+# feedback=issue — an issue comment referencing the reviewed commit(s)
 gh issue comment "$n" --body "AI review — changes requested (commit <sha>): …"
 ```
 
-Then move the label to `work.labels.changesRequested`. For `done`/`needs human`/`blocked`, move the label and comment the reasoning. **Linear** — post the comment via the MCP and set the label (plus the mapped `work.linear.states` state when configured), in one `save_issue` call where possible (create and update are one tool, keyed on the issue `id` — there is no separate `update_issue`).
+**Post the comment first, and treat the formal review as an enrichment of it.** GitHub rejects `gh pr review --request-changes` (and `--approve`) with `Review Can not request changes on your own pull request` whenever the caller authored the PR — which, in a repo where the implement loop and the review loop run as the **same** identity, is every PR the loop produces. So `--request-changes` is reached for only where the reviewer is demonstrably not the author (a separate bot token, a second account, a multi-maintainer repo), and a refusal is a **documented fallback, not a failure**: post the identical body with `gh pr comment` and name the fallback in the run report. The `done` / `needs human` / `blocked` line already uses `gh pr comment` for exactly this reason; `changes-requested` follows the same primitive. Full rule: **Feedback destination** in `work-implement`'s REFERENCE.
+
+`pr` mode with **no** pull request — a `branch:<name>` loop, or an issue whose PR was never opened — falls back to the issue comment and names the fallback in the run report, because a verdict that reaches nobody is worse than one in the wrong thread. Then move the label to `work.labels.changesRequested`; for `done`/`needs human`/`blocked`, move the label and comment the reasoning the same way. **Linear** — the code PR is a GitHub PR, so `pr` mode writes there with `gh` (the url comes from the issue's PR attachment) while the label and any mapped `work.linear.states` state still go through `save_issue`; `issue` mode posts the comment via the MCP and sets the label in one `save_issue` call where possible (create and update are one tool, keyed on the issue `id` — there is no separate `update_issue`).
+
+**`local`** — there is no comment stream, so the verdict is **appended to the issue file**, newest last, under its own heading:
+
+```markdown
+## AI review — round 2 · changes requested
+
+…what to change and why, in the same words a PR review would carry…
+```
+
+Append the section **and** rewrite the `state` field in the **same** command, so a crash cannot leave a verdict with no state or a state with no reasoning. Both go through the temp-file-and-`mv` write in **Tracker — local (files)**. A sibling feedback file was the alternative and loses twice: it splits one document, and the next implement round — which re-reads the body for scope — would have to know to look for the other half. The heading is also the [round count](#round-count), so its wording is load-bearing: keep the `## AI review — round N` prefix exactly.
 
 **De-dupe on re-review.** Because review is idempotent, before posting feedback check whether an equivalent comment from a prior crashed run already exists; update or skip rather than double-post.
 
 ## Tracker recipes
 
 Label moves mirror the implement loop's own **Tracker — GitHub (`gh`)** recipes. The reviewer writes the **lease** label `reviewing` on claim (only when `labels.reviewing` is configured — flip `reviewRequested → reviewing`, `--add-assignee`), then the **verdict** labels (`done` / `changesRequested` / `needsHuman` / `blocked`) and their mapped Linear states; the review reconcile writes `reviewRequested` when it reclaims a `reviewing` orphan (dropping the assignee). It never writes `working`/`ready` (those are the implement loop's). On **Linear** the `reviewing` lease sets the label via `save_issue`; `work.linear.states` has no `reviewing` mapping, so the workflow state is left untouched (the "unmapped step leaves the state alone" rule in the implement REFERENCE).
+
+**On `local` a "label move" is a frontmatter write.** The same transitions, the same order — lease first (`reviewRequested → reviewing`, writing `assignee`), verdict after — but each is one rewritten `state:` line, guarded by the state it expects to replace and committed by a `mv`, in the **main working tree's** store rather than the current worktree's copy (**Tracker — local (files)** in `work-implement`'s REFERENCE). `work.linear.states` is inert there, so the verdict writes the lifecycle key and nothing else.
+
+**The mechanism transfers; the lease's cross-clone property does not.** Writing `reviewing` as a frontmatter field is a faithful translation of the label flip, and nothing above changes — but it does **not** carry the guarantee [The `reviewing` lease](#the-reviewing-lease) describes, because the store lives inside the checkout. Read that section before enabling `labels.reviewing` on `local`; the recommendation there is to leave it off.
 
 **The verdict labels and their Linear states do not share a name.** Three map straight through — `changesRequested` → `states.changesRequested`, `needsHuman` → `states.needsHuman`, and `blocked` carries no state at all. The fourth does not: the `done` verdict writes **`states.accepted`**, and `states.done` is the shipped state neither loop writes ([Accepted is not shipped](#accepted-is-not-shipped)). A repo whose `states` maps `done` but not `accepted` gets the "unmapped step" outcome — label written, board untouched — which is the intended failure direction.
