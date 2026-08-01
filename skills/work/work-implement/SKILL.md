@@ -30,8 +30,8 @@ Config schema, the full lifecycle and all mechanics: [REFERENCE.md](REFERENCE.md
 
 ### 2. Resolve the target issue
 
-- **Explicit** — an id/number/key the user names (`/work-implement 42`, `ENG-123`).
-- **Self-select** — none given → run the [selection query](REFERENCE.md#selection-query) and take the single highest-priority eligible issue (a `ready` **or** a `changes-requested` issue). None eligible → say so and stop.
+- **Explicit** — an id/number/key the user names (`/work-implement 42`, `ENG-123`). A human naming the issue is the opt-in, so an **unlanded prerequisite** does not veto it — say so in the report and work it, the way a [body contradicting the label](REFERENCE.md#label-vs-body-precedence) is surfaced rather than obeyed.
+- **Self-select** — none given → run the [selection query](REFERENCE.md#selection-query) and take the single highest-priority eligible issue (a `ready` **or** a `changes-requested` issue). That query **defers** an issue whose prerequisite has not landed — under `worktree` too, since branching off a clean `pr.base` cannot see it ([dependency ordering](REFERENCE.md#dependency-ordering)). None eligible → say so and stop.
 
 ### 3. Read the issue's state → pick the action
 
