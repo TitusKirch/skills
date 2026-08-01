@@ -55,7 +55,8 @@ Issues, the two AI work loops (implement and review), handing work between sessi
 | Skill                                                               | Description                                                                                                           |
 | :------------------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------- |
 | [`handoff`](skills/work/handoff/SKILL.md)                           | Hands off in-progress work to another agent or session via a committed handoff document.                              |
-| [`issue`](skills/work/issue/SKILL.md)                               | Creates/updates/searches issues across GitHub (gh) or Linear (MCP), tracker chosen by config.                         |
+| [`issue`](skills/work/issue/SKILL.md)                               | Creates/updates/searches issues across GitHub (gh), Linear (MCP) or local issue files, tracker chosen by config.      |
+| [`refine-issue`](skills/work/refine-issue/SKILL.md)                 | Takes one filed issue to the point a human can approve it for the AI loop — finds the open decisions and closes them. |
 | [`tldr`](skills/work/tldr/SKILL.md)                                 | Summarises the last answer, the task just finished, or the whole session into a fixed section order.                  |
 | [`work-implement`](skills/work/work-implement/SKILL.md)             | Implements one tracked issue and pushes it for AI review — claim, implement, verify, push, hand off.                  |
 | [`work-implement-queue`](skills/work/work-implement-queue/SKILL.md) | Drains the ready/changes-requested queue — implements each issue to a pushed, reviewable state.                       |
@@ -66,12 +67,13 @@ Issues, the two AI work loops (implement and review), handing work between sessi
 
 Generate and maintain project documentation, READMEs and terminal demos in the house style.
 
-| Skill                                                   | Description                                                                                               |
-| :------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------- |
-| [`compact-readme`](skills/docs/compact-readme/SKILL.md) | Slims down an existing overstuffed README without losing information.                                     |
-| [`vhs-demo`](skills/docs/vhs-demo/SKILL.md)             | Creates and maintains a reproducible terminal-demo GIF from a VHS tape.                                   |
-| [`write-docs`](skills/docs/write-docs/SKILL.md)         | Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format. |
-| [`write-readme`](skills/docs/write-readme/SKILL.md)     | Generates project READMEs in the kirchDev house style.                                                    |
+| Skill                                                           | Description                                                                                                    |
+| :-------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------- |
+| [`compact-readme`](skills/docs/compact-readme/SKILL.md)         | Slims down an existing overstuffed README without losing information.                                          |
+| [`vhs-demo`](skills/docs/vhs-demo/SKILL.md)                     | Creates and maintains a reproducible terminal-demo GIF from a VHS tape.                                        |
+| [`write-contributing`](skills/docs/write-contributing/SKILL.md) | Writes and reconciles CONTRIBUTING.md in the house style, deriving every repo fact from the file that owns it. |
+| [`write-docs`](skills/docs/write-docs/SKILL.md)                 | Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format.      |
+| [`write-readme`](skills/docs/write-readme/SKILL.md)             | Generates project READMEs in the kirchDev house style.                                                         |
 
 ### Meta
 

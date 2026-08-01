@@ -19,6 +19,7 @@
       "skills": [
         "handoff",
         "issue",
+        "refine-issue",
         "tldr",
         "work-implement",
         "work-implement-queue",
@@ -29,7 +30,13 @@
     {
       "title": "Docs & READMEs",
       "description": "Generate and maintain project documentation, READMEs and terminal demos in the house style.",
-      "skills": ["compact-readme", "vhs-demo", "write-docs", "write-readme"]
+      "skills": [
+        "compact-readme",
+        "vhs-demo",
+        "write-contributing",
+        "write-docs",
+        "write-readme"
+      ]
     },
     {
       "title": "Meta",
