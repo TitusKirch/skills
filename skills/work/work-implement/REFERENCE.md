@@ -24,6 +24,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
     "concurrency": 3,
     "branch": "worktree",
     "parallel": false,
+    "feedback": "pr",
     "labels": {
       "ready": "ai: ready",
       "working": "ai: working",
@@ -55,25 +56,26 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 }
 ```
 
-| Key                                         | Effect                                                                                                                         |
-| :------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------- |
-| `work.tracker`                              | `github` or `linear`; falls back to `issue.tracker`                                                                            |
-| `work.cap`                                  | max issues a single drain works across the run (mandatory bound; default 10) — see [Cap and concurrency](#cap-and-concurrency) |
-| `work.concurrency`                          | max workers running **at once** under `parallel: true`; defaults to `work.cap`, inert when `parallel` is `false`               |
-| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)                 |
-| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))                     |
-| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                          |
-| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                                |
-| `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review          |
-| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"            |
-| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                                |
-| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                              |
-| `work.loop.wait`                            | seconds a repeating driver waits before re-checking a drain that ended in [backpressure](#queue-state); default 120            |
-| `work.loop.maxWait`                         | seconds of waiting after which that driver gives up and reports loudly; default 1800                                           |
-| `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                            |
-| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                             |
-| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                               |
-| `work.linear.states`                        | Linear workflow state names; **no default** — see below and [AI-accepted is not shipped](#ai-accepted-is-not-shipped)          |
+| Key                                         | Effect                                                                                                                                   |
+| :------------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------- |
+| `work.tracker`                              | `github` or `linear`; falls back to `issue.tracker`                                                                                      |
+| `work.cap`                                  | max issues a single drain works across the run (mandatory bound; default 10) — see [Cap and concurrency](#cap-and-concurrency)           |
+| `work.concurrency`                          | max workers running **at once** under `parallel: true`; defaults to `work.cap`, inert when `parallel` is `false`                         |
+| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)                           |
+| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))                               |
+| `work.feedback`                             | where both loops write their round-by-round output: `pr` or `issue`; **no fixed default** — [it follows `branch`](#feedback-destination) |
+| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                                    |
+| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                                          |
+| `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review                    |
+| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"                      |
+| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                                          |
+| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                                        |
+| `work.loop.wait`                            | seconds a repeating driver waits before re-checking a drain that ended in [backpressure](#queue-state); default 120                      |
+| `work.loop.maxWait`                         | seconds of waiting after which that driver gives up and reports loudly; default 1800                                                     |
+| `work.priorityLabels`                       | GitHub priority labels, highest first; Linear ignores these (native priority field)                                                      |
+| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                                       |
+| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                                         |
+| `work.linear.states`                        | Linear workflow state names; **no default** — see below and [AI-accepted is not shipped](#ai-accepted-is-not-shipped)                    |
 
 **`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.reviewRequested: false` → the PR's existence is the signal; `labels.reviewing: false` → **no review lease** — the review loop relies on its lock alone, with no cross-clone claim (this is the **default**, so an unset `reviewing` keeps today's behaviour); `labels.blocked: false` → comment only / Linear state; `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
 
@@ -425,6 +427,47 @@ Label and body are **both live**, and they can disagree — a body written at cr
 **The label is operative.** A body line contradicting the current label — "do not implement yet", "intentionally **not** marked `ai: ready`" — describes the issue as it stood when written; it is **not** a veto over a label a human has since set. It **never** silently overrides the label into a block. Treat it as **stale text** and **surface it**: warn in the run's report and note it on the issue, so the human can correct whichever side is wrong. The agent's job is to flag the contradiction, not to adjudicate it.
 
 This does not disarm the `blocked` side-exit: work whose **requirements** are genuinely ambiguous, or that genuinely needs a human call, still exits to `blocked` — on the **substance** of the work, never on the body's opinion about eligibility.
+
+## Feedback destination
+
+Each loop writes **two** things about one issue, and only one of them is the issue's own: the **lifecycle label**, which is the issue's state and never moves, and the **round-by-round output** — the reviewer's verdict and its changes-requested rationale, the implementer's `blocked` reason, a surfaced [label/body contradiction](#label-vs-body-precedence). `work.feedback` routes the second, so three review rounds no longer bury the requirement under the record of how the loop got there:
+
+| Mode     | The round-by-round output goes to | The issue keeps                                                   |
+| :------- | :-------------------------------- | :---------------------------------------------------------------- |
+| **`pr`** | the **pull request's** thread     | its requirement, its lifecycle label, and a link to the thread    |
+| `issue`  | the **issue's** comments          | everything — the behaviour every repo had before this key existed |
+
+**The default follows `work.branch` rather than being a fourth thing to configure.** A loop that opens pull requests (`worktree`) has a thread to write to, so it defaults to **`pr`**; one that commits to a shared branch (`branch:<name>`) opens none, so it defaults to **`issue`**. Derive it, never guess it:
+
+```sh
+feedback=$(printf '%s' "$resolved" | jq -er '.work.feedback // empty' 2>/dev/null) || feedback=
+if [ -z "$feedback" ]; then
+  branch=$(printf '%s' "$resolved" | jq -er '.work.branch // empty' 2>/dev/null) || branch=
+  [ -n "$branch" ] || branch=worktree   # the schema's own default for branch
+  case $branch in
+  worktree) feedback=pr ;;
+  *)        feedback=issue ;;
+  esac
+fi
+```
+
+**Only writing is routed — reading never is.** A re-work reads the review feedback, and a re-review reads the round before it, from **both** places regardless of the mode: the mode may have been switched between rounds, and **existing comments are not migrated** — they stay where they were written. A run that reads only its own mode's side silently loses the round it is supposed to be answering.
+
+**`pr` mode with no pull request falls back to the issue, and says so in the run report.** Two ways that happens, and the routine one is not a misconfiguration: a `worktree` run that exits `blocked` at [verify](#running-the-repos-checks) never reached the push, so its PR does not exist yet — and the reason it blocked is exactly the output worth keeping. The other is a repo that sets `feedback: pr` on a `branch:<name>` loop, which opens no PR at all; there the fallback keeps the loop working and the run report names the mode as the thing to fix. Feedback is never dropped for want of a destination — the key routes it, it does not gate it.
+
+**Finding the thread.** On **GitHub** it is the PR for this issue — `gh pr list --head <branch>` for the branch this run pushed, or the `closedByPullRequestsReferences` query the [reconcile](#reconcile) already uses — written with `gh pr comment <pr>`. On **Linear** the code PR is a **GitHub** PR ([Tracker — Linear](#tracker--linear-mcp)), so the thread is that PR's: take its url from the attachment Linear's GitHub integration puts on the issue (`get_issue`) and post there with `gh`. Linear's **own** diff threads are not that thread — they belong to Linear-native diffs, which this loop never produces — so nothing here reaches for them; a Linear issue with no PR attachment is the no-pull-request case above.
+
+**The PR _comment_ is the primitive; the formal review is an upgrade that is not always available.** `gh pr comment <pr>` succeeds on any pull request the caller can see, one's own included, and lands in the same thread — which is all `feedback: pr` promises. `gh pr review <pr> --request-changes` (and `--approve`) is the richer form — it renders as a review, carries inline comments, and counts toward branch protection — but GitHub **refuses it on a pull request the caller authored**:
+
+```
+Review Can not request changes on your own pull request
+```
+
+That is the **normal** case for a single-identity repo, not an edge one: the implement loop opens the PR and the review loop runs as the same account, so the formal review is unavailable for **every** PR the loop produces. Reach for it only where the reviewer's identity genuinely differs from the author's — a separate bot token, a second account, a multi-maintainer repo — and treat it as an enrichment of the comment, never as the thing the verdict depends on.
+
+**So `pr` mode has a second fallback, alongside the no-PR one: the review call is refused → post the same body with `gh pr comment` and name the fallback in the run report.** Same shape as the fallback above and for the same reason — a pull request that exists but refuses the review call must not fall off the end of the documented paths. Both fallbacks discharge one rule: **the destination routes feedback, it never gates it**, and no verdict is lost to a call the forge would not accept.
+
+**The issue still makes the verdict findable.** In `pr` mode the lifecycle label carries the state, so a link to the thread is all that is left to carry: on GitHub the PR body's own `Refs #<n>` / `Closes #<n>` reference already puts a permanent cross-link in the issue's timeline, so `pr` mode posts **nothing** extra there; where no such automatic link exists, post the PR url **once**, never once per round.
 
 ## Selection query
 

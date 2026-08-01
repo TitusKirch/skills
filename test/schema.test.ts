@@ -285,6 +285,36 @@ describe('the accepted/done split in the Linear state map', () => {
   });
 });
 
+// work.feedback routes the loops' round-by-round output to the PR or the issue. Its
+// default is derived from work.branch rather than written into the schema, so the
+// key has to stay omittable — a config that never sets it is the normal one.
+describe('the feedback destination', () => {
+  test('accepts either mode, at the root and in a profile', () => {
+    accepts({ work: { feedback: 'pr' } }, 'feedback on the pull request');
+    accepts(
+      { work: { feedback: 'issue' } },
+      "feedback in the issue's comments"
+    );
+    accepts(
+      { profiles: { ci: { work: { feedback: 'pr' } } } },
+      'a profile may switch the destination for its context'
+    );
+  });
+
+  test('omitting it stays valid — the default comes from work.branch', () => {
+    accepts({ work: { branch: 'branch:dev' } }, 'no feedback key');
+  });
+
+  test('rejects anything that is not one of the two modes', () => {
+    rejects(
+      { work: { feedback: 'both' } },
+      'both was the rejected alternative'
+    );
+    rejects({ work: { feedback: '' } }, 'empty destination');
+    rejects({ work: { feedback: false } }, 'feedback is not a labelOrOff');
+  });
+});
+
 describe('nothing about existing configs changed', () => {
   test('a config with no profiles key is still valid', () => {
     accepts({ language: 'en', pr: { base: 'dev' } }, 'plain config');

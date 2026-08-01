@@ -63,7 +63,7 @@ Each worker returns `reviewRequested` (pushed, handed to the review loop — the
 
 ### 6. Report & release
 
-Release the lock. Summarise each issue and its outcome (handed to `reviewRequested` / `blocked` reason / skipped), what the reconcile reclaimed, issues **deferred** to a later run, any **mutex** that split the batch into waves (a delay within this run, not a deferral), any **dependency cycle** a human must untangle, and any **label/body conflict** a worker flagged.
+Release the lock. Summarise each issue and its outcome (handed to `reviewRequested` / `blocked` reason / skipped), what the reconcile reclaimed, issues **deferred** to a later run, any **mutex** that split the batch into waves (a delay within this run, not a deferral), any **dependency cycle** a human must untangle, any **label/body conflict** a worker flagged, and any feedback a worker wrote to the **issue** because `feedback: pr` had no pull request to write to (**Feedback destination** in `work-implement`'s REFERENCE).
 
 Issues now in `reviewRequested` are the drain's hand-off — the `work-review-queue` picks them up. Name the count.
 
