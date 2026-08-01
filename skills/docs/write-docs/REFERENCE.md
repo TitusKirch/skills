@@ -113,6 +113,8 @@ Values: `in development` · `planned` · `deprecated` — a shipped page omits t
 
 An **ADR** records one architectural decision and the reasoning behind it. It is a **structurally distinct artifact** — its own filename schema, extra frontmatter and an append-only lifecycle. Everything here **overrides** the general page contract above.
 
+This section is the artifact's contract — what an ADR looks like once there is one to write. **Whether a decision earns one at all** is the threshold in [SKILL.md](SKILL.md#when-a-decision-earns-an-adr), asked before routing.
+
 ### Section
 
 ADRs live in **`docs/99.adr/`** — a numbered house section like any other, never an unprefixed `docs/adr/`.
@@ -164,6 +166,12 @@ In that order, the optional one last.
 - **The three required sections are Nygard's** — cite him and no one else. MADR requires a **different** set (`Context and Problem Statement`, `Considered Options`, `Decision Outcome`, with `Consequences` merely optional), so naming it alongside would claim a backing this shape does not have.
 - **`Alternatives considered` is optional on purpose.** The reasoning it holds is what a later reader comes back for, and without a home it ends up buried mid-`Decision` or dropped entirely — but required is the one thing it must not be: the lifecycle below is append-only, so a section made mandatory today could never be added to the records already written, and it would freeze every one of them out of conformance permanently. An ADR whose alternatives are genuinely covered inside `Decision` omits the section rather than padding it.
 - **Optional is about writing it, not about editing it later.** Once the record is accepted this section is as immutable as the three above it — the [lifecycle](#lifecycle--append-only) governs the whole body, so an omitted `Alternatives considered` is not an invitation to add one to an accepted ADR afterwards.
+
+### Size
+
+**An ADR can be a single paragraph. The value is in recording that a decision was made and why — not in filling out sections.** The three H2s are required as _headings_, not as a word budget: any of them may be one sentence, and "the consequences are the obvious ones" is a complete `Consequences` section.
+
+This is a **permission, not a ceiling** — no word count in either direction. A decision with four rejected alternatives earns the words it takes to name them, and append-only means an over-long record cannot be trimmed later anyway. The permission exists because the cost of a mandatory-looking section is paid at the moment of **writing**, where a record that feels like paperwork is a record that does not get made — and an unwritten ADR is the only failure mode this contract cannot recover from.
 
 ### Lifecycle — append-only
 
