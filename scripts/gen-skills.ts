@@ -110,12 +110,12 @@ const VERIFY_ISOLATED_END = '</skills-verify-isolated>';
 const WORKLOCK_OPEN = '<skills-worklock>';
 const WORKLOCK_END = '</skills-worklock>';
 
-// The fifth mirrored contract, and the only one about the skill's *output*: a plan is read
-// once, in a terminal, so it has to render there. Every other contract here is about what a
-// skill reads or runs; this one is about what arrives in front of the human deciding. It was
-// mirrored rather than written per skill because the failure it prevents is silent — a plan
-// folded into `<details>` prints its summary and nothing else — and every plan-presenting
-// skill is one wording away from re-inventing it.
+// The fifth mirrored contract, and the first about the skill's *output* — the one below is
+// its other half: a plan is read once, in a terminal, so it has to render there. The four
+// contracts above are about what a skill reads or runs; this one is about what arrives in
+// front of the human deciding. It was mirrored rather than written per skill because the
+// failure it prevents is silent — a plan folded into `<details>` prints its summary and
+// nothing else — and every plan-presenting skill is one wording away from re-inventing it.
 const PLAN_OPEN = '<skills-plan>';
 const PLAN_END = '</skills-plan>';
 
