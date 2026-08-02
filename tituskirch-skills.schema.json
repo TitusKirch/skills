@@ -617,7 +617,7 @@
               "type": "integer",
               "minimum": 1,
               "default": 600,
-              "description": "Seconds bounding the review unit's wait for CI after it marks a draft pull request ready for review (the draft gate). Still running when it elapses → needsHuman, never an accepted verdict and never back into draft. Sized per repo because CI duration is: a repo whose pipeline outlasts this default escalates every issue without it. Deliberately not work.loop.*, which paces a drain between runs and which the units never read. Default: 600.",
+              "description": "Seconds bounding the review unit's wait for CI on a pull request it has marked ready for review (the draft gate). Measured from the later of the un-draft and the head's own commit, so on a round answering a CI failure — where the PR is already ready and nothing un-drafts — the budget starts at the push and is partly spent before the first poll, by the review's own worktree, install and verify. Size it against that wall-clock span, not against the pipeline's duration alone. Still running when it elapses → needsHuman, never an accepted verdict and never back into draft. Sized per repo because CI duration is: a repo whose pipeline outlasts this default escalates every issue without it. Deliberately not work.loop.*, which paces a drain between runs and which the units never read. Default: 600.",
               "$comment": "Mirrors release.timeout — seconds, bounding one wait rather than the run."
             }
           }
