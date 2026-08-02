@@ -343,6 +343,21 @@ Two things the shape does **not** license:
 - **The caller keeps its own authority.** A called skill's rules govern its **method**, never this loop's outcomes. `resolving-merge-conflicts` says "always resolve, never `--abort`"; that does not override [`blocked`](#rebase-conflicts) as this skill's answer to a conflict it cannot resolve out of the issues. Drive the skill for the _how_ — the decision to stop stays here.
 - **Where a called skill expects a human, that part does not run.** A drain is unattended, so a prompt has nobody to answer it: skip that part, take the fallback for what it would have decided, and **record the deviation** rather than glossing it.
 
+## Worker effort
+
+The two loops want different **reasoning effort**, and **no skill sets it** — it is the caller's, taken from the session each worker runs in. Implementing is agentic coding, where a weak pass is expensive: it costs a full review round, and past `work.review.maxRounds` the issue escalates to a human. Reviewing is judgement over a diff with little output, and holds up at a lower setting. So, as a **starting point rather than a measurement**:
+
+| Loop                                       | Recommended effort |
+| :----------------------------------------- | :----------------- |
+| implement — `work-implement` and its queue | `high` or above    |
+| review — `work-review` and its queue       | `medium`           |
+
+Which levels exist at all depends on the model, so read these as _implement above review_ rather than as two fixed names.
+
+**Nothing here enforces them, and the drains are already shaped so a caller can.** The implement and review loops take **separate locks** and are meant to run concurrently ([the single-flight lock](#the-single-flight-lock)) — which means separate sessions — so setting each session's effort is the whole of it: `/effort` inside it, `--effort` on the command that starts it, `CLAUDE_CODE_EFFORT_LEVEL`, or the client's own settings. It is set **before** the drain starts, not per spawned worker. One session running both loops has one effort for both, and the implement figure is the one to keep.
+
+**Why this is prose and not frontmatter.** Claude Code's `effort` field is a permitted extension ([ADR-0007](https://github.com/TitusKirch/skills/blob/main/docs/99.adr/0007-permit-claude-code-frontmatter-extensions.md)) and would pin it — but a pin overrides the session **unconditionally**, so it would take the setting away from a human invoking `work-implement` directly, and the one override that outranks frontmatter (`CLAUDE_CODE_EFFORT_LEVEL`) is **session-global** and so cannot preserve the per-loop split a pin exists to create. A pin on a **queue** skill would not reach the workers at all: it governs the drain's own run — resolve, reconcile, order, spawn, report — the Agent tool takes a per-spawn `model` and **no** `effort`, and inheritance into a spawned agent is undocumented. The **unit** skills are the only route that reaches a worker by documented behaviour, which is where a pin would have to go if this is ever reopened — with a measurement. Full reasoning: [ADR-0026](https://github.com/TitusKirch/skills/blob/main/docs/99.adr/0026-leave-reasoning-effort-to-the-caller.md).
+
 ## Catalog cache
 
 Reuses the `issue` cache verbatim — `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (labels, teams, projects, states), so label names resolve to ids and teams/states are looked up without re-fetching. Same TTL (~3 days) and `--refresh`.

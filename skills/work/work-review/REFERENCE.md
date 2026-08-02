@@ -28,6 +28,8 @@ Reads the shared `work.*` section (schema: **Config** in `work-implement`'s REFE
 
 Every key, type and default lives once in the repo-root [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json).
 
+**Reasoning effort is not among these keys, and is not config at all.** Review is judgement over a diff and holds up at a lower effort than implementing does — but both loops take it from the **session** they run in, not from a config key and not from a frontmatter field. The recommendation per loop, and why it is stated rather than pinned: **Worker effort** in `work-implement`'s REFERENCE.
+
 <skills-config>
 
 ### Reading the config
