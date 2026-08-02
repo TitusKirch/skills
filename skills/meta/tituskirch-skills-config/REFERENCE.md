@@ -10,14 +10,17 @@ Walk the sections; per section, propose from detection, ask only the **essential
 
 **Forge & tracker selection is capability-gated** — always ask, never auto-select (not even when only one option works). Offer only forges/trackers whose tooling actually works here; show the rest with the reason they're out:
 
-- **`github`** — viable only if the remote host is GitHub (`git remote get-url`) **and** `gh auth status` covers that host. gh signed in to github.com while the remote is GitLab / Gitea / Bitbucket → not viable.
+- **`github`** — viable only if the remote host is GitHub (`git remote get-url`) **and** `gh auth status` covers **that host**, GitHub Enterprise included. gh signed in to github.com while the remote is a different host → not viable.
+- **`gitlab`** — viable only if the remote host is GitLab **and** `glab auth status` covers that host. **Self-hosted is the normal case**, so probe the host the remote names (`glab auth status --hostname <host>`), never `gitlab.com` by default; a `glab` signed in to gitlab.com while the remote is `gitlab.example.com` is **not** viable, and saying so is the whole point of the check.
 - **`linear`** — viable only if the Linear MCP answers (`whoami` / list teams).
 - **`local`** — a **tracker** option only, never a forge. Always viable: the issues are committed files under `issue.local.dir` (default `.agents/issues`), so there is no tooling to probe and nothing to authenticate. Offer it where the repo cannot or will not publish its backlog — no working forge, an offline or air-gapped repo, a private scratch queue — and note that it leaves the **forge** axis untouched: a `local` tracker still opens its PRs on whatever the root `forge` says.
 - **`none`** — always offered. Either omit the section (unconfigured — runs only when explicitly invoked) or write `false` to **disable** the skill outright (it refuses even when invoked). Prefer `false` when the repo has no working forge/tracker, so an accidental call stops cleanly.
 
-A repo with no working forge/tracker (e.g. self-hosted GitLab) just lands on `none` — no special-casing. The **forge** lives once at the repo root as `forge`, `github`-only in the schema and shared by `pr` / `release` / `mergeDeps`; when the remote isn't GitHub, name it as a known gap.
+A repo with no working forge/tracker just lands on `none` — no special-casing. The **forge** lives once at the repo root as `forge` (`github` or `gitlab`) and is shared by `pr` / `prune-branches` / `release` / `mergeDeps`; `release` and `mergeDeps` implement GitHub only, so on a `gitlab` repo name that as a known gap rather than writing a section they cannot serve. When the remote is on neither forge, name that as the gap instead.
 
-**Three keys live at the root, not in a section** — `forge`, `language` and `verify` — because each is a fact about the **repo** that several skills need. Put a shared fact in one skill's section and disabling that skill silently withdraws it from the others, so when a repo states its check command, write it as the root `verify`.
+**`forgeHost` is proposed whenever the host is not the forge's public one**, and only then: a self-hosted GitLab or a GitHub Enterprise remote gets the key written outright, while a `github.com` / `gitlab.com` remote leaves it out, because deriving it from the remote is already correct there and a key set to its own default is the drift this skill exists to prevent. Never write a URL or a path into it — the schema takes a bare hostname with an optional port.
+
+**Four keys live at the root, not in a section** — `forge`, `forgeHost`, `language` and `verify` — because each is a fact about the **repo** that several skills need. Put a shared fact in one skill's section and disabling that skill silently withdraws it from the others, so when a repo states its check command, write it as the root `verify`.
 
 - **root `language`** — existing config / repo language → ask → default `en`.
 - **`commit`** — usually omit the whole block; `scopes` defaults to `auto`. Add `scopeVocab` / `instructions` only on an explicit preference.
