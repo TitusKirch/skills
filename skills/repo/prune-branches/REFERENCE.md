@@ -1,6 +1,6 @@
 # prune-branches — Reference
 
-Mechanics for the [`prune-branches`](SKILL.md) skill: what makes a branch stale, how a squash or rebase merge is proven, what is protected and by whom, how a deletion is undone, and why the defaults are what they are. **GitHub (`gh`) is the only forge in v1**, and a run touches exactly **one remote** — the integration branch's.
+Mechanics for the [`prune-branches`](SKILL.md) skill: what makes a branch stale, how a squash or rebase merge is proven, what is protected and by whom, how a deletion is undone, and why the defaults are what they are. Two forges are implemented — **GitHub** through `gh` and **GitLab** through `glab`, against the host [The forge and its host](#the-forge-and-its-host) resolves — and a run touches exactly **one remote**, the integration branch's.
 
 ## Config
 
@@ -19,7 +19,8 @@ Mechanics for the [`prune-branches`](SKILL.md) skill: what makes a branch stale,
 
 | Key                     | Effect                                                                                                        |
 | :---------------------- | :------------------------------------------------------------------------------------------------------------ |
-| `forge` _(root)_        | Forge, a shared root key read by all forge-aware skills. v1 supports only `github`. Default: `github`.        |
+| `forge` _(root)_        | Forge, a shared root key read by all forge-aware skills — `github` or `gitlab`. Default: `github`.            |
+| `forgeHost` _(root)_    | The host that forge lives on; absent → derived ([The forge and its host](#the-forge-and-its-host)).           |
 | `pr.base` _(shared)_    | The integration branch every merge check runs against, and the protected branch. Default: the repo's default. |
 | `pruneBranches.age`     | Days without a commit before a branch is stale by age (category 4). Default: 90.                              |
 | `pruneBranches.protect` | Extra protected-branch globs, **added to** the built-in set. Default: `[]`.                                   |
@@ -28,7 +29,7 @@ Also reads the shared root `language` (report wording).
 
 **`protect` adds; it never replaces.** It is `issue.labels.exclude`'s shape and its semantics — a repo names what _else_ must be left alone, and cannot use the key to unprotect the default branch, the integration branch, a worktree checkout or a forge-protected branch. Patterns are globs matched against the **short** name (`feature/x`, not `refs/heads/feature/x`), and they apply identically on both sides of the run.
 
-**What the grant leaves out, and why that is the point.** This skill's `allowed-tools` names the commands it drives rather than granting `Bash` outright — the read-only git subcommands the staleness rules use (`git cherry`, `git merge-base`, `git for-each-ref`, `git rev-parse`, `git reflog`, `git fsck`) with `grep` for the two cherry tests and the remote listing, `git worktree list` for the worktree-checkout protection rule, `git commit-tree` for the recovery recipes, and the `gh` reads that resolve a PR's state. Each is written at the subcommand actually driven — `git worktree list`, not `git worktree`, because nothing here removes a worktree.
+**What the grant leaves out, and why that is the point.** This skill's `allowed-tools` names the commands it drives rather than granting `Bash` outright — the read-only git subcommands the staleness rules use (`git cherry`, `git merge-base`, `git for-each-ref`, `git rev-parse`, `git reflog`, `git fsck`) with `grep` for the two cherry tests and the remote listing, `git worktree list` for the worktree-checkout protection rule, `git commit-tree` for the recovery recipes, and the `gh` / `glab` reads that resolve a request's state. Each is written at the subcommand actually driven — `git worktree list`, not `git worktree`, because nothing here removes a worktree.
 
 **`git branch` is not one of those reads**, and listing it among them would misdescribe the grant: `git branch -d` / `-D` is how this skill deletes a local branch. It is pre-approved on purpose, under the first half of the rule this repo's skills scope by — _a write the skill's own confirmation step already gates is pre-approved; a write that reaches the forge or the remote asks._ The local deletion is gated by the [explicit yes](SKILL.md) this skill never deletes without, so a permission prompt on top would ask the same question twice. **`git push` is deliberately absent** under the second half: the remote delete leaves the machine, so it asks _in addition to_ that yes. The two halves of one deletion therefore cost different things, which is the [different blast radii](SKILL.md) the plan keeps in separate blocks, expressed in the grant rather than only in prose. `git fetch` and `git config` are absent for a sharper reason still — `--upload-pack=<cmd>` and a written `core.pager` each take a command, so pre-approving them would be a blanket `Bash` spelled longer.
 
@@ -105,17 +106,25 @@ Categories 1 and 2 are the **default deletion set**; 3 and 4 are listed and **ne
 
 `git branch --merged` answers one question — is this commit an ancestor? — and both squash and rebase merges answer it "no" while having landed. This is the single most load-bearing mechanic in the skill, because the failure it prevents is the whole reason the skill exists.
 
-**First, ask the forge.** A merged PR is direct testimony and survives any history rewrite that happened afterwards:
+**First, ask the forge.** A merged request is direct testimony and survives any history rewrite that happened afterwards:
 
 ```sh
-# One call for the whole repo, not one per branch. --limit defaults to 30.
+# GitHub — one call for the whole repo, not one per branch. --limit defaults to 30.
 gh pr list --state all --limit 1000 \
   --json number,state,mergedAt,headRefName,isCrossRepository
+
+# GitLab — the same one call, paged. iid is the number a human writes as !42, and
+# merged_at is null for anything that closed without merging, exactly as on GitHub.
+glab mr list --all --per-page 100 --output json \
+  | jq '[.[] | {number: .iid, state, mergedAt: .merged_at, headRefName: .source_branch,
+                isCrossRepository: (.source_project_id != .target_project_id)}]'
 ```
 
-> **`--limit` truncates silently.** Left at its default this reads the 30 most recent PRs and every branch past the cutoff looks like it never had one — which downgrades a merged branch to "stale by age" or drops it from the run entirely. Same trap as a truncated label catalog: the missing rows are chosen by recency, not by relevance.
+> **The page limit truncates silently on both forges.** Left at its default `gh pr list` reads the 30 most recent PRs and `glab mr list` the 30 most recent MRs, and every branch past the cutoff looks like it never had one — which downgrades a merged branch to "stale by age" or drops it from the run entirely. Same trap as a truncated label catalog: the missing rows are chosen by recency, not by relevance. `glab` caps a page at 100, so **follow the pages** rather than raising one number past what the API will give.
 
-Filter out `isCrossRepository` PRs — a fork's head branch is not a branch in this repo and must never enter the run.
+Filter out cross-repository requests — `isCrossRepository` on GitHub, a source project differing from the target on GitLab. A fork's head branch is not a branch in this repo and must never enter the run.
+
+**Everything after this list is forge-neutral.** The patch comparison below, the age test, the `[gone]` reading and the protection union are `git` and this one list. What follows the forge is the **word in the report**: a closed **PR** on GitHub, a closed **MR** on GitLab.
 
 **Then compare patches, not hashes.** For a branch with no PR, or when the forge could not be read, `git cherry` prefixes a commit with `-` when an equivalent patch already exists in the base:
 
@@ -156,18 +165,18 @@ Verified against four fixtures on a real clone — genuinely unmerged → not la
 
 Six sources, all applied, every run. A branch matching any of them is removed from the run before classification — it is not a candidate to be dropped from the plan, it never enters it.
 
-| Source                  | Read from                                                                                     |
-| :---------------------- | :-------------------------------------------------------------------------------------------- |
-| Forge default branch    | `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`                            |
-| Integration branch      | `pr.base`, else the default branch                                                            |
-| Worktree checkouts      | `git worktree list --porcelain` — every `branch refs/heads/…` line, the current HEAD included |
-| Forge branch protection | `gh api "repos/{owner}/{repo}/branches?protected=true" --paginate --jq '.[].name'`            |
-| Open pull requests      | `gh pr list --state open --limit 1000 --json headRefName --jq '.[].headRefName'`              |
-| Name fallback           | `main`, `master`, `dev`, `develop`, `stage`, `staging`, `prod`, `production`, `next`          |
+| Source                  | GitHub                                                                               | GitLab                                                                                      |
+| :---------------------- | :----------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------ |
+| Forge default branch    | `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`                   | `glab repo view --output json \| jq -r .default_branch`                                     |
+| Integration branch      | `pr.base`, else the default branch                                                   | same                                                                                        |
+| Worktree checkouts      | `git worktree list --porcelain` — every `branch refs/heads/…`, current HEAD too      | same                                                                                        |
+| Forge branch protection | `gh api "repos/{owner}/{repo}/branches?protected=true" --paginate --jq '.[].name'`   | `glab api --paginate "projects/:id/protected_branches" --jq '.[].name'`                     |
+| Open requests' heads    | `gh pr list --state open --limit 1000 --json headRefName --jq '.[].headRefName'`     | `glab mr list --per-page 100 --output json \| jq -r '.[].source_branch'` (follow the pages) |
+| Name fallback           | `main`, `master`, `dev`, `develop`, `stage`, `staging`, `prod`, `production`, `next` | same                                                                                        |
 
 Plus `pruneBranches.protect`, which is added to the union — never subtracted from it.
 
-- **`branches?protected=true` reports rules, not intent.** It covers classic branch protection and rulesets alike, needs only plain read access, and returns nothing for a repo that declares no rules — which is exactly the repo the name fallback exists for. The two are complementary, so neither switches the other off.
+- **The protection endpoint reports rules, not intent.** On GitHub `branches?protected=true` covers classic branch protection and rulesets alike; on GitLab `protected_branches` returns the project's protected entries, whose names may be **wildcards** (`release/*`) rather than literal branches — match them as globs, never as exact names. Both need only plain read access, and both return nothing for a repo that declares no rules, which is exactly the repo the name fallback exists for. The two are complementary, so neither switches the other off.
 - **A read failure is not an empty list — it is an _unknown_ list, and it ends the run at the report.** If the call errors, every other source still applies and every branch is still classified and listed with its evidence, but the run **offers no deletions at all**: nothing preselected, nothing confirmable, nothing deleted. It names the call that failed and says the run is a report only. Preselecting nothing would not be enough — the branch a rule protects is precisely the one the report cannot identify, so it is also the one a human could tick by hand ([why](#decisions)).
 - **A checked-out branch is protected on both sides.** `git branch -d` refuses it anyway, but the remote counterpart has no such guard, and deleting the remote out from under an active worktree is the same accident one step removed.
 
