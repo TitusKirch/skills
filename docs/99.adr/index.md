@@ -34,4 +34,4 @@ A decision earns an ADR when it constrains work that comes later and its reasoni
 | [ADR-0023](0023-back-the-local-tracker-with-committed-files.md)     | Back the local tracker with committed issue files           | accepted | 2026-07-31 |
 | [ADR-0024](0024-settle-a-body-comment-conflict-by-rule.md)          | Settle a body–comment conflict by rule                      | accepted | 2026-08-02 |
 | [ADR-0025](0025-keep-the-work-loops-reference-whole.md)             | Keep the work loop's reference whole                        | accepted | 2026-08-02 |
-| [ADR-0026](0026-dock-gitlab-and-resolve-the-host-per-repo.md)       | Dock GitLab on both axes, and resolve the host per repo     | accepted | 2026-08-02 |
+| [ADR-0028](0028-dock-gitlab-and-resolve-the-host-per-repo.md)       | Dock GitLab on both axes, and resolve the host per repo     | accepted | 2026-08-02 |

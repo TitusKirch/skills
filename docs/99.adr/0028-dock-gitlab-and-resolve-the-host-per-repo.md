@@ -5,7 +5,7 @@ status: 'accepted'
 date: '2026-08-02'
 ---
 
-# ADR-0026 — Dock GitLab on both axes, and resolve the host per repo
+# ADR-0028 — Dock GitLab on both axes, and resolve the host per repo
 
 ## Context
 
