@@ -531,6 +531,25 @@ That is the **normal** case for a single-identity repo, not an edge one: the imp
 
 **The issue still makes the verdict findable.** In `pr` mode the lifecycle label carries the state, so a link to the thread is all that is left to carry: on GitHub the PR body's own `Refs #<n>` / `Closes #<n>` reference already puts a permanent cross-link in the issue's timeline, so `pr` mode posts **nothing** extra there; where no such automatic link exists, post the PR url **once**, never once per round.
 
+## The draft gate
+
+Under `worktree` the two loops share one artifact — a **pull request** — and its **draft state carries the loop's confidence** rather than being cosmetic. The implement loop opens the PR as a **draft** and leaves it there, first round and every re-work round alike; the review loop marks it **ready for review** only at the moment its own review concludes the work is correct and complete, and then waits for CI (**Marking ready, then waiting for CI** in `work-review`'s REFERENCE).
+
+**What it buys is CI spent once per _finished_, not once per push.** Where a repo gates its workflows on the pull request not being a draft, a draft round runs nothing at all — and the review loop forms its opinion about whether the work is done **before** CI ever reports, so a round it is about to hand straight back as `changesRequested` costs no CI. On an issue that takes three rounds that is two full pipelines spent on work that was never going to be accepted; the expensive signal is otherwise paid ahead of the cheap one, every time.
+
+| Loop          | Does                                                                      | Never                                 |
+| :------------ | :------------------------------------------------------------------------ | :------------------------------------ |
+| **implement** | opens the PR as a draft; leaves an already-ready PR ready on a re-work    | marks a pull request ready for review |
+| **review**    | marks it ready once — and only once — the review it just ran would accept | re-drafts it, on any verdict          |
+
+**Once ready, always ready.** A CI failure routes `changesRequested` and **never puts the PR back into draft**, so a re-work pushes onto a ready PR and every round after the first un-draft gets CI feedback directly. The one-way rule is the point: re-drafting would re-hide a PR a reviewer has already judged finished, and the round answering the CI failure would then be judged with no CI at all — the loop would go dark exactly where it had just started seeing.
+
+**Under `branch:<name>` none of this applies.** That strategy opens no pull request; the work is pushed to the shared branch and whatever CI that branch runs is the repo's own business, unchanged.
+
+**A repo owes its workflows two things, and either alone is useless.** The **gate** — the job or trigger declining to run while `github.event.pull_request.draft` is true — is what makes a draft cost nothing. **`ready_for_review` in the trigger's `types`** is what makes the un-draft fire it, because `types` defaults to `opened, synchronize, reopened` and a draft becoming ready is none of the three. Gate without type: the review un-drafts a PR that nothing then runs on, and waits out its timeout for checks that were never coming. Type without gate: every draft push runs CI exactly as before and the mechanic saves nothing. A workflow carrying **non-pull-request** triggers as well (a `push`, a `schedule`) needs its condition written so those keep running — guard on `github.event_name` explicitly rather than leaning on how the expression coerces an absent `pull_request`.
+
+**Where a repo has no draft gate at all the mechanic is inert, not wrong.** A draft PR runs its CI on every push as it always did, and the un-draft is merely a status change. Nothing in either loop depends on the saving — only on the draft state being the **review's** to flip.
+
 ## Selection query
 
 Eligible = matches **all** configured filters. Self-select (one issue) and drain (all, ordered) use the same query.
