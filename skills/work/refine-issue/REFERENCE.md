@@ -8,19 +8,20 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One issue per run, one tracker 
 
 ## Config
 
-`work.*` and `issue.*` in the repo-root `.tituskirch-skills.json`, plus the root `language`. Resolution per setting: **config → default**. **Resolve it before reading it** — [Reading the config](#reading-the-config) is the single statement of how, including what happens when `jq` is absent.
+`work.*` and `issue.*` in the repo-root `.tituskirch-skills.json`, plus the root `language` and `grillWith`. Resolution per setting: **config → default**. **Resolve it before reading it** — [Reading the config](#reading-the-config) is the single statement of how, including what happens when `jq` is absent.
 
-| Key                        | Effect                                                                                                          |
-| :------------------------- | :-------------------------------------------------------------------------------------------------------------- |
-| `work`                     | `false` disables the AI work loop for the repo, this skill with it — stop and say so                            |
-| `work.tracker`             | `github` or `linear`; falls back to `issue.tracker`                                                             |
-| `work.labels.ready`        | the label this run reports an issue as having earned; default `ai: ready`, `false` = no approval gate at all    |
-| `work.labels.*` (the rest) | the lifecycle strings that say an issue is already in the loop (step 3)                                         |
-| `work.labels.needsTriage`  | the "not ready to hand over" marker; **opt-in — defaults to off**; reported for removal beside the ready label  |
-| `work.labels.repo`         | Linear repo-scope label (a string) or `false` — the discriminator the candidate and duplicate queries filter on |
-| `work.linear.team`         | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                              |
-| `issue.language`           | the language the `Decided` block is written in; falls back to the root `language`                               |
-| `trustedBots`              | the apps and bots whose comments count as instruction ([Author authority](#author-authority))                   |
+| Key                        | Effect                                                                                                                                                                                    |
+| :------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `work`                     | `false` disables the AI work loop for the repo, this skill with it — stop and say so                                                                                                      |
+| `work.tracker`             | `github` or `linear`; falls back to `issue.tracker`                                                                                                                                       |
+| `work.labels.ready`        | the label this run reports an issue as having earned; default `ai: ready`, `false` = no approval gate at all                                                                              |
+| `work.labels.*` (the rest) | the lifecycle strings that say an issue is already in the loop (step 3)                                                                                                                   |
+| `work.labels.needsTriage`  | the "not ready to hand over" marker; **opt-in — defaults to off**; reported for removal beside the ready label                                                                            |
+| `work.labels.repo`         | Linear repo-scope label (a string) or `false` — the discriminator the candidate and duplicate queries filter on                                                                           |
+| `work.linear.team`         | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                                                                                        |
+| `issue.language`           | the language the `Decided` block is written in; falls back to the root `language`                                                                                                         |
+| `grillWith` (**root**)     | the interview skill step 6 drives — absent means `grilling`, `null`/`false` means never grill; at the root because the `issue` skill drives it too, and its REFERENCE states the key once |
+| `trustedBots`              | the apps and bots whose comments count as instruction ([Author authority](#author-authority))                                                                                             |
 
 **Resolve every label before it reaches a query.** A bare `$(jq …)` inside a search string yields `label:""` when `jq` is missing, which matches nothing and reports an empty backlog in silence. And `// empty` collapses `false` and a missing key into the same empty string, which turns a deliberately disabled gate into its default:
 

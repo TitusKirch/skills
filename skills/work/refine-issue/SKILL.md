@@ -35,7 +35,7 @@ Take **one** filed issue and work out what stands between it and a human's appro
 
 ### 1. Load config & resolve tracker
 
-Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included). The `work.*` section holds the tracker, the lifecycle label names and the Linear scope; `issue.language` (falling back to the root `language`) is what the answers are written in. Resolution per setting: **config → default**. Determine the tracker (`work.tracker`, falling back to `issue.tracker`) and confirm it is available and authenticated. Reuse the `issue` catalog cache for labels and teams.
+Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included). The `work.*` section holds the tracker, the lifecycle label names and the Linear scope; `issue.language` (falling back to the root `language`) is what the answers are written in, and the root `grillWith` names the interview engine [step 6](#6-close-them--drive-the-interview-engine) drives. Resolution per setting: **config → default**. Determine the tracker (`work.tracker`, falling back to `issue.tracker`) and confirm it is available and authenticated. Reuse the `issue` catalog cache for labels and teams.
 
 **The ready gate may be off.** `work.labels.ready` resolving to `false` means the repo runs no approval gate at all — everything below still applies, and the report ends with the decisions that were closed instead of a label to apply. Tell "off" apart from "absent": absent means the default (`ai: ready`), `false` means the mechanic is disabled.
 
@@ -79,12 +79,13 @@ What does **not** qualify is everything the implementer is supposed to decide: n
 
 **None open is a real result.** Say so and go to step 8 — the issue is ready for the label as written.
 
-### 6. Close them — drive `grilling`
+### 6. Close them — drive the interview engine
 
 The questions this finds are the ones `grilling` already asks well: one question at a time, dependent decisions resolved in order, a recommended answer offered per question. A batch of judgements to approve cannot do it, because the second question usually depends on the answer to the first.
 
-- **`grilling` is an optional call.** Installed → drive it, seeded with the decisions from step 5. **Not installed → report those decisions as a list and stop**, so the human can answer them in the issue themselves. A missing engine degrades the run; it never fails it.
-- **Target `grilling`, never `grill-me`** — the latter sets `disable-model-invocation: true`, so a skill cannot drive it.
+- **Which engine is the root `grillWith` key** — absent means `grilling`, a name means that skill, and **`null` / `false` means never grill**: report the open decisions as a list and stop, exactly as an absent engine does. The key names a **skill**, not an interview mode, so a round-based engine docks by having its name typed there. It sits at the root because the `issue` skill drives it too and an interview style is a property of the repo; that skill's REFERENCE states the key once, under **Which engine — the root `grillWith` key**.
+- **The engine is an optional call.** Installed → drive it, seeded with the decisions from step 5. **Not installed → report those decisions as a list and stop**, so the human can answer them in the issue themselves. A missing engine degrades the run; it never fails it.
+- **An engine no skill may drive is a config error, not a fallback.** `grill-me` and `batch-grill-me` both set `disable-model-invocation: true`, so neither is a valid value — name one and this run **reports the error**, lists the decisions and stops, rather than quietly driving `grilling` and reporting success on an interview nobody configured.
 - **A question left open is an answer too.** The human may defer one; the issue then stays unready and the report at step 8 names which question is holding it.
 
 ### 7. Write the answers into the issue body
@@ -98,7 +99,7 @@ The questions this finds are the ones `grilling` already asks well: one question
 | Outcome                 | When                                                 | The report                                                                      |
 | :---------------------- | :--------------------------------------------------- | :------------------------------------------------------------------------------ |
 | **ready for the label** | every open decision closed, nothing else outstanding | name the label and print the exact command that applies it                      |
-| **still open**          | a decision deferred, or `grilling` unavailable       | which question is holding it, and what it would decide                          |
+| **still open**          | a decision deferred, or the engine unavailable       | which question is holding it, and what it would decide                          |
 | **not worth working**   | already solved or duplicated (step 4)                | the commit, PR or issue that already covers it, and the recommendation to close |
 
 **The untriaged marker is reported for removal in that same command.** `work.labels.needsTriage` (opt-in, **off** by default) means _not ready to hand over_ — and an issue whose every decision this run closed is exactly what stops that being true. So a `ready for the label` verdict prints one command that adds the ready label **and** removes the marker, because the two left standing together are the contradiction the implement queue withholds an issue for. A `still open` verdict prints neither: an issue holding an unanswered question keeps the marker, which is the one case where it is saying something true. Shape, and the Linear equivalent: [REFERENCE.md](REFERENCE.md#report-output).
@@ -142,7 +143,7 @@ of a file.
 - **Answers land in the body, previewed first.** The body is the brief the loop reads; the preview is what stops a rewrite of the human's own words.
 - **Already-solved and duplicate are findings, not actions.** Report them with their evidence and stop; the human closes what needs closing.
 - **Read-only towards the code.** This skill writes nothing but the issue body it previewed — no branch, no commit, no PR.
-- **A missing `grilling` degrades, never blocks.** Without it, report the open decisions and stop; never fail the run, and never answer them on the human's behalf.
+- **A missing engine degrades, never blocks.** Without whichever skill `grillWith` names — or with the key set to `null` / `false` — report the open decisions and stop; never fail the run, and never answer them on the human's behalf. An engine that is present but declares `disable-model-invocation` is reported as a config error and never silently swapped for another.
 - **Attribution-free & secret-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in what is written to the issue; scan the drafted text and the session context for secrets and exclude them.
 
 ## Reference
