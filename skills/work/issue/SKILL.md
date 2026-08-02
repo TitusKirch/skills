@@ -18,6 +18,7 @@ allowed-tools:
   - Bash(gh project list:*)
   - Bash(gh repo view:*)
   - Bash(glab issue list:*)
+  - Bash(glab issue view:*)
   - Bash(glab label list:*)
   - Bash(glab repo view:*)
 ---
