@@ -372,6 +372,25 @@ The reviewer escalates on **judgment**, guided by existing repo signals rather t
 
 When none apply and the work is correct and low-risk → `done`. The default posture on genuine doubt is **`needs human`, never a rubber-stamp `done`**.
 
+## Fetching the diff
+
+The artifact under review is the pushed diff, and which command produces it follows the **forge**, not the tracker — a Linear issue's code still lives in a GitHub pull request ([Feedback recipes](#feedback-recipes)). Both spellings run against the resolved host ([The forge and its host](#the-forge-and-its-host)).
+
+```bash
+# GitHub — $pr is the pull request's number (or its url).
+gh pr diff "$pr"
+
+# GitLab — $iid is the merge request's PROJECT-scoped iid, the number a human reads as
+# !42. The global id the API also returns addresses a different merge request entirely.
+glab mr diff "$iid"
+```
+
+**Two spellings of the same number**, exactly as `pull-request`'s REFERENCE states it: read `iid`, write `!42` in anything a human reads, and never pass GitLab's global `id` to `glab mr`.
+
+**Find the request from the branch under review** where the number is not already at hand — `gh pr list --head <branch> --json number`, `glab mr list --source-branch <branch> --output json` — the same lookups the implement loop uses to find the feedback thread.
+
+**Neither exists** (a `branch:<name>` loop, or a `worktree` run whose request was never opened) → the issue's own commit range, per [review-after-land](#review-after-land-branchname). A plain diff against `pr.base` is **not** the substitute: on a shared branch it carries every issue that landed before this one, and judging those against this issue's body is how a clean diff collects someone else's findings.
+
 ## Review-after-land (`branch:<name>`)
 
 On a shared branch (e.g. `branch:dev`) the implementer commits **directly to the branch**, so the code lands **before** review. The issue still is not `done` until review passes:
