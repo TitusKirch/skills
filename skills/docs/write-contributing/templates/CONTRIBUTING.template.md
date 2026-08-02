@@ -48,7 +48,7 @@ cd {{repo-name}}
 
 1. {{create the folder / run the generator}}
 2. {{fill in the required files}}
-3. {{run the sync/codegen command, and why: which generated artifacts it rewrites}}
+3. {{run the sync/codegen command}} — see {{link the file that owns the generated artifacts}} for what it rewrites.
 4. Run `{{verify-command}}` before pushing.
 5. Commit as `{{commit-example-for-a-new-unit}}`.
 
