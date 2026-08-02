@@ -1,6 +1,6 @@
 # work-review / work-review-queue — Reference
 
-Mechanics for [`work-review`](SKILL.md) (the unit) and `work-review-queue` (the drain) — the **review half** of the two-loop agent workflow. Shares the config, catalog cache and tracker recipes with `work-implement`; this file covers what is review-specific.
+Mechanics for [`work-review`](SKILL.md) (the unit) and `work-review-queue` (the drain) — the **review half** of the two-loop agent workflow. Shares the config, catalog cache, tracker recipes and [forge/host resolution](#the-forge-and-its-host) with `work-implement`; this file covers what is review-specific.
 
 ## Principle
 
@@ -352,6 +352,8 @@ fi
 
 **A reclaim can over-count by one.** Flipping a `reviewing` orphan back to `reviewRequested` re-adds a `reviewRequested` label event — as does the implement reconcile's crash-after-push `working → reviewRequested` advance. Both inflate the derived count by one. This is left as a documented caveat, **not** de-duplicated: over-counting only escalates to `needs human` **earlier**, the safe direction `maxRounds` exists to guarantee, and telling a reclaim re-add apart from a genuine hand-off would add a second, driftable signal for no safety gain.
 
+**GitLab** — the same derivation off the issue's own event log: `glab api --paginate "projects/:id/issues/:iid/resource_label_events" --jq '[.[] | select(.action=="add" and .label.name=="<review>")] | length'`, summed per page exactly as above. The three traps are the same three — the label is interpolated rather than passed as an argument, `--paginate` emits one number per page, and an error body on stdout must not be coerced to `0` — so capture, then sum only the numeric lines, and treat an unreadable count as `needs human` rather than as zero.
+
 **Linear** — read the issue's history/activity and count the state/label changes onto the `reviewRequested` state. Before deciding `changes-requested`, compare the count to `work.review.maxRounds`: at or above it, escalate to `needs human` instead — with a comment summarising the still-unresolved feedback.
 
 **`local`** — a file has no event log, so the count is read from the **verdicts themselves**: one `## AI review — round N` heading per round, appended by this loop ([Feedback recipes](#feedback-recipes)), counted with `grep -c '^## AI review — round '` against the file in the **main working tree's** store (a per-issue worktree's copy is a stale checkout artifact — **Tracker — local (files)** in `work-implement`'s REFERENCE). That is why the verdict is appended to the issue rather than carried in a commit — the artifact that makes the count derivable is the same one the next implement round has to read. `grep -c` answers `0` on a file with no verdicts yet, which is a genuine zero; a **missing or unreadable file** is the unreadable case and escalates to `needs human`, exactly as an unreachable timeline does. `git log` on the file would be the tempting second source and is not used: a rebase, a squash or a hand-edit rewrites it, while the headings travel with the content.
@@ -435,6 +437,12 @@ gh pr review "$pr" --request-changes --body "…what to change and why…"
 
 # feedback=issue — an issue comment referencing the reviewed commit(s)
 gh issue comment "$n" --body "AI review — changes requested (commit <sha>): …"
+
+# GitLab — a note is the primitive on both destinations, and there is no second verb to
+# upgrade to: GitLab has no self-review refusal to work around because it has no separate
+# review call here at all.
+glab mr note "$iid" --message "AI review — changes requested (round <r> of <max>, head <sha>): …"
+glab issue note "$n" --message "AI review — changes requested (commit <sha>): …"
 ```
 
 **Post the comment first, and treat the formal review as an enrichment of it.** GitHub rejects `gh pr review --request-changes` (and `--approve`) with `Review Can not request changes on your own pull request` whenever the caller authored the PR — which, in a repo where the implement loop and the review loop run as the **same** identity, is every PR the loop produces. So `--request-changes` is reached for only where the reviewer is demonstrably not the author (a separate bot token, a second account, a multi-maintainer repo), and a refusal is a **documented fallback, not a failure**: post the identical body with `gh pr comment` and name the fallback in the run report. The `done` / `needs human` / `blocked` line already uses `gh pr comment` for exactly this reason; `changes-requested` follows the same primitive. Full rule: **Feedback destination** in `work-implement`'s REFERENCE.
@@ -455,7 +463,7 @@ Append the section **and** rewrite the `state` field in the **same** command, so
 
 ## Tracker recipes
 
-Label moves mirror the implement loop's own **Tracker — GitHub (`gh`)** recipes. The reviewer writes the **lease** label `reviewing` on claim (only when `labels.reviewing` is configured — flip `reviewRequested → reviewing`, `--add-assignee`), then the **verdict** labels (`done` / `changesRequested` / `needsHuman` / `blocked`) and their mapped Linear states; the review reconcile writes `reviewRequested` when it reclaims a `reviewing` orphan (dropping the assignee). It never writes `working`/`ready` (those are the implement loop's). On **Linear** the `reviewing` lease sets the label via `save_issue`; `work.linear.states` has no `reviewing` mapping, so the workflow state is left untouched (the "unmapped step leaves the state alone" rule in the implement REFERENCE).
+Label moves mirror the implement loop's own **Tracker — GitHub (`gh`)** and **Tracker — GitLab (`glab`)** recipes. The reviewer writes the **lease** label `reviewing` on claim (only when `labels.reviewing` is configured — flip `reviewRequested → reviewing`, `--add-assignee`), then the **verdict** labels (`done` / `changesRequested` / `needsHuman` / `blocked`) and their mapped Linear states; the review reconcile writes `reviewRequested` when it reclaims a `reviewing` orphan (dropping the assignee). It never writes `working`/`ready` (those are the implement loop's). On **Linear** the `reviewing` lease sets the label via `save_issue`; `work.linear.states` has no `reviewing` mapping, so the workflow state is left untouched (the "unmapped step leaves the state alone" rule in the implement REFERENCE).
 
 **On `local` a "label move" is a frontmatter write.** The same transitions, the same order — lease first (`reviewRequested → reviewing`, writing `assignee`), verdict after — but each is one rewritten `state:` line, guarded by the state it expects to replace and committed by a `mv`, in the **main working tree's** store rather than the current worktree's copy (**Tracker — local (files)** in `work-implement`'s REFERENCE). `work.linear.states` is inert there, so the verdict writes the lifecycle key and nothing else.
 
