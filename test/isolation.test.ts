@@ -87,6 +87,7 @@ const withAuthorityReduced = skillsWithTag('<skills-authority-reduced>');
 const withVerifyBase = skillsWithTag('<skills-verify>');
 const withVerifyIsolated = skillsWithTag('<skills-verify-isolated>');
 const withPlanBlock = skillsWithTag('<skills-plan>');
+const withTldrBlock = skillsWithTag('<skills-tldr>');
 
 /**
  * Which skills run the repo's gate, and in which tree.
@@ -142,6 +143,35 @@ const PLAN_CARRIERS = [
   'work/issue',
   'work/refine-issue',
   'work/tldr',
+  'work/work-implement-queue',
+  'work/work-review-queue'
+];
+
+/**
+ * Which skills end a run with a report of what happened, and therefore carry the rule that
+ * the report opens with its result rather than with its first group.
+ *
+ * The criterion is the **last thing the skill hands back**: an account of a run — what was
+ * found, what was acted on, what is left — read once and acted on. A skill whose closing
+ * output is a plan awaiting a yes is not on this list; the plan block governs that, and a
+ * plan already opens with what it proposes.
+ *
+ * `tldr` is deliberately absent, and it is the one skill whose absence is not about the
+ * criterion: its entire product is this frame, fixed in its own workflow, so mirroring the
+ * block into it would give one skill two statements of the same rule to drift apart.
+ *
+ * Declared rather than inferred, for the reason the rosters above are: both failure
+ * directions are silent on disk. A skill that starts reporting without the block buries its
+ * result under its first group; a listed one that lost its block keeps the promise with
+ * nothing behind it.
+ */
+const TLDR_CARRIERS = [
+  'meta/validate-skills',
+  'repo/merge-deps',
+  'repo/prune-branches',
+  'repo/prune-comments',
+  'repo/release',
+  'repo/update-deps',
   'work/work-implement-queue',
   'work/work-review-queue'
 ];
@@ -673,6 +703,44 @@ describe('the plan a skill presents has to render where it is read', () => {
           assert.ok(
             !target.startsWith('..'),
             `${path}: plan block links out of the skill via "${target}"`
+          );
+        }
+      }
+    }
+  });
+});
+
+describe('the report a run ends with has to lead with its result', () => {
+  test('the tags on disk are exactly the roster', () => {
+    assert.deepEqual(withTldrBlock.sort(), [...TLDR_CARRIERS].sort());
+  });
+
+  test('every reporting skill also carries the plan block', () => {
+    // The two rules govern the same message from opposite ends — what may be hidden in it,
+    // and what it opens with — so a skill bound by one and not the other has a report whose
+    // lead is specified and whose body may still arrive folded.
+    const missing = withTldrBlock.filter((p) => !withPlanBlock.includes(p));
+    assert.deepEqual(
+      missing,
+      [],
+      'a skill whose report leads with a TL;DR must also render the rest of it'
+    );
+  });
+
+  test('no link inside the tldr block leaves the skill folder', () => {
+    for (const path of withTldrBlock) {
+      const dir = join(ROOT, 'skills', path);
+      for (const file of docsOf(dir)) {
+        const body = readFileSync(file, 'utf8');
+        const from = body.indexOf('<skills-tldr>');
+        if (from === -1) continue;
+        const block = body.slice(from, body.indexOf('</skills-tldr>'));
+        for (const target of relativeLinks(file).filter((t) =>
+          block.includes(`(${t}`)
+        )) {
+          assert.ok(
+            !target.startsWith('..'),
+            `${path}: tldr block links out of the skill via "${target}"`
           );
         }
       }

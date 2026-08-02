@@ -71,13 +71,14 @@ Telling a call from a mention is a read of the prose, not a pattern match — th
 
 Per skill, and never merging the tiers:
 
+- **TL;DR** — first, before any finding: how many skills were validated, how many pass and how many fail, the count per tier, and whether the spec tier is **verified** or **UNVERIFIED**. That last one belongs in the lead precisely because it changes what every count below it means. **Leading the report** binds the form.
 - **Spec violations** — each with the offending field and the `skills-ref` message; the file is the skill's `SKILL.md`.
 - **Client extensions (non-portable)** — each such field, **which** clients define it (some are shared, so the answer is not always "Claude Code"), and the plain consequence. State it as the range it is: a strict validator **rejects** the skill, OpenCode **ignores** the field and loads it anyway, the defining clients **honour** it. A skill flagged only here is spec-clean but non-portable, not malformed — and where the field's job also has a portable form (a Codex sidecar, another client that honours the same key), name it, because that is the choice the author is actually making.
 - **Codex sidecar** — `agents/openai.yaml` present (what it configures) or absent (a client not targeted). **Not a violation** in either direction, and never listed among them.
 - **House-style deviations** — each with the field and the repo's own rule it breaks.
 - **Advisory** — spec recommendations worth noting (long body, deep reference chains).
 - **Spec tier status** — `verified` (skills-ref ran) or **UNVERIFIED** (it could not) — stated explicitly, so an unverified run is never mistaken for a clean one.
-- **Summary** — per skill pass/fail across a whole-repo run, so the one bad skill in twenty is obvious.
+- **Summary** — the per-skill pass/fail table across a whole-repo run, so the one bad skill in twenty is obvious. The lead states the counts; this states which skills they were, and neither replaces the other.
 
 ## What this skill does not do
 
@@ -113,6 +114,46 @@ legitimate there. The rule is about the message a human reads to decide — neve
 of a file.
 
 </skills-plan>
+
+<skills-tldr>
+
+## Leading the report
+
+The report this skill ends with is read **once, in a terminal**, by someone deciding what happens
+next. So it **opens with its result**: a `## TL;DR` section, before every other heading, carrying
+the whole answer in a few lines. A report that opens with its first group makes the reader
+reconstruct the total by reading every group and adding it up — which is the one thing they needed
+before deciding whether to read any of them.
+
+**Three things belong in the lead, and nothing else does:**
+
+- **The counts** — how much was found, per group, in the same words the groups below use. The
+  total is stated, never left to be summed.
+- **What the run acted on, or proposes to** — the preselected set, the merged set, the changed
+  set: the part that is not merely listed. Where nothing was acted on, say so in those words.
+- **The decision being asked for** — the one thing the reader is expected to do, said plainly, or
+  **no decision needed** where the run is finished. An ask that is only inferable from the groups
+  is an ask the reader has to assemble.
+
+**It leads the detail, it never replaces it.** Every group still renders in full underneath, and
+nothing is dropped, shortened or folded for having been counted above. The lead is an entry point;
+a summary that licenses hiding what it summarises is the failure this repo already forbids
+elsewhere.
+
+**Whatever the run could not establish belongs in the lead too**, not only in the section that
+holds it — a check that never ran, a list that could not be read, a tier the run declined to
+judge. Each changes what the counts mean, and a reader who stops after four lines must not stop
+with a picture the rest of the report would have corrected.
+
+**A run that found nothing still leads with it.** "Nothing found" is a result, and it belongs where
+every other result does: one line, naming the scope that was actually searched, so an empty report
+and an empty search are told apart.
+
+**The heading follows the output language**, as the rest of the report does — a German run reads
+`## Kurzfassung`. What is fixed is the position, not the wording. The `tldr` skill fixes this same
+opening for the summaries it writes on request; one house frame, reached two ways.
+
+</skills-tldr>
 
 ## Guardrails
 

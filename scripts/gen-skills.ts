@@ -44,6 +44,7 @@ export interface Paths {
   verifyBlock: string;
   worklockBlock: string;
   planBlock: string;
+  tldrBlock: string;
   resolver: string;
 }
 
@@ -59,6 +60,7 @@ export function paths(root: string): Paths {
     verifyBlock: join(root, 'scripts', 'verify-block.md'),
     worklockBlock: join(root, 'scripts', 'worklock-block.md'),
     planBlock: join(root, 'scripts', 'plan-block.md'),
+    tldrBlock: join(root, 'scripts', 'tldr-block.md'),
     resolver: join(root, 'scripts', 'resolve-config.sh')
   };
 }
@@ -116,6 +118,16 @@ const WORKLOCK_END = '</skills-worklock>';
 // skill is one wording away from re-inventing it.
 const PLAN_OPEN = '<skills-plan>';
 const PLAN_END = '</skills-plan>';
+
+// The sixth, and the other half of the one above: the plan block says a report may hide
+// nothing, this one says what it opens with. They govern the same message from opposite
+// ends, which is why the roster here is a subset of that one rather than a list of its own
+// kind — a skill leads with a result only where it ends by reporting one. Split into two
+// blocks rather than folded into the plan body because the criteria differ: everything a
+// skill puts in front of a human has to render, while only the account a run *ends* with
+// has a result to lead with.
+const TLDR_OPEN = '<skills-tldr>';
+const TLDR_END = '</skills-tldr>';
 
 // The Agent Skills spec caps `description` at 1024 characters, and that cap is a cliff:
 // a skill one character over is non-conformant, and nothing about writing a description
@@ -523,6 +535,17 @@ export function planBody(p: Paths): string {
   return raw.slice(at + marker.length).trim();
 }
 
+// One body, no variants: what a report leads with does not vary with what it reports on.
+export function tldrBody(p: Paths): string {
+  const raw = readFileSync(p.tldrBlock, 'utf8');
+  const marker = '<!-- tldr:body -->';
+  const at = raw.indexOf(marker);
+  if (at === -1) {
+    throw new Error(`${p.tldrBlock}: missing ${marker}`);
+  }
+  return raw.slice(at + marker.length).trim();
+}
+
 // The mirrored block opens with a level-3 heading, so it belongs under "## Config".
 // Placed anywhere else it silently reads as part of the preceding section — a queue
 // skill's block landed under "## Workflow" and became its last step. Rewriting the
@@ -779,6 +802,11 @@ export function main(argv: string[], root: string = ROOT): RunResult {
   stale.push(
     ...syncTaggedBlock(p, skills, check, 'plan', [
       { open: PLAN_OPEN, end: PLAN_END, body: planBody(p) }
+    ])
+  );
+  stale.push(
+    ...syncTaggedBlock(p, skills, check, 'tldr', [
+      { open: TLDR_OPEN, end: TLDR_END, body: tldrBody(p) }
     ])
   );
 
