@@ -29,7 +29,7 @@ Create, update, and search issues without caring which tracker the repo uses. On
 
 ### 1. Load config & cache (guided setup on first run)
 
-- **Config** — resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included). The `issue.*` section holds the tracker and rules. Resolution per setting: **config → native → built-in default**.
+- **Config** — resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included). The `issue.*` section holds the tracker and rules; the root `grillWith` holds the [interview engine](REFERENCE.md#sharpening-the-request-grilling). Resolution per setting: **config → native → built-in default**.
 - **No / incomplete config, or `/issue setup`** → run the guided setup (step below). Setup is also where the catalog cache is first filled.
 - **Catalog cache** — read `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (JSON). Reuse when younger than ~3 days **and** the `tracker` is unchanged; refresh when missing, stale, the tracker changed, or the user passes `--refresh`. Label staleness in the plan header (`Catalogs (cached, 2d ago): …`).
 
@@ -45,7 +45,7 @@ From the phrasing: **create** (default for a new description), **update** (an is
 
 ### 4. Draft the content
 
-**Sharpen a thin request first.** When the free-text description plus session context is **thin or ambiguous**, engage a **grilling** pass _on the skill's own initiative_ — invoke the `grilling` skill to resolve the open decisions before they harden into a draft, one question at a time with a recommended answer each. A clear, complete request **skips it**; `--grill` / "grill me first" **forces** it; a missing `grilling` skill degrades to drafting as today rather than failing the run. **Target `grilling`, never `grill-me`** — the latter sets `disable-model-invocation: true`, so a skill cannot drive it. Grilling feeds the draft; it never replaces the single confirmation gate at step 6. Signals, override and fallback: [REFERENCE.md](REFERENCE.md#sharpening-the-request-grilling).
+**Sharpen a thin request first.** When the free-text description plus session context is **thin or ambiguous**, engage a **grilling** pass _on the skill's own initiative_ — drive the repo's interview engine to resolve the open decisions before they harden into a draft, one question at a time with a recommended answer each. A clear, complete request **skips it**; `--grill` / "grill me first" **forces** it. **Which engine is the root `grillWith` key** — absent means `grilling`, a name means that skill, and `null` / `false` means never grill and draft directly. The named engine must be one a skill may drive: **not installed** degrades to drafting as today rather than failing the run, and one declaring **`disable-model-invocation: true`** (`grill-me` and `batch-grill-me` both do) is a **config error to report**, never silently swapped for another engine. Grilling feeds the draft; it never replaces the single confirmation gate at step 6. Signals, override, the key and its three fallbacks: [REFERENCE.md](REFERENCE.md#sharpening-the-request-grilling).
 
 **The template is chosen first** — it settles part of the body _and_ part of the labels before either is drafted. Then, in order:
 
@@ -103,7 +103,7 @@ of a file.
 ## Guardrails
 
 - **Plan first, write only after confirmation.** Respect plan-only mode.
-- **Grill thin input, not clear input.** A thin or ambiguous request auto-engages a skippable `grilling` pass before drafting (and `--grill` forces one on any request); a complete request drafts straight through. Grilling only sharpens the draft — it never replaces the one confirmation gate, and a missing `grilling` skill degrades to today's behaviour rather than failing.
+- **Grill thin input, not clear input.** A thin or ambiguous request auto-engages a skippable grilling pass before drafting (and `--grill` forces one on any request); a complete request drafts straight through. Grilling only sharpens the draft — it never replaces the one confirmation gate. **The engine is whichever skill `grillWith` names**, `grilling` by default: a missing one degrades to today's behaviour rather than failing, one no skill may drive is **reported rather than substituted**, and `grillWith: null` / `false` means the pass never runs at all.
 - **Keep titles/bodies attribution-free** — no `Generated with`/🤖 line, no session/permalink URL, no agent self-naming (Claude, Codex, Copilot, Cursor, or any future assistant). Strip it if the harness injects it.
 - **No secrets** in titles/bodies — scan the drafted content and the session context for `.env`, keys, tokens; warn and exclude.
 - **Body states intent, not implementation** — describe _what_ is wanted (outcome, context, open questions), not _how_ to build it. Never reverse-engineer the repo's conventions into build steps, and never explore the codebase to pad the body — **unless the user explicitly asks** for an implementation plan.
