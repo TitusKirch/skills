@@ -71,7 +71,7 @@ Verb shortcuts: `/write-contributing init`, `/write-contributing add <step>`, `/
 - **Second person, imperative, short.** The reader is mid-task.
 - **Callouts** use `> [!TIP]` / `> [!IMPORTANT]` / `> [!NOTE]`, never a plain blockquote.
 - **Tables** are left-aligned (`| :--- |`).
-- **Never transcribe a file.** The suite table names the gate and the handful of commands a contributor types — not every script in the manifest. Link the manifest and say it holds the rest; a transcribed script list is the second-most-common stale block in any guide, after the branch name.
+- **Never transcribe a file — any file, any list.** The rule is about **every enumeration**, not one table: a list whose owner is another file is **linked, not copied**, whatever it enumerates — the manifest's scripts, the artifacts a sync or codegen command writes, a unit's frontmatter fields, the globs a hook matches. The suite table is only its most familiar case: it names the gate and the handful of commands a contributor types, not every script in the manifest. **And where such a list must appear, it appears without a count in front of it** — "regenerates the four artifacts" is the one claim no gate can check, and it goes stale the day a fifth is added while every item beside it still reads true. Link the owner and let the owner say how many; a transcribed list is the second-most-common stale block in any guide, after the branch name.
 - **Repo files are linked relatively** (`CODE_OF_CONDUCT.md`, `SECURITY.md`, `LICENSE`), forge routes absolutely (a `?template=` new-issue URL). A relative link is what survives a fork.
 
 ## Scaffold — no guide yet
