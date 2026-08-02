@@ -39,7 +39,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
     },
     "priorityLabels": ["urgent", "high", "medium", "low"],
     "reviewRequested": { "maxRounds": 3 },
-    "loop": { "wait": 120, "maxWait": 1800 },
+    "loop": { "mode": "auto", "wait": 120, "maxWait": 600 },
     "linear": {
       "team": "Engineering",
       "statuses": ["Todo", "In Progress", "Changes Requested", "Accepted"],
@@ -72,8 +72,9 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 | `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"                                          |
 | `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                                                              |
 | `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                                                            |
-| `work.loop.wait`                            | seconds a repeating driver waits before re-checking a drain that ended in [backpressure](#queue-state); default 120                                          |
-| `work.loop.maxWait`                         | seconds of waiting after which that driver gives up and reports loudly; default 1800                                                                         |
+| `work.loop.mode`                            | how a [backpressure](#queue-state) wait is paced: `fixed`, `adaptive` or `auto`; default `auto` — [how long to wait](#how-long-to-wait--workloopmode)        |
+| `work.loop.wait`                            | seconds a repeating driver waits before re-checking a drain that ended in [backpressure](#queue-state); the floor under `adaptive`; default 120              |
+| `work.loop.maxWait`                         | ceiling on a **single** wait, not a total budget; default 600 (Claude Code truncates a `Bash` call there)                                                    |
 | `work.priorityLabels`                       | GitHub priority labels, highest first; the `local` tracker matches its `priority` field against the same ladder; Linear ignores them (native priority field) |
 | `work.local.dir`                            | `local` issue directory; falls back to `issue.local.dir`, then `.agents/issues` — see [Tracker — local](#tracker--local-files)                               |
 | `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                                                           |
@@ -699,14 +700,60 @@ A **round count cannot do any of this**: a single large issue sits in `working` 
 
 **Cross-host is supported but degraded**, and that is worth stating rather than leaving to be discovered. The `updatedAt` fallback needs a **generous** window — hours, like the lock's own stale window — because a long review or implementation writes nothing to the tracker while it runs, so a genuinely crashed remote loop holds a waiter for that whole window before it reads as orphaned. A real cross-host heartbeat would need shared storage, which the lock spec deliberately puts [outside skill prose](#the-single-flight-lock); that boundary stays where it is. Report an absent lock in those words — "nobody is running the counterpart **here**" — never as "the other loop is dead".
 
+### How long to wait — `work.loop.mode`
+
+The table above says **whether** to wait; this says **how long**, and a single fixed number cannot answer it for every repo. 120 s is calibrated to _this_ repo — a counterpart iteration here installs a fresh worktree's dependencies and runs a 7.4 s gate, with the model reading the issue and the diff before either, so an iteration lands in the low minutes and 120 s polls it once or twice. That reasoning does not travel, and a fixed interval is then wrong in **both** directions at once: a repo whose iterations take twenty minutes is polled ten times per iteration, each poll re-loading the skill prose, re-querying the tracker and burning a turn; a repo whose iterations take fifteen seconds waits 120 s for work that was ready in fifteen. Both are configurable away — but only by someone who first notices the mismatch and then measures their own loop, which is the kind of tuning nobody does.
+
+**The saving is turns and tokens, not wall-clock.** The counterpart is the bottleneck either way, and nothing here makes it finish sooner. Say it in those words when a repo asks what the mode buys.
+
+`work.loop.mode` picks the pacing and **nothing else** — none of the three changes which issues a drain selects or what it does with them:
+
+| `work.loop.mode`   | Waits                                                                       | Reads the counterpart's lock |
+| :----------------- | :-------------------------------------------------------------------------- | :--------------------------- |
+| `fixed`            | always `work.loop.wait`                                                     | no                           |
+| `adaptive`         | backs off on what the tracker shows (below)                                 | no                           |
+| `auto` _(default)_ | the counterpart's **heartbeat** where its lock is readable, else `adaptive` | yes, when present            |
+
+**`adaptive` — back off on what the tracker shows.** Start at `work.loop.wait`. After each wait, query the tracker:
+
+- **hit** (anything eligible) — work it, then **reset the wait to the floor**;
+- **empty** — multiply the wait by **1.5**, capped at `work.loop.maxWait`.
+
+Deliberately **asymmetric**: slow up, immediate reset down. Work arrives in clusters, so one hit is evidence the quiet period is over, and halving back would keep over-waiting through the first issues of a burst.
+
+**`auto` — wait for the event, not for an estimate.** The [single-flight lock](#the-single-flight-lock)'s `refreshed` stamp is re-stamped once per iteration, so a **change** to it means "the counterpart finished an issue" — precisely when a tracker query is worth making. One `Bash` call blocks on it, polling a **local file**, so a wait of any length costs **one turn**:
+
+```sh
+# $lock is the COUNTERPART's lock — the implement loop reads …/work/review.lock, the
+# review loop …/work/implement.lock. $maxWait is work.loop.maxWait, in seconds.
+before=$(sed -n 's/^refreshed=//p' "$lock/owner" 2>/dev/null)
+deadline=$(( $(date +%s) + maxWait ))
+while [ "$(date +%s)" -lt "$deadline" ]; do
+  [ -d "$lock" ] || break                            # counterpart drained and released
+  now=$(sed -n 's/^refreshed=//p' "$lock/owner" 2>/dev/null)
+  [ "$now" != "$before" ] && break                   # counterpart finished an issue
+  sleep 10
+done
+```
+
+Nothing is averaged and **no state crosses iterations** — each wait is exactly as long as the iteration it waited on, which is what keeps the drain [stateless](#principle). The lock is the **same file across worktrees** (a linked worktree reports the main checkout's `.git` as its `--git-common-dir`), so `auto` works when the counterpart runs in a worktree; only separate **hosts** break it.
+
+**An absent lock is not a failure of the mode.** It is the restart-gap / other-host row of the [cascade above](#the-bound-is-the-counterparts-heartbeat-not-a-round-count), and `auto` falls back to **`adaptive`** there rather than to a fixed interval — a repo whose counterpart runs elsewhere is exactly the one with no measurement behind its number. The cascade still decides **whether** to keep waiting; the mode only decides how long each wait lasts.
+
+**Re-query the tracker after finishing an issue, before waiting at all** — [the rule above](#queue-state), and it binds `adaptive` twice over: the empty result that immediately follows a finished issue is **expected**, so it must **not** count as an empty check for the backoff. Count it and the wait grows during steady operation, which is the one way this mode is worse than the fixed one.
+
+Rejected: **deriving the wait from a rolling average of observed iterations** — an average lags (after 8 min, 8 min, 2 min it waits ~6 min on a 2 min iteration) and needs cross-iteration state, a cold start, a floor and a ceiling, none of which waiting for the event needs. Rejected: **scaling the wait from the repo's own `verify`** — the gate is the _small_ part of an iteration, dominated by the install and the model's reading time (7.4 s of gate against minutes of iteration here). `fixed` is **kept as a mode**, not deleted: it is the portable floor — no lock, no state, no client assumptions.
+
 ### The wait interval is not the stale window
 
-Two numbers, two jobs — unify them and one of them breaks. The stale window is **crash detection**, deliberately hours rather than minutes; the wait below is a **poll interval**, and polling hourly makes the loop useless.
+Two numbers, two jobs — unify them and one of them breaks. The stale window is **crash detection**, deliberately hours rather than minutes; the waits below are **poll intervals**, and polling hourly makes the loop useless.
 
-| Key                 |    Default | Why                                                                                                                                                                                                                                                                                                            |
-| :------------------ | ---------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `work.loop.wait`    |  **120** s | One counterpart iteration runs in minutes: a fresh worktree installs its dependencies before the gate, and the model reads the issue and the diff before either. The usual 60 s driver floor polls 3–5× per counterpart issue, each poll re-reading the skill and re-querying the tracker; 120 s lands at 1–2. |
-| `work.loop.maxWait` | **1800** s | A backstop, not the normal exit — a counterpart that drains empty releases its lock and ends the wait by itself, and a crashed one is caught by its frozen heartbeat. Reaching it means something nobody predicted, so it **reports loudly** instead of ending quietly.                                        |
+| Key                 |   Default | Role, by [mode](#how-long-to-wait--workloopmode)                                                                                                                                                                                                                                                        |
+| :------------------ | --------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `work.loop.wait`    | **120** s | The whole wait under `fixed`; the **floor** and starting value under `adaptive`; the fallback wait under `auto` where no lock or stamp is readable. The number is one repo's measurement, which is why the default mode adapts rather than trusting it.                                                 |
+| `work.loop.maxWait` | **600** s | The ceiling on a **single** wait — unused under `fixed`, where the wait never grows; the backoff's cap under `adaptive`; the cap on one blocking wait under `auto`, where it doubles as the **minimum wake rate**, since a human labelling an issue `ai: ready` produces no heartbeat event to wake on. |
+
+**`maxWait` bounds one wait, not the run's total waiting.** A drain that is right to keep waiting keeps waiting; what ends a wait that _should_ end is the [cascade](#the-bound-is-the-counterparts-heartbeat-not-a-round-count) — a frozen heartbeat, a frozen `updatedAt`, terminal states only — never this number. 600 s is the default because Claude Code truncates a `Bash` call there, which is the real bound on the `auto` snippet above; lower it to make `auto` behave more like `fixed`.
 
 **Naming the state is the whole mechanism.** The skill reports the state and the recommended action in prose and calls no driver API, so `/loop`, a cron job and a human can all act on the same report and no skill acquires a dependency on a client-specific loop mechanism.
 
