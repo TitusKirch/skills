@@ -29,7 +29,7 @@ Create, update, and search issues without caring which tracker the repo uses. On
 
 ### 1. Load config & cache (guided setup on first run)
 
-- **Config** — resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included). The `issue.*` section holds the tracker and rules; the root `grillWith` holds the [interview engine](REFERENCE.md#sharpening-the-request-grilling). Resolution per setting: **config → native → built-in default**.
+- **Config** — resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included). The `issue.*` section holds the tracker and rules; the root `grillWith` holds the [interview engine](REFERENCE.md#which-engine--the-root-grillwith-key) — three states, so it is read by **presence**, never as a label-or-off. Resolution per setting: **config → native → built-in default**.
 - **No / incomplete config, or `/issue setup`** → run the guided setup (step below). Setup is also where the catalog cache is first filled.
 - **Catalog cache** — read `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (JSON). Reuse when younger than ~3 days **and** the `tracker` is unchanged; refresh when missing, stale, the tracker changed, or the user passes `--refresh`. Label staleness in the plan header (`Catalogs (cached, 2d ago): …`).
 

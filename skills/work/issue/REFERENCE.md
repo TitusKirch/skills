@@ -205,6 +205,22 @@ Step 4 drafts from the free-text description plus session context. When that inp
 
 **It lives at the root, not under `issue.*`.** The engine has **two** callers here — this skill and the `refine-issue` skill, which drives it at its step 6 — and an interview style is a property of the **repo**, not of one skill. A per-skill key would duplicate the same value and let the two drift apart.
 
+**Three values means three states, so ask whether the key is there before reading it.** The `labelOrOff` recipe used for `work.labels.*` — `select(. != null)` and fall through to a default — is the wrong shape here: it filters an explicit `null` exactly as it filters an absent key, so `"grillWith": null` reads as absent and the run drives `grilling`. A configured **never grill** would silently become **grill with the default engine** — the same failure the table below refuses one row lower, arrived at through the read rather than through a substitution. (`false` survives that recipe; only `null` inverts, and `null` is the value a `ci` profile uses to switch the interview off where nobody is present to notice one starting.) So presence first, value second:
+
+```sh
+# $resolved comes from the resolver — see "Reading the config" in this file.
+# Three states, so presence is asked for before the value is read.
+if printf '%s' "$resolved" | jq -e 'has("grillWith")' >/dev/null 2>&1; then
+  engine=$(printf '%s' "$resolved" | jq -r '.grillWith | select(. != null) | tostring' 2>/dev/null) || engine=
+  [ "$engine" = 'false' ] && engine=   # false → never grill
+  # present-and-null leaves $engine empty → never grill
+else
+  engine='grilling'                    # absent → the behaviour before the key existed
+fi
+```
+
+`has("grillWith")` is asked of the **resolved root**, not of `.issue` — the key is a root key, and asking `(.issue // {}) | has("grillWith")` reports every config as absent.
+
 ### What is a valid value
 
 **A model-invocable interview skill, and nothing else.** `grill-me` and `batch-grill-me` are **not** valid values: both are user-facing on-ramps declaring `disable-model-invocation: true`, so no skill can drive them — they are invocation paths for a human's slash command, not for a skill. (`grill-me`'s entire body is `Run a /grilling session.`, so naming it would in any case select what `grilling` already does, by a path no skill may take.)
