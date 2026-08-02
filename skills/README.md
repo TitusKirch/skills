@@ -72,7 +72,7 @@ Two things that list makes visible and a per-client reading does not. **"Claude-
 
 ## Shared config
 
-Some skills read an optional, committed `.tituskirch-skills.json` at the **consuming repo's** root (not this repo) — a thin, shared override surface. It is validated by [`tituskirch-skills.schema.json`](../tituskirch-skills.schema.json); point `$schema` at the raw URL for editor autocomplete:
+Some skills read an optional, committed `.tituskirch-skills.json` at the **consuming repo's** root (not this repo) — a small, shared override surface. It is validated by [`tituskirch-skills.schema.json`](../tituskirch-skills.schema.json); point `$schema` at the raw URL for editor autocomplete:
 
 ```json
 {
@@ -181,6 +181,8 @@ Every skill in the catalogue is a **full** skill — an intro, an opt-out paragr
 > A skill is **thin** when it has **no multi-step procedure** — it carries a single rule, or it reaches for exactly one other skill. The moment it has an ordered workflow, it is a **full** skill and takes the full shape.
 
 That line is what the form is for. Without it, "thin" becomes the word for "unfinished": the next author opens a two-paragraph `SKILL.md` and reads abandoned work to complete rather than a complete skill to leave alone.
+
+**Delegating is not what makes a skill thin — having nothing to sequence is.** The two `*-queue` skills implement nothing themselves and hand every issue to a worker, and both are **full** skills by this criterion: each carries an ordered workflow, a lock protocol and a report. Where older text calls one of them "thin" — [ADR-0020](../docs/99.adr/0020-separate-installable-alone-from-runnable-alone.md) does, and ADRs are append-only records of what was decided when — it means _delegating_, in the loose sense that predates this section. Read the criterion above, never the adjective.
 
 What changes for a thin skill, and what does not:
 
