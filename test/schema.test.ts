@@ -258,8 +258,8 @@ describe('the concurrency bound beside the run cap', () => {
 describe('the loop pacing keys', () => {
   test('accepts either key alone, and both together', () => {
     accepts({ work: { loop: { wait: 120 } } }, 'wait alone');
-    accepts({ work: { loop: { maxWait: 1800 } } }, 'maxWait alone');
-    accepts({ work: { loop: { wait: 60, maxWait: 600 } } }, 'both keys');
+    accepts({ work: { loop: { maxWait: 600 } } }, 'maxWait alone');
+    accepts({ work: { loop: { wait: 60, maxWait: 300 } } }, 'both keys');
     accepts({ work: { loop: {} } }, 'an empty loop section');
   });
 
@@ -274,6 +274,41 @@ describe('the loop pacing keys', () => {
     accepts(
       { profiles: { ci: { work: { loop: { wait: 300 } } } } },
       'loop fragment in a profile'
+    );
+  });
+});
+
+// `mode` says how the wait is *paced*, where `wait`/`maxWait` say how long — three
+// named strategies rather than a number, so an unknown one has to be caught here
+// instead of being read as "some pacing nobody implements". Omitting it has to keep
+// validating too: `auto` is the default, and every config written before this key
+// existed means exactly that.
+describe('the loop pacing mode', () => {
+  test('accepts each of the three modes, and omitting it entirely', () => {
+    accepts({ work: { loop: { mode: 'fixed' } } }, 'the portable floor');
+    accepts({ work: { loop: { mode: 'adaptive' } } }, 'tracker-driven backoff');
+    accepts({ work: { loop: { mode: 'auto' } } }, 'the heartbeat default');
+    accepts(
+      { work: { loop: { wait: 120 } } },
+      'mode omitted — it defaults to auto'
+    );
+  });
+
+  test('rejects a mode that is not one of the three', () => {
+    rejects({ work: { loop: { mode: 'event' } } }, 'an unimplemented mode');
+    rejects({ work: { loop: { mode: 'Auto' } } }, 'the wrong case');
+    rejects({ work: { loop: { mode: '' } } }, 'an empty mode');
+    rejects({ work: { loop: { mode: false } } }, 'mode is not a labelOrOff');
+  });
+
+  test('it is writable inside a profile, like the pacing numbers', () => {
+    accepts(
+      { profiles: { ci: { work: { loop: { mode: 'fixed' } } } } },
+      'mode fragment in a profile'
+    );
+    rejects(
+      { profiles: { ci: { work: { loop: { mode: 'event' } } } } },
+      'the enum still applies inside a profile'
     );
   });
 });

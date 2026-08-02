@@ -618,19 +618,26 @@
         "loop": {
           "type": "object",
           "additionalProperties": false,
-          "description": "How a repeating driver (/loop, cron, a human) paces re-runs of a queue drain that ended in backpressure — nothing eligible right now, but the counterpart loop can still produce this loop's input. Read by work-implement-queue and work-review-queue only; the units never wait. A drain that ended on the cap is work remaining, not backpressure, and re-runs immediately without consulting these. Deliberately not the single-flight lock's stale window, which is crash detection measured in hours: two jobs, two numbers.",
+          "description": "How a repeating driver (/loop, cron, a human) paces re-runs of a queue drain that ended in backpressure — nothing eligible right now, but the counterpart loop can still produce this loop's input. Read by work-implement-queue and work-review-queue only; the units never wait. A drain that ended on the cap is work remaining, not backpressure, and re-runs immediately without consulting these. `mode` says how a wait is paced, `wait` and `maxWait` how long it may last; none of them decides WHETHER to wait, which is the queue-state cascade's job. Deliberately not the single-flight lock's stale window, which is crash detection measured in hours: two jobs, two numbers.",
           "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["fixed", "adaptive", "auto"],
+              "default": "auto",
+              "description": "How the backpressure wait is paced. \"fixed\" waits work.loop.wait every round — no lock read, no state, the portable floor. \"adaptive\" starts at work.loop.wait and multiplies it by 1.5 after each empty check, capped at work.loop.maxWait, resetting to the floor the moment anything is eligible: deliberately asymmetric, because work arrives in clusters. \"auto\" (the default) blocks on the counterpart's single-flight lock instead of estimating — its `refreshed` heartbeat moves once per counterpart iteration, so one Bash call polls that local file and returns exactly when there is something to query for, falling back to \"adaptive\" wherever that lock or its stamp is unreadable (another host, a drain between cap-ended runs). Only \"auto\" reads the counterpart's lock; none of the three changes what the drain does with the work it finds.",
+              "$comment": "The default is the one that adapts, so a repo tuning nothing gets a wait sized to its own counterpart rather than to the repo this number was first measured on."
+            },
             "wait": {
               "type": "integer",
               "minimum": 1,
               "default": 120,
-              "description": "Seconds to wait before re-checking the queue when a drain ends in backpressure. Calibrated to one counterpart iteration, which runs in minutes (a fresh worktree installs its dependencies before the gate, and the model reads the issue and the diff before either), so the usual 60 s driver floor would poll 3-5x per counterpart issue and re-read the skill each time. Default: 120."
+              "description": "Seconds to wait before re-checking the queue when a drain ends in backpressure. Its role follows work.loop.mode: the whole wait under \"fixed\", the floor and starting value under \"adaptive\", and the fallback wait under \"auto\" wherever the counterpart's lock or stamp cannot be read. Calibrated to one counterpart iteration, which runs in minutes (a fresh worktree installs its dependencies before the gate, and the model reads the issue and the diff before either), so the usual 60 s driver floor would poll 3-5x per counterpart issue and re-read the skill each time — a calibration measured on one repo, which is why the default mode adapts rather than trusting this number. Default: 120."
             },
             "maxWait": {
               "type": "integer",
               "minimum": 1,
-              "default": 1800,
-              "description": "Total seconds a driver may stay in backpressure before giving up and reporting loudly. A backstop only: a counterpart that drains empty releases its lock and ends the wait by itself, and a crashed one is caught by its frozen heartbeat, so reaching this means something nobody predicted. Default: 1800."
+              "default": 600,
+              "description": "Ceiling on a SINGLE backpressure wait, not a budget for the run's total waiting — a drain that is right to keep waiting keeps waiting, and what ends a wait that should end is the cascade (a frozen heartbeat, a frozen updatedAt, terminal states only), never this number. Unused under mode \"fixed\", where the wait never grows; the cap on the backoff under \"adaptive\"; the cap on one blocking wait under \"auto\", where it doubles as the minimum wake rate, since a human labelling an issue ai: ready produces no heartbeat event. Default: 600, because Claude Code truncates a Bash call there — lower it to make \"auto\" behave more like \"fixed\"."
             }
           }
         },
