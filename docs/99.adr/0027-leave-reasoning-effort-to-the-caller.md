@@ -5,7 +5,7 @@ status: 'accepted'
 date: '2026-08-02'
 ---
 
-# ADR-0026 — Leave reasoning effort to the caller
+# ADR-0027 — Leave reasoning effort to the caller
 
 ## Context
 
@@ -15,7 +15,7 @@ Claude Code defines `effort` as a `SKILL.md` frontmatter field, and [ADR-0007](0
 
 Two facts had to be established first, and only one of them is the one the question was framed around.
 
-**On the queue skills, a pin reaches nothing that matters.** Claude Code documents `effort` as the effort level _when this skill is active_, overriding the session level. The Agent tool takes a per-invocation `model` parameter and **no** `effort` parameter, and whether an agent spawned while a skill is active inherits that skill's effort is **not documented** either way. So `effort` on `work-implement-queue` governs the drain's own run — resolve the config, reconcile, order the queue, spawn, report — which is the part of a drain that needs it least, and it reaches the workers only through behaviour nobody has written down.
+**On the queue skills, a pin reaches nothing that matters.** Claude Code documents `effort` as the effort level _when this skill is active_, overriding the session level ([frontmatter reference](https://code.claude.com/docs/en/skills#frontmatter-reference)). The Agent tool takes a per-invocation `model` parameter and **no** `effort` parameter, and whether an agent spawned while a skill is active inherits that skill's effort is **not documented** either way. So `effort` on `work-implement-queue` governs the drain's own run — resolve the config, reconcile, order the queue, spawn, report — which is the part of a drain that needs it least, and it reaches the workers only through behaviour nobody has written down.
 
 **On the unit skills it reaches exactly the right agent, by the documented route.** A worker _is_ an agent that invokes `work-implement` or `work-review`, so the field would be operative for precisely the run that does the work. The premise that a `work-*` skill cannot set what its workers run at holds for the two queues and is false for the two units — which leaves a real decision here rather than one the facts foreclose.
 
@@ -26,7 +26,7 @@ Two facts had to be established first, and only one of them is the one the quest
 Three things decide it:
 
 - **The two invocation paths cannot be told apart.** `work-implement` is invoked both by a drain and directly by a human (`/work-implement 42`), out of one file, and frontmatter overrides the session level unconditionally. There is no conditional form of the field, so a pin buys the unattended case by taking the attended one away — it overrides a human's own `/effort` on every direct invocation.
-- **The only override that outranks a pin is session-global.** `CLAUDE_CODE_EFFORT_LEVEL` outranks frontmatter; `/effort`, `--effort` and settings do not. So a consumer who disagrees with either pin answers with one number for the whole session, which flattens the implement/review split the pin existed to create. The escape hatch destroys the feature, which makes a pin all-or-nothing for every consumer of a published skill.
+- **The only override that outranks a pin is session-global.** `CLAUDE_CODE_EFFORT_LEVEL` outranks frontmatter; `/effort`, `--effort` and settings do not — the client states the order outright: "the environment variable takes precedence over all other methods, then your configured level, then the model default. Frontmatter effort applies when that skill or subagent is active, overriding the session level but not the environment variable" ([Set the effort level](https://code.claude.com/docs/en/model-config#set-the-effort-level)). So a consumer who disagrees with either pin answers with one number for the whole session, which flattens the implement/review split the pin existed to create. The escape hatch destroys the feature, which makes a pin all-or-nothing for every consumer of a published skill.
 - **Effort is priced by whoever pays for the run.** Everything a consuming repo tunes here lives in `.tituskirch-skills.json`; effort has no key there and should not get one, because it is a budget and model-availability decision belonging to the caller rather than a property of the repo. `cap` and `concurrency` are the precedent in the same shape — split because "how much the queue should shrink" and "what the machine can stand" are different questions — and effort is the third: what the budget can stand.
 
 And what a pin would encode is an assertion, not a measurement. Nothing here has measured that implementing needs more effort than reviewing; it is inferred from what each loop does. Prose can say _recommended_ where frontmatter can only say _is_.
