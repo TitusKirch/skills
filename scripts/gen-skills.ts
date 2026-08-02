@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 // Single source of truth for the skill registry.
 // Discovers skills from the filesystem (skills/<category>/<name>/SKILL.md
-// frontmatter) and projects them into nine artifacts: README.md's table, each
+// frontmatter) and projects them into ten artifacts: README.md's table, each
 // skills/<category>/README.md, .claude-plugin/plugin.json, skills.sh.json, the
 // config contract mirrored into every skill that hosts it (and the resolver into
 // every skill that names it), the author-authority block mirrored into every skill
 // that reads third-party text, the check-command contract mirrored into every skill
 // that runs the gate, the single-flight-lock spec mirrored into the two work-loop
-// unit skills, and the plan-presentation rule mirrored into every skill that
-// presents a plan.
+// unit skills, the plan-presentation rule mirrored into every skill that presents a
+// plan, and the forge/host resolution rule mirrored into every skill that drives a
+// forge.
 //
 //   node scripts/gen-skills.ts           # rewrite whichever have drifted
 //   node scripts/gen-skills.ts --check   # exit 1 if any is stale (CI)
@@ -44,6 +45,7 @@ export interface Paths {
   verifyBlock: string;
   worklockBlock: string;
   planBlock: string;
+  forgeBlock: string;
   resolver: string;
 }
 
@@ -59,6 +61,7 @@ export function paths(root: string): Paths {
     verifyBlock: join(root, 'scripts', 'verify-block.md'),
     worklockBlock: join(root, 'scripts', 'worklock-block.md'),
     planBlock: join(root, 'scripts', 'plan-block.md'),
+    forgeBlock: join(root, 'scripts', 'forge-block.md'),
     resolver: join(root, 'scripts', 'resolve-config.sh')
   };
 }
@@ -116,6 +119,13 @@ const WORKLOCK_END = '</skills-worklock>';
 // skill is one wording away from re-inventing it.
 const PLAN_OPEN = '<skills-plan>';
 const PLAN_END = '</skills-plan>';
+
+// The sixth, and the only one about where a skill is *pointing*: which forge drives the repo
+// and which host that forge lives on. It is mirrored rather than left per skill because the
+// host half fails silently — every skill assumed one instance, and a self-hosted GitLab or a
+// GitHub Enterprise repo is served the public host by a run that never noticed it guessed.
+const FORGE_OPEN = '<skills-forge>';
+const FORGE_END = '</skills-forge>';
 
 // The Agent Skills spec caps `description` at 1024 characters, and that cap is a cliff:
 // a skill one character over is non-conformant, and nothing about writing a description
@@ -511,6 +521,19 @@ export function worklockBody(p: Paths): string {
   return raw.slice(at + marker.length).trim();
 }
 
+// One body, no variants: which forge a repo uses and which host it lives on are resolved the
+// same way whether the answer is then used to open a merge request or to list issues. What
+// each skill states for itself is the commands it drives once the pair is known.
+export function forgeBody(p: Paths): string {
+  const raw = readFileSync(p.forgeBlock, 'utf8');
+  const marker = '<!-- forge:body -->';
+  const at = raw.indexOf(marker);
+  if (at === -1) {
+    throw new Error(`${p.forgeBlock}: missing ${marker}`);
+  }
+  return raw.slice(at + marker.length).trim();
+}
+
 // One body, no variants either: a terminal renders the same for every skill, so what a plan
 // may look like does not vary with what the skill is planning.
 export function planBody(p: Paths): string {
@@ -779,6 +802,11 @@ export function main(argv: string[], root: string = ROOT): RunResult {
   stale.push(
     ...syncTaggedBlock(p, skills, check, 'plan', [
       { open: PLAN_OPEN, end: PLAN_END, body: planBody(p) }
+    ])
+  );
+  stale.push(
+    ...syncTaggedBlock(p, skills, check, 'forge', [
+      { open: FORGE_OPEN, end: FORGE_END, body: forgeBody(p) }
     ])
   );
 

@@ -2,7 +2,7 @@
 name: beta
 description: The second fixture skill — carries the tagged blocks but no config block.
 metadata:
-  summary: carries authority and verify
+  summary: carries authority, verify and forge
 allowed-tools:
   - Bash
 ---
@@ -24,3 +24,11 @@ stale authority body
 stale verify body
 
 </skills-verify>
+
+## The forge and its host
+
+<skills-forge>
+
+stale forge body
+
+</skills-forge>
