@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // Single source of truth for the skill registry.
 // Discovers skills from the filesystem (skills/<category>/<name>/SKILL.md
-// frontmatter) and projects them into nine artifacts: README.md's table, each
+// frontmatter) and projects them into ten artifacts: README.md's table, each
 // skills/<category>/README.md, .claude-plugin/plugin.json, skills.sh.json, the
 // config contract mirrored into every skill that hosts it (and the resolver into
 // every skill that names it), the author-authority block mirrored into every skill
 // that reads third-party text, the check-command contract mirrored into every skill
 // that runs the gate, the single-flight-lock spec mirrored into the two work-loop
-// unit skills, and the plan-presentation rule mirrored into every skill that
-// presents a plan.
+// unit skills, the plan-presentation rule mirrored into every skill that presents a
+// plan, and the report-lead rule mirrored into every skill that ends in a report.
 //
 //   node scripts/gen-skills.ts           # rewrite whichever have drifted
 //   node scripts/gen-skills.ts --check   # exit 1 if any is stale (CI)
@@ -263,7 +263,7 @@ export function discoverSkills(p: Paths): Skill[] {
           } catch (err) {
             // No SKILL.md means the directory is not a skill — skip it. Any other
             // read failure is not that, and swallowing it would drop the skill from
-            // all nine artifacts in one silent `--write`, reporting success while
+            // all ten artifacts in one silent `--write`, reporting success while
             // deleting a published skill's row, entry and grouping.
             if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
             throw err;
