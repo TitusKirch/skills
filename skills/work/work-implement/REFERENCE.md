@@ -457,6 +457,16 @@ Label and body are **both live**, and they can disagree — a body written at cr
 
 This does not disarm the `blocked` side-exit: work whose **requirements** are genuinely ambiguous, or that genuinely needs a human call, still exits to `blocked` — on the **substance** of the work, never on the body's opinion about eligibility.
 
+### Body vs comment precedence
+
+The rule above settles the label against the body. A third pair disagrees just as often and had no rule at all: the **body** against a **comment** — both written by the same authorized author, so neither wins on authority, and both are the kind of text the loop reads as instruction.
+
+**The body is the scope, so a newer body edit supersedes an older comment.** It is the field a human edits to restate what the work is, and the [table above](#label-vs-body-precedence) already makes it the answer to _what is the work?_. A comment that argues, proposes or annotates loses to it however recent — the body is where a decision goes to become the specification.
+
+**One exception, and it is deliberately narrow: a comment that explicitly revises a named earlier decision stands until the body names it back.** "This revises the comment above", "decided instead", "superseded by" — such a comment is aimed at a specific prior statement, and a later body edit that never mentions it reads equally well as written without it in view. So where a newer body restates the very premise the revision rejected and is silent about the revision, **the revision is the live decision and the body is the stale text.** A body that names the revision and overrides it is the ordinary case again, and wins.
+
+**Either way, surface it** — name both statements, their timestamps, and which one the run followed, in the report and on the issue. What this rule removes is the **stall**: without it a reviewer meeting the pair has no ground to prefer either statement and can only escalate to a human, on work that is otherwise complete and green. Escalate now only where the surviving statement is genuinely undecidable — two statements each explicitly revising the other — or where following it would change the work **materially** and the run cannot tell which was intended.
+
 ### Contradictory labels
 
 The rule above settles label **against body**, where the label wins because it is the deliberate act. It says nothing about two **labels** contradicting each other, and one pair does exactly that: `labels.needsTriage` — "nobody has assessed this yet" — on the same issue as a lifecycle label that says the opposite. `ready` means _scoped and approved for an agent_; `changesRequested` means _reviewed and handed back_. Both claim an assessment the triage flag says has not happened.
@@ -914,8 +924,35 @@ Skip that rule and the failure is **silent**, which is the shape this driver is 
 
 Two consequences follow from there being exactly one writable copy:
 
-- **Only one side ever edits the file, so the merge stays clean.** Transitions are written and committed in the main working tree, on whatever branch it holds; a per-issue branch carries the issue file exactly as it was cut and never touches it. A file changed on one side only merges without a conflict — that is precisely what the never-write-the-worktree rule buys, and precisely what is lost the moment a worker edits its own copy.
-- **Exactly one cell of the two-by-two escapes the question: `branch:<name>` + `parallel: false`.** There the shared branch is the main tree's branch and the store and the work are the same checkout, so the rule costs that configuration nothing. **`branch:<name>` + `parallel: true` does not escape it** — [Branch strategy](#branch-strategy) says that combination produces its work **in isolated worktrees** and lands it serialized, which is exactly why `branch:dev` + `parallel` is the race-free pairing — so the store is split there precisely as it is under `worktree`, and the rule applies unchanged. `parallel: true` **is** worktrees whatever `branch` says; read the rule off that axis, never off `branch` alone.
+- **Only one side ever edits the file, so the merge stays clean.** Transitions are written and committed in the main working tree; a per-issue **worktree** carries the issue file exactly as it was cut and no worker ever touches its own copy. A file changed on one side only merges without a conflict — that is precisely what the never-write-the-worktree rule buys, and precisely what is lost the moment a worker edits its own copy.
+- **`branch:<name>` + `parallel: false` escapes the question entirely.** There the shared branch is the main tree's branch and the store and the work are the same checkout, so the rule costs that configuration nothing. **`branch:<name>` + `parallel: true` does not escape it** — [Branch strategy](#branch-strategy) says that combination produces its work **in isolated worktrees** and lands it serialized, which is exactly why `branch:dev` + `parallel` is the race-free pairing — so the store is split there precisely as it is under `worktree`, and the rule applies unchanged.
+
+**The remaining cell, `worktree` + `parallel: false`, is the one this rule does not cover — and it is the default pairing**, so it gets a rule of its own rather than an exemption. Per [Branch strategy](#branch-strategy) that combination is _one tree, hops_: the main working tree checks the issue branch out **in place**. The store is the same path in that same tree, so it travels with the branch, and the discriminator is no longer the **tree** but the **branch it currently holds**. Every step of "the store is the main working tree's `<dir>`" is satisfied while the failure happens anyway:
+
+1. the drain writes `state: 'working'` in the store while the tree is on `pr.base`;
+2. the tree hops onto `ai/0042-…`, and the store — same path, same tree — is now that branch's copy;
+3. the worker advances to `reviewRequested`; the write commits onto the **PR branch**, or dirties the tree;
+4. the tree hops back to `pr.base`, the review drain greps the store and sees no `reviewRequested` — **invisible to the review queue**, indistinguishable from a drained one. Step 4 of the walkthrough above, reached without breaking a single rule.
+
+**So the store is written only while the tracker's tree is on `pr.base`.** The transition before the hop is written before it, the transition after the work is written after the hop back — never from the issue branch. This is a **rule about ordering, not about paths**, which is why the `$main` resolution above does not catch it, and it holds in every configuration: under `branch:<name>` the shared branch **is** `pr.base`, and under `parallel: true` the drain never leaves it, so the assert below is free there and load-bearing only in the hopping cell.
+
+```sh
+# Assert before every store write. $main is the tracker's tree, resolved above;
+# $resolved is the config from the resolver. pr.base falls back to the repo's
+# default branch, exactly as the branch base does everywhere else.
+base=$(printf '%s' "$resolved" | jq -er '.pr.base // empty' 2>/dev/null) || base=
+[ -n "$base" ] || base=$(git -C "$main" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+[ -n "$base" ] || { echo "cannot resolve pr.base — refusing to write the store" >&2; exit 1; }
+
+head=$(git -C "$main" rev-parse --abbrev-ref HEAD)
+[ "$head" = "$base" ] || { echo "refusing to write the store: $main is on $head, not $base" >&2; exit 1; }
+```
+
+An unresolvable base **stops the write** rather than defaulting to one: guessing `main` on a repo whose base is `dev` writes the transition to the wrong branch's copy, which is the same silent failure this section exists to close.
+
+**The assert binds the review drain too**, and that is where this cell costs something. The review loop writes the same store, and it does not hop — so while the implement drain sits on an issue branch, a concurrent review drain's write **fails loudly** instead of landing in that branch's copy. A drain that stops with a message beats one that writes a verdict into a file nobody reads again, but the two loops genuinely do not overlap cleanly here. **Where both drains run against one checkout, prefer `branch:<name>`**: the tree never leaves the shared branch, so the store never moves and the assert is free.
+
+Rejected: **declaring the cell unsupported.** It is the default pairing (`branch` defaults to `worktree`, `parallel` to `false`), so refusing it would make `tracker: local` unusable until a repo configures its way out of a default it never chose. Rejected: **moving the store out of the working tree** for this cell — the issue files are committed by construction ([ADR-0023](https://github.com/TitusKirch/skills/blob/main/docs/99.adr/0023-back-the-local-tracker-with-committed-files.md)), and a store outside the tree is a different tracker, not a fix to this one.
 
 The main working tree is also the one place the two drains agree on **without exchanging state**. A repo whose main tree sits on a branch that lacks `<dir>` is not a special case: the existence check below reports it as the setup problem it is.
 

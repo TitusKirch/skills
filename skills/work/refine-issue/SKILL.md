@@ -101,6 +101,8 @@ The questions this finds are the ones `grilling` already asks well: one question
 | **still open**          | a decision deferred, or `grilling` unavailable       | which question is holding it, and what it would decide                          |
 | **not worth working**   | already solved or duplicated (step 4)                | the commit, PR or issue that already covers it, and the recommendation to close |
 
+**The untriaged marker is reported for removal in that same command.** `work.labels.needsTriage` (opt-in, **off** by default) means _not ready to hand over_ — and an issue whose every decision this run closed is exactly what stops that being true. So a `ready for the label` verdict prints one command that adds the ready label **and** removes the marker, because the two left standing together are the contradiction the implement queue withholds an issue for. A `still open` verdict prints neither: an issue holding an unanswered question keeps the marker, which is the one case where it is saying something true. Shape, and the Linear equivalent: [REFERENCE.md](REFERENCE.md#report-output).
+
 The skill's terminal output is a **report**. It applies no lifecycle label, closes nothing, opens nothing, and touches no issue but this one.
 
 <skills-plan>
@@ -134,7 +136,7 @@ of a file.
 
 ## Guardrails
 
-- **Never apply the ready label** — nor any other lifecycle label. Reporting that an issue has earned it is the whole output; the human's hand on that label is the only checkpoint the unattended loop has.
+- **Never apply the ready label** — nor any other lifecycle label, and never **remove** one either. Reporting that an issue has earned it is the whole output; the human's hand on that label is the only checkpoint the unattended loop has. The untriaged marker is no exception: it is _reported_ for removal in the same printed command, never cleared by this run.
 - **One issue per run.** Never touch siblings, never close, reassign or relabel anything, and never turn a run into a backlog pass.
 - **Ask only what an agent may not decide.** An implementation detail asked of a human is a question that should have been answered by working.
 - **Answers land in the body, previewed first.** The body is the brief the loop reads; the preview is what stops a rewrite of the human's own words.

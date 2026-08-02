@@ -61,6 +61,8 @@ Branch naming, parallel/worktree handling and serialized integration: [REFERENCE
 
 **Re-read the issue body each run** — live tracker state, not a cached memory. The body is the source of truth for **scope and requirements**; it is not the source of truth for **eligibility** — the lifecycle label settled that at step 3 and stays [operative](REFERENCE.md#label-vs-body-precedence). A body line contradicting the current label ("early idea", "intentionally not `ai: ready`") is stale text, not a veto: **do the work and surface the conflict** — warn in the run's report and note it at the [feedback destination](REFERENCE.md#feedback-destination). Never let it silently override the label into a block.
 
+**Read the comments too, and settle body against comment by rule rather than by escalating.** The body is the scope, so a newer body edit supersedes an older comment — _unless_ that comment explicitly revised a named earlier decision ("this revises the comment above") and the body never mentions the revision, in which case the revision is the live decision and the body is the stale text. Follow the surviving statement, and **name both** — the two statements, their timestamps and which one this run followed — in the report and at the feedback destination: [body vs comment precedence](REFERENCE.md#body-vs-comment-precedence).
+
 - **fresh** → do the work the body describes.
 - **re-work** (`changes-requested`) → **read the review feedback first** (the reviewer's `changes-requested` PR review or issue/Linear comment — look in **both** places, since `work.feedback` routes only where feedback is _written_), address exactly that, then the body. The feedback is why this issue came back.
 

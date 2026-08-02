@@ -15,7 +15,7 @@ disallowed-tools:
 
 # work-implement-queue
 
-Drain the repo's queue of **implementable** issues — every `ready` issue plus every `changes-requested` issue (re-work after review) — and carry each to a **pushed, reviewable** state by delegating to `work-implement`. The loop is **thin**: the tracker is the queue, each issue is worked in a **fresh worker**, and the output is an issue in `reviewRequested`, handed to the `work-review-queue`. Run it under `/loop work-implement-queue` for continuous operation.
+Drain the repo's queue of **implementable** issues — every `ready` issue plus every `changes-requested` issue (re-work after review) — and carry each to a **pushed, reviewable** state by delegating to `work-implement`. The loop **implements nothing itself**: the tracker is the queue, each issue is worked in a **fresh worker**, and the output is an issue in `reviewRequested`, handed to the `work-review-queue`. Run it under `/loop work-implement-queue` for continuous operation.
 
 **Opted out?** If the repo config sets `work` to `false`, all `work-*` skills are **disabled** for the repo — stop immediately and tell the user they are turned off in `.tituskirch-skills.json`. An _absent_ `work` block is **not** disabled. Check `.work == false` on the resolved config before acquiring the lock or building the queue — step 1 resolves it, right after the required-worker check that has to come first. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 

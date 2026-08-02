@@ -16,6 +16,7 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One issue per run, one tracker 
 | `work.tracker`             | `github` or `linear`; falls back to `issue.tracker`                                                             |
 | `work.labels.ready`        | the label this run reports an issue as having earned; default `ai: ready`, `false` = no approval gate at all    |
 | `work.labels.*` (the rest) | the lifecycle strings that say an issue is already in the loop (step 3)                                         |
+| `work.labels.needsTriage`  | the "not ready to hand over" marker; **opt-in — defaults to off**; reported for removal beside the ready label  |
 | `work.labels.repo`         | Linear repo-scope label (a string) or `false` — the discriminator the candidate and duplicate queries filter on |
 | `work.linear.team`         | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                              |
 | `issue.language`           | the language the `Decided` block is written in; falls back to the root `language`                               |
@@ -193,17 +194,19 @@ refine-issue — #108 "Add a skill that takes an issue to ai: ready"
              - who applies the label   → the human, always
   written  : body updated (Decided block appended, 3 bullets)
   verdict  : ready for the label
-Apply it: gh issue edit 108 --add-label "ai: ready"
+Apply it: gh issue edit 108 --add-label "ai: ready" --remove-label "needs triage"
 ```
 
 **The `verdict` line is the point of the run**, and the command under it is printed rather than executed. Where the verdict is `still open`, the command is omitted entirely and the unanswered question takes its place — printing a command for a label the issue has not earned invites exactly the approval this skill refuses to grant.
+
+**`work.labels.needsTriage` rides along in that one command, as a `--remove-label`.** The untriaged marker means _not ready to hand over_, so this run is exactly what stops it being true: a refined issue with every decision closed is no longer undecided, and leaving the marker on beside the ready label produces the [contradiction](#config) the implement queue withholds an issue for. It is printed, **never run** — same as the label beside it. This skill writes the brief and nothing else, and one command a human runs once is the cheapest form the pairing can take; two commands, or a skill quietly clearing a label the human never watched it clear, both cost more than they buy. Omit the `--remove-label` when the label is unset (`needsTriage` defaults to **off**) or when the issue does not carry it, and omit the whole line whenever the verdict is `still open` — an issue holding an unanswered question **keeps** the marker, which is the one case where it is saying something true.
 
 ## Tracker — GitHub (`gh`)
 
 - **Read** — `gh issue view <n> --json title,body,comments,labels,createdAt,url` for the brief; the comments are part of it, judged by [Author authority](#author-authority).
 - **Candidates** — the negative label search above; `gh label list` (via the cache) resolves what the lifecycle strings actually are.
 - **Duplicates** — `gh search issues --repo <owner>/<repo> --state open`.
-- **Write** — `gh issue edit <n> --body-file <tmp>`, once, after confirmation. The label stays for the human: `gh issue edit <n> --add-label "<ready>"` is printed, never run.
+- **Write** — `gh issue edit <n> --body-file <tmp>`, once, after confirmation. The labels stay for the human: `gh issue edit <n> --add-label "<ready>" --remove-label "<needsTriage>"` is printed, never run — the second flag only where the label is configured and the issue carries it ([Report output](#report-output)).
 
 ## Tracker — Linear (MCP)
 
@@ -211,5 +214,5 @@ Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — disco
 
 - **Read** — `get_issue` for the issue, `list_comments` for the discussion; a comment's author decides whether it may steer the run, and `list_comments` returns only `{id, name}`, so the guest check is a second call ([Author authority](#author-authority)).
 - **Candidates / duplicates** — `list_issues` by team (`work.linear.team`) plus `work.labels.repo`, with the lifecycle labels excluded.
-- **Write** — `save_issue` with the issue's `id` and the new body. **Never** with a label or a workflow state: this skill's write is the brief, and moving the board is what it declines to do.
+- **Write** — `save_issue` with the issue's `id` and the new body. **Never** with a label or a workflow state: this skill's write is the brief, and moving the board is what it declines to do. The ready label and the `needsTriage` removal are reported as the human's next step here too — Linear labels are team-scoped, so `work.labels.needsTriage` names a label of the configured team.
 - **Repo scope** — Linear puts every repo's issues in one team, so `work.labels.repo` is what says an issue is this repo's. Set to `false` only for a single-repo team; absent with `tracker: linear` is a config error to report, never a licence to read another repo's backlog.
