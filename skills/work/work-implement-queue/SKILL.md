@@ -74,7 +74,7 @@ Release the lock. Summarise each issue and its outcome (handed to `reviewRequest
 
 Issues now in `reviewRequested` are the drain's hand-off — the `work-review-queue` picks them up. Name the count.
 
-**Under `work.queueBranch`, the queue PR is a hand-off artifact too** — report its url beside them, and say plainly that this drain does **not** land it and that the target repo's fast-forward workflow does, once it is green. A queue PR nobody knows is waiting is the mode's failure mode; naming it every run is what keeps it from becoming one.
+**Under `work.queueBranch`, the queue PR is a hand-off artifact too** — report its url beside them, and say plainly that this drain does **not** land it: landing belongs to the target repo's fast-forward workflow, and that workflow can only act while the queue branch still contains `pr.base`'s tip. Where anything else has landed on `pr.base` since, say so too — the fast-forward is off the table until that repo puts the branch back on top, which is its call and not this drain's. A queue PR nobody knows is waiting is the mode's failure mode; naming it every run is what keeps it from becoming one.
 
 **Then name the queue's state**, so a repeating driver (`/loop`, cron, a human) knows whether to run again, wait, or stop — instead of that rule living in whoever typed the loop prompt. **Query the tracker again first**: work that became eligible while the last issue was being implemented is already there, and waiting on input that exists wastes an interval. Then decide **in this order**:
 
