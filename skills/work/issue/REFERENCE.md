@@ -1,6 +1,6 @@
 # issue — Reference
 
-Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two trackers (GitHub `gh` / Linear MCP), chosen per-repo by config.
+Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, four trackers (GitHub `gh` / GitLab `glab` / Linear MCP / [local files](#tracker--local-files)), chosen per-repo by config. Which **host** a forge-native tracker talks to is resolved per repo too — [The forge and its host](#the-forge-and-its-host).
 
 ## Config
 
@@ -26,7 +26,7 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, two trackers (GitHub
 
 | Key                                   | Effect                                                                                                                                                                                                                     |
 | :------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `issue.tracker`                       | `github`, `linear` or `local` — the active tracker (set by setup, never guessed silently)                                                                                                                                  |
+| `issue.tracker`                       | `github`, `gitlab`, `linear` or `local` — the active tracker (set by setup, never guessed silently)                                                                                                                        |
 | `issue.local.dir`                     | `local` issue directory — repo-relative, default `.agents/issues` ([Tracker — local](#tracker--local-files)); the only key that tracker takes, and it has a default                                                        |
 | `issue.language`                      | title/body language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`                                                                                                                  |
 | `issue.title.convention`              | `plain` (default — most trackers) or `conventional` (`type: subject`)                                                                                                                                                      |
@@ -355,6 +355,18 @@ gh api --method DELETE repos/{owner}/{repo}/issues/{parent}/sub_issue -F sub_iss
 ```
 
 Add `-F replace_parent=true` to reparent a child that already has a parent. Reprioritize with `PATCH .../issues/{parent}/sub_issues/priority` (`sub_issue_id` + `after_id`/`before_id`).
+
+## Tracker — GitLab (`glab`)
+
+The same contract the GitHub driver meets, through the official GitLab CLI. Everything below runs against the host [The forge and its host](#the-forge-and-its-host) resolved — pass it as `GITLAB_HOST`, never assume `gitlab.com`.
+
+- **Availability** — `glab repo view` (fails → not a GitLab project, wrong host, or `glab` not authenticated). Report the host that was tried; on a self-hosted instance a wrong host and a missing login look identical in the error otherwise.
+- **Create** — `glab issue create --title <t> --description <d> [--label <l>] [--assignee <a>] [--milestone <m>]`. Labels are passed comma-separated, and `--description` takes the body; where the body is multi-line markdown, write it to a file and pass `--description "$(cat <f>)"` — `glab` has no `--body-file`.
+- **Update** — `glab issue update <n> [--title …] [--description …] [--label …] [--unlabel …] [--assignee …]`; close with `glab issue close <n>`. **`--unlabel` is the counterpart of `gh`'s `--remove-label`**, and both flags may be given in one call, which is what makes a lifecycle flip a single atomic write here as it is on GitHub.
+- **Search/list** — `glab issue list --search <q> [--label …] [--assignee …]`, `--all`/`--closed` for state. `glab issue list --output json` gives the machine-readable form the queue reads.
+- **Catalogs** — `glab label list --per-page 100` (or `glab api projects/:id/labels --paginate`). Milestones via `glab api projects/:id/milestones`. GitLab labels are **project- or group-scoped**, and a group label is usable on the project without being listed among the project's own — resolve against both before reporting a label as unresolvable.
+- **Issue templates** — GitLab's own convention is `.gitlab/issue_templates/*.md`. Read those **and** `.github/ISSUE_TEMPLATE/*` where a repo carries both (a migrated repo often does), and fill them per [Issue templates](#issue-templates), which is tracker-neutral.
+- **Sub-issues** — GitLab has no `sub_issue` endpoint. The parent/child edge is the **linked-issue** relation with the `blocks`/`is_blocked_by` link type (`glab api --method POST projects/:id/issues/:iid/links -f target_project_id=… -f target_issue_iid=… -f link_type=blocks`), and the work loop reads that same relation as its dependency edge. An epic is **not** the substitute: it is a group-level object with its own permissions, and a repo-scoped skill must not create one.
 
 ## Tracker — Linear (MCP)
 

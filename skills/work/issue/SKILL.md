@@ -1,8 +1,8 @@
 ---
 name: issue
 metadata:
-  summary: Creates/updates/searches issues across GitHub (gh), Linear (MCP) or local issue files, tracker chosen by config.
-description: Manages issues — create, update, search/list, and bulk — across GitHub (gh CLI), Linear (MCP) or local issue files, with the active tracker chosen per-repo by a committed config (.tituskirch-skills.json). Drafts title and body from a free-text description plus session context, previews once, and creates only after confirmation; switches to plan-only when asked. Use when the user wants to create, open, update, or find an issue or ticket, mentions GitHub issues or Linear, or says things like "open an issue", "create a ticket", "find the issue about X", "Issue erstellen", "Ticket anlegen".
+  summary: Creates/updates/searches issues across GitHub (gh), GitLab (glab), Linear (MCP) or local files, tracker chosen by config.
+description: Manages issues — create, update, search/list, and bulk — across GitHub (gh CLI), GitLab (glab CLI), Linear (MCP) or local issue files, with the active tracker and the host it talks to chosen per-repo by a committed config (.tituskirch-skills.json), self-hosted instances included. Drafts title and body from a free-text description plus session context, previews once, and creates only after confirmation; switches to plan-only when asked. Use when the user wants to create, open, update, or find an issue or ticket, mentions GitHub issues, GitLab issues or Linear, or says things like "open an issue", "create a ticket", "find the issue about X", "Issue erstellen", "Ticket anlegen".
 allowed-tools:
   - Read
   - Grep
@@ -17,11 +17,14 @@ allowed-tools:
   - Bash(gh label list:*)
   - Bash(gh project list:*)
   - Bash(gh repo view:*)
+  - Bash(glab issue list:*)
+  - Bash(glab label list:*)
+  - Bash(glab repo view:*)
 ---
 
 # issue
 
-Create, update, and search issues without caring which tracker the repo uses. One skill, two trackers — **GitHub** (via `gh`) or **Linear** (via its MCP server) — picked per-repo by a small committed config. The skill drafts the issue from your free-text description plus the session context, shows it once, and writes it only after you confirm — or just prints the command when you ask for a plan.
+Create, update, and search issues without caring which tracker the repo uses. One skill, four trackers — **GitHub** (via `gh`), **GitLab** (via `glab`), **Linear** (via its MCP server) or **local files** — picked per-repo by a small committed config, which also settles **which host** a forge-native tracker talks to. The skill drafts the issue from your free-text description plus the session context, shows it once, and writes it only after you confirm — or just prints the command when you ask for a plan.
 
 **Opted out?** If the repo config sets `issue` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the issue skill is turned off in `.tituskirch-skills.json`. An _absent_ `issue` block is **not** disabled (it falls back to detection/defaults). Check `.issue == false` on the resolved config before any action — and before indexing `.issue.tracker`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
@@ -37,7 +40,7 @@ Config/cache schema, the full setup flow, and tracker recipes: [REFERENCE.md](RE
 
 ### 2. Determine the tracker
 
-From `issue.tracker` (`github` | `linear`). Then check availability: GitHub → `gh repo view --json nameWithOwner`; Linear → confirm the Linear MCP tools are present and authenticated. Unavailable/unauthenticated → say so and point to the fix (e.g. authenticate the Linear MCP), don't guess the other tracker.
+From `issue.tracker` (`github` | `gitlab` | `linear` | `local`). A forge-native tracker also needs its **host**, resolved per repo — config, then the `origin` remote, then whatever the CLI is already authenticated against ([REFERENCE.md](REFERENCE.md#the-forge-and-its-host)); never resolve it once and reuse it across repos. Then check availability: GitHub → `gh repo view --json nameWithOwner`; GitLab → `glab repo view` against the resolved host; Linear → confirm the Linear MCP tools are present and authenticated; `local` → the issue directory (nothing to authenticate). Unavailable/unauthenticated → say so, **naming the host that was tried**, and point to the fix (`glab auth login --hostname …`, authenticate the Linear MCP); don't guess another tracker.
 
 ### 3. Detect the action
 
