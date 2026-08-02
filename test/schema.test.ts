@@ -251,6 +251,43 @@ describe('the concurrency bound beside the run cap', () => {
   });
 });
 
+// The queue branch is the one work mode that strands its output when the repo it
+// runs in cannot land it: issue PRs pile up on `ai/queue-<hash>` and nothing ever
+// merges them without the fast-forward workflow. So the gate has to be opt-in in
+// the schema itself — absent must stay valid and must mean off, or every config
+// written before the key existed would silently acquire the mode.
+describe('the queue-branch gate', () => {
+  test('it is optional, and a boolean when present', () => {
+    accepts({ work: { branch: 'worktree' } }, 'absent — the mode stays off');
+    accepts(
+      { work: { branch: 'worktree', queueBranch: true } },
+      'the opt-in the key exists for'
+    );
+    accepts(
+      { work: { branch: 'worktree', queueBranch: false } },
+      'written out explicitly, which is also the default'
+    );
+  });
+
+  test('it is a gate, not a branch name', () => {
+    rejects({ work: { queueBranch: 'ai/queue-abc' } }, 'not a branch string');
+    rejects({ work: { queueBranch: 'true' } }, 'not a boolean-ish string');
+    rejects({ work: { queueBranch: 1 } }, 'not a number');
+    rejects({ work: { queueBranch: null } }, 'not null');
+  });
+
+  test('it can be overlaid in a profile, like every other work key', () => {
+    accepts(
+      { profiles: { ci: { work: { queueBranch: true } } } },
+      'profile queueBranch fragment'
+    );
+    rejects(
+      { profiles: { ci: { work: { queueBranch: 'yes' } } } },
+      'the type still applies inside a profile'
+    );
+  });
+});
+
 // work.loop paces a repeating driver between drains. Both keys are optional and
 // independent — a repo tuning the poll interval must not be forced to restate the
 // backstop — and both are whole seconds, so the seconds/milliseconds mix-up that a

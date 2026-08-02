@@ -43,12 +43,14 @@ Before building the queue, reclaim issues an earlier implement-run crashed on: a
 
 ### 4. Announce the batch — then drain
 
-**`ai: ready` is already the human's approval** to work an issue — the label means "scoped + approved for an AI agent to pick up". So the drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, branch strategy and parallel mode — with the **concurrency** it will run at when that mode is `parallel` (call out any **dependency-forced order**, any **mutex-forced wave split**, plus issues **deferred** or **skipped**), then drain. Under `/loop` it runs unattended.
+**`ai: ready` is already the human's approval** to work an issue — the label means "scoped + approved for an AI agent to pick up". So the drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, branch strategy and parallel mode — with the **concurrency** it will run at when that mode is `parallel` (call out any **dependency-forced order**, any **mutex-forced wave split**, plus issues **deferred** or **skipped**), then drain. Say so too when `work.queueBranch` is on, naming the `ai/queue-<hash>` the PRs will target and whether it is being reused or cut. Under `/loop` it runs unattended.
 
 - **Plan-only triggers** ("just show me", "dry run", "nur den Plan", "don't run") still stop after the plan.
 - If the ready-gate is **widened** (`labels.ready: false`, so issues were never explicitly opted-in), confirm before working those — there is no per-issue approval to lean on.
 
 ### 5. Drain
+
+**First, if `work.queueBranch` is on** (`worktree` only — inert under `branch:<name>`, which opens no per-issue PR to group): **reuse or cut the queue branch, and open its PR, before the first worker starts.** An `ai/queue-*` PR already **open** against `pr.base` → reuse that branch; none open → cut `ai/queue-<hash>` from `pr.base` and open the `ai/queue-<hash>` → `pr.base` PR. The hash only keeps concurrent drains apart and encodes nothing later read back. Hand the branch to every worker as its base — that is the whole of what the mode changes for them. Doing this **here** rather than at step 1 means an empty queue cuts nothing. **Cannot cut the branch or open that PR → stop and report**, having drained nothing: falling back to `pr.base`, or draining onto a branch carrying no PR, is how work is stranded where nobody looks for it. The drain **never merges or fast-forwards** that PR — the target repo's own workflow lands it. Rules: **Queue branch** in `work-implement`'s REFERENCE.
 
 For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-implement` on exactly that issue:
 
@@ -71,6 +73,8 @@ Release the lock. Summarise each issue and its outcome (handed to `reviewRequest
 **Name every issue withheld for contradicting labels**, one line each with its number and both labels — **both** the ones step 3's partition held back and the ones a worker returned `skipped` at claim time, which are the same finding caught at two moments. This report is the _only_ artifact the check produces, so an issue left out of it is an issue that silently vanished from the queue. Say what clears it: drop the triage label if the issue really is assessed, drop the lifecycle label if it is not.
 
 Issues now in `reviewRequested` are the drain's hand-off — the `work-review-queue` picks them up. Name the count.
+
+**Under `work.queueBranch`, the queue PR is a hand-off artifact too** — report its url beside them, and say plainly that this drain does **not** land it and that the target repo's fast-forward workflow does, once it is green. A queue PR nobody knows is waiting is the mode's failure mode; naming it every run is what keeps it from becoming one.
 
 **Then name the queue's state**, so a repeating driver (`/loop`, cron, a human) knows whether to run again, wait, or stop — instead of that rule living in whoever typed the loop prompt. **Query the tracker again first**: work that became eligible while the last issue was being implemented is already there, and waiting on input that exists wastes an interval. Then decide **in this order**:
 
@@ -136,6 +140,7 @@ of a file.
 - **Never run a declared mutex pair concurrently** — split them across waves of the same run, under either branch strategy. A mutex **delays**; it never defers, labels, or blocks, and the skill never writes a `mutex:` label.
 - **Never work an issue whose labels contradict each other** — `needsTriage` beside a lifecycle label is withheld and reported, never resolved by obeying the more permissive of the two, and never written to the tracker.
 - **This loop never reviews.** It produces `reviewRequested`/`blocked` only; `done`/`changes-requested`/`needs human` are the review loop's and the human's.
+- **The queue branch is opt-in, and the drain never lands it** — off unless `work.queueBranch` says otherwise, because only the repo knows whether a workflow exists to fast-forward it; the drain opens that PR and stops there, holding no credential that could write to a protected branch. Cutting the branch or opening the PR fails → stop, never fall back to `pr.base`.
 - Inherits `work-implement`'s attribution-free, secret-free, only-this-issue guardrails.
 
 ## Reference

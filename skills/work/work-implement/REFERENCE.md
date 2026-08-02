@@ -24,6 +24,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
     "concurrency": 3,
     "branch": "worktree",
     "parallel": false,
+    "queueBranch": false,
     "feedback": "pr",
     "labels": {
       "ready": "ai: ready",
@@ -64,6 +65,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 | `work.concurrency`                          | max workers running **at once** under `parallel: true`; defaults to `work.cap`, inert when `parallel` is `false`                                             |
 | `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)                                               |
 | `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))                                                   |
+| `work.queueBranch`                          | group a `worktree` drain's PRs behind one `ai/queue-<hash>` branch; **opt-in, default `false`** — see [Queue branch](#queue-branch)                          |
 | `work.feedback`                             | where both loops write their round-by-round output: `pr` or `issue`; **no fixed default** — [it follows `branch`](#feedback-destination)                     |
 | `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                                                        |
 | `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                                                              |
@@ -775,8 +777,27 @@ Two **independent** knobs — `work.branch` (where work lands) × `work.parallel
 - **Every extra worktree pays a full install** — the real price of concurrency, and on a repo whose dependencies run to hundreds of megabytes the install can outlast the implementation it gates. This is the cost `work.concurrency` exists to bound, and the reason it is a knob of its own rather than a second meaning for `cap` ([cap and concurrency](#cap-and-concurrency)): how many workers a machine can carry at once is not how many issues a run should work. Making that cheaper — copying or linking the heavy directories into a new worktree — is the repo's own call, never something a worker does behind the run's back: one `node_modules` shared by two live workers is one install either of them can leave wrong for the other.
 - **Serialized integration** — for a shared `branch:<name>` target under `parallel: true`, parallel work is produced in isolated worktrees and landed one commit at a time (push → rebase → retry). This is what makes `branch:dev` + `parallel` race-free.
 - **Mutex** — two issues a human has declared **order-free but colliding** (`mutex: <group>` on GitHub, `related` on Linear) never share a concurrent batch under `parallel: true`, in **either** branch mode; they run in different waves of the **same** run ([parallel-batch mutex](#parallel-batch-mutex)). Under `parallel: false` there is nothing to enforce.
-- **`worktree`** branches off `pr.base`; the worktree with committed+pushed work is removed after the PR is opened (commits live on the remote/branch).
+- **`worktree`** branches off `pr.base`; the worktree with committed+pushed work is removed after the PR is opened (commits live on the remote/branch). Under [`queueBranch`](#queue-branch) that base is the drain's `ai/queue-<hash>` instead — the only thing the gate changes.
 - **Dependencies** — the tracker's relations are read under **both** strategies; what differs is what a run can do about them. Under `branch:<name>` the drain works prerequisites first within the run ([dependency ordering](#dependency-ordering)); the shared branch accumulates, so the dependent issue just sees the code. Under `worktree` each issue branches off a clean `pr.base` and sees nothing of its siblings, so **no order the run picks can satisfy an edge** — the dependent is **deferred** until its prerequisite lands on `pr.base`. Stacked branches remain a **v2** concern — deferred, with the rationale recorded in this skill's `DESIGN.md`.
+
+### Queue branch
+
+**`work.queueBranch: true` retargets a `worktree` drain's pull requests at one shared branch** — every issue PR opens against `ai/queue-<hash>` instead of `pr.base`, and one `ai/queue-<hash>` → `pr.base` PR closes the run. Default **`false`**; **inert under `branch:<name>`**, which opens no per-issue PR to group.
+
+**What changes is the base, and nothing else.** Each issue still gets its own branch, its own worktree, its own PR and its own review — the isolation the mode is chosen for is untouched. `ai/queue-<hash>` is cut from `pr.base` and is the base those PRs point at.
+
+| Who   | Does                                                                                             |
+| :---- | :----------------------------------------------------------------------------------------------- |
+| Drain | cuts or reuses `ai/queue-<hash>`, opens the queue PR, reports it — `work-implement-queue` step 1 |
+| Unit  | branches off `ai/queue-<hash>` and opens its issue PR **against** it (steps 5 and 8)             |
+
+**Reuse before cutting.** If an `ai/queue-*` PR is already **open** against `pr.base`, the drain reuses that branch; only when none is open does it cut a new one and open a new PR. The hash is **arbitrary** — it exists to keep concurrent drains apart, and encodes nothing a later run reads back. So a drain that ends on `cap` and is invoked again keeps filling the same queue PR rather than opening a second one beside it.
+
+**The drain opens the queue PR; it never lands it.** No merge, no fast-forward, no bypass-capable credential — the queue PR **is** the drain's hand-off artifact, reported alongside the issues in `reviewRequested`. Landing it belongs to the **target repo's own workflow**, which mints its token in CI and fast-forwards the integration branch onto the queue PR's head once that PR is green. A fast-forward carries every commit across individually and unchanged, which is what release-please needs for one CHANGELOG entry per issue, and it needs no change to the base branch's `allowed_merge_methods`. That split is the point: the credential that can write to a protected branch never sits on the machine running the loop.
+
+**The opt-in is the repo asserting that workflow exists.** Nothing in a drain can confirm it, and the failure is silent and total when it is missing — issue PRs accumulate on a branch nothing ever merges, each one green, reviewed, and going nowhere. So the mode is **off unless configured on**, and the order is fixed: **the queue PR exists before any issue PR targets its branch.** A drain that cannot cut the branch or open that PR **stops and reports** rather than falling back to `pr.base` or draining onto a branch with no PR on it — a loud stop costs one run, and stranded work is found later, by hand, one PR at a time.
+
+**The CI saving is the repo's to make, and this skill does not promise it.** Grouping only saves runner minutes where the repo's workflows **decline to run** on the queue branch — a `ci.yml` scoped `pull_request.branches: [main, dev]` triggers nothing for a PR against `ai/queue-*`, so CI runs once, on the queue PR. A repo **without** that filter runs the same workflows on every issue PR exactly as before and saves nothing; what it gets from the mode is one merge into `pr.base` instead of n, which is noise reduction. Weigh it against where it runs, too: on a **public** repo Actions minutes are free, so the saving there is tidiness rather than money.
 
 ### Rebase conflicts
 
