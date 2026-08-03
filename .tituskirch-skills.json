@@ -97,7 +97,8 @@
       "needsTriage": "needs triage"
     },
     "review": {
-      "maxRounds": 3
+      "maxRounds": 3,
+      "timeout": 600
     },
     "priorityLabels": [
       "priority: urgent",
@@ -109,6 +110,7 @@
   "profiles": {
     "worktree": {
       "work": {
+        "concurrency": 8,
         "branch": "worktree",
         "parallel": true,
         "queueBranch": true
