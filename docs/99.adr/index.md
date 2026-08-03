@@ -35,3 +35,5 @@ A decision earns an ADR when it constrains work that comes later and its reasoni
 | [ADR-0024](0024-settle-a-body-comment-conflict-by-rule.md)          | Settle a body–comment conflict by rule                      | accepted | 2026-08-02 |
 | [ADR-0025](0025-keep-the-work-loops-reference-whole.md)             | Keep the work loop's reference whole                        | accepted | 2026-08-02 |
 | [ADR-0026](0026-lead-a-run-report-with-its-result.md)               | Lead a run report with its result                           | accepted | 2026-08-02 |
+| [ADR-0027](0027-leave-reasoning-effort-to-the-caller.md)            | Leave reasoning effort to the caller                        | accepted | 2026-08-02 |
+| [ADR-0028](0028-dock-gitlab-and-resolve-the-host-per-repo.md)       | Dock GitLab on both axes, and resolve the host per repo     | accepted | 2026-08-02 |

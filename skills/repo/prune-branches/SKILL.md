@@ -2,7 +2,7 @@
 name: prune-branches
 metadata:
   summary: Reports a repo's stale branches grouped by why they are stale, and deletes the ones confirmed.
-description: Reports a repo's stale branches grouped by why they are stale — merged into the integration branch (squash and rebase merges included), upstream gone, a closed PR that never merged, and no commits for 90 days — then deletes only what a human confirms. Local and remote branches list separately; a scope argument restricts a run to one side. Merged and upstream-gone form the default set; a closed PR and plain age are listed, never preselected. Protected branches are never offered. Forge chosen per-repo by config (root forge key); v1 is GitHub via the gh CLI. Invoke manually only — never fires proactively and never deletes without an explicit yes. Use when the user wants to prune, clean up or list stale, merged or dead branches, asks which branches are safe to delete, or says things like "clean up the branches", "delete the merged branches", "Branches aufräumen", "alte Branches löschen".
+description: Reports a repo's stale branches grouped by why they are stale — merged into the integration branch (squash and rebase merges included), upstream gone, a closed PR that never merged, and no commits for 90 days — then deletes only what a human confirms. Local and remote branches list separately; a scope argument restricts a run to one side. Merged and upstream-gone form the default set; a closed PR and plain age are listed, never preselected. Protected branches are never offered. Forge chosen per-repo by config (root forge key) — GitHub via gh, GitLab via glab, against a host resolved per repo. Invoke manually only — never fires proactively and never deletes without an explicit yes. Use when the user wants to prune, clean up or list stale, merged or dead branches, asks which branches are safe to delete, or says things like "clean up the branches", "delete the merged branches", "Branches aufräumen", "alte Branches löschen".
 allowed-tools:
   - Read
   - Grep
@@ -23,6 +23,9 @@ allowed-tools:
   - Bash(gh pr view:*)
   - Bash(gh repo view:*)
   - Bash(gh api:*)
+  - Bash(glab mr list:*)
+  - Bash(glab repo view:*)
+  - Bash(glab api:*)
 ---
 
 # prune-branches
@@ -39,7 +42,7 @@ Its one principle, from which the rest follows:
 
 ### 1. Detect (read the repo — never assume)
 
-- **Forge** — from the root `forge` key (v1: only `github` is implemented; any other value → say it is not supported yet and stop). Confirm the repo is reachable: `gh repo view --json nameWithOwner,defaultBranchRef`. If it fails (no GitHub remote, or `gh` not authenticated), **stop** — two of the four categories and half the protection are read from the forge, and without them the run silently degrades from evidence to guesswork.
+- **Forge and host** — from the root `forge` key (`github` → `gh`, `gitlab` → `glab`; anything else → say it is not supported and stop) plus the host resolved per repo: `forgeHost`, else the `origin` remote, else whatever the CLI is already authenticated against ([REFERENCE.md](REFERENCE.md#the-forge-and-its-host)). Confirm the repo is reachable — `gh repo view --json nameWithOwner,defaultBranchRef` or `glab repo view`. If it fails (no remote on that forge, wrong host, or the CLI not authenticated), **stop**, naming the host tried — two of the four categories and half the protection are read from the forge, and without them the run silently degrades from evidence to guesswork.
 - **Integration branch** — `pr.base`, else the repo's default branch. **Never hardcode `main` or `dev`.**
 - **Remote** — the integration branch's own remote (`git config branch.<base>.remote`), else `origin`. **One remote per run.** Forks, mirrors and any second remote are neither read nor written ([why](REFERENCE.md#decisions)).
 - **Refresh before reading anything** — `git fetch --prune <remote>`. Every category depends on current refs: `[gone]` means nothing against a stale remote-tracking set, and a branch merged an hour ago still looks unmerged. `--prune` removes **remote-tracking refs only** — it deletes no branch, on neither side. Fetch fails → stop; a stale answer here is worse than none.
@@ -57,33 +60,35 @@ Before a single branch is classified, collect everything that must not be delete
 | The integration branch     | `pr.base`, else the default branch                                                   |
 | Checked out anywhere       | this checkout's worktrees, the current HEAD included                                 |
 | Forge-protected            | the forge's branch protection — classic rules and rulesets alike                     |
-| Has an **open** PR         | the forge's open pull requests, every one of them                                    |
+| Has an **open** request    | the forge's open pull requests — GitLab: merge requests — every one of them          |
 | Name fallback              | `main`, `master`, `dev`, `develop`, `stage`, `staging`, `prod`, `production`, `next` |
 | `pruneBranches.protect`    | glob patterns from the config — **added to** this list, never replacing it           |
 
-**Take the exact reads from [Protection](REFERENCE.md#protection), never from memory.** Each carries the pagination it needs, and that is not decoration: a list command stops at its default page — `gh pr list` fetches 30 — and silently returns a shorter answer, which here reads as "this branch has no open PR". A source written out a second time is how that limit gets dropped.
+**Take the exact reads from [Protection](REFERENCE.md#protection), never from memory.** Each carries the pagination it needs, and that is not decoration: a list command stops at its default page — `gh pr list` and `glab mr list` both fetch 30 — and silently returns a shorter answer, which here reads as "this branch has no open request". A source written out a second time is how that limit gets dropped.
 
 - **Protection is a filter, not a warning.** A protected branch leaves the run entirely: not preselected, not listed as a candidate, not mentioned as "skipped because protected but you could". The count is worth reporting; the branches are not candidates.
 - **The name fallback is a floor, not the mechanism.** A repo with real branch protection gets it from the forge; the names exist so a repo that declares no rules is still safe. Both apply, always — the fallback is never switched off by the forge answering.
 - **The forge read failing is not "nothing is protected" — it is an _unknown_ list, and it ends the run at the report.** An API error, a rate limit, missing access: every other source still applies and every branch is still classified and listed with its evidence, but the run **offers no deletions at all** — nothing preselected, nothing confirmable, nothing deleted. Name the call that failed and say the run is a report only. Un-preselecting is not enough: the branch a rule protects is the one the report cannot identify ([why](REFERENCE.md#decisions)).
-- **An open PR's head is untouchable.** Deleting it closes someone's live review, and a long-running PR is exactly the branch that trips category 4.
+- **An open request's head is untouchable.** Deleting it closes someone's live review, and a long-running PR or MR is exactly the branch that trips category 4.
 - **`release/*` is deliberately not protected** — that is the shape of release-please's own throwaway branches ([why](REFERENCE.md#decisions)). A repo that ships from `release/*` adds it via `pruneBranches.protect`.
 
 ### 3. Classify — four reasons, first match wins
 
 Each branch lands in **exactly one** category, tested in this order. Overlap is the normal case — a merged branch usually also has a gone upstream — and the earlier category is the stronger evidence, so it wins.
 
-| #   | Category                | Evidence                                                                      | Tier              |
-| :-- | :---------------------- | :---------------------------------------------------------------------------- | :---------------- |
-| 1   | **Merged**              | the forge merged its PR, or every commit is already in the integration branch | default set       |
-| 2   | **Upstream gone**       | `%(upstream:track)` is `[gone]` after a pruning fetch                         | default set       |
-| 3   | **Closed PR, unmerged** | a PR with this head was closed with `mergedAt` null                           | never preselected |
-| 4   | **Stale by age**        | tip committer date older than `pruneBranches.age` days (default 90)           | never preselected |
+| #   | Category                     | Evidence                                                                           | Tier              |
+| :-- | :--------------------------- | :--------------------------------------------------------------------------------- | :---------------- |
+| #   | Category                     | Evidence                                                                           | Tier              |
+| :-- | :--------------------------- | :--------------------------------------------------------------------------------- | :---------------- |
+| 1   | **Merged**                   | the forge merged its request, or every commit is already in the integration branch | default set       |
+| 2   | **Upstream gone**            | `%(upstream:track)` is `[gone]` after a pruning fetch                              | default set       |
+| 3   | **Closed request, unmerged** | a PR/MR with this head was closed with `mergedAt` null                             | never preselected |
+| 4   | **Stale by age**             | tip committer date older than `pruneBranches.age` days (default 90)                | never preselected |
 
-**Category 1 is where the work is.** `git branch --merged` sees only ancestor merges, so a squash-merged branch — the normal outcome of most PR workflows — reads as unmerged. Two things fix that, in this order:
+**Category 1 is where the work is.** `git branch --merged` sees only ancestor merges, so a squash-merged branch — the normal outcome of most review workflows — reads as unmerged. Two things fix that, in this order:
 
-1. **Ask the forge.** A merged PR is direct testimony — it merged, whatever the commit graph looks like afterwards. Read the PR list **once for the repo**, not once per branch, and raise `--limit` off its default of 30 or the branches past the cutoff silently read as "never had a PR". Skip cross-repository PRs, so a fork's head branch never enters the run.
-2. **Compare patches, not hashes.** No PR, or no forge answer, → `git cherry <base> <branch>` marks each commit `-` when an equivalent patch is already in the base (that catches **rebase** merges), and a synthetic single-commit tree catches **squash** merges. Recipes: [REFERENCE.md](REFERENCE.md#detecting-a-squash-or-rebase-merge).
+1. **Ask the forge.** A merged request is direct testimony — it merged, whatever the commit graph looks like afterwards. Read the request list **once for the repo**, not once per branch, and page past the default of 30 or the branches past the cutoff silently read as "never had one". Skip cross-repository requests, so a fork's head branch never enters the run.
+2. **Compare patches, not hashes.** No request, or no forge answer, → `git cherry <base> <branch>` marks each commit `-` when an equivalent patch is already in the base (that catches **rebase** merges), and a synthetic single-commit tree catches **squash** merges. Recipes: [REFERENCE.md](REFERENCE.md#detecting-a-squash-or-rebase-merge).
 
 **Neither test says "probably".** A branch that fails both is not merged, and it belongs in category 3 or 4 or nowhere — never in category 1 with a caveat.
 
@@ -104,7 +109,7 @@ Each branch lands in **exactly one** category, tested in this order. Overlap is 
 ### 5. Delete — only what came back confirmed
 
 - **Record the tip SHA first, and per side** — `refs/heads/<branch>` and `refs/remotes/<remote>/<branch>` can differ, and each is its own side's restore argument. **No SHA on a side is no branch on that side**, so nothing is deleted there; a name that resolves on neither side is held and reported, never deleted. This is also the guard that stops an unresolvable ref: no restore argument, no deletion.
-- **Two questions, not one. The confirmed category licenses the _deletion_; containment licenses the _forcing_.** Collapsing them makes categories 2, 3 and 4 undeletable — a branch reaches them by failing category 1's test, so `git merge-base --is-ancestor` is false for them **by construction**. So: run `git branch -d` first, then **read its refusal instead of obeying it**. With an upstream set `-d` compares the branch against its **remote counterpart**, and once that upstream is `[gone]` it falls back to **HEAD** — never the integration branch, which is why it refuses precisely the category-2 branch that is the category's whole point. **`-D` is reached only through that refusal**, never as the line after `-d`, and only on a licence the report names: containment, category 1's own evidence, or the confirmed category with its tip SHA already recorded ([recipe](REFERENCE.md#git--gh-recipes)). No licence → hold the branch and report it.
+- **Two questions, not one. The confirmed category licenses the _deletion_; containment licenses the _forcing_.** Collapsing them makes categories 2, 3 and 4 undeletable — a branch reaches them by failing category 1's test, so `git merge-base --is-ancestor` is false for them **by construction**. So: run `git branch -d` first, then **read its refusal instead of obeying it**. With an upstream set `-d` compares the branch against its **remote counterpart**, and once that upstream is `[gone]` it falls back to **HEAD** — never the integration branch, which is why it refuses precisely the category-2 branch that is the category's whole point. **`-D` is reached only through that refusal**, never as the line after `-d`, and only on a licence the report names: containment, category 1's own evidence, or the confirmed category with its tip SHA already recorded ([recipe](REFERENCE.md#git--forge-recipes)). No licence → hold the branch and report it.
 - **Remote: `git push <remote> --delete <branch>`**, on the run's single remote, and with the **short** name — classification reads the remote side as the qualified `<remote>/<branch>`, but neither delete verb ever takes that form. In a run covering both sides the remote deletion is skipped only where the local one **failed or was held**; a branch that was never checked out locally has **no local half at all**, which is the common case, not a failure, and its remote ref is deleted on the plan's own evidence. Never `--force` anything, never delete a tag, never touch a second remote.
 - **Local first, then remote, then `git fetch --prune`** so the tracking refs match reality when the run ends.
 - **A failed deletion stops nothing and hides nothing** — a protected-branch rejection from the forge, a race with someone else's push: report it per branch and carry on with the rest.

@@ -88,6 +88,7 @@ const withVerifyBase = skillsWithTag('<skills-verify>');
 const withVerifyIsolated = skillsWithTag('<skills-verify-isolated>');
 const withPlanBlock = skillsWithTag('<skills-plan>');
 const withTldrBlock = skillsWithTag('<skills-tldr>');
+const withForgeBlock = skillsWithTag('<skills-forge>');
 
 /**
  * Which skills run the repo's gate, and in which tree.
@@ -175,6 +176,67 @@ const TLDR_CARRIERS = [
   'work/work-implement-queue',
   'work/work-review-queue'
 ];
+
+/**
+ * Which skills pick a forge driver and resolve the host it talks to.
+ *
+ * Two facts, one rule: which CLI drives the forge (`gh` / `glab`) and which instance that
+ * CLI is pointed at. The host is the half that has to be mirrored rather than assumed —
+ * self-hosted GitLab is the normal deployment and GitHub Enterprise has the same shape, so
+ * a skill that resolves it once and reuses it reaches the wrong instance the moment a
+ * session touches a second repo.
+ *
+ * Declared, like the two rosters below it, because both failure directions are silent: a
+ * skill that starts driving a forge without the block re-derives the ladder its own way,
+ * and a listed one that lost its block keeps prose promising a resolution it no longer has.
+ *
+ * `release` and `merge-deps` are deliberately absent: both are GitHub-only, and stating
+ * that limitation is tracked on its own rather than papered over with a rule they do not
+ * follow. The two queue skills are absent for the standing reason — they name their
+ * worker's REFERENCE instead of mirroring, which the suite at the bottom of this file pins.
+ */
+const FORGE_CARRIERS = [
+  'repo/prune-branches',
+  'repo/pull-request',
+  'work/issue',
+  'work/work-implement',
+  'work/work-review'
+];
+
+describe('the forge driver and its host are one rule, not one per skill', () => {
+  test('the tags on disk are exactly the roster', () => {
+    assert.deepEqual(withForgeBlock.sort(), [...FORGE_CARRIERS].sort());
+  });
+
+  test('every forge-carrier also carries the config block, so it ships the resolver it reads forge/forgeHost from', () => {
+    for (const path of withForgeBlock) {
+      assert.ok(
+        withConfigBlock.includes(path),
+        `${path} carries the forge block but not the config block/resolver`
+      );
+    }
+  });
+
+  test('no link inside the forge block leaves the skill folder', () => {
+    for (const path of withForgeBlock) {
+      const dir = join(ROOT, 'skills', path);
+      for (const file of docsOf(dir)) {
+        const body = readFileSync(file, 'utf8');
+        const from = body.indexOf('<skills-forge>');
+        if (from === -1) continue;
+        const block = body.slice(from, body.indexOf('</skills-forge>'));
+        for (const target of relativeLinks(file).filter((t) =>
+          block.includes(`(${t}`)
+        )) {
+          assert.ok(
+            !target.startsWith('..'),
+            `${path}: forge block links out of the skill via "${target}"`
+          );
+        }
+      }
+    }
+  });
+});
 
 describe('the generated config block is self-contained', () => {
   test('it is present in the skills that read config, and nowhere else by accident', () => {
@@ -576,7 +638,11 @@ describe('a skill that cannot run alone names its worker instead of mirroring', 
   for (const [path, worker] of Object.entries(DELEGATES_TO_WORKER)) {
     test(`${path} carries neither mirrored block`, () => {
       const text = shippedText(path);
-      for (const tag of ['<skills-config>', '<skills-worklock>']) {
+      for (const tag of [
+        '<skills-config>',
+        '<skills-worklock>',
+        '<skills-forge>'
+      ]) {
         assert.ok(
           !text.includes(tag),
           `${path} re-grew ${tag} — ${worker}'s REFERENCE already states it`
@@ -584,13 +650,17 @@ describe('a skill that cannot run alone names its worker instead of mirroring', 
       }
     });
 
-    test(`${path} names ${worker}'s REFERENCE for both rules`, () => {
+    test(`${path} names ${worker}'s REFERENCE for every rule it delegates`, () => {
       const text = shippedText(path);
       assert.ok(
         text.includes(`\`${worker}\`'s REFERENCE`),
         `${path} must name ${worker}'s REFERENCE as where the rules live`
       );
-      for (const rule of ['Reading the config', 'The single-flight lock']) {
+      for (const rule of [
+        'Reading the config',
+        'The single-flight lock',
+        'The forge and its host'
+      ]) {
         assert.ok(
           text.includes(rule),
           `${path} no longer names "${rule}" — the rule has nowhere to be read from`

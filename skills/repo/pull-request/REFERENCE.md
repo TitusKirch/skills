@@ -1,22 +1,33 @@
 # pull-request — Reference
 
-Mechanics for the [SKILL.md](SKILL.md) workflow. The forge is chosen by the root `forge` key; v1 implements the **GitHub forge**, which goes through the GitHub CLI (`gh`) against the `origin` remote. Other forges (e.g. GitLab merge requests) would dock as additional forges — none implemented yet.
+Mechanics for the [SKILL.md](SKILL.md) workflow. The forge is chosen by the root `forge` key and the host it lives on is resolved per repo — [The forge and its host](#the-forge-and-its-host). Two forges are implemented: **GitHub** through `gh` and **GitLab** through `glab`, both against the `origin` remote. Everything outside the two forge sections below is forge-neutral: the title derivation, the template filling, the stacked-branch reading and the plan output are the same work either way.
 
 ## Detecting conventions
 
-### GitHub + base branch
+### Forge + base branch
 
 ```bash
+# GitHub
 gh repo view --json nameWithOwner,defaultBranchRef \
   --jq '{repo: .nameWithOwner, base: .defaultBranchRef.name}'
+
+# GitLab — against the resolved host, never gitlab.com by assumption
+GITLAB_HOST=<host> glab repo view --output json \
+  | jq '{repo: .path_with_namespace, base: .default_branch}'
+
 git branch --show-current        # head
 ```
 
-If `gh repo view` errors, the repo has no GitHub remote or `gh` is not authenticated → **stop** (GitHub is the only forge in v1). Default the PR base to `defaultBranchRef.name`; never hardcode `main`/`dev`. Confirm `base ← head` in the plan and let the user override (`--base <other>`).
+If the forge's own view command errors, the repo has no remote on that forge, the host is wrong, or the CLI is not authenticated → **stop**, naming the forge, the host that was tried and the login command that fixes it. Default the base to the forge's default branch; never hardcode `main`/`dev`. Confirm `base ← head` in the plan and let the user override (`--base <other>`).
 
-### PR template
+### Merge-request template
 
-Look in priority order: `.github/pull_request_template.md` → `.github/PULL_REQUEST_TEMPLATE.md` → `.github/PULL_REQUEST_TEMPLATE/*.md` (several → pick by name or ask) → `PULL_REQUEST_TEMPLATE.md` / `docs/PULL_REQUEST_TEMPLATE.md` → repo root. Use it verbatim as the body skeleton: fill its sections, keep its checklists and comments-as-prompts. No template → fall back to `## Summary`, `## Changes`, `## Related issues`.
+Each forge keeps its templates in its own directory, and a repo migrated between the two often carries both. **Read the forge's own convention first, and fall back to the other only when the forge's own yields nothing** — a repo that kept its old directory around still wants its current forge's templates to win.
+
+- **GitHub** — `.github/pull_request_template.md` → `.github/PULL_REQUEST_TEMPLATE.md` → `.github/PULL_REQUEST_TEMPLATE/*.md` (several → pick by name or ask) → `PULL_REQUEST_TEMPLATE.md` / `docs/PULL_REQUEST_TEMPLATE.md` → repo root.
+- **GitLab** — `.gitlab/merge_request_templates/*.md` (several → pick by name or ask) → `.gitlab/merge_request_templates/Default.md`, which GitLab itself treats as the default.
+
+Use the chosen file verbatim as the body skeleton: fill its sections, keep its checklists and comments-as-prompts. No template on either → fall back to `## Summary`, `## Changes`, `## Related issues`.
 
 ### Title convention (shared convention cache)
 
@@ -48,19 +59,37 @@ fi
 - A commitlint config (or a Conventional-Commits history) means the PR title is Conventional too — many repos lint it with actions like `amannn/action-semantic-pull-request`, and templates often say so outright. Honor the cached `header_max_length`.
 - `pr.title.convention: plain` in `.tituskirch-skills.json` overrides this to a non-Conventional title.
 
-`base` and `template` are **not** cached: `gh repo view … defaultBranchRef` already runs every time (the forge availability check), and the template is a local glob — both are cheap to read fresh.
+`base` and `template` are **not** cached: the forge's repo view already runs every time (the availability check), and the template is a local glob — both are cheap to read fresh.
 
-### Existing PR (and who owns it)
+### Existing PR / MR (and who owns it)
 
 ```bash
+# GitHub
 me=$(gh api user --jq .login)
 gh pr list --head "$(git branch --show-current)" --state open \
   --json number,author,isDraft,title --jq '.[0]'
+
+# GitLab — the head branch is the *source* branch, and `draft` is a title prefix, not a field
+me=$(glab api user --jq .username)
+glab mr list --source-branch "$(git branch --show-current)" --output json \
+  | jq '.[0] | {number: .iid, author: .author.username, draft, title}'
 ```
 
 - No result → **create**.
-- `author.login == $me` → offer to **update its body only**.
-- `author.login != $me` (a teammate, or a `*[bot]` / automation such as a `dev → main` rollup) → **leave it untouched**; report number + author and stop.
+- author == `$me` → offer to **update its body only**.
+- author != `$me` (a teammate, or a bot / automation such as a `dev → main` rollup) → **leave it untouched**; report number + author and stop.
+
+**Two spellings of the same number.** GitHub's `number` and GitLab's `iid` are both the per-project number a human writes as `#42`; GitLab additionally has a global `id` that is **not** what any command takes. Read `iid`, show `!42` (GitLab's own sigil for a merge request) in the plan, and never pass `id` to `glab mr`.
+
+### Creating and updating
+
+| Step                        | GitHub                                                         | GitLab                                                                                        |
+| :-------------------------- | :------------------------------------------------------------- | :-------------------------------------------------------------------------------------------- |
+| Create                      | `gh pr create --base <b> --head <h> --title … --body-file <f>` | `glab mr create --target-branch <b> --source-branch <h> --title … --description "$(cat <f>)"` |
+| Update your own description | `gh pr edit <n> --body-file <f>`                               | `glab mr update <iid> --description "$(cat <f>)"`                                             |
+| Open as a draft             | `--draft`                                                      | `--draft`                                                                                     |
+
+**`glab` has no `--body-file`**, so a multi-line body is passed through a command substitution from the same temporary file the GitHub path writes — the body is built once, forge-neutrally, and only how it is handed over differs. **Ready by default** on both; draft only if asked.
 
 ### Stacked branches
 
@@ -69,6 +98,8 @@ GitHub's [stacked pull requests](https://docs.github.com/en/pull-requests/get-st
 **Why it has to look at all.** Base a PR on the trunk when the branch is really built on another open PR's branch, and the diff carries that PR's unmerged commits as if this change had made them. Nothing errors: a PR opens, it is simply wrong, and the reviewer reads a diff that is mostly someone else's work. Because the failure is silent, the check runs on **every** branch — there is no "this repo uses stacks" flag to gate it on, and a branch built on a colleague's open PR has the same wrong diff whether or not anyone called it a stack.
 
 **The signal is git ancestry, read through branch names.** Only two things are consulted: which branches the open PRs point at, and which commits this branch descends from. No PR body, title or comment is read, so nothing here rests on prose a third party wrote — and nothing rests on a preview API either.
+
+**That is also what makes the check forge-neutral.** GitLab has no "stacked merge requests" feature to read, and it does not need one here: the classification below is entirely `git merge-base`, and the only forge call is the list of open requests and their source/target branches. On GitLab that list is `glab mr list --state opened --per-page 100 --output json`, read as `.source_branch` / `.target_branch`, with a fork told apart by `.source_project_id != .target_project_id` in place of `isCrossRepository`. Everything after the listing is identical.
 
 ```bash
 base=<the base step 1 resolved>          # pr.base, else defaultBranchRef.name
@@ -164,14 +195,15 @@ The `gh stack` CLI extension is out for a third reason: every other call this sk
 
 Keys this skill reads:
 
-| Key                   | Effect                                                                                                                                       |
-| :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pr.language`         | PR title/body language — any code/name or `match`; overrides root + detection                                                                |
-| `language` (root)     | shared default language; used when `pr.language` is unset; shared with `atomic-commit`                                                       |
-| `pr.base`             | PR base branch — overrides `defaultBranchRef.name` (e.g. a `feature → dev` flow)                                                             |
-| `pr.title.convention` | `conventional` (default) or `plain`                                                                                                          |
-| `pr.instructions`     | free-text wording guidance for the PR title/body — additive, never overrides guardrails                                                      |
-| `forge` (root)        | forge for PRs/releases — repo-root key, github-only in v1; shared with the `release` and `merge-deps` skills, so other forges can dock later |
+| Key                   | Effect                                                                                                                              |
+| :-------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| `pr.language`         | PR title/body language — any code/name or `match`; overrides root + detection                                                       |
+| `language` (root)     | shared default language; used when `pr.language` is unset; shared with `atomic-commit`                                              |
+| `pr.base`             | PR base branch — overrides `defaultBranchRef.name` (e.g. a `feature → dev` flow)                                                    |
+| `pr.title.convention` | `conventional` (default) or `plain`                                                                                                 |
+| `pr.instructions`     | free-text wording guidance for the PR title/body — additive, never overrides guardrails                                             |
+| `forge` (root)        | `github` or `gitlab` — repo-root key shared with the `release` and `merge-deps` skills, which implement GitHub only                 |
+| `forgeHost` (root)    | the host that forge lives on; absent → derived from `origin`, then from the CLI ([The forge and its host](#the-forge-and-its-host)) |
 
 ```bash
 # $resolved comes from the resolver — see "Reading the config" in this file.
@@ -183,9 +215,9 @@ instructions=$(printf '%s' "$resolved" | jq -er '.pr.instructions // empty' 2>/d
 
 `language` is a shared root key; `pr.*` are this skill's section. `pr.language` overrides the root `language` for the PR title/body, mirroring `commit.language` / `issue.language`. `pr.instructions` mirrors `commit.instructions` / `issue.instructions` — additive wording guidance that never overrides the template, detection, or guardrails. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
-**What the grant leaves out, and why that is the point.** This skill's `allowed-tools` names the commands it drives rather than granting `Bash` outright — `git rev-parse`, `git branch --show-current`, `git log`, `git diff` and `git merge-base` for the branch, its commits and the [ancestry a stacked base rests on](#stacked-branches), `gh pr list` / `view` / `diff`, `gh repo view` and `gh api user` for the forge side, plus `jq`, `printf` and `mkdir` for the config and the shared conventions cache, and the `date`, `ls`, `head`, `cksum`, `cut` and `grep` that cache's own hash and TTL check runs on every invocation. **`gh pr create`, `gh pr edit`, `gh pr ready` and `git push` are deliberately absent.** Everything that reads is pre-approved; everything that changes the forge or the remote asks, which matches a skill that [presents the full plan and creates only after confirmation](SKILL.md). The `git branch` grant is written at `--show-current` for that same reason: the branch is only ever read here, while the bare subcommand would also pre-approve the creation, deletion, rename and upstream rewiring this skill never performs. `git push` is also an exec route in its own right (`--receive-pack=<cmd>`), so no clear could cover it. **`git fetch` is absent for that same reason, and deliberately** — the [stacked-branch check runs one](#stacked-branches), but `--upload-pack=<cmd>` runs a command on the far side exactly as `--receive-pack` does, so no prefix rule can scope it safely. It asks, which is the right answer for the one command in this skill that touches the network on the reader's behalf; the check degrades cleanly when it is declined.
+**What the grant leaves out, and why that is the point.** This skill's `allowed-tools` names the commands it drives rather than granting `Bash` outright — `git rev-parse`, `git branch --show-current`, `git log`, `git diff` and `git merge-base` for the branch, its commits and the [ancestry a stacked base rests on](#stacked-branches), `gh pr list` / `view` / `diff`, `gh repo view` and `gh api user` for the GitHub side and their `glab mr list` / `view` / `diff`, `glab repo view` and `glab api user` counterparts for the GitLab one, plus `jq`, `printf` and `mkdir` for the config and the shared conventions cache, and the `date`, `ls`, `head`, `cksum`, `cut` and `grep` that cache's own hash and TTL check runs on every invocation. **`gh pr create`, `gh pr edit`, `gh pr ready`, `glab mr create`, `glab mr update` and `git push` are deliberately absent.** Everything that reads is pre-approved; everything that changes the forge or the remote asks, which matches a skill that [presents the full plan and creates only after confirmation](SKILL.md). The `git branch` grant is written at `--show-current` for that same reason: the branch is only ever read here, while the bare subcommand would also pre-approve the creation, deletion, rename and upstream rewiring this skill never performs. `git push` is also an exec route in its own right (`--receive-pack=<cmd>`), so no clear could cover it. **`git fetch` is absent for that same reason, and deliberately** — the [stacked-branch check runs one](#stacked-branches), but `--upload-pack=<cmd>` runs a command on the far side exactly as `--receive-pack` does, so no prefix rule can scope it safely. It asks, which is the right answer for the one command in this skill that touches the network on the reader's behalf; the check degrades cleanly when it is declined.
 
-**`gh api` is written at `gh api user`, and that narrowing is real without being complete.** The skill's one call is `gh api user --jq .login`, while the bare `Bash(gh api:*)` would pre-approve `gh api repos/{owner}/{repo}/pulls --method POST` — which **creates a pull request**, the very action the paragraph above names first as one that must ask. `gh pr create` asking while the same act spelled as an API call did not was the gap, and the narrowed rule closes it. What it does **not** close: a permission rule matches the command **string**, so `gh api user` also covers `gh api user/repos --method POST`. That surface is small and it is not nothing, and on a page whose subject is grants that describe themselves accurately it belongs here rather than in the next reviewer's notes.
+**`gh api` / `glab api` are written at the `user` endpoint, and that narrowing is real without being complete.** The skill's one call on each side is `gh api user --jq .login` / `glab api user --jq .username`, while a bare `Bash(gh api:*)` would pre-approve `gh api repos/{owner}/{repo}/pulls --method POST` — which **creates a pull request**, the very action the paragraph above names first as one that must ask. `gh pr create` asking while the same act spelled as an API call did not was the gap, and the narrowed rule closes it. What it does **not** close: a permission rule matches the command **string**, so `gh api user` also covers `gh api user/repos --method POST`. That surface is small and it is not nothing, and on a page whose subject is grants that describe themselves accurately it belongs here rather than in the next reviewer's notes.
 
 **What the list is, and is not.** It documents what this skill drives and keeps the unattended surface small; it is **not** a restriction — an unlisted command still runs once a person says yes.
 
@@ -230,6 +262,60 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 **Snippets are POSIX `sh`.** No `[[ ]]`, no arrays, no `<<<`, and nothing that differs between GNU and BSD coreutils — the shell is whatever the user runs.
 
 </skills-config>
+
+<skills-forge>
+
+## The forge and its host
+
+Two questions, answered in this order and never merged: **which forge** drives this repo, and **which host** that forge lives on. The first is a config key with a default; the second is a per-repo fact with a resolution ladder, and the reason it has a ladder is that a session working two repos may reach two different instances.
+
+### Which forge
+
+The root `forge` key, resolved from the config, defaulting to `github`:
+
+```sh
+# $resolved comes from the resolver — see "Reading the config" in this file.
+forge=$(printf '%s' "$resolved" | jq -er '.forge // empty' 2>/dev/null) || forge=
+[ -n "$forge" ] || forge=github
+```
+
+| `forge`  | CLI    | Availability check | The thing it opens       |
+| :------- | :----- | :----------------- | :----------------------- |
+| `github` | `gh`   | `gh auth status`   | a **pull request** (PR)  |
+| `gitlab` | `glab` | `glab auth status` | a **merge request** (MR) |
+
+**Speak the forge's own vocabulary in everything a human reads.** On GitLab it is a merge request, a source branch and a target branch, and the templates live under `.gitlab/merge_request_templates/`; calling it a pull request in a plan, a title or a comment is how a reader stops trusting that the run knows where it is. The skills' own trigger phrases stay bilingual — a user asking for "a PR" on a GitLab repo means the MR — but the **output** follows the forge.
+
+**A forge a skill does not implement is a stop, never a degrade.** Say which forge the config names, that this skill does not drive it, and stop. Never fall back to raw `git` plumbing, and never assume `github` because it is the default — a repo that wrote `gitlab` said something, and quietly serving it GitHub is worse than refusing.
+
+**A CLI that is absent or unauthenticated is the same kind of stop.** Report which CLI was looked for and which host it was asked about, so the fix is one command (`gh auth login`, `glab auth login --hostname <host>`) rather than a hunt.
+
+### Which host
+
+Resolution is a ladder, most specific first. **Take the first that answers; never resolve it once for a session and reuse it.**
+
+1. **The config** — the root `forgeHost` key, a bare hostname with an optional port. Explicit, committed, and the only rung a repo can state for itself.
+2. **The `origin` remote** — the host in the repo's own remote URL. This is a repo-level fact and it is why the ladder does not start at the CLI: the remote is what the checkout actually points at.
+3. **What the CLI is already configured for** — `GITLAB_HOST` or `glab`'s configured host; `GH_HOST` or `gh`'s `hosts.yml`. This rung is **global**, so it is the last one: it answers "what does this machine usually talk to", not "what does this repo talk to".
+
+```sh
+host=$(printf '%s' "$resolved" | jq -er '.forgeHost // empty' 2>/dev/null) || host=
+if [ -z "$host" ]; then
+  # Strip scheme, userinfo and path from whatever shape the remote is written in:
+  #   git@host:group/repo.git · ssh://git@host:2222/group/repo · https://host/group/repo
+  url=$(git remote get-url origin 2>/dev/null) || url=
+  host=$(printf '%s' "$url" | sed -e 's|^[a-zA-Z][a-zA-Z0-9+.-]*://||' -e 's|^[^@/]*@||' -e 's|[:/].*$||')
+fi
+# Still empty → let the CLI use whatever it is already configured for, and say so.
+```
+
+**Authentication is never duplicated.** The ladder resolves a _name_; the CLI holds the credentials. Pass the resolved host to the CLI rather than re-implementing login — `GH_HOST=<host> gh …`, `GITLAB_HOST=<host> glab …` — and where the host came from rung 3, pass nothing and let the CLI keep its own default.
+
+**Name the host in the plan whenever it is not the forge's public one.** `gitlab.example.com` in the `base ← head` line, the candidate list or the run report is the one signal a reader has that the run is pointed at their instance and not at `gitlab.com`. Where the host came from rung 2 or 3 rather than the config, say which — a derived host is a guess that happened to be right, and it is worth one clause.
+
+**Two repos in one session are two resolutions.** Re-run the ladder per repo, and treat a cached host the way a cached config is treated: keyed by the checkout it was read in, never by the session.
+
+</skills-forge>
 
 ## Title derivation (umbrella)
 

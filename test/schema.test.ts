@@ -251,6 +251,43 @@ describe('the concurrency bound beside the run cap', () => {
   });
 });
 
+// The queue branch is the one work mode that strands its output when the repo it
+// runs in cannot land it: issue PRs pile up on `ai/queue-<hash>` and nothing ever
+// merges them without the fast-forward workflow. So the gate has to be opt-in in
+// the schema itself — absent must stay valid and must mean off, or every config
+// written before the key existed would silently acquire the mode.
+describe('the queue-branch gate', () => {
+  test('it is optional, and a boolean when present', () => {
+    accepts({ work: { branch: 'worktree' } }, 'absent — the mode stays off');
+    accepts(
+      { work: { branch: 'worktree', queueBranch: true } },
+      'the opt-in the key exists for'
+    );
+    accepts(
+      { work: { branch: 'worktree', queueBranch: false } },
+      'written out explicitly, which is also the default'
+    );
+  });
+
+  test('it is a gate, not a branch name', () => {
+    rejects({ work: { queueBranch: 'ai/queue-abc' } }, 'not a branch string');
+    rejects({ work: { queueBranch: 'true' } }, 'not a boolean-ish string');
+    rejects({ work: { queueBranch: 1 } }, 'not a number');
+    rejects({ work: { queueBranch: null } }, 'not null');
+  });
+
+  test('it can be overlaid in a profile, like every other work key', () => {
+    accepts(
+      { profiles: { ci: { work: { queueBranch: true } } } },
+      'profile queueBranch fragment'
+    );
+    rejects(
+      { profiles: { ci: { work: { queueBranch: 'yes' } } } },
+      'the type still applies inside a profile'
+    );
+  });
+});
+
 // work.loop paces a repeating driver between drains. Both keys are optional and
 // independent — a repo tuning the poll interval must not be forced to restate the
 // backstop — and both are whole seconds, so the seconds/milliseconds mix-up that a
@@ -423,6 +460,119 @@ describe('the feedback destination', () => {
     );
     rejects({ work: { feedback: '' } }, 'empty destination');
     rejects({ work: { feedback: false } }, 'feedback is not a labelOrOff');
+  });
+});
+
+// The forge axis was designed to take a second forge additively, and GitLab is the
+// first to dock. Both halves are asserted here because the axis is only useful if the
+// two move together: the enum has to widen, and the host has to be sayable — a
+// self-hosted instance is the normal GitLab deployment, not the edge case.
+describe('the GitLab forge', () => {
+  test('the forge axis accepts either forge, at the root and in a profile', () => {
+    accepts({ forge: 'github' }, 'the forge that was already there');
+    accepts({ forge: 'gitlab' }, 'the second forge docking on the axis');
+    accepts(
+      { profiles: { ci: { forge: 'gitlab' } } },
+      'a profile may switch the forge for its context'
+    );
+  });
+
+  test('an unimplemented forge is still rejected', () => {
+    rejects({ forge: 'gitea' }, 'no third forge is implemented');
+    rejects({ forge: '' }, 'an empty forge');
+    rejects({ forge: false }, 'forge is not a disable switch — it is an axis');
+  });
+});
+
+// The host is a per-repo fact on both forges: self-hosted GitLab is the normal
+// deployment and GitHub Enterprise has the same shape. It has to be omittable, since
+// resolution falls back to the repo's own remote and then to the CLI's own default.
+describe('the forge host', () => {
+  test('it is an optional hostname, and null says "derive it"', () => {
+    accepts({ forgeHost: 'gitlab.example.com' }, 'a self-hosted instance');
+    accepts({ forgeHost: 'github.example.com' }, 'GitHub Enterprise');
+    accepts({ forgeHost: null }, 'explicitly derived');
+    accepts(
+      { forge: 'gitlab' },
+      'omitted — derived from the remote or the CLI'
+    );
+  });
+
+  test('it is a bare hostname, never a URL or an empty string', () => {
+    rejects({ forgeHost: '' }, 'an empty host');
+    rejects({ forgeHost: 'https://gitlab.example.com' }, 'a URL, not a host');
+    rejects({ forgeHost: 'gitlab.example.com/group' }, 'a path, not a host');
+    rejects({ forgeHost: 1 }, 'a numeric host');
+  });
+
+  test('it can be overlaid in a profile, like every other root key', () => {
+    accepts(
+      { profiles: { ci: { forgeHost: 'gitlab.example.com' } } },
+      'profile forgeHost fragment'
+    );
+    rejects(
+      { profiles: { ci: { forgeHost: '' } } },
+      'the constraint still applies inside a profile'
+    );
+  });
+});
+
+// GitLab docks on the tracker axis the way `local` did (ADR-0023): a third driver
+// meeting the same contract. Like `github` and unlike `linear`, it needs no companion
+// key — the project is the repo and its labels are flat — so a bare fragment has to
+// validate at the ROOT, not only inside a profile.
+describe('the GitLab issue tracker', () => {
+  test('a bare {tracker:gitlab} is valid at the root, like github', () => {
+    accepts({ issue: { tracker: 'gitlab' } }, 'root issue, no companion key');
+    accepts({ work: { tracker: 'gitlab' } }, 'root work, no companion key');
+  });
+
+  test('the linear constraints are not extended to it', () => {
+    accepts(
+      { work: { tracker: 'gitlab', labels: { ready: 'ai: ready' } } },
+      'no linear/labels.repo/statuses demanded of a gitlab tracker'
+    );
+  });
+
+  test('it is writable inside a profile, like every other tracker', () => {
+    accepts(
+      { profiles: { ci: { work: { tracker: 'gitlab' } } } },
+      'profile work fragment'
+    );
+  });
+});
+
+// grillWith names the interview skill the drafting skills drive, at the root
+// because two of them drive it (issue and refine-issue) and an interview style is
+// a property of the repo. It names a *skill*, not a mode, so a round-based engine
+// docks by having its name typed here — no schema change, no release.
+describe('the interview engine', () => {
+  test('a skill name is what the key takes', () => {
+    accepts({ grillWith: 'grilling' }, 'the default engine, named explicitly');
+    accepts(
+      { grillWith: 'batch-grilling' },
+      'a second engine docks by name alone'
+    );
+  });
+
+  test('off is spelled either way, and absent is not off', () => {
+    accepts({ grillWith: null }, 'null — never grill');
+    accepts({ grillWith: false }, "false — the repo's other spelling for off");
+    accepts({ language: 'en' }, 'absent — drive grilling when installed');
+  });
+
+  test('a profile may switch the engine for its context', () => {
+    accepts(
+      { grillWith: 'grilling', profiles: { ci: { grillWith: null } } },
+      'an unattended context never grills'
+    );
+  });
+
+  test('rejects what cannot name a skill', () => {
+    rejects({ grillWith: '' }, 'empty skill name');
+    rejects({ grillWith: true }, 'true names no skill');
+    rejects({ grillWith: ['grilling'] }, 'one engine, not a list');
+    rejects({ grillWith: { skill: 'grilling' } }, 'a name, not an object');
   });
 });
 

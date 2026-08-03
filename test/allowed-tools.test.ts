@@ -366,8 +366,6 @@ const SUBCOMMAND = /^[a-z][a-z0-9-]*$/;
  * than free text a later author invents to fit, and the set is pinned in both directions.
  */
 const UNDEMONSTRATED_REASONS: Record<string, string> = {
-  unparsed:
-    'the skill drives it, but not in a form this reader can extract — prose that names the command without writing it out, so the call is real and the text is not a command',
   undemonstrated:
     'no recipe drives it at all, so the grant is a candidate for removal — but which grants a skill still needs is the per-skill judgement ADR-0017 kept out of a sweep, and this gate reports rather than guesses'
 };
@@ -419,11 +417,6 @@ const UNDEMONSTRATED: Record<string, { why: string; detail: string }> = {
     why: 'undemonstrated',
     detail:
       "as with the config skill, the folder's only `git rev-parse` is inside the resolver it ships and runs as one `sh` call"
-  },
-  'work/issue Bash(gh issue view:*)': {
-    why: 'unparsed',
-    detail:
-      'its contract sentence writes the pair as `gh issue list` / `view`, an abbreviation no reader can join back into a command'
   }
 };
 
