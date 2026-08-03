@@ -38,3 +38,4 @@ A decision earns an ADR when it constrains work that comes later and its reasoni
 | [ADR-0027](0027-leave-reasoning-effort-to-the-caller.md)                      | Leave reasoning effort to the caller                        | accepted | 2026-08-02 |
 | [ADR-0028](0028-dock-gitlab-and-resolve-the-host-per-repo.md)                 | Dock GitLab on both axes, and resolve the host per repo     | accepted | 2026-08-02 |
 | [ADR-0029](0029-reproduce-the-author-guarantee-from-a-configured-identity.md) | Reproduce the author guarantee from a configured identity   | accepted | 2026-08-03 |
+| [ADR-0030](0030-gate-ci-on-the-draft-state.md)                                | Gate CI on the draft state                                  | accepted | 2026-08-03 |
