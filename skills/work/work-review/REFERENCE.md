@@ -15,6 +15,7 @@ Reads the shared `work.*` section (schema: **Config** in `work-implement`'s REFE
 | Key                            | Effect                                                                                                                                                                                                                                                                                                                                                  |
 | :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `work.review.maxRounds`        | Max AI-review rounds before escalating to `needs human` instead of `changes-requested`. Default: **3**.                                                                                                                                                                                                                                                 |
+| `work.review.timeout`          | Seconds bounding the wait for CI after the reviewer marks a draft pull request ready ([marking ready, then waiting for CI](#marking-ready-then-waiting-for-ci)). Still running when it elapses → `needs human`. Sized per repo because CI duration is: left at the default on a pipeline that outlasts it, every issue escalates. Default: **600**.     |
 | `work.feedback`                | Where the verdict's comment is written — `pr` (the pull request's thread) or `issue`. **No fixed default**: it follows `work.branch`, so a PR-opening loop writes to the PR and a shared-branch loop to the issue. Full rule: **Feedback destination** in `work-implement`'s REFERENCE.                                                                 |
 | `work.labels.reviewRequested`  | The "awaiting AI review" label — the review queue's **input**. Default `ai: review requested`; a repo that labels differently pins its own string under this key.                                                                                                                                                                                       |
 | `work.labels.reviewing`        | The review loop's **lease** label — claimed `reviewRequested → reviewing` before reviewing, the tracker-global counterpart of `working` — **except on [`local`](#the-reviewing-lease), where it is not tracker-global and is best left off**. **Opt-in: defaults to off**; when off, the review loop uses its lock alone (today's behaviour, no lease). |
@@ -441,6 +442,99 @@ git worktree remove "$(git rev-parse --git-common-dir)/tituskirch-skills/work/re
 **On a shared branch, red is not automatically _this_ issue's fault.** `branch:dev` means the head carries every issue that landed before this one, so the gate judges the combined tree. That is the right thing to run — a branch that does not pass is a fact worth having — but attributing it is a separate step: check whether the failure touches this issue's own commit range before writing `changes-requested` against it. It does not → the finding is real and belongs on the branch, so escalate to `needs human` rather than bouncing an issue whose diff is fine.
 
 **A gate that cannot be run at all** — no `verify`, nothing detectable, an install that fails for reasons outside the diff — is `unknown`, and `unknown` is never a pass. Report what could not be run, in those words.
+
+## Marking ready, then waiting for CI
+
+The implement loop opens every pull request as a **draft** and never un-drafts it, so under `worktree` the draft state is a claim only this loop can make: **the review believes this is finished.** The shared rule — why the draft carries the loop's confidence, what a repo's workflows owe it, and that nothing ever re-drafts — is **The draft gate** in `work-implement`'s REFERENCE. This section is the review side of it.
+
+**Order matters: the verdict comes first, the un-draft second.** Reach the verdict from the diff and [step 5's own gate](#verifying-the-pushed-head) exactly as before; only a verdict that would be **`done`** un-drafts. Every other verdict leaves the PR a draft, which is the whole saving — a round the review is handing back as `changes-requested` costs no CI at all. Un-drafting first, "so CI has a head start", spends precisely the runs this exists to avoid.
+
+```sh
+# $pr is this issue's pull request; $resolved comes from the resolver.
+timeout=$(printf '%s' "$resolved" | jq -er '.work.review.timeout // empty' 2>/dev/null) || timeout=
+[ -n "$timeout" ] || timeout=600
+
+draft=$(gh pr view "$pr" --json isDraft --jq '.isDraft' 2>/dev/null) || draft=
+case $draft in
+true)  gh pr ready "$pr" || echo unreadable ;;  # only ever on an otherwise-`done` verdict
+false) : ;;                                     # already ready — a re-work round, nothing to flip
+*)     echo unreadable ;;                       # never read as "already ready" — below
+esac
+```
+
+**An unreadable draft state is not "already ready".** `|| draft=` on a 404, a rate limit or a 5xx leaves the variable empty, and a plain `[ "$draft" = 'true' ]` test then reads that emptiness as _false_ — the flip is silently skipped and the PR stays a draft while the loop proceeds as though it had gone ready. A failed `gh pr ready` is the same fact arriving one line later. Neither may be swallowed: escalate to `needs human` saying the PR could not be marked ready, exactly as an [underivable deadline base](#marking-ready-then-waiting-for-ci) and an [unreadable round count](#round-count) do. The rule is one rule — **an unreadable value is never the permissive reading.**
+
+**The deadline is derived, not carried.** These skills run each command in its own process, and a wait long enough to matter is longer than one `Bash` call is allowed to be — so a budget kept in a shell variable is gone before it elapses. Every poll recomputes it from the tracker instead, which is the same reason the [review worktree's path](#verifying-the-pushed-head) is derived rather than `mktemp`'d.
+
+**What it is derived _from_ has to exist on every round, not just the one that un-drafts.** Once a PR is ready it stays ready, so the round answering a CI failure — the round this whole mechanic exists to give CI feedback to — finds it ready already, correctly skips `gh pr ready`, and writes **no** new event. Measuring from the `ready_for_review` event alone would recompute that round's deadline from a flip hours or days old: already past on the first poll, so any CI still running escalates with no wait at all. And a PR that never carried the event — one a human opened ready, one already in flight when this lands — would have no base to compute at all. So take the **later of two** moments:
+
+```sh
+# 1. the newest un-draft, where one has happened at all. --paginate applies --jq per page,
+#    so this prints one candidate per page; the sort below picks across them.
+ready=$(gh api "repos/$owner/$repo/issues/$n/timeline" --paginate \
+  --jq '[.[] | select(.event=="ready_for_review") | .created_at] | max // empty') || ready=
+# 2. this head's own commit — when the implement loop made it reviewable. That loop commits
+#    and pushes within one run, so the commit date is the push to within seconds.
+head=$(gh pr view "$pr" --json commits \
+  --jq '[.commits[].committedDate] | max // empty' 2>/dev/null) || head=
+# ISO-8601 UTC sorts lexicographically, so `sort` is a time sort.
+since=$(printf '%s\n%s\n' "$ready" "$head" | grep . | sort | tail -1)
+```
+
+Each round then gets the base it should: the round that un-drafts takes the flip, which is newer than the head it just judged; a re-work round on an already-ready PR takes its **new head**, so the budget starts when the work did; a PR with no `ready_for_review` event has the head alone, which is a base rather than nothing.
+
+**`$since` bounds the wait and nothing else.** It is the deadline's origin, never a filter on which results count — the poll below settles that by dropping `skipping` outright, and deliberately not by this timestamp, because a base this permissive-by-fallback cannot be trusted to decide correctness. Getting `$since` wrong makes the wait too long or too short; it can never make an unanalysed head read as green.
+
+**So the budget is CI's elapsed time, not CI's own runtime, and on a re-work round it starts early.** Where the base is this head's commit — the round answering a CI failure, or any PR that never carried the event — the clock has been running through everything between the push and the first poll: the drain picking the issue up, this review creating its worktree, installing from the lockfile and running `verify`. Size `work.review.timeout` against that wall-clock span rather than against the pipeline's duration alone, or a repo whose CI nearly fills the budget will escalate on the reviewer's own overhead. The direction of the error is the safe one — `needs human`, never an accept — but it is an escalation a bigger number would have avoided.
+
+**An underivable base is not a zero.** `$since` empty means neither source could be read — a 404, a rate limit, a transient 5xx — and reading that as "the deadline has passed" escalates on an API hiccup, while reading it as "no deadline" waits forever. Escalate to `needs human` saying the base could not be read, exactly as an [unreadable round count](#round-count) does.
+
+**Then poll, and read the buckets rather than the exit status.** `gh pr checks` exits non-zero for a failing run, for a pending one, _and_ for a pull request with no checks at all, which are three different facts sharing one signal:
+
+```sh
+# Non-zero here is routine — 8 while runs are pending, 1 on a failure or with no checks at
+# all — so the status is deliberately not branched on, and never blanks the payload.
+checks=$(gh pr checks "$pr" --json bucket 2>/dev/null)
+# `skipping` is dropped, never counted — it is a job declining to answer, not an answer.
+raw=$(printf '%s' "$checks" | jq -r '.[]? | select(.bucket != "skipping") | .bucket' 2>/dev/null) || raw=
+
+case $raw in
+'')          echo none ;;      # nobody answered — "not yet" or "not at all", below
+*fail*)      echo red ;;
+*pending*)   echo pending ;;   # keep polling until the deadline
+*cancel*)    echo pending ;;   # superseded — a replacement run is due, so poll on
+*)           echo green ;;     # every job that answered, passed
+esac
+```
+
+**Dropping `skipping` is what stops a stale result reading as green, and it is the only thing that has to.** A repo whose draft gate sits on the **job** does not report nothing while the PR is a draft — it reports `skipping`, one row per gated job, and gating `codeql.yml` adds a third. `gh pr ready` fires a fresh run for the same head SHA, but that run takes seconds to register: poll inside that window while counting those rows and the list holds three of them — no `fail`, no `pending`, and **not empty** — so the recipe would answer green and write `done` on a head CI never analysed. Dropping them empties the list instead, which is the `none` case below and already handled correctly.
+
+**Why dropped rather than filtered by start time.** Timestamping the rows against `$since` looks equivalent and is not: it is only as good as `$since` being the **flip**, and `$since` legitimately falls back to the head commit (below) — a base **older** than the draft-gate rows, because those are registered by the push (commit → push → run start, always in that order). One transient timeline read is then enough to hand the poll a permissive base, let all three stale rows through, and produce exactly the false `done` above — the same "an unreadable value must not be the permissive reading" trap this file guards everywhere else. Dropping the rows removes the failure mode instead of narrowing its window, and needs no timestamp at all, so the poll asks for `bucket` alone.
+
+**A `skipping` is never a pass, even when it is honest.** After the un-draft a job may still decline on a condition of its own — a `paths` filter this head does not match, a matrix exclusion — and that is a legitimate outcome, but it is the job saying _nothing_ about this head rather than approving it. Where those are the only rows, the list reads `none`, and the fourth row of the table below is exactly right for it: the accept rests on the `verify` this review ran itself, not on a check that declined. Nothing stalls, because "none" is a reading with a verdict, not a wait.
+
+**`fail` is matched before `pending`, so a red returns while siblings are still running.** That is deliberate — a failing job is already a real finding, and `ci.yml`'s `!cancelled()` fan-out means the jobs after it run regardless rather than telling you anything new about the failure. The consequence has to be **stated in the feedback**, though: it carries only the jobs that had reported by then, so it is "CI failed, here is what had come in" and not "here is everything CI found". Name the failing job and its log link, and say the run was still in flight — otherwise a re-work round fixes the one visible failure and rediscovers the rest a round later.
+
+**A cancelled run is polled through, not read.** `cancel-in-progress` concurrency makes a supersede routine, and a superseded run implies a **replacement**, so the reading is "not a result yet": it folds into `pending` rather than becoming a fifth outcome no verdict table consumes. Where no replacement ever reports, the deadline answers it as it answers any other pending.
+
+`--required` is deliberately not passed: a check the base runs without marking it required is still part of the repo's gate, and a repo with no branch protection has no required checks at all.
+
+**Four outcomes, and the two that look alike are not.**
+
+| Reading                               | What it means                                                                                                       | Verdict                                                                                                                   |
+| :------------------------------------ | :------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------ |
+| **green**                             | the repo's own pipeline agrees with the review                                                                      | `done`                                                                                                                    |
+| **red**                               | a real finding, and the freshest one there is                                                                       | `changes-requested`, the failing job and its log link as the feedback — or `needs human` at `maxRounds`, as any red would |
+| **pending at the deadline**           | the pipeline is slower than `work.review.timeout`                                                                   | `needs human` — never `done`, and never back into draft                                                                   |
+| **none reported, none _triggerable_** | the head's base runs no workflow that matches this head — the existing [`unknown`](#verifying-the-pushed-head) case | `done` stands on step 5's own `verify` run, which already established the gate                                            |
+
+**"None yet" is not "none at all", and only the workflows say which.** A check list that reads empty **once the skips are dropped** — whether nothing is reported at all, or only `skipping` rows are — is usually a workflow that has not registered its run yet. Do what [step 5 already requires](SKILL.md) — read which workflows the base runs, and whether their `paths` and `types` match this head — **before** reading the result. At least one would fire → an empty list is _not yet_, so keep polling to the deadline. None would → there was never anything to wait for, so skip the wait entirely rather than burning the timeout on it. Treating a still-empty list as green is the one reading that is always wrong: it is `unknown`, and `unknown` is never a pass — the accept rests on the `verify` this review ran itself, not on CI's silence.
+
+**A missing `ready_for_review` type is indistinguishable from slow CI, and reports as a timeout.** Where a repo gates its jobs on the draft state but never added `ready_for_review` to the trigger's `types`, the un-draft fires nothing and the poll waits out the full budget on checks that were never coming. The escalation is correct — no verdict may rest on a gate that has not reported — but say **which** workflows were expected and never appeared in the `needs human` comment, because the fix is one line in a workflow file and nothing else in the loop will ever point at it.
+
+**Never re-draft, on any verdict.** A CI failure routes `changes-requested` on a PR that stays ready, so the re-work round gets CI feedback directly. Re-drafting would re-hide a PR the review has already judged finished and blind the very round that is answering the failure.
+
+**Where this is inert.** Under `branch:<name>` there is no pull request at all. On `local` with no forge there is likewise none — the same gap the review reconcile's job (a) has (**Reconcile** in `work-implement`'s REFERENCE). And where a repo's workflows carry **no** draft gate, the PR is a draft that CI ran on anyway: the poll then finds a finished result immediately and the un-draft is merely a status change. On **Linear** the code PR is a GitHub PR, so the recipe is unchanged — take the url from the issue's PR attachment and run the same `gh` calls against it.
 
 ## Feedback recipes
 

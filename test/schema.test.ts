@@ -463,6 +463,40 @@ describe('the feedback destination', () => {
   });
 });
 
+// work.review.timeout bounds the one wait the review *unit* performs — the CI run it
+// starts by marking a draft PR ready. It has to be optional (600 s is the default, and
+// every config predates the key) and it has to sit beside maxRounds rather than reuse
+// work.loop.*, which is the drain's backpressure pacing and explicitly not the unit's.
+describe('the review CI-wait timeout', () => {
+  test('accepts it alone, beside maxRounds, and inside a profile', () => {
+    accepts({ work: { review: { timeout: 900 } } }, 'timeout alone');
+    accepts(
+      { work: { review: { maxRounds: 3, timeout: 600 } } },
+      'both review keys together'
+    );
+    accepts(
+      { work: { review: { maxRounds: 3 } } },
+      'omitting it stays valid — it defaults to 600'
+    );
+    accepts(
+      { profiles: { ci: { work: { review: { timeout: 1800 } } } } },
+      'a slower CI context may raise it for itself'
+    );
+  });
+
+  test('rejects a non-positive, fractional or misspelled value', () => {
+    rejects({ work: { review: { timeout: 0 } } }, 'a timeout of zero');
+    rejects({ work: { review: { timeout: -1 } } }, 'a negative timeout');
+    rejects({ work: { review: { timeout: 1.5 } } }, 'a fractional timeout');
+    rejects({ work: { review: { timeout: '600' } } }, 'a numeric string');
+    rejects({ work: { review: { ciTimeout: 600 } } }, 'an unknown review key');
+    rejects(
+      { profiles: { ci: { work: { review: { timeout: 0 } } } } },
+      'the minimum still applies inside a profile'
+    );
+  });
+});
+
 // The forge axis was designed to take a second forge additively, and GitLab is the
 // first to dock. Both halves are asserted here because the axis is only useful if the
 // two move together: the enum has to widen, and the host has to be sayable — a
