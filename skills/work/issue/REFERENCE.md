@@ -9,6 +9,7 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, four trackers (GitHu
 ```json
 {
   "language": "de",
+  "grillWith": "grilling",
   "issue": {
     "tracker": "github",
     "language": { "title": "en", "body": "de" },
@@ -36,12 +37,13 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One skill, four trackers (GitHu
 | `issue.linear.{project,defaultState}` | optional Linear defaults                                                                                                                                                                                                   |
 | `issue.template`                      | forces one issue template on **either tracker** — a repo-relative **path** to the file, not a template name; absent **or** an explicit `null`, the skill chooses by reading them (see [Issue templates](#issue-templates)) |
 | `issue.labels.exclude`                | glob patterns (e.g. `stack:*`, `autorelease:*`, `dependencies`) for catalog labels the agent must never apply                                                                                                              |
+| `grillWith` (**root**)                | the interview skill the grilling pass drives — absent means `grilling`, `null`/`false` means never grill ([which engine](#which-engine--the-root-grillwith-key)); at the root because `refine-issue` drives it too         |
 
 `issue.template` sits at the `issue.*` level, not under `issue.github`, because the templates it points at are read on **both** trackers ([Issue templates](#issue-templates)). `issue.github.template` is the older location and is still read as a fallback when `issue.template` is **absent**, so an existing config keeps working; it is deprecated, GitHub-only by its nesting, and setup writes the new key.
 
 **An explicit `null` is not the same as absent, and it is terminal.** `"template": null` means _no forced template_ — the skill chooses per issue by reading the templates — and it **ends the lookup**: it does not fall through to `issue.github.template`. Only an **absent** `issue.template` reaches that fallback. This is the merge rule ([Reading the config](#reading-the-config)) applied here — "an explicit `null` sets null rather than deleting a key" — so a profile can clear a forced template the base config sets, and clearing it must not resurrect the deprecated key it was migrated away from.
 
-`language` is a shared root key; `issue.*` is this skill's section (`commit.*`/`pr.*` belong to the other skills). `issue.instructions` mirrors `commit.instructions` / `pr.instructions` — additive wording guidance that never overrides the tracker rules, template, or guardrails. On Linear it also reads the cross-skill key `work.labels.repo` to pin a repo-scope tag on create. Full schema: the repo-root `tituskirch-skills.schema.json`.
+`language` and `grillWith` are shared root keys; `issue.*` is this skill's section (`commit.*`/`pr.*` belong to the other skills). `issue.instructions` mirrors `commit.instructions` / `pr.instructions` — additive wording guidance that never overrides the tracker rules, template, or guardrails. On Linear it also reads the cross-skill key `work.labels.repo` to pin a repo-scope tag on create. Full schema: the repo-root `tituskirch-skills.schema.json`.
 
 The `null`-versus-absent distinction above has to survive the read, and `// empty` destroys it — that collapses both into the same empty string. **Ask whether the key is there before reading its value:**
 
@@ -233,7 +235,7 @@ Triggered when the config is missing/incomplete or the user runs `/issue setup`.
 
 ## Sharpening the request (grilling)
 
-Step 4 drafts from the free-text description plus session context. When that input is **thin or ambiguous**, drafting means guessing — the skill infers a scope, fills sections from assumption, or defers the clarification entirely by filing a `needs triage` rough draft the human corrects after the fact. The confirmation gate ([Plan output](#plan-output)) catches a _wrong_ draft; it never produces the missing requirements. The `grilling` skill closes that gap: a relentless, one-question-at-a-time interview that walks the decision tree, resolves dependent decisions in order, and offers a recommended answer per question — run **before** the draft hardens, so the clarification happens up front instead of after the gate. Its answers **feed the draft**; the pass does **not** replace the single plan preview — the confirm gate is unchanged, grilling only feeds it better input.
+Step 4 drafts from the free-text description plus session context. When that input is **thin or ambiguous**, drafting means guessing — the skill infers a scope, fills sections from assumption, or defers the clarification entirely by filing a `needs triage` rough draft the human corrects after the fact. The confirmation gate ([Plan output](#plan-output)) catches a _wrong_ draft; it never produces the missing requirements. An interview skill closes that gap — `grilling` by default, or whichever engine [`grillWith`](#which-engine--the-root-grillwith-key) names: a relentless interview that walks the decision tree, resolves dependent decisions in order, and offers a recommended answer per question — run **before** the draft hardens, so the clarification happens up front instead of after the gate. Its answers **feed the draft**; the pass does **not** replace the single plan preview — the confirm gate is unchanged, grilling only feeds it better input.
 
 **Auto-engaged, proportional.** The skill decides for itself, per request, rather than waiting for a flag:
 
@@ -245,9 +247,55 @@ Step 4 drafts from the free-text description plus session context. When that inp
 - **`--grill` / "grill me first" forces it** even on a request that looks complete — the manual override for when the human knows there is more to pull out than the request shows.
 - **Always skippable.** The human may decline the offered pass or cut it short and let the skill draft from what it has. Grilling never blocks a draft.
 
-**Target `grilling`, never `grill-me`.** `grilling` is the reusable interview _engine_ a skill can invoke. `grill-me` is the user-facing on-ramp to the same interview and declares `disable-model-invocation: true`, so a skill cannot drive it — there is no code path that invokes it. Drive `grilling`.
+### Which engine — the root `grillWith` key
 
-**Graceful when absent.** `grilling` is a separate skill, not shipped by this repo, so it may not be installed. Treat it as **optional**: invoke it when it is available, and when it is not, **skip the pass and draft as today**. A missing `grilling` degrades to the status-quo behaviour — draft from free-text plus session context and let the confirm gate catch a wrong draft — it never fails the `issue` run.
+`grilling` is one interview _style_: one question at a time, dependency-ordered. It is not the only one worth having — a round-based interview that asks the whole settled **frontier** each round is far faster on a wide decision tree, at the cost of the convergence one-at-a-time buys. Which one a repo wants is the repo's decision, so it is configured rather than hard-named:
+
+```jsonc
+"grillWith": "grilling" // a model-invocable interview skill, or null to never grill
+```
+
+| Value                | The pass drives                                                                                            |
+| :------------------- | :--------------------------------------------------------------------------------------------------------- |
+| **absent**           | `grilling` — the behaviour every repo had before this key existed                                          |
+| **a skill name**     | that skill, as the interview engine                                                                        |
+| **`null` / `false`** | nothing — never grill, draft directly. Today's missing-engine path, made deliberate rather than accidental |
+
+**The key names a _skill_, not a _mode_.** That is what makes it dockable: when a round-based interview graduates as an engine a skill may drive, it arrives by having its name typed into this key — no schema change, no new enum value, no release. A mode enum would need extending per engine, and could name a mode nothing implements.
+
+**It lives at the root, not under `issue.*`.** The engine has **two** callers here — this skill and the `refine-issue` skill, which drives it at its step 6 — and an interview style is a property of the **repo**, not of one skill. A per-skill key would duplicate the same value and let the two drift apart.
+
+**Three values means three states, so ask whether the key is there before reading it.** The `labelOrOff` recipe used for `work.labels.*` — `select(. != null)` and fall through to a default — is the wrong shape here: it filters an explicit `null` exactly as it filters an absent key, so `"grillWith": null` reads as absent and the run drives `grilling`. A configured **never grill** would silently become **grill with the default engine** — the same failure the table below refuses one row lower, arrived at through the read rather than through a substitution. (`false` survives that recipe; only `null` inverts, and `null` is the value a `ci` profile uses to switch the interview off where nobody is present to notice one starting.) So presence first, value second:
+
+```sh
+# $resolved comes from the resolver — see "Reading the config" in this file.
+# Three states, so presence is asked for before the value is read.
+if printf '%s' "$resolved" | jq -e 'has("grillWith")' >/dev/null 2>&1; then
+  engine=$(printf '%s' "$resolved" | jq -r '.grillWith | select(. != null) | tostring' 2>/dev/null) || engine=
+  [ "$engine" = 'false' ] && engine=   # false → never grill
+  # present-and-null leaves $engine empty → never grill
+else
+  engine='grilling'                    # absent → the behaviour before the key existed
+fi
+```
+
+`has("grillWith")` is asked of the **resolved root**, not of `.issue` — the key is a root key, and asking `(.issue // {}) | has("grillWith")` reports every config as absent.
+
+### What is a valid value
+
+**A model-invocable interview skill, and nothing else.** `grill-me` and `batch-grill-me` are **not** valid values: both are user-facing on-ramps declaring `disable-model-invocation: true`, so no skill can drive them — they are invocation paths for a human's slash command, not for a skill. (`grill-me`'s entire body is `Run a /grilling session.`, so naming it would in any case select what `grilling` already does, by a path no skill may take.)
+
+**Three states, three behaviours** — and only the third is new:
+
+| The named skill                           | The pass                                                                     |
+| :---------------------------------------- | :--------------------------------------------------------------------------- |
+| **not installed**                         | **skip it and draft as today**, saying so — the optional-call fallback       |
+| **installed and model-invocable**         | **drive it**                                                                 |
+| **installed, `disable-model-invocation`** | **report it as a config error and skip the pass** — never substitute another |
+
+That third row is the one worth stating outright: silently falling back to `grilling` for a mis-configured value would run **a different interview than the one configured** and report success. A wrong value is a config error a human fixes in one edit; guessing past it hides the edit forever.
+
+**Graceful when absent, with or without the key.** The engine is a separate skill, not shipped by this repo, so it may not be installed. Treat it as **optional**: drive it when it is available, and when it is not, **skip the pass and draft as today**. A missing engine degrades to the status-quo behaviour — draft from free-text plus session context and let the confirm gate catch a wrong draft — it never fails the `issue` run.
 
 ## Drafting — the full rules
 
@@ -256,7 +304,7 @@ hard rules — never file a blank issue where the repo forbids one, never send a
 tracker cannot resolve, body states intent rather than implementation — are guardrails and
 live in `SKILL.md`, not here.
 
-**Sharpen a thin request first (grilling).** Before drafting, weigh how complete the request is. When the free-text description plus session context is **thin or ambiguous** — the scope is a guess, a decision the body would have to state is unresolved, a default-structure section would be filled by inference rather than by what the human said — engage a **grilling** pass _on the skill's own initiative_: invoke the `grilling` skill to interview the human one question at a time, dependency-ordered with a recommended answer each, and resolve those open decisions **before** they harden into a draft. A **clear, complete request skips it** and drafts exactly as today — no interrogation. The pass is **always skippable** (the human may decline or cut it short and let the skill draft from what it has), and an explicit **`--grill`** / "grill me first" **forces** it even on a request that looks complete. Its answers **feed the draft below**; they do **not** replace the single plan-preview-then-confirm gate (step 6), which is unchanged — grilling only feeds it better input. **Target `grilling`, never `grill-me`** — `grilling` is the callable interview engine; `grill-me` sets `disable-model-invocation: true`, so a skill cannot drive it. **If the `grilling` skill is not installed, skip this pass and draft as today** — a missing engine degrades to the status-quo behaviour, it never fails the run. Mechanics — the thin/ambiguous signals, the override and the graceful fallback: [REFERENCE.md](REFERENCE.md#sharpening-the-request-grilling).
+**Sharpen a thin request first (grilling).** Before drafting, weigh how complete the request is. When the free-text description plus session context is **thin or ambiguous** — the scope is a guess, a decision the body would have to state is unresolved, a default-structure section would be filled by inference rather than by what the human said — engage a **grilling** pass _on the skill's own initiative_: drive the repo's interview engine to interview the human one question at a time, dependency-ordered with a recommended answer each, and resolve those open decisions **before** they harden into a draft. A **clear, complete request skips it** and drafts exactly as today — no interrogation. The pass is **always skippable** (the human may decline or cut it short and let the skill draft from what it has), and an explicit **`--grill`** / "grill me first" **forces** it even on a request that looks complete. Its answers **feed the draft below**; they do **not** replace the single plan-preview-then-confirm gate (step 6), which is unchanged — grilling only feeds it better input. **Which engine is the root `grillWith`** — absent means `grilling`, a name means that skill, `null` / `false` means never grill. **If the named engine is not installed, skip this pass and draft as today** — a missing engine degrades to the status-quo behaviour, it never fails the run — and if it declares `disable-model-invocation: true` (as `grill-me` and `batch-grill-me` do), **report the config error and skip**, never substituting another engine. Mechanics — the thin/ambiguous signals, the override, the key and its three fallbacks: [the key](#which-engine--the-root-grillwith-key) and [what is a valid value](#what-is-a-valid-value).
 
 The **template is chosen first** — it settles part of the body _and_ part of the labels before either is drafted.
 

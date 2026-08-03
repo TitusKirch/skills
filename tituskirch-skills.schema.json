@@ -35,6 +35,10 @@
       "$ref": "#/$defs/trustedBots",
       "description": "Allowlist of automated authors (apps and bots) the third-party-reading skills may treat as authoritative — a repo-level trust fact, empty by default. Lives at the root, not in a skill section, because several skills share it and it must not be withdrawn by disabling one of them."
     },
+    "grillWith": {
+      "$ref": "#/$defs/grillWith",
+      "description": "The interview engine the drafting skills drive before a draft hardens — issue (a thin request) and refine-issue (an issue's open decisions). It lives at the root, not in a skill section, because both of them drive it and an interview style is a property of the repo: a per-skill key would duplicate the same value and let the two drift apart."
+    },
     "commit": {
       "description": "atomic-commit settings, or false to disable the atomic-commit skill for the repo.",
       "oneOf": [
@@ -187,6 +191,21 @@
       "type": "string",
       "minLength": 1,
       "description": "Free-text, repo-wide guidance appended to a skill's prompt (committed, so it applies for every agent). Additive preference only: it steers wording and emphasis but never overrides hard constraints — commitlint rules, schema values, forge/tracker rules, templates, or the skill's built-in guardrails."
+    },
+    "grillWith": {
+      "description": "The name of a model-invocable interview skill, or null/false to never grill. It names a SKILL, not an interview mode: a round-based engine docks by having its name typed here, with no schema change and no release. Absent → today's behaviour, drive grilling when it is installed and skip the pass when it is not. A named skill that is not installed → skip the pass, draft as today, and say so. A named skill that declares disable-model-invocation (grill-me and batch-grill-me both do, so neither is a valid value) → report it as a config error and skip the pass; never silently fall back to another engine, which would run a different interview than the one configured and report success.",
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        },
+        {
+          "const": false
+        }
+      ]
     },
     "labelOrOff": {
       "description": "A label name, or false to switch the mechanic off.",
@@ -563,6 +582,11 @@
           "default": false,
           "description": "Run workers concurrently in isolated git worktrees instead of sequentially. Independent of branch. Default: false."
         },
+        "queueBranch": {
+          "type": "boolean",
+          "default": false,
+          "description": "Group a worktree drain's pull requests behind one queue branch: every issue PR targets ai/queue-<hash> instead of pr.base, and the drain opens a single ai/queue-<hash> -> pr.base pull request to close the run. Opt-in, and deliberately off by default, because the mode only completes where the target repo owns a workflow that fast-forwards its integration branch onto that PR's head once it is green — without one, the issue PRs land on a branch nothing ever merges. The drain never merges or fast-forwards the queue PR itself and needs no bypass-capable credential. Inert under branch:<name>, which opens no per-issue PR at all. Default: false."
+        },
         "feedback": {
           "type": "string",
           "enum": ["pr", "issue"],
@@ -763,6 +787,10 @@
         "trustedBots": {
           "$ref": "#/$defs/trustedBots",
           "description": "Allowlist of automated authors the third-party-reading skills may treat as authoritative, overlaid for this execution context. Replaces the base array wholesale (arrays are replaced, not concatenated, on profile merge)."
+        },
+        "grillWith": {
+          "$ref": "#/$defs/grillWith",
+          "description": "The interview engine for this execution context — null or false where nobody is at the terminal to answer, so an unattended profile drafts directly instead of offering a pass that cannot be taken."
         },
         "commit": {
           "description": "atomic-commit settings, or false to disable the atomic-commit skill for the repo.",

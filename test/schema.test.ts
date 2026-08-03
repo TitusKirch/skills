@@ -251,6 +251,43 @@ describe('the concurrency bound beside the run cap', () => {
   });
 });
 
+// The queue branch is the one work mode that strands its output when the repo it
+// runs in cannot land it: issue PRs pile up on `ai/queue-<hash>` and nothing ever
+// merges them without the fast-forward workflow. So the gate has to be opt-in in
+// the schema itself — absent must stay valid and must mean off, or every config
+// written before the key existed would silently acquire the mode.
+describe('the queue-branch gate', () => {
+  test('it is optional, and a boolean when present', () => {
+    accepts({ work: { branch: 'worktree' } }, 'absent — the mode stays off');
+    accepts(
+      { work: { branch: 'worktree', queueBranch: true } },
+      'the opt-in the key exists for'
+    );
+    accepts(
+      { work: { branch: 'worktree', queueBranch: false } },
+      'written out explicitly, which is also the default'
+    );
+  });
+
+  test('it is a gate, not a branch name', () => {
+    rejects({ work: { queueBranch: 'ai/queue-abc' } }, 'not a branch string');
+    rejects({ work: { queueBranch: 'true' } }, 'not a boolean-ish string');
+    rejects({ work: { queueBranch: 1 } }, 'not a number');
+    rejects({ work: { queueBranch: null } }, 'not null');
+  });
+
+  test('it can be overlaid in a profile, like every other work key', () => {
+    accepts(
+      { profiles: { ci: { work: { queueBranch: true } } } },
+      'profile queueBranch fragment'
+    );
+    rejects(
+      { profiles: { ci: { work: { queueBranch: 'yes' } } } },
+      'the type still applies inside a profile'
+    );
+  });
+});
+
 // work.loop paces a repeating driver between drains. Both keys are optional and
 // independent — a repo tuning the poll interval must not be forced to restate the
 // backstop — and both are whole seconds, so the seconds/milliseconds mix-up that a
@@ -502,6 +539,40 @@ describe('the GitLab issue tracker', () => {
       { profiles: { ci: { work: { tracker: 'gitlab' } } } },
       'profile work fragment'
     );
+  });
+});
+
+// grillWith names the interview skill the drafting skills drive, at the root
+// because two of them drive it (issue and refine-issue) and an interview style is
+// a property of the repo. It names a *skill*, not a mode, so a round-based engine
+// docks by having its name typed here — no schema change, no release.
+describe('the interview engine', () => {
+  test('a skill name is what the key takes', () => {
+    accepts({ grillWith: 'grilling' }, 'the default engine, named explicitly');
+    accepts(
+      { grillWith: 'batch-grilling' },
+      'a second engine docks by name alone'
+    );
+  });
+
+  test('off is spelled either way, and absent is not off', () => {
+    accepts({ grillWith: null }, 'null — never grill');
+    accepts({ grillWith: false }, "false — the repo's other spelling for off");
+    accepts({ language: 'en' }, 'absent — drive grilling when installed');
+  });
+
+  test('a profile may switch the engine for its context', () => {
+    accepts(
+      { grillWith: 'grilling', profiles: { ci: { grillWith: null } } },
+      'an unattended context never grills'
+    );
+  });
+
+  test('rejects what cannot name a skill', () => {
+    rejects({ grillWith: '' }, 'empty skill name');
+    rejects({ grillWith: true }, 'true names no skill');
+    rejects({ grillWith: ['grilling'] }, 'one engine, not a list');
+    rejects({ grillWith: { skill: 'grilling' } }, 'a name, not an object');
   });
 });
 
