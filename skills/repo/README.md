@@ -5,11 +5,11 @@
 Commits, pull requests, releases and dependency updates — each driven by the repo's own conventions.
 
 - **[atomic-commit](./atomic-commit/SKILL.md)** — Commits session work as atomic Conventional Commits (or just plans).
-- **[merge-deps](./merge-deps/SKILL.md)** — Triages a repo's open Dependabot PRs, verifying each on its own branch before merging.
+- **[merge-deps](./merge-deps/SKILL.md)** — Triages a repo's open dependency-bot requests, verifying each on its own branch before merging.
 - **[prune-branches](./prune-branches/SKILL.md)** — Reports a repo's stale branches grouped by why they are stale, and deletes the ones confirmed.
 - **[prune-comments](./prune-comments/SKILL.md)** — Reports comments that only restate the code, and removes them after confirmation.
-- **[pull-request](./pull-request/SKILL.md)** — Opens a pull request from the current branch via gh; forge chosen by config (github in v1).
-- **[release](./release/SKILL.md)** — Drives the release-please flow to a shipped release — promotes the integration branch, then merges the release PR.
+- **[pull-request](./pull-request/SKILL.md)** — Opens a pull request (GitLab, a merge request) from the current branch; forge and host chosen by config.
+- **[release](./release/SKILL.md)** — Drives the release-please flow to a shipped release — promotes the integration branch, then merges the release PR. GitHub-only.
 - **[update-deps](./update-deps/SKILL.md)** — Updates a repo's dependencies via its own updater — minor by default, honouring gates and pins.
 
 Back to [all skills](../README.md).

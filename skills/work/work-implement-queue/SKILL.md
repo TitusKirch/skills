@@ -2,7 +2,7 @@
 name: work-implement-queue
 metadata:
   summary: Drains the ready/changes-requested queue — implements each issue to a pushed, reviewable state.
-description: Drains a repo's queue of implementable issues across GitHub (gh), Linear (MCP) or local issue files — selects every issue that is ready or has changes requested, defers any whose prerequisite has not landed, orders the rest by priority (and, on a shared branch, by dependency), then implements each one to a pushed, reviewable state by delegating to work-implement. It hands each issue to the review loop (label review); the separate work-review-queue reviews them. Starts by reclaiming issues an earlier run crashed mid-implementation. Honours a per-run cap, runs sequentially or in parallel per config, single-flight-locked. Use when the user wants to batch-process, drain, or auto-implement the ready issues, run the implement loop, says things like "work the issues", "arbeite die Issues ab", "drain the queue", or runs it under /loop.
+description: Drains a repo's queue of implementable issues across GitHub (gh), GitLab (glab), Linear (MCP) or local issue files — selects every issue that is ready or has changes requested, defers any whose prerequisite has not landed, orders the rest by priority (and, on a shared branch, by dependency), then implements each one to a pushed, reviewable state by delegating to work-implement. It hands each issue to the review loop (label review); the separate work-review-queue reviews them. Starts by reclaiming issues an earlier run crashed mid-implementation. Honours a per-run cap, runs sequentially or in parallel per config, single-flight-locked. Use when the user wants to batch-process, drain, or auto-implement the ready issues, run the implement loop, says things like "work the issues", "arbeite die Issues ab", "drain the queue", or runs it under /loop.
 allowed-tools:
   - Bash
   - Read
@@ -23,8 +23,8 @@ Drain the repo's queue of **implementable** issues — every `ready` issue plus 
 
 ### 1. Load config & lock
 
-- **`work-implement` is required, and checked first.** This loop implements nothing itself — every issue is handed to it — so if it is not installed, **stop here, before resolving anything and before taking the lock**: name the missing skill and report that no issue was touched. Checking up front is the whole point; a required call first noticed mid-drain has already leased issues into `working` that the next run must reclaim. It is also what lets this skill **name** the two contracts its worker's REFERENCE already states — **Reading the config** and **The single-flight lock** — rather than carry a second copy of each: no path reaches either of them with the worker absent, because this check runs before both.
-- Config + tracker as in `work-implement` (the `work.*` section; its REFERENCE's **Config**, read by the rules its **Reading the config** states). Resolve it with this skill's own [`templates/resolve-config.sh`](templates/resolve-config.sh) — the same copy every skill ships — and apply those rules unchanged.
+- **`work-implement` is required, and checked first.** This loop implements nothing itself — every issue is handed to it — so if it is not installed, **stop here, before resolving anything and before taking the lock**: name the missing skill and report that no issue was touched. Checking up front is the whole point; a required call first noticed mid-drain has already leased issues into `working` that the next run must reclaim. It is also what lets this skill **name** the three contracts its worker's REFERENCE already states — **Reading the config**, **The single-flight lock** and **The forge and its host** — rather than carry a second copy of each: no path reaches any of them with the worker absent, because this check runs before all of them.
+- Config + tracker as in `work-implement` (the `work.*` section; its REFERENCE's **Config**, read by the rules its **Reading the config** states). Resolve it with this skill's own [`templates/resolve-config.sh`](templates/resolve-config.sh) — the same copy every skill ships — and apply those rules unchanged. Where the tracker is a forge (`github`, `gitlab`), the **host** it talks to is resolved per repo rather than assumed — **The forge and its host** in `work-implement`'s REFERENCE.
 - Acquire the **implement single-flight lock** — `mkdir` the lock at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/implement.lock` (atomic create-or-fail); a second implement-drain in the same checkout sees it held and exits. On adopting this path, first `rm -f` the old loose `implement.lock` (see the migration in the spec) so the two cannot coexist. The review loop uses a **separate** lock (`…/work/review.lock`), so implement and review drains run concurrently. The path, the `mkdir` primitive, the **heartbeat-timestamp** stale rule, the migration and the single-checkout boundary are specified in **The single-flight lock** in `work-implement`'s REFERENCE.
 
 ### 2. Reconcile — reclaim crashed implementations
@@ -43,12 +43,14 @@ Before building the queue, reclaim issues an earlier implement-run crashed on: a
 
 ### 4. Announce the batch — then drain
 
-**`ai: ready` is already the human's approval** to work an issue — the label means "scoped + approved for an AI agent to pick up". So the drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, branch strategy and parallel mode — with the **concurrency** it will run at when that mode is `parallel` (call out any **dependency-forced order**, any **mutex-forced wave split**, plus issues **deferred** or **skipped**), then drain. Under `/loop` it runs unattended.
+**`ai: ready` is already the human's approval** to work an issue — the label means "scoped + approved for an AI agent to pick up". So the drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, branch strategy and parallel mode — with the **concurrency** it will run at when that mode is `parallel` (call out any **dependency-forced order**, any **mutex-forced wave split**, plus issues **deferred** or **skipped**), then drain. Say so too when `work.queueBranch` is on, naming the `ai/queue-<hash>` the PRs will target and whether it is being reused or cut. Under `/loop` it runs unattended.
 
 - **Plan-only triggers** ("just show me", "dry run", "nur den Plan", "don't run") still stop after the plan.
 - If the ready-gate is **widened** (`labels.ready: false`, so issues were never explicitly opted-in), confirm before working those — there is no per-issue approval to lean on.
 
 ### 5. Drain
+
+**First, if `work.queueBranch` is on** (`worktree` only — inert under `branch:<name>`, which opens no per-issue PR to group): **reuse or cut the queue branch, and open its PR, before the first worker starts.** An `ai/queue-*` PR already **open** against `pr.base` → reuse that branch; none open → cut `ai/queue-<hash>` from `pr.base` and open the `ai/queue-<hash>` → `pr.base` PR. The hash only keeps concurrent drains apart and encodes nothing later read back. Hand the branch to every worker as its base — that is the whole of what the mode changes for them. Doing this **here** rather than at step 1 means an empty queue cuts nothing. **Cannot cut the branch or open that PR → stop and report**, having drained nothing: falling back to `pr.base`, or draining onto a branch carrying no PR, is how work is stranded where nobody looks for it. The drain **never merges or fast-forwards** that PR — the target repo's own workflow lands it. Rules: **Queue branch** in `work-implement`'s REFERENCE.
 
 For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-implement` on exactly that issue:
 
@@ -58,6 +60,8 @@ For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-imple
 
 **`cap` and `concurrency` are two bounds, not one.** `cap` is how many issues the **run** works; `work.concurrency` is how many workers are alive **at once** — it defaults to `cap` (unchanged behaviour for a config that omits it), never raises it, and is inert when `parallel` is `false`. A wave the mutex split is bounded by both. **Cap and concurrency** in `work-implement`'s REFERENCE.
 
+**A worker's reasoning effort is the session's, and this skill does not set it.** The Agent tool takes a per-spawn `model` and no `effort`, so nothing here chooses what a worker reasons at — the session that started the drain does, unless the worker's own skill or subagent frontmatter pins one, which none of these skills do. Implementing wants it **higher than reviewing does** — a weak pass costs a full review round — and because the two loops take separate locks they already run in separate sessions, which is where the setting belongs. Recommendation per loop, and why it is not pinned in frontmatter: **Worker effort** in `work-implement`'s REFERENCE.
+
 **Heartbeat the lock each iteration.** The lock is held for the whole batch, which no single shell process spans, so the drain **re-stamps** the implement lock's `refreshed` timestamp once per iteration (one cheap command) — that is what keeps a **live** drain from being misread as a crashed one by the **heartbeat-timestamp** stale rule (**The single-flight lock** in `work-implement`'s REFERENCE). The lock is released **explicitly** at step 6, not by a shell-lifetime trap.
 
 Each worker returns `reviewRequested` (pushed, handed to the review loop — the normal outcome), `blocked`, `skipped`, or an error. **`reviewRequested`/`blocked`/`skipped` → continue** to the next issue; only a **hard error** (git broken, tracker down) stops the drain, releases the lock, and reports.
@@ -66,11 +70,15 @@ Each worker returns `reviewRequested` (pushed, handed to the review loop — the
 
 ### 6. Report & release
 
-Release the lock. Summarise each issue and its outcome (handed to `reviewRequested` / `blocked` reason / skipped), what the reconcile reclaimed, issues **deferred** to a later run, any **mutex** that split the batch into waves (a delay within this run, not a deferral), any **dependency cycle** a human must untangle, any **label/body conflict** a worker flagged, and any feedback a worker wrote to the **issue** because `feedback: pr` had no pull request to write to (**Feedback destination** in `work-implement`'s REFERENCE).
+Release the lock. **Open with the lead** — how many issues this drain worked, how many are now in `reviewRequested`, how many blocked, how many were withheld or deferred, and the queue state below — then the per-issue detail underneath it. **Leading the report** binds that form.
+
+Summarise each issue and its outcome (handed to `reviewRequested` / `blocked` reason / skipped), what the reconcile reclaimed, issues **deferred** to a later run, any **mutex** that split the batch into waves (a delay within this run, not a deferral), any **dependency cycle** a human must untangle, any **label/body conflict** a worker flagged, and any feedback a worker wrote to the **issue** because `feedback: pr` had no pull request to write to (**Feedback destination** in `work-implement`'s REFERENCE).
 
 **Name every issue withheld for contradicting labels**, one line each with its number and both labels — **both** the ones step 3's partition held back and the ones a worker returned `skipped` at claim time, which are the same finding caught at two moments. This report is the _only_ artifact the check produces, so an issue left out of it is an issue that silently vanished from the queue. Say what clears it: drop the triage label if the issue really is assessed, drop the lifecycle label if it is not.
 
 Issues now in `reviewRequested` are the drain's hand-off — the `work-review-queue` picks them up. Name the count.
+
+**Under `work.queueBranch`, the queue PR is a hand-off artifact too** — report its url beside them, and say plainly that this drain does **not** land it: landing belongs to the target repo's fast-forward workflow, and that workflow can only act while the queue branch still contains `pr.base`'s tip. Where anything else has landed on `pr.base` since, say so too — the fast-forward is off the table until that repo puts the branch back on top, which is its call and not this drain's. A queue PR nobody knows is waiting is the mode's failure mode; naming it every run is what keeps it from becoming one.
 
 **Then name the queue's state**, so a repeating driver (`/loop`, cron, a human) knows whether to run again, wait, or stop — instead of that rule living in whoever typed the loop prompt. **Query the tracker again first**: work that became eligible while the last issue was being implemented is already there, and waiting on input that exists wastes an interval. Then decide **in this order**:
 
@@ -125,6 +133,46 @@ of a file.
 
 </skills-plan>
 
+<skills-tldr>
+
+## Leading the report
+
+The report this skill ends with is read **once, in a terminal**, by someone deciding what happens
+next. So it **opens with its result**: a `## TL;DR` section, before every other heading, carrying
+the whole answer in a few lines. A report that opens with its first group makes the reader
+reconstruct the total by reading every group and adding it up — which is the one thing they needed
+before deciding whether to read any of them.
+
+**Three things belong in the lead, and nothing else does:**
+
+- **The counts** — how much was found, per group, in the same words the groups below use. The
+  total is stated, never left to be summed.
+- **What the run acted on, or proposes to** — the preselected set, the merged set, the changed
+  set: the part that is not merely listed. Where nothing was acted on, say so in those words.
+- **The decision being asked for** — the one thing the reader is expected to do, said plainly, or
+  **no decision needed** where the run is finished. An ask that is only inferable from the groups
+  is an ask the reader has to assemble.
+
+**It leads the detail, it never replaces it.** Every group still renders in full underneath, and
+nothing is dropped, shortened or folded for having been counted above. The lead is an entry point;
+a summary that licenses hiding what it summarises is the failure this repo already forbids
+elsewhere.
+
+**Whatever the run could not establish belongs in the lead too**, not only in the section that
+holds it — a check that never ran, a list that could not be read, a tier the run declined to
+judge. Each changes what the counts mean, and a reader who stops after four lines must not stop
+with a picture the rest of the report would have corrected.
+
+**A run that found nothing still leads with it.** "Nothing found" is a result, and it belongs where
+every other result does: one line, naming the scope that was actually searched, so an empty report
+and an empty search are told apart.
+
+**The heading follows the output language**, as the rest of the report does — a German run reads
+`## Kurzfassung`. What is fixed is the position, not the wording. The `tldr` skill fixes this same
+opening for the summaries it writes on request; one house frame, reached two ways.
+
+</skills-tldr>
+
 ## Guardrails
 
 - **`work-implement` is required** — verified **first**, before the config is resolved and before the lock is taken, never discovered mid-drain; absent, the run stops having touched no issue and holding nothing. That check is also what licenses naming its REFERENCE for the config and lock rules instead of mirroring them here.
@@ -136,8 +184,9 @@ of a file.
 - **Never run a declared mutex pair concurrently** — split them across waves of the same run, under either branch strategy. A mutex **delays**; it never defers, labels, or blocks, and the skill never writes a `mutex:` label.
 - **Never work an issue whose labels contradict each other** — `needsTriage` beside a lifecycle label is withheld and reported, never resolved by obeying the more permissive of the two, and never written to the tracker.
 - **This loop never reviews.** It produces `reviewRequested`/`blocked` only; `done`/`changes-requested`/`needs human` are the review loop's and the human's.
+- **The queue branch is opt-in, and the drain never lands it** — off unless `work.queueBranch` says otherwise, because only the repo knows whether a workflow exists to fast-forward it; the drain opens that PR and stops there, holding no credential that could write to a protected branch. Cutting the branch or opening the PR fails → stop, never fall back to `pr.base`.
 - Inherits `work-implement`'s attribution-free, secret-free, only-this-issue guardrails.
 
 ## Reference
 
-Everything shared lives with the unit, in `work-implement`'s REFERENCE — **Reading the config**, **The single-flight lock**, the lifecycle, the selection query, the lease/race rules and the branch strategies. **Named, never linked**: a skill folder may not point out of itself, and this loop is one that never runs without that skill installed, so its reference is the one place those rules are written. The review half: `work-review-queue`. Why it is shaped this way: `work-implement`'s DESIGN.
+Everything shared lives with the unit, in `work-implement`'s REFERENCE — **Reading the config**, **The single-flight lock**, **The forge and its host**, the lifecycle, the selection query, the lease/race rules and the branch strategies. **Named, never linked**: a skill folder may not point out of itself, and this loop is one that never runs without that skill installed, so its reference is the one place those rules are written. The review half: `work-review-queue`. Why it is shaped this way: `work-implement`'s DESIGN.

@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 // Single source of truth for the skill registry.
 // Discovers skills from the filesystem (skills/<category>/<name>/SKILL.md
-// frontmatter) and projects them into nine artifacts: README.md's table, each
+// frontmatter) and projects them into eleven artifacts: README.md's table, each
 // skills/<category>/README.md, .claude-plugin/plugin.json, skills.sh.json, the
 // config contract mirrored into every skill that hosts it (and the resolver into
 // every skill that names it), the author-authority block mirrored into every skill
 // that reads third-party text, the check-command contract mirrored into every skill
 // that runs the gate, the single-flight-lock spec mirrored into the two work-loop
-// unit skills, and the plan-presentation rule mirrored into every skill that
-// presents a plan.
+// unit skills, the plan-presentation rule mirrored into every skill that presents a
+// plan, the report-lead rule mirrored into every skill that ends in a report, and the
+// forge/host resolution rule mirrored into every skill that drives a forge.
 //
 //   node scripts/gen-skills.ts           # rewrite whichever have drifted
 //   node scripts/gen-skills.ts --check   # exit 1 if any is stale (CI)
@@ -44,6 +45,8 @@ export interface Paths {
   verifyBlock: string;
   worklockBlock: string;
   planBlock: string;
+  tldrBlock: string;
+  forgeBlock: string;
   resolver: string;
 }
 
@@ -59,6 +62,8 @@ export function paths(root: string): Paths {
     verifyBlock: join(root, 'scripts', 'verify-block.md'),
     worklockBlock: join(root, 'scripts', 'worklock-block.md'),
     planBlock: join(root, 'scripts', 'plan-block.md'),
+    tldrBlock: join(root, 'scripts', 'tldr-block.md'),
+    forgeBlock: join(root, 'scripts', 'forge-block.md'),
     resolver: join(root, 'scripts', 'resolve-config.sh')
   };
 }
@@ -108,14 +113,31 @@ const VERIFY_ISOLATED_END = '</skills-verify-isolated>';
 const WORKLOCK_OPEN = '<skills-worklock>';
 const WORKLOCK_END = '</skills-worklock>';
 
-// The fifth mirrored contract, and the only one about the skill's *output*: a plan is read
-// once, in a terminal, so it has to render there. Every other contract here is about what a
-// skill reads or runs; this one is about what arrives in front of the human deciding. It was
-// mirrored rather than written per skill because the failure it prevents is silent — a plan
-// folded into `<details>` prints its summary and nothing else — and every plan-presenting
-// skill is one wording away from re-inventing it.
+// The fifth mirrored contract, and the first about the skill's *output* — the one below is
+// its other half: a plan is read once, in a terminal, so it has to render there. The four
+// contracts above are about what a skill reads or runs; this one is about what arrives in
+// front of the human deciding. It was mirrored rather than written per skill because the
+// failure it prevents is silent — a plan folded into `<details>` prints its summary and
+// nothing else — and every plan-presenting skill is one wording away from re-inventing it.
 const PLAN_OPEN = '<skills-plan>';
 const PLAN_END = '</skills-plan>';
+
+// The sixth, and the other half of the one above: the plan block says a report may hide
+// nothing, this one says what it opens with. They govern the same message from opposite
+// ends, which is why the roster here is a subset of that one rather than a list of its own
+// kind — a skill leads with a result only where it ends by reporting one. Split into two
+// blocks rather than folded into the plan body because the criteria differ: everything a
+// skill puts in front of a human has to render, while only the account a run *ends* with
+// has a result to lead with.
+const TLDR_OPEN = '<skills-tldr>';
+const TLDR_END = '</skills-tldr>';
+
+// The seventh, and the only one about where a skill is *pointing*: which forge drives the repo
+// and which host that forge lives on. It is mirrored rather than left per skill because the
+// host half fails silently — every skill assumed one instance, and a self-hosted GitLab or a
+// GitHub Enterprise repo is served the public host by a run that never noticed it guessed.
+const FORGE_OPEN = '<skills-forge>';
+const FORGE_END = '</skills-forge>';
 
 // The Agent Skills spec caps `description` at 1024 characters, and that cap is a cliff:
 // a skill one character over is non-conformant, and nothing about writing a description
@@ -251,7 +273,7 @@ export function discoverSkills(p: Paths): Skill[] {
           } catch (err) {
             // No SKILL.md means the directory is not a skill — skip it. Any other
             // read failure is not that, and swallowing it would drop the skill from
-            // all nine artifacts in one silent `--write`, reporting success while
+            // all eleven artifacts in one silent `--write`, reporting success while
             // deleting a published skill's row, entry and grouping.
             if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
             throw err;
@@ -511,6 +533,19 @@ export function worklockBody(p: Paths): string {
   return raw.slice(at + marker.length).trim();
 }
 
+// One body, no variants: which forge a repo uses and which host it lives on are resolved the
+// same way whether the answer is then used to open a merge request or to list issues. What
+// each skill states for itself is the commands it drives once the pair is known.
+export function forgeBody(p: Paths): string {
+  const raw = readFileSync(p.forgeBlock, 'utf8');
+  const marker = '<!-- forge:body -->';
+  const at = raw.indexOf(marker);
+  if (at === -1) {
+    throw new Error(`${p.forgeBlock}: missing ${marker}`);
+  }
+  return raw.slice(at + marker.length).trim();
+}
+
 // One body, no variants either: a terminal renders the same for every skill, so what a plan
 // may look like does not vary with what the skill is planning.
 export function planBody(p: Paths): string {
@@ -519,6 +554,17 @@ export function planBody(p: Paths): string {
   const at = raw.indexOf(marker);
   if (at === -1) {
     throw new Error(`${p.planBlock}: missing ${marker}`);
+  }
+  return raw.slice(at + marker.length).trim();
+}
+
+// One body, no variants: what a report leads with does not vary with what it reports on.
+export function tldrBody(p: Paths): string {
+  const raw = readFileSync(p.tldrBlock, 'utf8');
+  const marker = '<!-- tldr:body -->';
+  const at = raw.indexOf(marker);
+  if (at === -1) {
+    throw new Error(`${p.tldrBlock}: missing ${marker}`);
   }
   return raw.slice(at + marker.length).trim();
 }
@@ -779,6 +825,16 @@ export function main(argv: string[], root: string = ROOT): RunResult {
   stale.push(
     ...syncTaggedBlock(p, skills, check, 'plan', [
       { open: PLAN_OPEN, end: PLAN_END, body: planBody(p) }
+    ])
+  );
+  stale.push(
+    ...syncTaggedBlock(p, skills, check, 'tldr', [
+      { open: TLDR_OPEN, end: TLDR_END, body: tldrBody(p) }
+    ])
+  );
+  stale.push(
+    ...syncTaggedBlock(p, skills, check, 'forge', [
+      { open: FORGE_OPEN, end: FORGE_END, body: forgeBody(p) }
     ])
   );
 

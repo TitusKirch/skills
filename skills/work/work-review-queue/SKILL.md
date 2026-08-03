@@ -2,7 +2,7 @@
 name: work-review-queue
 metadata:
   summary: Drains the awaiting-review queue — reviews each pushed issue with a fresh agent, routing to done/changes/needs-human.
-description: Drains a repo's queue of issues awaiting AI review across GitHub (gh), Linear (MCP) or local issue files — selects every issue in review, then reviews each with a fresh, independent agent by delegating to work-review, routing each to done, changes-requested (back to the implement loop), needs-human, or blocked. Starts by reconciling issues whose PR a human merged or closed out-of-band. Honours a per-run cap, single-flight-locked with a lock separate from the implement loop's, so review and implement drains run concurrently. Use when the user wants to review, drain, or auto-review the pushed AI work, run the review loop, says things like "review the queue", "reviewe die Issues", "drain the review queue", or runs it under /loop.
+description: Drains a repo's queue of issues awaiting AI review across GitHub (gh), GitLab (glab), Linear (MCP) or local issue files — selects every issue in review, then reviews each with a fresh, independent agent by delegating to work-review, routing each to done, changes-requested (back to the implement loop), needs-human, or blocked. Starts by reconciling issues whose PR a human merged or closed out-of-band. Honours a per-run cap, single-flight-locked with a lock separate from the implement loop's, so review and implement drains run concurrently. Use when the user wants to review, drain, or auto-review the pushed AI work, run the review loop, says things like "review the queue", "reviewe die Issues", "drain the review queue", or runs it under /loop.
 allowed-tools:
   - Bash
   - Read
@@ -23,8 +23,8 @@ Drain the repo's queue of issues **awaiting review** — every issue in `reviewR
 
 ### 1. Load config & lock
 
-- **`work-review` is required, and checked first.** This loop reviews nothing itself — every issue is handed to it — so if it is not installed, **stop here, before resolving anything and before taking the lock**: name the missing skill and report that no issue was touched. Checking up front is the whole point; a required call first noticed mid-drain has already leased issues into `reviewing` that the next run must reclaim. It is also what lets this skill **name** the two contracts its worker's REFERENCE already states — **Reading the config** and **The single-flight lock** — rather than carry a second copy of each: no path reaches either of them with the worker absent, because this check runs before both.
-- Config + tracker as in `work-review` (the `work.*` section, where `work.review.maxRounds` governs escalation; its REFERENCE's **Config**, read by the rules its **Reading the config** states). Resolve it with this skill's own [`templates/resolve-config.sh`](templates/resolve-config.sh) — the same copy every skill ships — and apply those rules unchanged.
+- **`work-review` is required, and checked first.** This loop reviews nothing itself — every issue is handed to it — so if it is not installed, **stop here, before resolving anything and before taking the lock**: name the missing skill and report that no issue was touched. Checking up front is the whole point; a required call first noticed mid-drain has already leased issues into `reviewing` that the next run must reclaim. It is also what lets this skill **name** the three contracts its worker's REFERENCE already states — **Reading the config**, **The single-flight lock** and **The forge and its host** — rather than carry a second copy of each: no path reaches any of them with the worker absent, because this check runs before all of them.
+- Config + tracker as in `work-review` (the `work.*` section, where `work.review.maxRounds` governs escalation; its REFERENCE's **Config**, read by the rules its **Reading the config** states). Resolve it with this skill's own [`templates/resolve-config.sh`](templates/resolve-config.sh) — the same copy every skill ships — and apply those rules unchanged. Where the tracker is a forge (`github`, `gitlab`), the **host** it talks to is resolved per repo rather than assumed — **The forge and its host** in `work-review`'s REFERENCE.
 - Acquire the **review single-flight lock** — `mkdir` the lock at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/review.lock` (atomic create-or-fail), a **separate** path from the implement loop's `…/work/implement.lock`, so an implement-drain and a review-drain run at the same time in the same checkout. On adopting this path, first `rm -f` the old loose `tituskirch-work-review-queue.lock` (see the migration in the spec) so the two cannot coexist. The path, the `mkdir` primitive, the **heartbeat-timestamp** stale rule, the migration and the single-checkout boundary are specified in **The single-flight lock** in `work-review`'s REFERENCE.
 
 ### 2. Reconcile — close out out-of-band actions, reclaim stale review leases
@@ -55,13 +55,17 @@ For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-revie
 
 **Per-issue lease.** When `work.labels.reviewing` is configured, each worker **claims** its issue — flip `reviewRequested → reviewing` + assign — **before** reviewing, and the verdict clears the lease; on `github` and `linear` this is the tracker-global claim that makes the drain safe **across clones** (a second clone's review-drain sees the `reviewing` label and skips), which the per-checkout lock cannot provide. **On `local` it is not** — the store lives inside the checkout, so a second clone sees nothing and both drains can write competing verdicts, exactly as with the lease off; the lease is worth having **within** a checkout only. Read **The `reviewing` lease** in `work-review`'s REFERENCE before enabling `labels.reviewing` on `local` — its recommendation is to leave it off. With `labels.reviewing` off, workers review straight off `reviewRequested` as before — the drain relies on its lock alone.
 
+**A reviewer's reasoning effort is the session's, and this skill does not set it.** The Agent tool takes a per-spawn `model` and no `effort`, so nothing here chooses what a reviewer reasons at — the session that started the drain does, unless the worker's own skill or subagent frontmatter pins one, which none of these skills do. Review is judgement over a diff with little output and holds up **below** what implementing wants, so a review drain is the cheaper of the two to run — a saving a caller takes by starting this loop's session at a lower effort, which the separate lock already lets them do. Recommendation per loop, and why it is not pinned in frontmatter: **Worker effort** in `work-implement`'s REFERENCE.
+
 **Heartbeat the lock each iteration.** The lock is held for the whole batch, which no single shell process spans, so the drain **re-stamps** the review lock's `refreshed` timestamp once per iteration (one cheap command) — that is what keeps a **live** drain from being misread as a crashed one by the **heartbeat-timestamp** stale rule (**The single-flight lock** in `work-review`'s REFERENCE). The lock is released **explicitly** at step 6, not by a shell-lifetime trap.
 
 Each worker returns a verdict — `done`, `changes-requested`, `needs human`, or `blocked` — or an error. Any verdict → **continue**; only a **hard error** (git broken, tracker down) stops the drain, releases the lock, and reports.
 
 ### 6. Report & release
 
-Release the lock. Summarise each issue and its verdict, what the reconcile closed out. Name specifically:
+Release the lock. **Open with the lead** — how many issues were reviewed, the count per verdict, how many now want a human, and the queue state below — then the per-issue detail underneath it. **Leading the report** binds that form.
+
+Summarise each issue and its verdict, what the reconcile closed out. Name specifically:
 
 - **`changes-requested`** — back in the implement queue; the next implement-drain re-works them.
 - **`needs human`** — the drain's **actual ask**: each wants a human verdict (via `/work-review <n>`) to reach `done` or go back for changes.
@@ -120,6 +124,46 @@ of a file.
 
 </skills-plan>
 
+<skills-tldr>
+
+## Leading the report
+
+The report this skill ends with is read **once, in a terminal**, by someone deciding what happens
+next. So it **opens with its result**: a `## TL;DR` section, before every other heading, carrying
+the whole answer in a few lines. A report that opens with its first group makes the reader
+reconstruct the total by reading every group and adding it up — which is the one thing they needed
+before deciding whether to read any of them.
+
+**Three things belong in the lead, and nothing else does:**
+
+- **The counts** — how much was found, per group, in the same words the groups below use. The
+  total is stated, never left to be summed.
+- **What the run acted on, or proposes to** — the preselected set, the merged set, the changed
+  set: the part that is not merely listed. Where nothing was acted on, say so in those words.
+- **The decision being asked for** — the one thing the reader is expected to do, said plainly, or
+  **no decision needed** where the run is finished. An ask that is only inferable from the groups
+  is an ask the reader has to assemble.
+
+**It leads the detail, it never replaces it.** Every group still renders in full underneath, and
+nothing is dropped, shortened or folded for having been counted above. The lead is an entry point;
+a summary that licenses hiding what it summarises is the failure this repo already forbids
+elsewhere.
+
+**Whatever the run could not establish belongs in the lead too**, not only in the section that
+holds it — a check that never ran, a list that could not be read, a tier the run declined to
+judge. Each changes what the counts mean, and a reader who stops after four lines must not stop
+with a picture the rest of the report would have corrected.
+
+**A run that found nothing still leads with it.** "Nothing found" is a result, and it belongs where
+every other result does: one line, naming the scope that was actually searched, so an empty report
+and an empty search are told apart.
+
+**The heading follows the output language**, as the rest of the report does — a German run reads
+`## Kurzfassung`. What is fixed is the position, not the wording. The `tldr` skill fixes this same
+opening for the summaries it writes on request; one house frame, reached two ways.
+
+</skills-tldr>
+
 ## Guardrails
 
 - **`work-review` is required** — verified **first**, before the config is resolved and before the lock is taken, never discovered mid-drain; absent, the run stops having touched no issue and holding nothing. That check is also what licenses naming its REFERENCE for the config and lock rules instead of mirroring them here.
@@ -132,4 +176,4 @@ of a file.
 
 ## Reference
 
-Everything shared lives with the unit, in `work-review`'s REFERENCE — **Reading the config**, **The single-flight lock**, the review unit, the selection query, the round count, the escalation policy and the feedback recipes. **Named, never linked**: a skill folder may not point out of itself, and this loop is one that never runs without that skill installed, so its reference is the one place those rules are written. The implement half: `work-implement-queue`. Lifecycle and design: `work-implement`'s DESIGN.
+Everything shared lives with the unit, in `work-review`'s REFERENCE — **Reading the config**, **The single-flight lock**, **The forge and its host**, the review unit, the selection query, the round count, the escalation policy and the feedback recipes. **Named, never linked**: a skill folder may not point out of itself, and this loop is one that never runs without that skill installed, so its reference is the one place those rules are written. The implement half: `work-implement-queue`. Lifecycle and design: `work-implement`'s DESIGN.

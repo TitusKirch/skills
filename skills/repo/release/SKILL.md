@@ -1,8 +1,8 @@
 ---
 name: release
 metadata:
-  summary: Drives the release-please flow to a shipped release — promotes the integration branch, then merges the release PR.
-description: Drives a repo's release-please flow to a shipped release — promotes the integration branch onto the release branch (config-gated), waits for the release PR release-please opens, validates it, and merges it. Forge chosen per-repo by config (root `forge` key); v1 is GitHub via the gh CLI. Invoke manually only — this skill never fires proactively, never merges without confirmation, and opens at most one pull request (the promotion PR, and only where configured to create it). Use when the user explicitly asks to cut, ship or publish a release, to merge the release-please PR, to promote dev onto main for a release, or says things like "ship the release", "cut a release", "merge the release PR", "Release machen", "Release veröffentlichen".
+  summary: Drives the release-please flow to a shipped release — promotes the integration branch, then merges the release PR. GitHub-only.
+description: Drives a repo's release-please flow to a shipped release — promotes the integration branch onto the release branch (config-gated), waits for the release PR release-please opens, validates it, and merges it. GitHub-only by decision, not by staging — release-please, the flow it drives, exists on no other forge, so a repo whose root `forge` key names another one is told why and the run stops. Invoke manually only — this skill never fires proactively, never merges without confirmation, and opens at most one pull request (the promotion PR, and only where configured to create it). Use when the user explicitly asks to cut, ship or publish a release, to merge the release-please PR, to promote dev onto main for a release, or says things like "ship the release", "cut a release", "merge the release PR", "Release machen", "Release veröffentlichen".
 allowed-tools:
   - Read
   - Grep
@@ -22,7 +22,9 @@ allowed-tools:
 
 # release
 
-Drive the repo's **release-please** flow to a shipped release — get the integration branch onto the release branch, wait for the release PR release-please opens, validate it, merge it. **Manual invocation only**: nothing here ever fires on its own, and every merge waits for a human. The forge is chosen by the root `forge` config key; **GitHub (via `gh`) is the only forge implemented in v1**.
+Drive the repo's **release-please** flow to a shipped release — get the integration branch onto the release branch, wait for the release PR release-please opens, validate it, merge it. **Manual invocation only**: nothing here ever fires on its own, and every merge waits for a human.
+
+**This skill is GitHub-only, and that is a decision rather than a stage.** What binds it is not the forge but the **release tool**: release-please is GitHub-only by construction, and nothing with real traction elsewhere reproduces its release-PR model — semantic-release tags straight from the pipeline, leaving this skill nothing to validate and nothing to merge. So a root `forge` key naming another forge is not "not yet, a driver is coming"; it means there is nothing here to drive, and the run **stops and says so**. The alternatives that were weighed and rejected: [Decisions](REFERENCE.md#decisions). The seams stay open on purpose — the release tool is [detected, not configured](#1-detect-read-the-repo--never-assume) and the skill's name is deliberately tool-neutral, so a tool that _does_ reproduce the model on another forge docks here as detection, without a rename or a config break.
 
 **Opted out?** If the repo config sets `release` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the release skill is turned off in `.tituskirch-skills.json`. An _absent_ `release` block is **not** disabled. Check `.release == false` on the resolved config before any action. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
@@ -30,7 +32,7 @@ Drive the repo's **release-please** flow to a shipped release — get the integr
 
 ### 1. Detect (read the repo — never assume)
 
-- **Forge** — from the root `forge` key (v1: only `github` is implemented; any other value → say it's not supported yet and stop). Confirm the repo is reachable: `gh repo view --json nameWithOwner,defaultBranchRef`. If it fails (no GitHub remote, or `gh` not authenticated), **stop**.
+- **Forge** — from the root `forge` key. **`github` is the only value this skill drives**, so any other value **stops the run** — and the message says _why_: this skill is GitHub-only because **release-please is**, not because a driver is pending. Never say "not supported yet"; that promises something nobody is building. Point at [Decisions](REFERENCE.md#decisions) for what was weighed. Then confirm the repo is reachable: `gh repo view --json nameWithOwner,defaultBranchRef`. If it fails (no GitHub remote, or `gh` not authenticated), **stop**.
 - **Release tool** — the tool is **detected, not configured**. v1 recognises exactly one: release-please (`release-please-config.json` + `.release-please-manifest.json`, plus a workflow running `googleapis/release-please-action` on the release branch). None recognised → stop and report that **no supported release tool was detected**, naming what v1 supports. This skill drives a release tool; it does not invent a release process.
 - **Branches** — resolve the promotion **chain**: `release.stages` if set (integration branch first, release branch last), else `[head, base]` where `head` = `release.head`, else `pr.base`, else the default branch, and `base` = `release.base`, else the repo default branch. Never hardcode `dev`/`main`. Validate `stages` (non-empty, distinct branches, real refs) — malformed → report and stop. `git fetch` first, then show the whole chain (`dev → … → base`) in the plan. [Chains](REFERENCE.md#promotion-chains).
 - **Config** — `.tituskirch-skills.json` at the repo root (optional, committed). Keys: [REFERENCE.md](REFERENCE.md#config).
@@ -79,7 +81,7 @@ After confirmation, merge it with a method the **release branch actually allows*
 
 Either way release-please then tags the release, and the workflow deletes the merged `release-please--*` branch.
 
-Report the version, the tag, the release url, and every PR touched.
+Report the version, the tag, the release url, and every PR touched — **led** by the version and whether it shipped, before the detail. **Leading the report** below binds the form, and it binds step 6's timeout report too.
 
 ### 6. Report instead of hanging
 
@@ -114,6 +116,46 @@ of a file.
 
 </skills-plan>
 
+<skills-tldr>
+
+## Leading the report
+
+The report this skill ends with is read **once, in a terminal**, by someone deciding what happens
+next. So it **opens with its result**: a `## TL;DR` section, before every other heading, carrying
+the whole answer in a few lines. A report that opens with its first group makes the reader
+reconstruct the total by reading every group and adding it up — which is the one thing they needed
+before deciding whether to read any of them.
+
+**Three things belong in the lead, and nothing else does:**
+
+- **The counts** — how much was found, per group, in the same words the groups below use. The
+  total is stated, never left to be summed.
+- **What the run acted on, or proposes to** — the preselected set, the merged set, the changed
+  set: the part that is not merely listed. Where nothing was acted on, say so in those words.
+- **The decision being asked for** — the one thing the reader is expected to do, said plainly, or
+  **no decision needed** where the run is finished. An ask that is only inferable from the groups
+  is an ask the reader has to assemble.
+
+**It leads the detail, it never replaces it.** Every group still renders in full underneath, and
+nothing is dropped, shortened or folded for having been counted above. The lead is an entry point;
+a summary that licenses hiding what it summarises is the failure this repo already forbids
+elsewhere.
+
+**Whatever the run could not establish belongs in the lead too**, not only in the section that
+holds it — a check that never ran, a list that could not be read, a tier the run declined to
+judge. Each changes what the counts mean, and a reader who stops after four lines must not stop
+with a picture the rest of the report would have corrected.
+
+**A run that found nothing still leads with it.** "Nothing found" is a result, and it belongs where
+every other result does: one line, naming the scope that was actually searched, so an empty report
+and an empty search are told apart.
+
+**The heading follows the output language**, as the rest of the report does — a German run reads
+`## Kurzfassung`. What is fixed is the position, not the wording. The `tldr` skill fixes this same
+opening for the summaries it writes on request; one house frame, reached two ways.
+
+</skills-tldr>
+
 ## Guardrails
 
 - **Manual invocation only.** Never fire proactively — not after a merge, not after a green CI run, not because a release "looks due". Someone asks, or this skill does nothing.
@@ -124,7 +166,7 @@ of a file.
 - **Never force-push, never tag by hand, never edit the version or `CHANGELOG.md`.** release-please owns all three; racing it corrupts the manifest.
 - **Only issues the AI work loop already accepted are marked shipped**, and only after the merge that put them on the default branch. An issue referenced by a promoted commit but still mid-lifecycle — working, awaiting review, changes requested, escalated, blocked — is **left alone**: this skill observes a merge, it does not adjudicate a lifecycle. It writes one workflow state and never a label, so nothing here can hand an issue to, or take one from, either work loop.
 - **Attribution-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in any PR, comment, or commit it produces.
-- **GitHub forge (v1).** No GitHub remote / `gh` unavailable → stop; never fall back to raw `git` plumbing or the API by hand.
+- **GitHub-only, by decision.** A `forge` other than `github` → stop, naming release-please as what binds it and not a pending driver; never improvise a release on a forge whose tooling has no release PR to validate. No GitHub remote / `gh` unavailable → stop as well; never fall back to raw `git` plumbing or the API by hand.
 
 ## Reference
 

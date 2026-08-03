@@ -45,7 +45,7 @@ Verb shortcuts: `/tituskirch-skills-config setup`, `/tituskirch-skills-config re
 **Setup** — walk the sections; per section propose from detection, ask only the **essentials**, leave everything else an editable key. Two rules decide the shape of the result:
 
 - **Forge & tracker are never auto-selected** — always asked, and only options whose tooling actually works here are offered (`gh auth status` covers the remote's host; the Linear MCP answers). `none` is always on the list.
-- **Three keys live at the repo root, not in a section** — `forge`, `language`, `verify` — because each is a fact about the repo that several skills need. Put a shared fact in one skill's section and disabling that skill silently withdraws it from the others.
+- **Four keys live at the repo root, not in a section** — `forge`, `forgeHost`, `language`, `verify` — because each is a fact about the repo that several skills need. Put a shared fact in one skill's section and disabling that skill silently withdraws it from the others.
 
 Most repos reduce to one real decision. After detection, name only what is actually non-default and ask about that — don't walk every section aloud. Section-by-section detail: **Setup** in REFERENCE.
 

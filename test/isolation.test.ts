@@ -87,6 +87,8 @@ const withAuthorityReduced = skillsWithTag('<skills-authority-reduced>');
 const withVerifyBase = skillsWithTag('<skills-verify>');
 const withVerifyIsolated = skillsWithTag('<skills-verify-isolated>');
 const withPlanBlock = skillsWithTag('<skills-plan>');
+const withTldrBlock = skillsWithTag('<skills-tldr>');
+const withForgeBlock = skillsWithTag('<skills-forge>');
 
 /**
  * Which skills run the repo's gate, and in which tree.
@@ -145,6 +147,99 @@ const PLAN_CARRIERS = [
   'work/work-implement-queue',
   'work/work-review-queue'
 ];
+
+/**
+ * Which skills end a run with a report of what happened, and therefore carry the rule that
+ * the report opens with its result rather than with its first group.
+ *
+ * The criterion is the **last thing the skill hands back**: an account of a run — what was
+ * found, what was acted on, what is left — read once and acted on. A skill whose closing
+ * output is a plan awaiting a yes is not on this list; the plan block governs that, and a
+ * plan already opens with what it proposes.
+ *
+ * `tldr` is deliberately absent, and it is the one skill whose absence is not about the
+ * criterion: its entire product is this frame, fixed in its own workflow, so mirroring the
+ * block into it would give one skill two statements of the same rule to drift apart.
+ *
+ * Declared rather than inferred, for the reason the rosters above are: both failure
+ * directions are silent on disk. A skill that starts reporting without the block buries its
+ * result under its first group; a listed one that lost its block keeps the promise with
+ * nothing behind it.
+ */
+const TLDR_CARRIERS = [
+  'meta/validate-skills',
+  'repo/merge-deps',
+  'repo/prune-branches',
+  'repo/prune-comments',
+  'repo/release',
+  'repo/update-deps',
+  'work/work-implement-queue',
+  'work/work-review-queue'
+];
+
+/**
+ * Which skills pick a forge driver and resolve the host it talks to.
+ *
+ * Two facts, one rule: which CLI drives the forge (`gh` / `glab`) and which instance that
+ * CLI is pointed at. The host is the half that has to be mirrored rather than assumed —
+ * self-hosted GitLab is the normal deployment and GitHub Enterprise has the same shape, so
+ * a skill that resolves it once and reuses it reaches the wrong instance the moment a
+ * session touches a second repo.
+ *
+ * Declared, like the two rosters below it, because both failure directions are silent: a
+ * skill that starts driving a forge without the block re-derives the ladder its own way,
+ * and a listed one that lost its block keeps prose promising a resolution it no longer has.
+ *
+ * `release` is deliberately absent: it is GitHub-only, and stating that limitation is
+ * tracked on its own rather than papered over with a rule it does not follow. `merge-deps`
+ * was absent for the same reason and no longer is — its author guarantee turned out to be
+ * reproducible on GitLab from a configured identity, so it drives both forges and carries
+ * the block. The two queue skills are absent for the standing reason — they name their
+ * worker's REFERENCE instead of mirroring, which the suite at the bottom of this file pins.
+ */
+const FORGE_CARRIERS = [
+  'repo/merge-deps',
+  'repo/prune-branches',
+  'repo/pull-request',
+  'work/issue',
+  'work/work-implement',
+  'work/work-review'
+];
+
+describe('the forge driver and its host are one rule, not one per skill', () => {
+  test('the tags on disk are exactly the roster', () => {
+    assert.deepEqual(withForgeBlock.sort(), [...FORGE_CARRIERS].sort());
+  });
+
+  test('every forge-carrier also carries the config block, so it ships the resolver it reads forge/forgeHost from', () => {
+    for (const path of withForgeBlock) {
+      assert.ok(
+        withConfigBlock.includes(path),
+        `${path} carries the forge block but not the config block/resolver`
+      );
+    }
+  });
+
+  test('no link inside the forge block leaves the skill folder', () => {
+    for (const path of withForgeBlock) {
+      const dir = join(ROOT, 'skills', path);
+      for (const file of docsOf(dir)) {
+        const body = readFileSync(file, 'utf8');
+        const from = body.indexOf('<skills-forge>');
+        if (from === -1) continue;
+        const block = body.slice(from, body.indexOf('</skills-forge>'));
+        for (const target of relativeLinks(file).filter((t) =>
+          block.includes(`(${t}`)
+        )) {
+          assert.ok(
+            !target.startsWith('..'),
+            `${path}: forge block links out of the skill via "${target}"`
+          );
+        }
+      }
+    }
+  });
+});
 
 describe('the generated config block is self-contained', () => {
   test('it is present in the skills that read config, and nowhere else by accident', () => {
@@ -546,7 +641,11 @@ describe('a skill that cannot run alone names its worker instead of mirroring', 
   for (const [path, worker] of Object.entries(DELEGATES_TO_WORKER)) {
     test(`${path} carries neither mirrored block`, () => {
       const text = shippedText(path);
-      for (const tag of ['<skills-config>', '<skills-worklock>']) {
+      for (const tag of [
+        '<skills-config>',
+        '<skills-worklock>',
+        '<skills-forge>'
+      ]) {
         assert.ok(
           !text.includes(tag),
           `${path} re-grew ${tag} — ${worker}'s REFERENCE already states it`
@@ -554,13 +653,17 @@ describe('a skill that cannot run alone names its worker instead of mirroring', 
       }
     });
 
-    test(`${path} names ${worker}'s REFERENCE for both rules`, () => {
+    test(`${path} names ${worker}'s REFERENCE for every rule it delegates`, () => {
       const text = shippedText(path);
       assert.ok(
         text.includes(`\`${worker}\`'s REFERENCE`),
         `${path} must name ${worker}'s REFERENCE as where the rules live`
       );
-      for (const rule of ['Reading the config', 'The single-flight lock']) {
+      for (const rule of [
+        'Reading the config',
+        'The single-flight lock',
+        'The forge and its host'
+      ]) {
         assert.ok(
           text.includes(rule),
           `${path} no longer names "${rule}" — the rule has nowhere to be read from`
@@ -673,6 +776,44 @@ describe('the plan a skill presents has to render where it is read', () => {
           assert.ok(
             !target.startsWith('..'),
             `${path}: plan block links out of the skill via "${target}"`
+          );
+        }
+      }
+    }
+  });
+});
+
+describe('the report a run ends with has to lead with its result', () => {
+  test('the tags on disk are exactly the roster', () => {
+    assert.deepEqual(withTldrBlock.sort(), [...TLDR_CARRIERS].sort());
+  });
+
+  test('every reporting skill also carries the plan block', () => {
+    // The two rules govern the same message from opposite ends — what may be hidden in it,
+    // and what it opens with — so a skill bound by one and not the other has a report whose
+    // lead is specified and whose body may still arrive folded.
+    const missing = withTldrBlock.filter((p) => !withPlanBlock.includes(p));
+    assert.deepEqual(
+      missing,
+      [],
+      'a skill whose report leads with a TL;DR must also render the rest of it'
+    );
+  });
+
+  test('no link inside the tldr block leaves the skill folder', () => {
+    for (const path of withTldrBlock) {
+      const dir = join(ROOT, 'skills', path);
+      for (const file of docsOf(dir)) {
+        const body = readFileSync(file, 'utf8');
+        const from = body.indexOf('<skills-tldr>');
+        if (from === -1) continue;
+        const block = body.slice(from, body.indexOf('</skills-tldr>'));
+        for (const target of relativeLinks(file).filter((t) =>
+          block.includes(`(${t}`)
+        )) {
+          assert.ok(
+            !target.startsWith('..'),
+            `${path}: tldr block links out of the skill via "${target}"`
           );
         }
       }

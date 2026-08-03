@@ -12,9 +12,15 @@
     },
     "forge": {
       "type": "string",
-      "enum": ["github"],
+      "enum": ["github", "gitlab"],
       "default": "github",
-      "description": "Code forge for the forge-bound skills (pull-request, release, merge-deps) — where PRs and releases live. v1 supports only github; extend additively when a second forge (e.g. gitlab) docks. This is the single home for the forge axis; the issue tracker is a separate axis (issue.tracker / work.tracker)."
+      "description": "Code forge for the forge-bound skills — where pull requests (GitLab: merge requests) and releases live. github is driven by the gh CLI, gitlab by glab. This is the single home for the forge axis; the issue tracker is a separate axis (issue.tracker / work.tracker). Not every forge-bound skill implements every forge: pull-request, prune-branches and merge-deps speak both — merge-deps needs mergeDeps.gitlab.bot on GitLab, since its queue's author is not a constant there — while release is GitHub-only and says so when it meets another forge rather than degrading silently."
+    },
+    "forgeHost": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]+)?$",
+      "description": "The host this repo's forge lives on — a bare hostname with an optional port (gitlab.example.com, github.example.com:8443), never a URL and never a path. Self-hosted GitLab is the normal GitLab deployment and GitHub Enterprise has the same shape, so which host a repo talks to is a per-repo fact and must never be resolved once and reused across repos. null or absent means derive it — the origin remote's host first (a repo-level fact), then whatever the forge CLI is already authenticated against (glab's GITLAB_HOST or configured hostname, gh's GH_HOST or hosts.yml). Authentication is never duplicated here: this key names the host, the CLI holds the credentials."
     },
     "language": {
       "$ref": "#/$defs/language",
@@ -28,6 +34,10 @@
     "trustedBots": {
       "$ref": "#/$defs/trustedBots",
       "description": "Allowlist of automated authors (apps and bots) the third-party-reading skills may treat as authoritative — a repo-level trust fact, empty by default. Lives at the root, not in a skill section, because several skills share it and it must not be withdrawn by disabling one of them."
+    },
+    "grillWith": {
+      "$ref": "#/$defs/grillWith",
+      "description": "The interview engine the drafting skills drive before a draft hardens — issue (a thin request) and refine-issue (an issue's open decisions). It lives at the root, not in a skill section, because both of them drive it and an interview style is a property of the repo: a per-skill key would duplicate the same value and let the two drift apart."
     },
     "commit": {
       "description": "atomic-commit settings, or false to disable the atomic-commit skill for the repo.",
@@ -63,7 +73,7 @@
       ]
     },
     "mergeDeps": {
-      "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since mergeDeps.merge defaults to false. Named mergeDeps (not deps) to disambiguate against the separate update-deps skill: this section is only ever about merging the Dependabot PR queue. Scope is fixed to pull requests authored by app/dependabot; that is a hard constraint of the skill and deliberately not configurable.",
+      "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since mergeDeps.merge defaults to false. Named mergeDeps (not deps) to disambiguate against the separate update-deps skill: this section is only ever about merging the dependency-bot request queue. Scope is fixed to a single author: on GitHub the constant app/dependabot, deliberately not configurable; on GitLab the one identity mergeDeps.gitlab.bot names, since no constant exists there. Either way it is one author and never a selector — the key can only narrow.",
       "oneOf": [
         {
           "$ref": "#/$defs/mergeDepsShape"
@@ -181,6 +191,21 @@
       "type": "string",
       "minLength": 1,
       "description": "Free-text, repo-wide guidance appended to a skill's prompt (committed, so it applies for every agent). Additive preference only: it steers wording and emphasis but never overrides hard constraints — commitlint rules, schema values, forge/tracker rules, templates, or the skill's built-in guardrails."
+    },
+    "grillWith": {
+      "description": "The name of a model-invocable interview skill, or null/false to never grill. It names a SKILL, not an interview mode: a round-based engine docks by having its name typed here, with no schema change and no release. Absent → today's behaviour, drive grilling when it is installed and skip the pass when it is not. A named skill that is not installed → skip the pass, draft as today, and say so. A named skill that declares disable-model-invocation (grill-me and batch-grill-me both do, so neither is a valid value) → report it as a config error and skip the pass; never silently fall back to another engine, which would run a different interview than the one configured and report success.",
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        },
+        {
+          "const": false
+        }
+      ]
     },
     "labelOrOff": {
       "description": "A label name, or false to switch the mechanic off.",
@@ -376,6 +401,32 @@
           "minimum": 1,
           "default": 5,
           "description": "Max PRs merged per run. Default: 5."
+        },
+        "gitlab": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "GitLab-only settings, read when forge is gitlab and inert otherwise.",
+          "properties": {
+            "bot": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "login"],
+              "description": "The single account whose merge requests are this repo's dependency queue on GitLab. Required there, with no default: GitHub's app/dependabot is a constant the forge itself runs, while Renovate on GitLab is always self-run — its author is either a dedicated user holding a personal access token or the internal bot user GitLab mints for a project or group access token, a per-repo, per-instance fact. No identity configured means the skill stops; it never infers one from a branch prefix, a label or a title. It names exactly one identity and never a selector type, which is the one shape that could widen the guarantee the skill rests on. The schema does not demand it alongside forge:gitlab, because a profile fragment must stay valid on its own and a gitlab repo need not use this skill at all — the stop is a runtime rule.",
+              "properties": {
+                "id": {
+                  "type": ["integer", "string"],
+                  "minimum": 1,
+                  "minLength": 1,
+                  "description": "The account's immutable GitLab user id — what the match is actually made on, re-asserted per merge request before the skill touches it. GitLab's merge-request API filters on author_id (numeric, mutually exclusive with author_username), and a bot account backed by an access token is an ordinary user there, so nothing but the id distinguishes it. Constrained to an id an account could hold — GitLab mints user ids from 1 — because this half is the one that matches: an empty or zero id fails closed, matching nothing, which reads on the run as a healthy empty queue rather than as a broken config."
+                },
+                "login": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The account's username (e.g. \"renovate-bot\", \"project_4_bot_a1b2c3\") — present so the entry is readable and so the queue can be narrowed with glab mr list --author, never used for matching. A username is reusable once an account is renamed or deleted, so a username that disagrees with its id is the rename signal: report it, never silently trust it. Same id/login split as trustedBots, deliberately one object rather than that key's array: this names the queue, not an allowlist."
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -409,8 +460,8 @@
       "properties": {
         "tracker": {
           "type": "string",
-          "enum": ["github", "linear", "local"],
-          "description": "Active issue tracker (github = GitHub Issues, linear = Linear, local = committed issue files under issue.local.dir). Set by the guided setup; never guessed silently. Distinct from the forge axis (root forge), which stays GitHub even when the tracker is Linear or local — a repo can file its issues in-tree and still open its pull requests on GitHub."
+          "enum": ["github", "gitlab", "linear", "local"],
+          "description": "Active issue tracker (github = GitHub Issues, gitlab = GitLab Issues, linear = Linear, local = committed issue files under issue.local.dir). Set by the guided setup; never guessed silently. Distinct from the forge axis (root forge): a repo can file its issues in Linear or in-tree and still open its pull requests on GitHub, and the two axes are set independently. Where a forge-native tracker is chosen it talks to the same host the forge axis resolves (root forgeHost) — GitHub Issues and GitLab Issues live on the instance that hosts the code."
         },
         "language": {
           "$ref": "#/$defs/language",
@@ -525,8 +576,8 @@
       "properties": {
         "tracker": {
           "type": "string",
-          "enum": ["github", "linear", "local"],
-          "description": "Active tracker for working issues (github = GitHub Issues, linear = Linear, local = committed issue files under work.local.dir). Falls back to issue.tracker."
+          "enum": ["github", "gitlab", "linear", "local"],
+          "description": "Active tracker for working issues (github = GitHub Issues, gitlab = GitLab Issues, linear = Linear, local = committed issue files under work.local.dir). Falls back to issue.tracker."
         },
         "cap": {
           "type": "integer",
@@ -556,6 +607,11 @@
           "type": "boolean",
           "default": false,
           "description": "Run workers concurrently in isolated git worktrees instead of sequentially. Independent of branch. Default: false."
+        },
+        "queueBranch": {
+          "type": "boolean",
+          "default": false,
+          "description": "Group a worktree drain's pull requests behind one queue branch: every issue PR targets ai/queue-<hash> instead of pr.base, and the drain opens a single ai/queue-<hash> -> pr.base pull request to close the run. Opt-in, and deliberately off by default, because the mode only completes where the target repo owns a workflow that fast-forwards its integration branch onto that PR's head once it is green — without one, the issue PRs land on a branch nothing ever merges. The drain never merges or fast-forwards the queue PR itself and needs no bypass-capable credential. Inert under branch:<name>, which opens no per-issue PR at all. Default: false."
         },
         "feedback": {
           "type": "string",
@@ -742,9 +798,15 @@
       "properties": {
         "forge": {
           "type": "string",
-          "enum": ["github"],
+          "enum": ["github", "gitlab"],
           "default": "github",
-          "description": "Code forge for the forge-bound skills (pull-request, release, merge-deps) — where PRs and releases live. v1 supports only github; extend additively when a second forge (e.g. gitlab) docks. This is the single home for the forge axis; the issue tracker is a separate axis (issue.tracker / work.tracker)."
+          "description": "Code forge for the forge-bound skills, overlaid for this execution context. Same axis and same values as the root key."
+        },
+        "forgeHost": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]+)?$",
+          "description": "The host this repo's forge lives on, overlaid for this execution context — a runner reaching a self-hosted instance by a different name than a local session does. Same shape as the root key."
         },
         "language": {
           "$ref": "#/$defs/language",
@@ -758,6 +820,10 @@
         "trustedBots": {
           "$ref": "#/$defs/trustedBots",
           "description": "Allowlist of automated authors the third-party-reading skills may treat as authoritative, overlaid for this execution context. Replaces the base array wholesale (arrays are replaced, not concatenated, on profile merge)."
+        },
+        "grillWith": {
+          "$ref": "#/$defs/grillWith",
+          "description": "The interview engine for this execution context — null or false where nobody is at the terminal to answer, so an unattended profile drafts directly instead of offering a pass that cannot be taken."
         },
         "commit": {
           "description": "atomic-commit settings, or false to disable the atomic-commit skill for the repo.",
@@ -793,7 +859,7 @@
           ]
         },
         "mergeDeps": {
-          "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since mergeDeps.merge defaults to false. Named mergeDeps (not deps) to disambiguate against the separate update-deps skill: this section is only ever about merging the Dependabot PR queue. Scope is fixed to pull requests authored by app/dependabot; that is a hard constraint of the skill and deliberately not configurable.",
+          "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since mergeDeps.merge defaults to false. Named mergeDeps (not deps) to disambiguate against the separate update-deps skill: this section is only ever about merging the dependency-bot request queue. Scope is fixed to a single author: on GitHub the constant app/dependabot, deliberately not configurable; on GitLab the one identity mergeDeps.gitlab.bot names, since no constant exists there. Either way it is one author and never a selector — the key can only narrow.",
           "oneOf": [
             {
               "$ref": "#/$defs/mergeDepsShape"
