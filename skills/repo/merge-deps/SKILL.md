@@ -1,8 +1,8 @@
 ---
 name: merge-deps
 metadata:
-  summary: Triages a repo's open Dependabot PRs, verifying each on its own branch before merging.
-description: Triages and merges a repo's open Dependabot pull requests, selected strictly by author (app/dependabot) so no human's and no other bot's PR is ever touched. Verifies each update on its own branch first, because a Dependabot PR into an integration branch often runs no meaningful CI at all. Merging is opt-in per repo via mergeDeps.merge; once opted in, mergeDeps.confirm (default major) lets the low-risk tier merge on that standing opt-in while major bumps still wait for a human. Forge chosen per-repo by config (root forge key); v1 is GitHub via the gh CLI. Invoke manually only — this skill never fires proactively and never opens a pull request. Use when the user asks to triage, review or merge Dependabot PRs or dependency updates, mentions the Dependabot queue, dependency bumps or Dependabot alerts, or says things like "merge the dependabot PRs", "check the dependency updates", "Dependabot PRs mergen".
+  summary: Triages a repo's open dependency-bot requests, verifying each on its own branch before merging.
+description: Triages and merges a repo's open dependency-bot pull requests — on GitLab, merge requests — selected strictly by author so no human's and no other bot's request is ever touched. On GitHub that author is the constant app/dependabot; on GitLab it is the one identity mergeDeps.gitlab.bot names, since Renovate is self-run there. Verifies each update on its own branch first, because such a request into an integration branch often runs no meaningful CI at all. Merging is opt-in per repo via mergeDeps.merge; mergeDeps.confirm (default major) then lets the low-risk tier ride that opt-in while major bumps wait for a human. Forge per-repo by config (root forge key) — GitHub via gh, GitLab via glab. Invoke manually only — never fires proactively and never opens a request. Use when the user asks to triage, review or merge Dependabot or Renovate requests, dependency updates or bumps, or says things like "merge the dependabot PRs", "Dependabot PRs mergen".
 allowed-tools:
   - Bash
   - Read
@@ -12,7 +12,7 @@ allowed-tools:
 
 # merge-deps
 
-Work the **Dependabot queue** — read the open Dependabot pull requests and the repo's Dependabot alerts, establish which updates are actually safe, and merge the ones the repo has opted into. **Manual invocation only**: nothing here fires on its own; merging is opt-in, and a **major bump always waits for a human**. The forge is chosen by config (the root `forge` key); **GitHub (via `gh`) is the only forge implemented in v1**.
+Work the **dependency-bot queue** — read the bot's open requests and the repo's security advisories, establish which updates are actually safe, and merge the ones the repo has opted into. **Manual invocation only**: nothing here fires on its own; merging is opt-in, and a **major bump always waits for a human**. The forge is chosen by config (the root `forge` key): **GitHub** through `gh`, where the queue is Dependabot's, and **GitLab** through `glab`, where it is [the one account the config names](REFERENCE.md#the-queues-author).
 
 **Opted out?** If the repo config sets `mergeDeps` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the merge-deps skill is turned off in `.tituskirch-skills.json`. An _absent_ `mergeDeps` block is **not** disabled; it means [report-only](REFERENCE.md#merge-modes). Check `.mergeDeps == false` on the resolved config before any action. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
@@ -20,72 +20,81 @@ Work the **Dependabot queue** — read the open Dependabot pull requests and the
 
 ### 1. Detect (read the repo — never assume)
 
-- **Backend** — from the root `forge` key (v1: only `github` is implemented; any other value → say it is not supported yet and stop). Confirm the repo is reachable: `gh repo view --json nameWithOwner,defaultBranchRef`. If it fails (no GitHub remote, or `gh` not authenticated), **stop**.
-- **Dependabot config** — read `.github/dependabot.yml` for **context only**: which ecosystems exist, their `target-branch`, their `groups`, their `cooldown`. It tells you what to _expect_; it is **never** a selection input. No `dependabot.yml` → Dependabot may still be raising security PRs; carry on.
+- **Forge and host** — from the root `forge` key (`github` → `gh`, `gitlab` → `glab`; anything else → say it is not supported and stop) plus the host resolved per repo: `forgeHost`, else the `origin` remote, else whatever the CLI is already authenticated against ([REFERENCE.md](REFERENCE.md#the-forge-and-its-host)). Confirm the repo is reachable — `gh repo view --json nameWithOwner,defaultBranchRef` or `glab repo view`. If it fails (no remote on that forge, wrong host, or the CLI not authenticated), **stop**, naming the host tried.
+- **The bot's own config** — `.github/dependabot.yml`, or Renovate's config (`renovate.json`, `.gitlab/renovate.json`, the `renovate` key in `package.json`), for **context only**: which ecosystems exist, their base branches, their groups, their cooldown. It tells you what to _expect_; it is **never** a selection input and never a tier input. No such file → the bot may still be raising requests from a preset or a group-level config; carry on.
 - **Config** — `.tituskirch-skills.json` at the repo root (optional, committed). Keys: [REFERENCE.md](REFERENCE.md#config).
 
-### 2. Select — Dependabot only
+### 2. Select — the dependency bot only
 
-**Select strictly by author.** This is the skill's one hard constraint and it has no exceptions:
+**Select strictly by author.** This is the skill's one hard constraint and it has no exceptions. The author is a **constant on GitHub** and a **configured identity on GitLab**, and the reasoning behind that asymmetry — including why the key can only ever narrow — is [The queue's author](REFERENCE.md#the-queues-author):
 
 ```bash
+# GitHub — the constant, named here and deliberately not a config key.
 gh pr list --state open --search "author:app/dependabot" \
   --json number,title,headRefName,baseRefName,isDraft,mergeable,mergeStateStatus
+
+# GitLab — narrow on the login for readability, prove on the id. Pages cap at 100.
+glab mr list --all --per-page 100 --output json --author "$bot_login"
 ```
 
-- **Re-assert the author per PR** before touching it — `gh pr view <n> --json author --jq '.author.login'` must equal `app/dependabot`. The search narrows; this is what proves it.
-- **Never select by label or title.** The `dependencies` label and a `build(deps)` title are settable by anyone; authorship is not. A human's PR wearing the `dependencies` label must come back from step 2 empty-handed.
-- **Everything else is invisible** — not merged, not commented on, not closed, not rebased, and **not reported on**. Other automation counts: a rollup or release PR authored by `app/github-actions` is another bot's PR, and this skill has nothing to say about it either.
+- **Re-assert the author per request** before touching it — `author.login` must equal `app/dependabot` on GitHub; `author.id` must equal `mergeDeps.gitlab.bot.id` on GitLab. The list narrows; this is what proves it. On GitLab the login the list was narrowed with is **not** the proof: a username is reusable after a rename, so a login that disagrees with its id is the rename signal — report it and leave the MR alone.
+- **No `mergeDeps.gitlab.bot` under `forge: gitlab` → stop**, saying the key is unset and that the queue cannot be identified without it. Never infer the author from a branch prefix, a label or a title, and never report an unidentifiable queue as an empty one — an empty queue reads as a healthy run.
+- **Never select by label, title or branch.** The `dependencies` label, a `build(deps)` title and a `renovate/*` branch are settable by anyone; authorship is not. A human's request wearing the `dependencies` label must come back from step 2 empty-handed.
+- **Everything else is invisible** — not merged, not commented on, not closed, not rebased, and **not reported on**. Other automation counts: a rollup or release request authored by another bot is another bot's, and this skill has nothing to say about it either.
 
 Nothing selected → say so and stop. That is the normal, healthy result.
 
 ### 3. Assess — "green" is a claim you have to earn
 
-Per selected PR, gather facts. **Never merge on a heuristic.**
+Per selected request, gather facts. **Never merge on a heuristic.**
 
-- **Base branch** — read `baseRefName` **per PR**; never assume one base. Version updates follow `target-branch` (e.g. `dev`), but **security updates ignore `target-branch` and target the default branch** ([why this matters](REFERENCE.md#the-two-bases)). The queue is routinely mixed.
-- **Mergeability** — `mergeable` / `mergeStateStatus`. `CONFLICTING` → step 4's rebase path. `UNKNOWN` means GitHub has not computed it yet, **not** that it is fine — re-poll.
-- **Checks** — `gh pr checks <n>`, then the question that matters: **which checks does this PR's base actually trigger?** Read the workflows (`.github/workflows/*.yml`) and compare their `on.pull_request.branches` against `baseRefName`.
+- **Base branch** — read the base **per request** (`baseRefName` / `target_branch`); never assume one base. On GitHub, version updates follow `target-branch` while **security updates ignore it and target the default branch**; on GitLab, Renovate's `baseBranches` can spread the queue the same way ([why this matters](REFERENCE.md#the-two-bases)). The queue is routinely mixed.
+- **Mergeability** — GitHub: `mergeable` / `mergeStateStatus`, where `CONFLICTING` → step 4's hand-back and `UNKNOWN` means it has not been computed yet, **not** that it is fine. GitLab: `detailed_merge_status`, where `conflict` / `need_rebase` → the hand-back and `checking` is the `UNKNOWN` counterpart. Re-poll either.
+- **Checks** — GitHub: `gh pr checks <n>` against the workflows' `on.pull_request.branches`. GitLab: the MR's pipelines against the jobs' `rules:` — a job runs for an MR only where it admits `merge_request_event`, so a repo without that produces **no MR pipeline at all**. Either way the question is the same: **which checks does this request's base actually trigger?**
 
-> **An empty or irrelevant check list is `unknown`, never `green`.** A workflow gated on `branches: [main]` does not run for a PR into `dev`, so its absence is not a pass — there was no verdict at all. A suite that only scans source for vulnerabilities (CodeQL) says nothing about whether a lockfile still installs or the repo still lints. Counting either as "checks green" is how an unverified bump gets merged. **Never merge on `unknown`.**
+> **An empty or irrelevant check list is `unknown`, never `green`.** A workflow gated on `branches: [main]` does not run for a PR into `dev`, and a `.gitlab-ci.yml` that says nothing about merge requests runs nothing for an MR — so the absence is not a pass, there was no verdict at all. A suite that only scans source for vulnerabilities (CodeQL) says nothing about whether a lockfile still installs or the repo still lints. Counting either as "checks green" is how an unverified bump gets merged. **Never merge on `unknown`.**
 
-- **Verify locally** — this is the **primary** gate, not a fallback. Run `mergeDeps.verify` against the PR's own head in a throwaway worktree, so the user's tree is never touched ([recipe](REFERENCE.md#gh--git-recipes)). **Install the head's lockfile first** — an uninstalled worktree resolves the command against whatever is on `PATH`, which is green or red by accident and never touches the versions the PR pins ([how](REFERENCE.md#running-the-repos-checks)). CI, where it genuinely ran, is corroboration.
-- **Update type** — grouped / patch / minor / major, read from Dependabot's own artifacts (the group name in the head branch, the `Updates X from A to B` lines in the body). **Cannot be determined with confidence → hold the PR.** Do not guess a bump level.
+- **Verify locally** — this is the **primary** gate, not a fallback. Run `mergeDeps.verify` against the request's own head in a throwaway worktree, so the user's tree is never touched ([recipe](REFERENCE.md#forge--git-recipes)). **Install the head's lockfile first** — an uninstalled worktree resolves the command against whatever is on `PATH`, which is green or red by accident and never touches the versions the request pins ([how](REFERENCE.md#running-the-repos-checks)). CI, where it genuinely ran, is corroboration.
+- **Update type** — grouped / patch / minor / major, read from the **bot's own artifacts**: Dependabot's `Updates X from A to B` lines and branch group, or Renovate's update table and branch. **Cannot be determined with confidence → hold the request.** Do not guess a bump level. And on a grouped request, **the highest bump in it sets its tier** — Renovate's groups are broad enough to carry a major among the patches ([how to read both](REFERENCE.md#reading-the-bump-level)).
 
 **No `mergeDeps.verify` configured _and_ the base's checks don't cover the change → hold and report.** The skill has no basis to call it safe, and says so rather than merging.
 
-### 4. Merge — directly, with `gh pr merge`
+### 4. Merge — directly, with the forge's own CLI
 
 Gated by `mergeDeps.merge` ([modes](REFERENCE.md#merge-modes)); default `false` — **report-only** — so merging is opt-in. Once opted in, `mergeDeps.confirm` ([when it asks](REFERENCE.md#confirmation)) decides which merges still wait for a human: a **major always does**; the low-risk tier the mode allows (patch / minor / grouped) rides the opt-in unless `confirm` is `"always"`.
 
-- **Confirm where it counts, not on every merge.** At the default `mergeDeps.confirm` of `"major"`, a patch/minor/grouped PR that has cleared [assessment](REFERENCE.md#assessment-checklist) merges on the standing opt-in — no second yes — while a major waits for an explicit one. `"always"` restores a confirmation on every merge. The plan/report is shown first either way; `confirm` never raises the [ceiling](REFERENCE.md#merge-modes) or lowers a gate.
-- **Merge directly; never by comment.** GitHub **removed** the `@dependabot merge` / `squash and merge` comment commands on 27 January 2026. The comment still posts, nothing listens, and nothing errors — a silent no-op that reads as success ([why](REFERENCE.md#decisions)). `@dependabot rebase` and `recreate` are unaffected.
-- **The merge method comes from the base's ruleset, never a hardcoded default** — read `allowed_merge_methods` for the PR's own `baseRefName`, the same source `release` reads; unrestricted → prefer squash, keeping one `build(deps)` commit per group. Add `--delete-branch`: the branch close-out was Dependabot's and is now this skill's ([recipe](REFERENCE.md#gh--git-recipes)).
+- **Confirm where it counts, not on every merge.** At the default `mergeDeps.confirm` of `"major"`, a patch/minor/grouped request that has cleared [assessment](REFERENCE.md#assessment-checklist) merges on the standing opt-in — no second yes — while a major waits for an explicit one. `"always"` restores a confirmation on every merge. The plan/report is shown first either way; `confirm` never raises the [ceiling](REFERENCE.md#merge-modes) or lowers a gate.
+- **Merge directly; never by comment.** GitHub **removed** the `@dependabot merge` / `squash and merge` comment commands on 27 January 2026. The comment still posts, nothing listens, and nothing errors — a silent no-op that reads as success ([why](REFERENCE.md#decisions)). `@dependabot rebase` and `recreate` are unaffected. Renovate never had a merge command at all.
+- **The merge method comes from the forge, never a hardcoded default.** GitHub binds it to the **base's ruleset** — read `allowed_merge_methods` for the request's own base, the same source `release` reads. GitLab binds it to the **project** — `merge_method` and `squash_option`, read once per run, where `ff` requires a rebase and `squash_option: "never"` makes `--squash` a rejection rather than a preference. Unrestricted → prefer squash, keeping one `build(deps)` commit per group. Close the branch out (`--delete-branch` / `--remove-source-branch`): that was the bot's job and is now this skill's ([recipes](REFERENCE.md#forge--git-recipes)).
 - **The merge is the authenticated user's act, not a bot's** — and for the auto-merged low-risk tier nothing stands between assessment and the merged commit at all. That is exactly why step 3's local verify is **the** gate, `mergeDeps.merge` defaults to `false`, and a **major never auto-merges**: a green check run is not evidence a semver-breaking change is safe.
-- **Merging one PR stales the rest — drive the rebase.** Dependabot used to cascade that itself. After each merge, `@dependabot rebase` every remaining selected PR on that base and re-read mergeability before the next one ([cascading rebase](REFERENCE.md#cascading-rebase)).
-- **Conflicts** → `@dependabot rebase` and report it. **Never resolve a dependency conflict by hand** — the lockfile is Dependabot's to regenerate.
+- **Merging one request stales the rest — drive the rebase.** After each merge, hand back every remaining selected request on that base and re-read mergeability before the next one ([cascading rebase](REFERENCE.md#cascading-rebase)).
+- **Conflicts** → hand it back and report it. **Never resolve a dependency conflict by hand** — the lockfile is the bot's to regenerate. The verb differs: `@dependabot rebase` on GitHub, Renovate's `<!-- rebase-check -->` checkbox in the MR's description on GitLab. **GitLab's native `/rebase` is not a substitute** — it rebases without regenerating anything, which is the hand-editing this rule forbids, arrived at through a button ([both verbs](REFERENCE.md#handing-a-request-back)).
+- **A hand-back on GitLab is reported, never waited on.** Renovate is self-run, so it acts on its own schedule rather than in seconds; the next run picks up whatever it has done.
 - **Held back is an outcome, not a failure.** A major bump under `"grouped"`, an undeterminable update type, a red verify, an `unknown` check list — report each with its reason and move on.
 
-Respect `mergeDeps.cap` — the most PRs one run may merge.
+Respect `mergeDeps.cap` — the most requests one run may merge.
 
-### 5. Security alerts
+### 5. Security advisories
 
 ```bash
+# GitHub — needs security_events scope.
 gh api "repos/$owner/$repo/dependabot/alerts" --paginate \
   --jq '.[] | select(.state == "open")'
 ```
 
-Map each open alert to the Dependabot PR that fixes it, if one exists. Report alerts with **no PR behind them** — they are the ones nothing is coming for. Alerts with **no fix available** get reported too, in their own bucket, every run; a vulnerability nobody can patch yet is exactly the thing that should stay visible.
+Map each open advisory to the request that fixes it, if one exists. Report advisories with **no request behind them** — they are the ones nothing is coming for. Advisories with **no fix available** get reported too, in their own bucket, every run; a vulnerability nobody can patch yet is exactly the thing that should stay visible.
 
-The endpoint needs `security_events` scope — no access → say the alerts could not be read, and do not silently report zero.
+**No access → say they could not be read, and never silently report zero.** On GitHub that is a missing scope. **On GitLab it is normally a tier fact, not a fault**: dependency scanning and the vulnerability APIs are **Ultimate-only**, so say which tier rather than which error, and report the list as `unknown` — never as clean ([the tier statement](REFERENCE.md#security-advisories-are-a-tier-not-a-feature)).
 
 ### 6. Report
 
-- **TL;DR** — first, before any group: how many Dependabot PRs were merged, how many were held and how many open advisories remain, plus the one thing waiting on the reader — a major bump needing a human, or nothing. **Leading the report** below binds the form.
+Use the forge's own vocabulary throughout — **pull request** on GitHub, **merge request** on GitLab — and name the host wherever it is not the forge's public one.
+
+- **TL;DR** — first, before any group: how many requests were merged, how many were held and how many open advisories remain, plus the one thing waiting on the reader — a major bump needing a human, or nothing. Where the advisory list could not be read, say so **here**, not only below. **Leading the report** further down binds the form.
 - **Merged** — number, title, update type.
-- **Held** — number and the **reason** (mode, unknown checks, failed verify, conflict, undeterminable type).
-- **Alerts** — open ones, which have a PR, which have none, which have no fix.
-- **Findings** — a base whose checks don't cover its PRs is a **repo problem worth naming**, not a per-run footnote. Say it once, plainly.
+- **Held** — number and the **reason** (mode, unknown checks, failed verify, conflict, undeterminable type, handed back and awaiting the bot).
+- **Advisories** — open ones, which have a request, which have none, which have no fix — or the tier/scope that put them out of reach.
+- **Findings** — a base whose checks don't cover its requests is a **repo problem worth naming**, not a per-run footnote. Say it once, plainly. An id/login disagreement on the configured GitLab identity belongs here too.
 
 <skills-plan>
 
@@ -158,15 +167,16 @@ opening for the summaries it writes on request; one house frame, reached two way
 
 ## Guardrails
 
-- **Dependabot-authored PRs only, matched on author.** Never any other PR, under any circumstance, for any reason. Not a comment, not a label, not a mention in the report.
+- **Bot-authored requests only, matched on author.** Never any other request, under any circumstance, for any reason. Not a comment, not a label, not a mention in the report. The author is `app/dependabot` on GitHub and `mergeDeps.gitlab.bot`'s **id** on GitLab — one identity either way, and never a selector.
+- **An unidentifiable queue is a stop, never an empty one.** `forge: gitlab` with no `mergeDeps.gitlab.bot` → say the key is unset and stop. Never infer the author from a branch prefix, a label or a title, and never let "selected nothing" stand in for "could not tell whose".
 - **Manual invocation only.** Never fire proactively — not on a push, not because bumps "look due". Someone asks, or this skill does nothing.
-- **Plan first; then merge only what the config authorizes.** The plan/report is always shown before any merge. A **major bump waits for an explicit confirmation** even when opted in; the low-risk tier merges on the standing opt-in unless `mergeDeps.confirm` is `"always"`. Plan-only triggers ("nur den Plan", "dry run", "just show me", "nicht mergen") → print the plan and the exact `gh` commands, then stop.
-- **Never opens a PR.** In any mode. A missing Dependabot PR is a finding to report, never a gap to fill by hand.
-- **An empty check list is never green.** Absence of a verdict is `unknown`, and `unknown` never merges.
-- **Never resolve conflicts, never edit a lockfile, never force-push a Dependabot branch.** Hand it back with `@dependabot rebase`.
-- **Attribution-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in any comment it posts.
-- **GitHub forge (v1).** No GitHub remote / `gh` unavailable → stop; never fall back to raw `git` plumbing or the API by hand.
+- **Plan first; then merge only what the config authorizes.** The plan/report is always shown before any merge. A **major bump waits for an explicit confirmation** even when opted in; the low-risk tier merges on the standing opt-in unless `mergeDeps.confirm` is `"always"`. Plan-only triggers ("nur den Plan", "dry run", "just show me", "nicht mergen") → print the plan and the exact `gh` / `glab` commands, then stop.
+- **Never opens a request.** In any mode. A missing dependency request is a finding to report, never a gap to fill by hand.
+- **An empty check list is never green.** Absence of a verdict is `unknown`, and `unknown` never merges. The same holds for an advisory list that could not be read.
+- **Never resolve conflicts, never edit a lockfile, never force-push the bot's branch.** Hand it back to the bot that owns it — and on GitLab that means Renovate's rebase checkbox, **not** the native `/rebase`, which rebases without regenerating.
+- **Attribution-free** — no `Generated with`/🤖 line, no session url, no agent self-naming in any comment or description it writes.
+- **Two forges, and a third is a stop.** A `forge` this skill does not implement ends the run with a message, never a guess. No remote on that forge, or the CLI unavailable or unauthenticated → stop, naming the host tried; never fall back to raw `git` plumbing or the API by hand.
 
 ## Reference
 
-Config keys, the merge modes, the two-bases problem, the `gh`/`git` recipes, the assessment checklist, and the reasoning behind the defaults: [REFERENCE.md](REFERENCE.md).
+Config keys, the queue's author on each forge, the merge modes, the two-bases problem, the `gh`/`glab`/`git` recipes, the assessment checklist, and the reasoning behind the defaults: [REFERENCE.md](REFERENCE.md).

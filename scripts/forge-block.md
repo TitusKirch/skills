@@ -11,11 +11,13 @@ one. Self-hosted GitLab is the normal GitLab deployment rather than the exceptio
 GitHub Enterprise has exactly the same shape, so a host resolved once and reused is a bug
 that only shows up in the second repo a session touches.
 
-It is mirrored into the skills that **drive** a forge — `pull-request`, `prune-branches`,
-`issue`, `work-implement`, `work-review`. `release` and `merge-deps` are deliberately out:
-both are GitHub-only, and stating that is its own change rather than something to paper
-over with a resolution rule they do not follow. The two work queues name their worker's
-REFERENCE for it, as they already do for the config contract and the lock spec.
+It is mirrored into the skills that **drive** a forge — `merge-deps`, `pull-request`,
+`prune-branches`, `issue`, `work-implement`, `work-review`. `release` is deliberately out:
+it is GitHub-only, and stating that is its own change rather than something to paper over
+with a resolution rule it does not follow. `merge-deps` was out for the same reason and no
+longer is — its author guarantee proved reproducible on GitLab from a configured identity,
+so it drives both forges. The two work queues name their worker's REFERENCE for it, as they
+already do for the config contract and the lock spec.
 
 <!-- forge:body -->
 

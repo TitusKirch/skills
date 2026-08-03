@@ -484,6 +484,104 @@ describe('the GitLab forge', () => {
   });
 });
 
+// merge-deps selects its queue by authorship, and on GitHub that author is a constant
+// (app/dependabot). On GitLab it is not: Renovate is always self-run there, so its
+// account is a per-repo, per-instance fact and has to be configured. The schema's job
+// is to make sure the key can only ever *narrow* — exactly one identity, matched on an
+// immutable id — because a key that could widen would dissolve the skill's one hard
+// guarantee. Every rejection below is a way of widening it.
+describe("merge-deps' GitLab bot identity", () => {
+  test('it is one identity, carrying both the id that matches and the login that reads', () => {
+    accepts(
+      { mergeDeps: { gitlab: { bot: { id: 4207, login: 'renovate-bot' } } } },
+      'the numeric id GitLab mints for a user'
+    );
+    accepts(
+      {
+        mergeDeps: {
+          gitlab: { bot: { id: 12, login: 'project_4_bot_a1b2c3' } }
+        }
+      },
+      'the internal bot user behind a project access token'
+    );
+    accepts(
+      {
+        mergeDeps: { merge: 'grouped', gitlab: { bot: { id: 7, login: 'r' } } }
+      },
+      'it sits beside the existing keys, not instead of them'
+    );
+  });
+
+  test('it is omittable — absent means the skill stops, not that it guesses', () => {
+    accepts(
+      { mergeDeps: { merge: 'patch' } },
+      'a GitHub repo names no identity'
+    );
+    accepts(
+      { forge: 'gitlab' },
+      'the stop is a runtime rule, not a schema constraint'
+    );
+  });
+
+  test('half an identity is not an identity', () => {
+    rejects(
+      { mergeDeps: { gitlab: { bot: { login: 'renovate-bot' } } } },
+      'a login alone — the login is for reading, never for matching'
+    );
+    rejects(
+      { mergeDeps: { gitlab: { bot: { id: 4207 } } } },
+      'an id alone — unreadable, so a rename would never be spotted'
+    );
+    rejects(
+      { mergeDeps: { gitlab: { bot: { id: 4207, login: '' } } } },
+      'an empty login'
+    );
+    rejects({ mergeDeps: { gitlab: { bot: {} } } }, 'an empty identity');
+  });
+
+  test('it names an identity, never a way of finding one', () => {
+    rejects(
+      { mergeDeps: { gitlab: { bot: 'renovate-bot' } } },
+      'a bare login — nothing immutable to match on'
+    );
+    rejects(
+      { mergeDeps: { gitlab: { bot: [{ id: 1, login: 'a' }] } } },
+      'a list — the key names exactly one author, never a set'
+    );
+    rejects(
+      {
+        mergeDeps: {
+          gitlab: {
+            bot: { id: 1, login: 'a', selector: 'label:dependencies' }
+          }
+        }
+      },
+      'a selector — the one thing that would let a repo widen what must not widen'
+    );
+    rejects(
+      { mergeDeps: { gitlab: { botBranchPrefix: 'renovate/' } } },
+      'a branch prefix — settable by anyone, so never a selection input'
+    );
+  });
+
+  test('it is writable inside a profile, like every other section', () => {
+    accepts(
+      {
+        profiles: {
+          ci: {
+            mergeDeps: { gitlab: { bot: { id: 4207, login: 'renovate' } } }
+          }
+        }
+      },
+      'profile mergeDeps fragment'
+    );
+    rejects(
+      { profiles: { ci: { mergeDeps: { gitlab: { bot: { id: 4207 } } } } } },
+      'the constraint still applies inside a profile'
+    );
+  });
+});
+
 // The host is a per-repo fact on both forges: self-hosted GitLab is the normal
 // deployment and GitHub Enterprise has the same shape. It has to be omittable, since
 // resolution falls back to the repo's own remote and then to the CLI's own default.
