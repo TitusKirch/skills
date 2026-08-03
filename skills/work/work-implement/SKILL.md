@@ -2,7 +2,7 @@
 name: work-implement
 metadata:
   summary: Implements one tracked issue and pushes it for AI review — claim, implement, verify, push, hand off.
-description: Implements a single tracked issue across GitHub (gh), Linear (MCP) or local issue files — claims it via the lifecycle label, implements on a branch (fresh from ready, or re-work from changes-requested after review feedback), runs the repo's checks, commits and PUSHES, and hands the issue to the review loop by advancing the label to review. It never reviews its own work — the separate work-review skill does that. Tracker, label lifecycle and branch strategy come from the committed config (.tituskirch-skills.json). Use when the user wants to work, implement, action or pick up one specific issue or ticket, mentions an ai-ready issue, or says things like "work issue 42", "arbeite Issue 42 ab", "implementiere Ticket X", or "address the review feedback on issue Y".
+description: Implements a single tracked issue across GitHub (gh), GitLab (glab), Linear (MCP) or local issue files — claims it via the lifecycle label, implements on a branch (fresh from ready, or re-work from changes-requested after review feedback), runs the repo's checks, commits and PUSHES, and hands the issue to the review loop by advancing the label to review. It never reviews its own work — the separate work-review skill does that. Tracker, label lifecycle and branch strategy come from the committed config (.tituskirch-skills.json). Use when the user wants to work, implement, action or pick up one specific issue or ticket, mentions an ai-ready issue, or says things like "work issue 42", "arbeite Issue 42 ab", "implementiere Ticket X", or "address the review feedback on issue Y".
 allowed-tools:
   - Bash
   - Read

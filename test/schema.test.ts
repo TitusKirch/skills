@@ -463,6 +463,85 @@ describe('the feedback destination', () => {
   });
 });
 
+// The forge axis was designed to take a second forge additively, and GitLab is the
+// first to dock. Both halves are asserted here because the axis is only useful if the
+// two move together: the enum has to widen, and the host has to be sayable — a
+// self-hosted instance is the normal GitLab deployment, not the edge case.
+describe('the GitLab forge', () => {
+  test('the forge axis accepts either forge, at the root and in a profile', () => {
+    accepts({ forge: 'github' }, 'the forge that was already there');
+    accepts({ forge: 'gitlab' }, 'the second forge docking on the axis');
+    accepts(
+      { profiles: { ci: { forge: 'gitlab' } } },
+      'a profile may switch the forge for its context'
+    );
+  });
+
+  test('an unimplemented forge is still rejected', () => {
+    rejects({ forge: 'gitea' }, 'no third forge is implemented');
+    rejects({ forge: '' }, 'an empty forge');
+    rejects({ forge: false }, 'forge is not a disable switch — it is an axis');
+  });
+});
+
+// The host is a per-repo fact on both forges: self-hosted GitLab is the normal
+// deployment and GitHub Enterprise has the same shape. It has to be omittable, since
+// resolution falls back to the repo's own remote and then to the CLI's own default.
+describe('the forge host', () => {
+  test('it is an optional hostname, and null says "derive it"', () => {
+    accepts({ forgeHost: 'gitlab.example.com' }, 'a self-hosted instance');
+    accepts({ forgeHost: 'github.example.com' }, 'GitHub Enterprise');
+    accepts({ forgeHost: null }, 'explicitly derived');
+    accepts(
+      { forge: 'gitlab' },
+      'omitted — derived from the remote or the CLI'
+    );
+  });
+
+  test('it is a bare hostname, never a URL or an empty string', () => {
+    rejects({ forgeHost: '' }, 'an empty host');
+    rejects({ forgeHost: 'https://gitlab.example.com' }, 'a URL, not a host');
+    rejects({ forgeHost: 'gitlab.example.com/group' }, 'a path, not a host');
+    rejects({ forgeHost: 1 }, 'a numeric host');
+  });
+
+  test('it can be overlaid in a profile, like every other root key', () => {
+    accepts(
+      { profiles: { ci: { forgeHost: 'gitlab.example.com' } } },
+      'profile forgeHost fragment'
+    );
+    rejects(
+      { profiles: { ci: { forgeHost: '' } } },
+      'the constraint still applies inside a profile'
+    );
+  });
+});
+
+// GitLab docks on the tracker axis the way `local` did (ADR-0023): a third driver
+// meeting the same contract. Like `github` and unlike `linear`, it needs no companion
+// key — the project is the repo and its labels are flat — so a bare fragment has to
+// validate at the ROOT, not only inside a profile.
+describe('the GitLab issue tracker', () => {
+  test('a bare {tracker:gitlab} is valid at the root, like github', () => {
+    accepts({ issue: { tracker: 'gitlab' } }, 'root issue, no companion key');
+    accepts({ work: { tracker: 'gitlab' } }, 'root work, no companion key');
+  });
+
+  test('the linear constraints are not extended to it', () => {
+    accepts(
+      { work: { tracker: 'gitlab', labels: { ready: 'ai: ready' } } },
+      'no linear/labels.repo/statuses demanded of a gitlab tracker'
+    );
+  });
+
+  test('it is writable inside a profile, like every other tracker', () => {
+    accepts(
+      { profiles: { ci: { work: { tracker: 'gitlab' } } } },
+      'profile work fragment'
+    );
+  });
+});
+
 // grillWith names the interview skill the drafting skills drive, at the root
 // because two of them drive it (issue and refine-issue) and an interview style is
 // a property of the repo. It names a *skill*, not a mode, so a round-based engine

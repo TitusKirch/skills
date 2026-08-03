@@ -83,7 +83,7 @@ Some skills read an optional, committed `.tituskirch-skills.json` at the **consu
 }
 ```
 
-Resolution per setting: **config → native/detected → built-in default** — absent config means today's behavior. Three keys sit at the root because they are facts about the **repo**, not about one skill — `forge`, `language` and `verify`; everything else lives under a skill section (`pr.*`, `issue.*`). Each skill documents only the keys it reads, in its own `REFERENCE.md`:
+Resolution per setting: **config → native/detected → built-in default** — absent config means today's behavior. Four keys sit at the root because they are facts about the **repo**, not about one skill — `forge`, `forgeHost`, `language` and `verify`; everything else lives under a skill section (`pr.*`, `issue.*`). Each skill documents only the keys it reads, in its own `REFERENCE.md`:
 
 - [`atomic-commit`](repo/atomic-commit/REFERENCE.md#config) — `language`, `commit.language`
 - [`pull-request`](repo/pull-request/REFERENCE.md#config) — `language`, `pr.*`

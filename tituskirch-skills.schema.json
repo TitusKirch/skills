@@ -12,9 +12,15 @@
     },
     "forge": {
       "type": "string",
-      "enum": ["github"],
+      "enum": ["github", "gitlab"],
       "default": "github",
-      "description": "Code forge for the forge-bound skills (pull-request, release, merge-deps) — where PRs and releases live. v1 supports only github; extend additively when a second forge (e.g. gitlab) docks. This is the single home for the forge axis; the issue tracker is a separate axis (issue.tracker / work.tracker)."
+      "description": "Code forge for the forge-bound skills — where pull requests (GitLab: merge requests) and releases live. github is driven by the gh CLI, gitlab by glab. This is the single home for the forge axis; the issue tracker is a separate axis (issue.tracker / work.tracker). Not every forge-bound skill implements every forge: pull-request and prune-branches speak both, while release and merge-deps are GitHub-only and say so when they meet another forge rather than degrading silently."
+    },
+    "forgeHost": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]+)?$",
+      "description": "The host this repo's forge lives on — a bare hostname with an optional port (gitlab.example.com, github.example.com:8443), never a URL and never a path. Self-hosted GitLab is the normal GitLab deployment and GitHub Enterprise has the same shape, so which host a repo talks to is a per-repo fact and must never be resolved once and reused across repos. null or absent means derive it — the origin remote's host first (a repo-level fact), then whatever the forge CLI is already authenticated against (glab's GITLAB_HOST or configured hostname, gh's GH_HOST or hosts.yml). Authentication is never duplicated here: this key names the host, the CLI holds the credentials."
     },
     "language": {
       "$ref": "#/$defs/language",
@@ -428,8 +434,8 @@
       "properties": {
         "tracker": {
           "type": "string",
-          "enum": ["github", "linear", "local"],
-          "description": "Active issue tracker (github = GitHub Issues, linear = Linear, local = committed issue files under issue.local.dir). Set by the guided setup; never guessed silently. Distinct from the forge axis (root forge), which stays GitHub even when the tracker is Linear or local — a repo can file its issues in-tree and still open its pull requests on GitHub."
+          "enum": ["github", "gitlab", "linear", "local"],
+          "description": "Active issue tracker (github = GitHub Issues, gitlab = GitLab Issues, linear = Linear, local = committed issue files under issue.local.dir). Set by the guided setup; never guessed silently. Distinct from the forge axis (root forge): a repo can file its issues in Linear or in-tree and still open its pull requests on GitHub, and the two axes are set independently. Where a forge-native tracker is chosen it talks to the same host the forge axis resolves (root forgeHost) — GitHub Issues and GitLab Issues live on the instance that hosts the code."
         },
         "language": {
           "$ref": "#/$defs/language",
@@ -544,8 +550,8 @@
       "properties": {
         "tracker": {
           "type": "string",
-          "enum": ["github", "linear", "local"],
-          "description": "Active tracker for working issues (github = GitHub Issues, linear = Linear, local = committed issue files under work.local.dir). Falls back to issue.tracker."
+          "enum": ["github", "gitlab", "linear", "local"],
+          "description": "Active tracker for working issues (github = GitHub Issues, gitlab = GitLab Issues, linear = Linear, local = committed issue files under work.local.dir). Falls back to issue.tracker."
         },
         "cap": {
           "type": "integer",
@@ -759,9 +765,15 @@
       "properties": {
         "forge": {
           "type": "string",
-          "enum": ["github"],
+          "enum": ["github", "gitlab"],
           "default": "github",
-          "description": "Code forge for the forge-bound skills (pull-request, release, merge-deps) — where PRs and releases live. v1 supports only github; extend additively when a second forge (e.g. gitlab) docks. This is the single home for the forge axis; the issue tracker is a separate axis (issue.tracker / work.tracker)."
+          "description": "Code forge for the forge-bound skills, overlaid for this execution context. Same axis and same values as the root key."
+        },
+        "forgeHost": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]+)?$",
+          "description": "The host this repo's forge lives on, overlaid for this execution context — a runner reaching a self-hosted instance by a different name than a local session does. Same shape as the root key."
         },
         "language": {
           "$ref": "#/$defs/language",
