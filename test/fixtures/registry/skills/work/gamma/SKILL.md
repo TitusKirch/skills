@@ -1,8 +1,8 @@
 ---
 name: gamma
-description: The third fixture skill — carries the worklock and plan blocks, and names the resolver without hosting the config block.
+description: The third fixture skill — carries the worklock, plan and tldr blocks, and names the resolver without hosting the config block.
 metadata:
-  summary: carries the worklock and plan blocks
+  summary: carries the worklock, plan and tldr blocks
 allowed-tools:
   - Read
 ---
@@ -26,3 +26,9 @@ stale worklock body
 stale plan body
 
 </skills-plan>
+
+<skills-tldr>
+
+stale tldr body
+
+</skills-tldr>

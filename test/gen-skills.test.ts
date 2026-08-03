@@ -66,6 +66,7 @@ describe('a run reports, writes, and then has nothing left to do', () => {
       'skills/repo/beta/SKILL.md verify block',
       'skills/work/gamma/SKILL.md worklock block',
       'skills/work/gamma/SKILL.md plan block',
+      'skills/work/gamma/SKILL.md tldr block',
       'skills/repo/beta/SKILL.md forge block'
     ]) {
       assert.ok(
