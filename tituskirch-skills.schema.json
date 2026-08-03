@@ -12,9 +12,15 @@
     },
     "forge": {
       "type": "string",
-      "enum": ["github"],
+      "enum": ["github", "gitlab"],
       "default": "github",
-      "description": "Code forge for the forge-bound skills (pull-request, release, merge-deps) — where PRs and releases live. v1 supports only github; extend additively when a second forge (e.g. gitlab) docks. This is the single home for the forge axis; the issue tracker is a separate axis (issue.tracker / work.tracker)."
+      "description": "Code forge for the forge-bound skills — where pull requests (GitLab: merge requests) and releases live. github is driven by the gh CLI, gitlab by glab. This is the single home for the forge axis; the issue tracker is a separate axis (issue.tracker / work.tracker). Not every forge-bound skill implements every forge: pull-request, prune-branches and merge-deps speak both — merge-deps needs mergeDeps.gitlab.bot on GitLab, since its queue's author is not a constant there — while release is GitHub-only and says so when it meets another forge rather than degrading silently."
+    },
+    "forgeHost": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]+)?$",
+      "description": "The host this repo's forge lives on — a bare hostname with an optional port (gitlab.example.com, github.example.com:8443), never a URL and never a path. Self-hosted GitLab is the normal GitLab deployment and GitHub Enterprise has the same shape, so which host a repo talks to is a per-repo fact and must never be resolved once and reused across repos. null or absent means derive it — the origin remote's host first (a repo-level fact), then whatever the forge CLI is already authenticated against (glab's GITLAB_HOST or configured hostname, gh's GH_HOST or hosts.yml). Authentication is never duplicated here: this key names the host, the CLI holds the credentials."
     },
     "language": {
       "$ref": "#/$defs/language",
@@ -28,6 +34,10 @@
     "trustedBots": {
       "$ref": "#/$defs/trustedBots",
       "description": "Allowlist of automated authors (apps and bots) the third-party-reading skills may treat as authoritative — a repo-level trust fact, empty by default. Lives at the root, not in a skill section, because several skills share it and it must not be withdrawn by disabling one of them."
+    },
+    "grillWith": {
+      "$ref": "#/$defs/grillWith",
+      "description": "The interview engine the drafting skills drive before a draft hardens — issue (a thin request) and refine-issue (an issue's open decisions). It lives at the root, not in a skill section, because both of them drive it and an interview style is a property of the repo: a per-skill key would duplicate the same value and let the two drift apart."
     },
     "commit": {
       "description": "atomic-commit settings, or false to disable the atomic-commit skill for the repo.",
@@ -63,7 +73,7 @@
       ]
     },
     "mergeDeps": {
-      "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since mergeDeps.merge defaults to false. Named mergeDeps (not deps) to disambiguate against the separate update-deps skill: this section is only ever about merging the Dependabot PR queue. Scope is fixed to pull requests authored by app/dependabot; that is a hard constraint of the skill and deliberately not configurable.",
+      "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since mergeDeps.merge defaults to false. Named mergeDeps (not deps) to disambiguate against the separate update-deps skill: this section is only ever about merging the dependency-bot request queue. Scope is fixed to a single author: on GitHub the constant app/dependabot, deliberately not configurable; on GitLab the one identity mergeDeps.gitlab.bot names, since no constant exists there. Either way it is one author and never a selector — the key can only narrow.",
       "oneOf": [
         {
           "$ref": "#/$defs/mergeDepsShape"
@@ -181,6 +191,21 @@
       "type": "string",
       "minLength": 1,
       "description": "Free-text, repo-wide guidance appended to a skill's prompt (committed, so it applies for every agent). Additive preference only: it steers wording and emphasis but never overrides hard constraints — commitlint rules, schema values, forge/tracker rules, templates, or the skill's built-in guardrails."
+    },
+    "grillWith": {
+      "description": "The name of a model-invocable interview skill, or null/false to never grill. It names a SKILL, not an interview mode: a round-based engine docks by having its name typed here, with no schema change and no release. Absent → today's behaviour, drive grilling when it is installed and skip the pass when it is not. A named skill that is not installed → skip the pass, draft as today, and say so. A named skill that declares disable-model-invocation (grill-me and batch-grill-me both do, so neither is a valid value) → report it as a config error and skip the pass; never silently fall back to another engine, which would run a different interview than the one configured and report success.",
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        },
+        {
+          "const": false
+        }
+      ]
     },
     "labelOrOff": {
       "description": "A label name, or false to switch the mechanic off.",
@@ -376,6 +401,32 @@
           "minimum": 1,
           "default": 5,
           "description": "Max PRs merged per run. Default: 5."
+        },
+        "gitlab": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "GitLab-only settings, read when forge is gitlab and inert otherwise.",
+          "properties": {
+            "bot": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "login"],
+              "description": "The single account whose merge requests are this repo's dependency queue on GitLab. Required there, with no default: GitHub's app/dependabot is a constant the forge itself runs, while Renovate on GitLab is always self-run — its author is either a dedicated user holding a personal access token or the internal bot user GitLab mints for a project or group access token, a per-repo, per-instance fact. No identity configured means the skill stops; it never infers one from a branch prefix, a label or a title. It names exactly one identity and never a selector type, which is the one shape that could widen the guarantee the skill rests on. The schema does not demand it alongside forge:gitlab, because a profile fragment must stay valid on its own and a gitlab repo need not use this skill at all — the stop is a runtime rule.",
+              "properties": {
+                "id": {
+                  "type": ["integer", "string"],
+                  "minimum": 1,
+                  "minLength": 1,
+                  "description": "The account's immutable GitLab user id — what the match is actually made on, re-asserted per merge request before the skill touches it. GitLab's merge-request API filters on author_id (numeric, mutually exclusive with author_username), and a bot account backed by an access token is an ordinary user there, so nothing but the id distinguishes it. Constrained to an id an account could hold — GitLab mints user ids from 1 — because this half is the one that matches: an empty or zero id fails closed, matching nothing, which reads on the run as a healthy empty queue rather than as a broken config."
+                },
+                "login": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The account's username (e.g. \"renovate-bot\", \"project_4_bot_a1b2c3\") — present so the entry is readable and so the queue can be narrowed with glab mr list --author, never used for matching. A username is reusable once an account is renamed or deleted, so a username that disagrees with its id is the rename signal: report it, never silently trust it. Same id/login split as trustedBots, deliberately one object rather than that key's array: this names the queue, not an allowlist."
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -409,8 +460,8 @@
       "properties": {
         "tracker": {
           "type": "string",
-          "enum": ["github", "linear"],
-          "description": "Active issue tracker (github = GitHub Issues, linear = Linear). Set by the guided setup; never guessed silently. Distinct from the forge axis (root forge), which stays GitHub even when the tracker is Linear."
+          "enum": ["github", "gitlab", "linear", "local"],
+          "description": "Active issue tracker (github = GitHub Issues, gitlab = GitLab Issues, linear = Linear, local = committed issue files under issue.local.dir). Set by the guided setup; never guessed silently. Distinct from the forge axis (root forge): a repo can file its issues in Linear or in-tree and still open its pull requests on GitHub, and the two axes are set independently. Where a forge-native tracker is chosen it talks to the same host the forge axis resolves (root forgeHost) — GitHub Issues and GitLab Issues live on the instance that hosts the code."
         },
         "language": {
           "$ref": "#/$defs/language",
@@ -444,6 +495,19 @@
             "defaultState": {
               "type": ["string", "null"],
               "description": "Default workflow state on create."
+            }
+          }
+        },
+        "local": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Local file-tracker options (used when tracker = local). Needs nothing set: unlike linear, whose team cannot be derived, every key here has a default, so tracker = local is complete on its own and the schema requires no companion.",
+          "properties": {
+            "dir": {
+              "type": "string",
+              "minLength": 1,
+              "default": ".agents/issues",
+              "description": "Repo-relative directory holding the issue files, one NNNN-slug.md per issue. Committed on purpose — being reviewable and shareable is the reason for choosing files over a service — and a sibling of .agents/handoffs/ for the same reason. Default: \".agents/issues\"."
             }
           }
         },
@@ -512,14 +576,19 @@
       "properties": {
         "tracker": {
           "type": "string",
-          "enum": ["github", "linear"],
-          "description": "Active tracker for working issues (github = GitHub Issues, linear = Linear). Falls back to issue.tracker."
+          "enum": ["github", "gitlab", "linear", "local"],
+          "description": "Active tracker for working issues (github = GitHub Issues, gitlab = GitLab Issues, linear = Linear, local = committed issue files under work.local.dir). Falls back to issue.tracker."
         },
         "cap": {
           "type": "integer",
           "minimum": 1,
           "default": 10,
-          "description": "Max issues a single drain works (mandatory bound). Default: 10."
+          "description": "Max issues a single drain works across the whole run (mandatory bound) — throughput, not simultaneity. How many of them run at once is work.concurrency. Default: 10."
+        },
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Max workers a drain runs at the same time under parallel: true — the ceiling the machine can stand (each worker costs a worktree, a full dependency install, CPU and tracker rate limit), which is a different question from how many issues the run may work in total. Never raises cap: the effective concurrency is the lower of the two. Inert when parallel is false, where one worker at a time is the construction. No static default — it defaults to work.cap, so a config that does not set it behaves exactly as before this key existed."
         },
         "branch": {
           "oneOf": [
@@ -539,10 +608,20 @@
           "default": false,
           "description": "Run workers concurrently in isolated git worktrees instead of sequentially. Independent of branch. Default: false."
         },
+        "queueBranch": {
+          "type": "boolean",
+          "default": false,
+          "description": "Group a worktree drain's pull requests behind one queue branch: every issue PR targets ai/queue-<hash> instead of pr.base, and the drain opens a single ai/queue-<hash> -> pr.base pull request to close the run. Opt-in, and deliberately off by default, because the mode only completes where the target repo owns a workflow that fast-forwards its integration branch onto that PR's head once it is green — without one, the issue PRs land on a branch nothing ever merges. The drain never merges or fast-forwards the queue PR itself and needs no bypass-capable credential. Inert under branch:<name>, which opens no per-issue PR at all. Default: false."
+        },
+        "feedback": {
+          "type": "string",
+          "enum": ["pr", "issue"],
+          "description": "Where the two loops write their round-by-round output — review verdicts and their rationale, the implementer's blocked reason, a surfaced label/body conflict. \"pr\" puts it on the pull request, leaving the issue its requirement, its lifecycle label and a link to the thread; \"issue\" puts it in the issue's comments, for a loop that opens no pull request. No fixed default: it follows work.branch, so worktree defaults to \"pr\" and branch:<name> to \"issue\". In \"pr\" mode with no pull request to post to, the feedback falls back to the issue rather than being dropped, and a formal review the forge refuses on a self-authored pull request falls back to a plain pull-request comment."
+        },
         "labels": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Lifecycle label names. Each is a label string, or false to disable that mechanic.",
+          "description": "Label names the work skills reason about. Each is a label string, or false to disable that mechanic. Most are lifecycle states the loops write; repo and needsTriage are markers the loops only read.",
           "properties": {
             "ready": {
               "$ref": "#/$defs/labelOrOff"
@@ -570,6 +649,10 @@
             "blocked": {
               "$ref": "#/$defs/labelOrOff"
             },
+            "needsTriage": {
+              "$ref": "#/$defs/labelOrOff",
+              "description": "The repo's \"nobody has assessed this yet\" label (e.g. \"needs triage\"), which the work loops never write and only read. Naming it turns on the contradiction check: an issue carrying it alongside a lifecycle label (ready / changesRequested) claims both \"unassessed\" and \"approved for an agent\", so the implement queue withholds that issue and names it in the run's report rather than obeying the more permissive label — it is not worked, and it is not marked blocked, because nothing is wrong with the work. Opt-in: unlike the lifecycle labels it defaults to false (off), because it is a repo's own triage convention rather than a state the loop owns, and guessing a string would fire the check on a label the repo never meant."
+            },
             "repo": {
               "$ref": "#/$defs/labelOrOff"
             }
@@ -585,6 +668,39 @@
               "minimum": 1,
               "default": 3,
               "description": "Max AI-review rounds before the reviewer escalates to needsHuman instead of changesRequested. The round count is derived from the issue's `reviewRequested` label-transition events, not a stored counter. Default: 3."
+            },
+            "timeout": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 600,
+              "description": "Seconds bounding the review unit's wait for CI on a pull request it has marked ready for review (the draft gate). Measured from the later of the un-draft and the head's own commit, so on a round answering a CI failure — where the PR is already ready and nothing un-drafts — the budget starts at the push and is partly spent before the first poll, by the review's own worktree, install and verify. Size it against that wall-clock span, not against the pipeline's duration alone. Still running when it elapses → needsHuman, never an accepted verdict and never back into draft. Sized per repo because CI duration is: a repo whose pipeline outlasts this default escalates every issue without it. Deliberately not work.loop.*, which paces a drain between runs and which the units never read. Default: 600.",
+              "$comment": "Mirrors release.timeout — seconds, bounding one wait rather than the run."
+            }
+          }
+        },
+        "loop": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "How a repeating driver (/loop, cron, a human) paces re-runs of a queue drain that ended in backpressure — nothing eligible right now, but the counterpart loop can still produce this loop's input. Read by work-implement-queue and work-review-queue only; the units never wait. A drain that ended on the cap is work remaining, not backpressure, and re-runs immediately without consulting these. `mode` says how a wait is paced, `wait` and `maxWait` how long it may last; none of them decides WHETHER to wait, which is the queue-state cascade's job. Deliberately not the single-flight lock's stale window, which is crash detection measured in hours: two jobs, two numbers.",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["fixed", "adaptive", "auto"],
+              "default": "auto",
+              "description": "How the backpressure wait is paced. \"fixed\" waits work.loop.wait every round — no lock read, no state, the portable floor. \"adaptive\" starts at work.loop.wait and multiplies it by 1.5 after each empty check, capped at work.loop.maxWait, resetting to the floor the moment anything is eligible: deliberately asymmetric, because work arrives in clusters. \"auto\" (the default) blocks on the counterpart's single-flight lock instead of estimating — its `refreshed` heartbeat moves once per counterpart iteration, so one Bash call polls that local file and returns exactly when there is something to query for, falling back to \"adaptive\" wherever that lock or its stamp is unreadable (another host, a drain between cap-ended runs). Only \"auto\" reads the counterpart's lock; none of the three changes what the drain does with the work it finds.",
+              "$comment": "The default is the one that adapts, so a repo tuning nothing gets a wait sized to its own counterpart rather than to the repo this number was first measured on."
+            },
+            "wait": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 120,
+              "description": "Seconds to wait before re-checking the queue when a drain ends in backpressure. Its role follows work.loop.mode: the whole wait under \"fixed\", the floor and starting value under \"adaptive\", and the fallback wait under \"auto\" wherever the counterpart's lock or stamp cannot be read. Calibrated to one counterpart iteration, which runs in minutes (a fresh worktree installs its dependencies before the gate, and the model reads the issue and the diff before either), so the usual 60 s driver floor would poll 3-5x per counterpart issue and re-read the skill each time — a calibration measured on one repo, which is why the default mode adapts rather than trusting this number. Default: 120."
+            },
+            "maxWait": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 600,
+              "description": "Ceiling on a SINGLE backpressure wait, not a budget for the run's total waiting — a drain that is right to keep waiting keeps waiting, and what ends a wait that should end is the cascade (a frozen heartbeat, a frozen updatedAt, terminal states only), never this number. Unused under mode \"fixed\", where the wait never grows; the cap on the backoff under \"adaptive\"; the cap on one blocking wait under \"auto\", where it doubles as the minimum wake rate, since a human labelling an issue ai: ready produces no heartbeat event. Default: 600, because Claude Code truncates a Bash call there — lower it to make \"auto\" behave more like \"fixed\"."
             }
           }
         },
@@ -595,7 +711,19 @@
             "minLength": 1
           },
           "uniqueItems": true,
-          "description": "GitHub priority labels, highest first (e.g. [\"urgent\", \"high\", \"medium\", \"low\"]). Linear uses its native priority field and ignores these."
+          "description": "GitHub priority labels, highest first (e.g. [\"urgent\", \"high\", \"medium\", \"low\"]). Linear uses its native priority field and ignores these. The local tracker reads this same ladder, matching an issue file's `priority` field against it, so the ordering is configured once for both label-shaped trackers."
+        },
+        "local": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Local file-tracker options (used when tracker = local). Every key has a default, so unlike linear this section may be omitted entirely and the root's if/then requires nothing alongside tracker = local.",
+          "properties": {
+            "dir": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Repo-relative directory holding the issue files. Falls back to issue.local.dir, then to \".agents/issues\" — the same two-step fallback linear.team takes to issue.linear.team, so the directory is stated once for both skills."
+            }
+          }
         },
         "linear": {
           "type": "object",
@@ -614,17 +742,17 @@
                 "minLength": 1
               },
               "uniqueItems": true,
-              "description": "Workflow states that count as startable (e.g. [\"Todo\", \"In Progress\"]). ANDed with the label filter, so every state an eligible issue can legitimately sit in has to appear here — the ones states.ready and states.changesRequested name, plus states.accepted, which is where a human hands an already-accepted issue back from. A state the mapping can produce but this list omits takes the issue out of the queue for good, silently."
+              "description": "Workflow states that count as startable (e.g. [\"Todo\", \"In Progress\"]). ANDed with the label filter, so every state an eligible issue can legitimately sit in has to appear here — the ones states.ready and states.changesRequested name, plus states.accepted, which is where a human hands an already-accepted issue back from. A state the mapping can produce but this list omits takes the issue out of the queue for good, silently. That much is required, and stays required however the board is written — a human moving a card writes this same field, with no automation to switch off. Covering what Linear's GitHub integration writes on pull-request events is a SEPARATE, optional widening, and worth it only where labels.ready is a real label: the label filter is what absorbs a foreign state landing INSIDE this list. Under labels.ready: false this list is the sole positive gate, so widening hands the queue to whatever the integration writes; there, silence that integration's pull-request state automation or restore a positive label gate instead. Omitting linear.states is not an answer to that: this key is separate, required, and read regardless."
             },
             "states": {
               "type": "object",
               "additionalProperties": false,
-              "description": "Linear workflow state names, written alongside the lifecycle label. State names are per-team and cannot be derived, so there is no default: an unmapped step leaves the workflow state untouched, and omitting the key drives the lifecycle by label alone. Never guess a state name. Every key but `done` is a step the work loop writes; `done` is the terminal shipped state, which the work loop deliberately never writes.",
+              "description": "Linear workflow state names, written alongside the lifecycle label. State names are per-team and cannot be derived, so there is no default: an unmapped step leaves the workflow state untouched, and omitting the key drives the lifecycle by label alone. Never guess a state name. Every key but `done` is a step the work loop writes; `done` is the terminal shipped state, which the work loop deliberately never writes. Each state is a BEST-EFFORT write, not a state these skills maintain: Linear's own GitHub integration writes the same field on any event on the linked pull request, label-blind, and no reconcile sweep inspects a workflow state, let alone puts a drifted one back — so turn that integration's pull-request state automation off, keep statuses wide enough to cover what the integration writes (only where labels.ready is a real label), or leave this key unmapped. Turning that automation off removes the automated writer, not every one: a human moving a card writes this same field. Leaving this key unmapped settles what the BOARD claims and nothing about the queue — statuses is a separate, required key the selection query reads either way — so under labels.ready: false it has to be paired with silencing that automation.",
               "properties": {
                 "ready": {
                   "type": "string",
                   "minLength": 1,
-                  "description": "State a human parks a startable issue in; the anchor for statuses. Read as documentation, never written by the worker."
+                  "description": "State a human parks a startable issue in; the anchor for statuses. Read as documentation on the normal path — the one exception is the implement reconcile, which writes it when it flips a crashed pre-push lease back to ready."
                 },
                 "working": {
                   "type": "string",
@@ -670,9 +798,15 @@
       "properties": {
         "forge": {
           "type": "string",
-          "enum": ["github"],
+          "enum": ["github", "gitlab"],
           "default": "github",
-          "description": "Code forge for the forge-bound skills (pull-request, release, merge-deps) — where PRs and releases live. v1 supports only github; extend additively when a second forge (e.g. gitlab) docks. This is the single home for the forge axis; the issue tracker is a separate axis (issue.tracker / work.tracker)."
+          "description": "Code forge for the forge-bound skills, overlaid for this execution context. Same axis and same values as the root key."
+        },
+        "forgeHost": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]+)?$",
+          "description": "The host this repo's forge lives on, overlaid for this execution context — a runner reaching a self-hosted instance by a different name than a local session does. Same shape as the root key."
         },
         "language": {
           "$ref": "#/$defs/language",
@@ -686,6 +820,10 @@
         "trustedBots": {
           "$ref": "#/$defs/trustedBots",
           "description": "Allowlist of automated authors the third-party-reading skills may treat as authoritative, overlaid for this execution context. Replaces the base array wholesale (arrays are replaced, not concatenated, on profile merge)."
+        },
+        "grillWith": {
+          "$ref": "#/$defs/grillWith",
+          "description": "The interview engine for this execution context — null or false where nobody is at the terminal to answer, so an unattended profile drafts directly instead of offering a pass that cannot be taken."
         },
         "commit": {
           "description": "atomic-commit settings, or false to disable the atomic-commit skill for the repo.",
@@ -721,7 +859,7 @@
           ]
         },
         "mergeDeps": {
-          "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since mergeDeps.merge defaults to false. Named mergeDeps (not deps) to disambiguate against the separate update-deps skill: this section is only ever about merging the Dependabot PR queue. Scope is fixed to pull requests authored by app/dependabot; that is a hard constraint of the skill and deliberately not configurable.",
+          "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since mergeDeps.merge defaults to false. Named mergeDeps (not deps) to disambiguate against the separate update-deps skill: this section is only ever about merging the dependency-bot request queue. Scope is fixed to a single author: on GitHub the constant app/dependabot, deliberately not configurable; on GitLab the one identity mergeDeps.gitlab.bot names, since no constant exists there. Either way it is one author and never a selector — the key can only narrow.",
           "oneOf": [
             {
               "$ref": "#/$defs/mergeDepsShape"

@@ -38,39 +38,42 @@ That's it. Every skill in this bundle is now discoverable inside your agent — 
 
 Commits, pull requests, releases and dependency updates — each driven by the repo's own conventions.
 
-| Skill                                                   | Description                                                                                                        |
-| :------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------- |
-| [`atomic-commit`](skills/repo/atomic-commit/SKILL.md)   | Commits session work as atomic Conventional Commits (or just plans).                                               |
-| [`merge-deps`](skills/repo/merge-deps/SKILL.md)         | Triages a repo's open Dependabot PRs, verifying each on its own branch before merging.                             |
-| [`prune-branches`](skills/repo/prune-branches/SKILL.md) | Reports a repo's stale branches grouped by why they are stale, and deletes the ones confirmed.                     |
-| [`prune-comments`](skills/repo/prune-comments/SKILL.md) | Reports comments that only restate the code, and removes them after confirmation.                                  |
-| [`pull-request`](skills/repo/pull-request/SKILL.md)     | Opens a pull request from the current branch via gh; forge chosen by config (github in v1).                        |
-| [`release`](skills/repo/release/SKILL.md)               | Drives the release-please flow to a shipped release — promotes the integration branch, then merges the release PR. |
-| [`update-deps`](skills/repo/update-deps/SKILL.md)       | Updates a repo's dependencies via its own updater — minor by default, honouring gates and pins.                    |
+| Skill                                                   | Description                                                                                                                     |
+| :------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------ |
+| [`atomic-commit`](skills/repo/atomic-commit/SKILL.md)   | Commits session work as atomic Conventional Commits (or just plans).                                                            |
+| [`merge-deps`](skills/repo/merge-deps/SKILL.md)         | Triages a repo's open dependency-bot requests, verifying each on its own branch before merging.                                 |
+| [`prune-branches`](skills/repo/prune-branches/SKILL.md) | Reports a repo's stale branches grouped by why they are stale, and deletes the ones confirmed.                                  |
+| [`prune-comments`](skills/repo/prune-comments/SKILL.md) | Reports comments that only restate the code, and removes them after confirmation.                                               |
+| [`pull-request`](skills/repo/pull-request/SKILL.md)     | Opens a pull request (GitLab, a merge request) from the current branch; forge and host chosen by config.                        |
+| [`release`](skills/repo/release/SKILL.md)               | Drives the release-please flow to a shipped release — promotes the integration branch, then merges the release PR. GitHub-only. |
+| [`update-deps`](skills/repo/update-deps/SKILL.md)       | Updates a repo's dependencies via its own updater — minor by default, honouring gates and pins.                                 |
 
 ### Tracked work
 
-Issues, the two AI work loops (implement and review), and handing work between sessions.
+Issues, the two AI work loops (implement and review), handing work between sessions, and summarising one.
 
-| Skill                                                               | Description                                                                                                           |
-| :------------------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------- |
-| [`handoff`](skills/work/handoff/SKILL.md)                           | Hands off in-progress work to another agent or session via a committed handoff document.                              |
-| [`issue`](skills/work/issue/SKILL.md)                               | Creates/updates/searches issues across GitHub (gh) or Linear (MCP), tracker chosen by config.                         |
-| [`work-implement`](skills/work/work-implement/SKILL.md)             | Implements one tracked issue and pushes it for AI review — claim, implement, verify, push, hand off.                  |
-| [`work-implement-queue`](skills/work/work-implement-queue/SKILL.md) | Drains the ready/changes-requested queue — implements each issue to a pushed, reviewable state.                       |
-| [`work-review`](skills/work/work-review/SKILL.md)                   | Reviews one issue's pushed work as an independent agent — verdict routes to done, changes, needs-human, or blocked.   |
-| [`work-review-queue`](skills/work/work-review-queue/SKILL.md)       | Drains the awaiting-review queue — reviews each pushed issue with a fresh agent, routing to done/changes/needs-human. |
+| Skill                                                               | Description                                                                                                               |
+| :------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------ |
+| [`handoff`](skills/work/handoff/SKILL.md)                           | Hands off in-progress work to another agent or session via a committed handoff document.                                  |
+| [`issue`](skills/work/issue/SKILL.md)                               | Creates/updates/searches issues across GitHub (gh), GitLab (glab), Linear (MCP) or local files, tracker chosen by config. |
+| [`refine-issue`](skills/work/refine-issue/SKILL.md)                 | Takes one filed issue to the point a human can approve it for the AI loop — finds the open decisions and closes them.     |
+| [`tldr`](skills/work/tldr/SKILL.md)                                 | Summarises the last answer, the task just finished, or the whole session into a fixed section order.                      |
+| [`work-implement`](skills/work/work-implement/SKILL.md)             | Implements one tracked issue and pushes it for AI review — claim, implement, verify, push, hand off.                      |
+| [`work-implement-queue`](skills/work/work-implement-queue/SKILL.md) | Drains the ready/changes-requested queue — implements each issue to a pushed, reviewable state.                           |
+| [`work-review`](skills/work/work-review/SKILL.md)                   | Reviews one issue's pushed work as an independent agent — verdict routes to done, changes, needs-human, or blocked.       |
+| [`work-review-queue`](skills/work/work-review-queue/SKILL.md)       | Drains the awaiting-review queue — reviews each pushed issue with a fresh agent, routing to done/changes/needs-human.     |
 
 ### Docs & READMEs
 
 Generate and maintain project documentation, READMEs and terminal demos in the house style.
 
-| Skill                                                   | Description                                                                                               |
-| :------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------- |
-| [`compact-readme`](skills/docs/compact-readme/SKILL.md) | Slims down an existing overstuffed README without losing information.                                     |
-| [`vhs-demo`](skills/docs/vhs-demo/SKILL.md)             | Creates and maintains a reproducible terminal-demo GIF from a VHS tape.                                   |
-| [`write-docs`](skills/docs/write-docs/SKILL.md)         | Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format. |
-| [`write-readme`](skills/docs/write-readme/SKILL.md)     | Generates project READMEs in the kirchDev house style.                                                    |
+| Skill                                                           | Description                                                                                                    |
+| :-------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------- |
+| [`compact-readme`](skills/docs/compact-readme/SKILL.md)         | Slims down an existing overstuffed README without losing information.                                          |
+| [`vhs-demo`](skills/docs/vhs-demo/SKILL.md)                     | Creates and maintains a reproducible terminal-demo GIF from a VHS tape.                                        |
+| [`write-contributing`](skills/docs/write-contributing/SKILL.md) | Writes and reconciles CONTRIBUTING.md in the house style, deriving every repo fact from the file that owns it. |
+| [`write-docs`](skills/docs/write-docs/SKILL.md)                 | Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format.      |
+| [`write-readme`](skills/docs/write-readme/SKILL.md)             | Generates project READMEs in the kirchDev house style.                                                         |
 
 ### Meta
 

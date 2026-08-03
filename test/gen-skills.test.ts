@@ -1,4 +1,4 @@
-// The generator writes seven artifacts that nineteen published skills depend on, and
+// The generator writes seven artifacts that twenty published skills depend on, and
 // until its functions took a root rather than a module constant, none of them could be
 // run anywhere but this repo — so none of them had a test. These run the real thing
 // against `test/fixtures/registry`, a miniature of this repo's own shape, copied to a
@@ -65,7 +65,9 @@ describe('a run reports, writes, and then has nothing left to do', () => {
       'skills/repo/beta/SKILL.md authority block',
       'skills/repo/beta/SKILL.md verify block',
       'skills/work/gamma/SKILL.md worklock block',
-      'skills/work/gamma/SKILL.md plan block'
+      'skills/work/gamma/SKILL.md plan block',
+      'skills/work/gamma/SKILL.md tldr block',
+      'skills/repo/beta/SKILL.md forge block'
     ]) {
       assert.ok(
         run.stderr.includes(artifact),
@@ -194,7 +196,7 @@ describe('what a write actually puts on disk', () => {
       'utf8'
     );
     assert.match(alpha, /<skills-config>\n\n### Reading the config/);
-    assert.ok(alpha.includes('Fixture config body.'));
+    assert.ok(alpha.includes('Fixture config body,'));
     assert.ok(!alpha.includes('stale config body'));
     // The preamble above `<!-- config:body -->` is not part of the body.
     assert.ok(!alpha.includes('Fixture stand-in'));
@@ -221,7 +223,7 @@ describe('what a write actually puts on disk', () => {
     assert.ok(!gamma.includes('stale plan body'));
   });
 
-  test('the resolver ships to config carriers, byte-exact, and to nobody else', () => {
+  test('the resolver ships to every skill that names it, byte-exact, and to nobody else', () => {
     const { root } = open();
     main(['--write'], root);
 
@@ -229,22 +231,54 @@ describe('what a write actually puts on disk', () => {
       join(root, 'scripts', 'resolve-config.sh'),
       'utf8'
     );
-    const shipped = join(
+    const resolverIn = (...segments: string[]) =>
+      join(root, 'skills', ...segments, 'templates', 'resolve-config.sh');
+
+    // alpha hosts the config block, and the body this run wrote into it names the
+    // resolver — so the mention the shipping decision reads is one the same run
+    // produced, not something that had to be on disk beforehand.
+    assert.ok(existsSync(resolverIn('repo', 'alpha')), 'alpha hosts the block');
+    assert.equal(readFileSync(resolverIn('repo', 'alpha'), 'utf8'), source);
+
+    // gamma hosts no config block and names the script anyway — the queue-skill
+    // shape: the contract's prose is left to a required sibling, the script is not.
+    assert.ok(
+      existsSync(resolverIn('work', 'gamma')),
+      'a skill naming the resolver ships it without hosting the block'
+    );
+    assert.equal(readFileSync(resolverIn('work', 'gamma'), 'utf8'), source);
+
+    // beta carries tagged blocks, hosts no config block and names no resolver.
+    assert.ok(
+      !existsSync(join(root, 'skills', 'repo', 'beta', 'templates')),
+      'a skill that never names the resolver ships none'
+    );
+  });
+
+  test('a resolver left behind by a skill that stopped naming it is removed', () => {
+    const { root } = open();
+    // beta names the script nowhere, so this copy is exactly the orphan the mention-based
+    // trigger can strand: shipped once, then unreferenced by the text that decides shipping.
+    const orphan = join(
       root,
       'skills',
       'repo',
-      'alpha',
+      'beta',
       'templates',
       'resolve-config.sh'
     );
-    assert.ok(existsSync(shipped), 'alpha carries the config block');
-    assert.equal(readFileSync(shipped, 'utf8'), source);
+    mkdirSync(join(root, 'skills', 'repo', 'beta', 'templates'), {
+      recursive: true
+    });
+    writeFileSync(orphan, '# stranded\n');
 
-    // beta carries tagged blocks but no config block, so it gets no resolver.
-    assert.ok(
-      !existsSync(join(root, 'skills', 'repo', 'beta', 'templates')),
-      'a skill without the config block ships no resolver'
-    );
+    const check = main(['--check'], root);
+    assert.equal(check.code, 1);
+    assert.match(check.stderr, /repo\/beta\/templates\/resolve-config\.sh/);
+
+    main(['--write'], root);
+    assert.ok(!existsSync(orphan), 'the orphaned resolver is still shipped');
+    assert.equal(main(['--check'], root).code, 0);
   });
 });
 

@@ -15,7 +15,7 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from './helpers.ts';
 import { discoverSkills, paths } from '../scripts/gen-skills.ts';
@@ -267,6 +267,159 @@ const NO_BASH: Record<string, string> = {
     'scaffolds README.md through Read/Write/Edit and drives no command — it reads no config either'
 };
 
+/**
+ * The skill files this reader takes commands from.
+ *
+ * `DESIGN.md` is deliberately not one of them. It records what was decided *and what was
+ * rejected*, so a command shown there may be the one the skill does **not** run — reading
+ * it would clear a grant by quoting the argument against it.
+ */
+const PROSE_FILES = ['SKILL.md', 'REFERENCE.md'];
+
+/**
+ * Fence info strings read as shell.
+ *
+ * A **bare** fence is deliberately not one. The catalogue's only bare block holds a
+ * validator's output, and output read as commands invents calls that clear grants — which
+ * is the one way this gate could fail open. `json`, `mermaid`, `markdown` and the rest are
+ * excluded for the same reason, by not being listed.
+ */
+const SHELL_FENCES = new Set(['sh', 'bash', 'shell', 'zsh', 'console']);
+
+/**
+ * Words that sit in a command position and hand it to the next word.
+ *
+ * The reader is a token scanner, not a shell, so it steps over these rather than splitting
+ * on them: `{ git log --all …` and `if git rev-parse --verify …` both run the command that
+ * follows. Braces are stepped over rather than treated as separators because `gh api
+ * repos/{owner}/{repo}/labels` would otherwise come apart mid-argument.
+ */
+const OPENS_A_COMMAND = new Set([
+  '{',
+  '}',
+  '!',
+  'if',
+  'elif',
+  'then',
+  'else',
+  'while',
+  'until',
+  'do',
+  'time'
+]);
+
+/**
+ * Words that occupy a command position and end the fragment for this reader's purposes —
+ * shell syntax and builtins that no `allowed-tools` rule is ever written against. Unlike
+ * the set above, what follows one of these is its argument, not a command.
+ */
+const NOT_A_COMMAND = new Set([
+  'fi',
+  'done',
+  'esac',
+  'case',
+  'in',
+  'for',
+  'function',
+  'return',
+  'break',
+  'continue',
+  'exit',
+  'set',
+  'local',
+  'export',
+  'readonly',
+  'shift',
+  'trap',
+  'wait',
+  'true',
+  'false',
+  ':',
+  '.',
+  'source',
+  'echo',
+  'test',
+  'read',
+  'unset',
+  'eval'
+]);
+
+/**
+ * A token this gate is willing to demand a grant narrow onto: a subcommand.
+ *
+ * The narrowest prefix covering a skill's calls is not always a subcommand — `pull-request`
+ * drives `git branch` only as `--show-current`, `prune-comments` `git symbolic-ref` only as
+ * `--short` — and ADR-0017 records that a flag is the **more brittle anchor**, sound only
+ * where the call has a single shape, which is a property of the call site rather than of
+ * the rule. So the gate *accepts* a flag-anchored rule and never *requires* one: it demands
+ * a narrowing only where the next token is a plain subcommand word, which is where the
+ * widening this check exists to catch actually lives (`Bash(git worktree:*)` over
+ * `git worktree list`). Anything with a flag, a variable, a placeholder, a path or a
+ * redirect in it fails this and is left alone.
+ */
+const SUBCOMMAND = /^[a-z][a-z0-9-]*$/;
+
+/**
+ * The kinds of reason a grant this reader cannot see demonstrated can rest on.
+ *
+ * Same shape and same purpose as PERMANENT_REASONS above: a reason is one of these rather
+ * than free text a later author invents to fit, and the set is pinned in both directions.
+ */
+const UNDEMONSTRATED_REASONS: Record<string, string> = {
+  undemonstrated:
+    'no recipe drives it at all, so the grant is a candidate for removal — but which grants a skill still needs is the per-skill judgement ADR-0017 kept out of a sweep, and this gate reports rather than guesses'
+};
+
+/**
+ * Scoped rules the skill's own prose does not demonstrate, keyed `<skill> <rule>`.
+ *
+ * This is the opt-out the check was expected to need, and on the day it landed it is also
+ * where the check earns its keep: most of it is grants for calls no recipe in the catalogue
+ * makes. Listing them is not the same as clearing them — it says a human, not a parser,
+ * decides whether the grant or the recipe is the thing that is wrong. (No count here on
+ * purpose, for the reason ADR-0017 gives: a number in prose is the half nothing reads.)
+ *
+ * Pinned in both directions like every list in this file: an entry whose rule the prose
+ * *does* demonstrate fails, so the list can only shrink.
+ */
+const UNDEMONSTRATED: Record<string, { why: string; detail: string }> = {
+  'meta/tituskirch-skills-config Bash(git rev-parse:*)': {
+    why: 'undemonstrated',
+    detail:
+      'the only `git rev-parse` in the folder is inside `templates/resolve-config.sh`, which the skill runs as one `sh` call — nothing the agent types is covered by the rule'
+  },
+  'meta/tituskirch-skills-config Bash(gh issue list:*)': {
+    why: 'undemonstrated',
+    detail:
+      'the drift sweep reads labels (`gh label list --limit`, `gh api repos/{owner}/{repo}/labels`) and lists issues in no recipe'
+  },
+  'repo/prune-branches Bash(gh pr view:*)': {
+    why: 'undemonstrated',
+    detail:
+      'its PR reads all go through `gh pr list --state`; no recipe views a single pull request'
+  },
+  'repo/pull-request Bash(gh pr view:*)': {
+    why: 'undemonstrated',
+    detail:
+      'it finds its own PR with `gh pr list --head`; no recipe views one, and the update path reads the branch rather than the PR'
+  },
+  'repo/pull-request Bash(gh pr diff:*)': {
+    why: 'undemonstrated',
+    detail:
+      'the body is built from `git log` and `git diff` over the branch; no recipe reads a PR diff'
+  },
+  'repo/release Bash(gh pr view:*)': {
+    why: 'undemonstrated',
+    detail:
+      'the release PR is read with `gh pr list --base` and `gh pr checks`; the one diff recipe spells `gh pr diff`, which this list does not grant at all'
+  },
+  'work/handoff Bash(git rev-parse:*)': {
+    why: 'undemonstrated',
+    detail:
+      "as with the config skill, the folder's only `git rev-parse` is inside the resolver it ships and runs as one `sh` call"
+  }
+};
+
 /** The command prefix inside a scoped rule: `Bash(git diff:*)` → `git diff`. */
 const prefixOf = (tool: string) => /^Bash\((.+):\*\)$/.exec(tool)?.[1] ?? '';
 
@@ -326,6 +479,151 @@ function allowedTools(skill: string): string[] {
 }
 
 const skills = () => discoverSkills(paths(ROOT)).map((s) => s.path);
+
+/** A skill file minus its YAML frontmatter — the tool list is not a recipe. */
+const body = (md: string) => md.replace(/^---\n[\s\S]*?\n---\n/, '');
+
+/**
+ * The shell a skill's prose shows: its fenced shell blocks, plus its inline code spans.
+ *
+ * Spans are read as well as blocks because these skills write commands in both — a fenced
+ * recipe for the multi-line ones, backticks for `wc -l README.md` or `gh pr list --state`
+ * mid-sentence — and a reader that took only blocks would call a documented command
+ * undocumented. Spans carry plenty that is not a command (`ai: ready`, `work.branch`); that
+ * only ever *adds* to the set of calls, which can loosen this gate but never make it
+ * misfire, so the noise is cheaper than the false failures.
+ */
+function shellSources(md: string): string[] {
+  const sources: string[] = [];
+  const fence = /^```([^\n`]*)\n([\s\S]*?)^```/gm;
+  let block: RegExpExecArray | null;
+  while ((block = fence.exec(md)))
+    if (SHELL_FENCES.has((block[1] ?? '').trim().toLowerCase()))
+      sources.push(block[2] ?? '');
+
+  const prose = md.replace(/^```[\s\S]*?^```/gm, '');
+  for (const span of prose.matchAll(/`([^`\n]+)`/g))
+    sources.push(span[1] ?? '');
+  return sources;
+}
+
+/** Drop a trailing `# …` comment, leaving a `#` inside a quoted string alone. */
+function stripComment(line: string): string {
+  let quote: string | null = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i] as string;
+    if (quote) {
+      if (c === quote) quote = null;
+    } else if (c === '"' || c === "'") quote = c;
+    else if (c === '#' && (i === 0 || /\s/.test(line[i - 1] as string)))
+      return line.slice(0, i);
+  }
+  return line;
+}
+
+/** Split a line at every position a new command can start: `|`, `&&`, `;`, `$(`, … */
+const atCommandPositions = (line: string) =>
+  line.replace(/\|\||&&|\$\(|[|;`()]/g, '\n').split('\n');
+
+/** Words of one command, quotes removed: `git log --pretty='%s'` → three tokens. */
+function words(fragment: string): string[] {
+  const out: string[] = [];
+  for (const m of fragment.matchAll(/"([^"]*)"|'([^']*)'|(\S+)/g))
+    out.push(m[1] ?? m[2] ?? m[3] ?? '');
+  return out;
+}
+
+/**
+ * Every command invocation in a chunk of shell, as token arrays.
+ *
+ * A scanner, not a shell: it finds the command positions, skips `VAR=…` prefixes and the
+ * words that open a construct, and takes what is left. Heredoc bodies and prose caught in a
+ * code span come through as junk invocations — harmless, because a junk head matches no
+ * grant prefix.
+ */
+function invocations(text: string): string[][] {
+  const found: string[][] = [];
+  for (const raw of text.split('\n')) {
+    if (/^\s*#/.test(raw)) continue;
+    const line = stripComment(raw);
+    if (!line.trim()) continue;
+    for (const fragment of atCommandPositions(line)) {
+      const toks = words(fragment);
+      let i = 0;
+      while (
+        i < toks.length &&
+        (/^[A-Za-z_][A-Za-z0-9_]*=/.test(toks[i] as string) ||
+          OPENS_A_COMMAND.has(toks[i] as string))
+      )
+        i++;
+      const head = toks[i];
+      if (!head || NOT_A_COMMAND.has(head) || head.startsWith('-')) continue;
+      found.push(toks.slice(i));
+    }
+  }
+  return found;
+}
+
+const driven = new Map<string, string[][]>();
+
+/** Every command `skill`'s own prose shows it running. */
+function calls(skill: string): string[][] {
+  const hit = driven.get(skill);
+  if (hit) return hit;
+
+  const found: string[][] = [];
+  for (const file of PROSE_FILES) {
+    const path = join(ROOT, 'skills', skill, file);
+    if (!existsSync(path)) continue;
+    for (const source of shellSources(body(readFileSync(path, 'utf8'))))
+      found.push(...invocations(source));
+  }
+  driven.set(skill, found);
+  return found;
+}
+
+/** Does `call` start with every token of `prefix`? */
+const drives = (call: string[], prefix: string[]) =>
+  prefix.every((t, i) => call[i] === t);
+
+/**
+ * The subcommand a rule should have been anchored at, if every call sits under one.
+ *
+ * `undefined` means the rule is as narrow as this gate asks for — because the calls spread
+ * across subcommands, because the next token is a flag or an argument, or because the rule
+ * is already anchored at a flag (see SUBCOMMAND). One step at a time: a rule two
+ * subcommands too wide is reported at the first, and re-running finds the next.
+ *
+ * A **bare** mention of the prefix — `git worktree` with nothing after it, which is how the
+ * prose explaining a narrowing names the form it rejected — is not counted as a call under
+ * it. A rule reads `Bash(<prefix>:*)`, so it is written for invocations that carry
+ * arguments; taking the bare word as evidence for the parent anchor would let the sentence
+ * arguing *against* the wide rule be the thing that clears it.
+ */
+function widerThanDriven(
+  prefix: string,
+  observed: string[][]
+): string | undefined {
+  const p = tokens(prefix);
+  if (p.some((t) => t.startsWith('-'))) return undefined;
+
+  const next = new Set(
+    observed.filter((c) => drives(c, p)).map((c) => c[p.length])
+  );
+  next.delete(undefined);
+  if (next.size !== 1) return undefined;
+
+  const [only] = [...next];
+  return only && SUBCOMMAND.test(only) ? only : undefined;
+}
+
+/** The scoped rules of every skill that has any, as `[skill, rule]` pairs. */
+const scopedRules = () =>
+  skills().flatMap((skill) =>
+    allowedTools(skill)
+      .filter((tool) => tool.startsWith('Bash('))
+      .map((tool) => [skill, tool] as const)
+  );
 
 /** A grant of every command there is: the bare tool name, with no `(…)` scope. */
 const isBlanketBash = (tools: string[]) => tools.includes('Bash');
@@ -566,5 +864,184 @@ describe('the frontmatter contract teaches rules its own gate accepts', () => {
         `skills/README.md shows "${tool}" as a rule to avoid (${where}), but this gate accepts it — the illustration and the check disagree`
       );
     }
+  });
+});
+
+describe('a grant is no broader than the calls the skill drives', () => {
+  // The rule this makes mechanical is ADR-0017's: *a grant is written at the narrowest
+  // prefix that covers every call the skill makes*. Four grants were narrowed under it and
+  // every one rested on review — nothing stopped the next author widening any of them back,
+  // which is the shape a claim in prose always fails in.
+  //
+  // **Two of the four are what this gate pins**: `git worktree list` and `git remote
+  // get-url`, where the narrowing lands on a subcommand. `git branch --show-current` and
+  // `git symbolic-ref --short` land on a *flag*, and pinning those would mean demanding a
+  // flag anchor wherever a skill's calls share one — which is `jq -er`, `printf %s`,
+  // `mkdir -p`, `head -1` and twenty more, the brittle sweep ADR-0017 declined by saying a
+  // flag anchor holds only where the call has a single shape, a property of the call site
+  // rather than of the rule. So the flag-anchored half stays a review matter, deliberately,
+  // and this gate says so rather than implying it covers all four.
+  //
+  // The reader above is the part that cannot be right everywhere: fenced blocks and code
+  // spans carry pseudo-code, fragments and placeholders, so the gate is written to be *shy*
+  // — it demands a narrowing only onto a subcommand, and a rule it cannot see driven at all
+  // is an entry in UNDEMONSTRATED rather than a failure invented from a parse.
+
+  test('the reader finds commands, so a broken parse cannot pass everything', () => {
+    // Without this, a reader that stopped matching would report every rule as narrow
+    // enough and every skill as clean — a green run that checked nothing.
+    for (const skill of new Set(scopedRules().map(([s]) => s)))
+      assert.ok(
+        calls(skill).length > 0,
+        `${skill} scopes its Bash grant but this reader found no command in its prose — the reader is broken, or the skill documents no recipe`
+      );
+  });
+
+  test('every scoped rule is one the skill is shown driving', () => {
+    for (const [skill, tool] of scopedRules()) {
+      if (UNDEMONSTRATED[`${skill} ${tool}`]) continue;
+      const prefix = tokens(prefixOf(tool));
+      assert.ok(
+        calls(skill).some((c) => drives(c, prefix)),
+        `${skill}: "${tool}" pre-approves a command no recipe in its SKILL.md or REFERENCE.md drives — drop the grant, show the call, or name it in UNDEMONSTRATED with the reason this reader cannot see it`
+      );
+    }
+  });
+
+  test('and every name on the undemonstrated list is still undemonstrated', () => {
+    for (const [key, { detail }] of Object.entries(UNDEMONSTRATED)) {
+      const [skill, tool] = [
+        key.slice(0, key.indexOf(' ')),
+        key.slice(key.indexOf(' ') + 1)
+      ];
+      assert.ok(
+        allowedTools(skill).includes(tool),
+        `UNDEMONSTRATED lists "${key}", which that skill no longer grants — drop the entry; the list is meant to shrink`
+      );
+      assert.ok(
+        !calls(skill).some((c) => drives(c, tokens(prefixOf(tool)))),
+        `UNDEMONSTRATED says ${skill} never shows "${tool}" (${detail}), but its prose now drives it — drop the entry`
+      );
+    }
+  });
+
+  test('each entry rests on one of the named kinds, not on free text', () => {
+    for (const [key, { why }] of Object.entries(UNDEMONSTRATED))
+      assert.ok(
+        UNDEMONSTRATED_REASONS[why],
+        `${key}: "${why}" is not a kind UNDEMONSTRATED_REASONS names`
+      );
+  });
+
+  test('and every named kind is one some entry actually rests on', () => {
+    const claimed = new Set(Object.values(UNDEMONSTRATED).map((e) => e.why));
+    assert.deepEqual(
+      Object.keys(UNDEMONSTRATED_REASONS).sort(),
+      [...claimed].sort(),
+      'UNDEMONSTRATED_REASONS names a kind no entry claims (or an entry claims one it does not name)'
+    );
+  });
+
+  test('each reason says something, so no list can be padded to pass', () => {
+    for (const [key, { detail }] of Object.entries(UNDEMONSTRATED))
+      assert.ok(
+        detail.trim().length >= 20,
+        `${key}: say what the skill drives instead, not a placeholder`
+      );
+    for (const [why, reason] of Object.entries(UNDEMONSTRATED_REASONS))
+      assert.ok(
+        reason.trim().length >= 40,
+        `UNDEMONSTRATED_REASONS.${why}: say why the grant survives without a demonstrated call`
+      );
+  });
+
+  test('no rule sits a subcommand above every call under it', () => {
+    for (const [skill, tool] of scopedRules()) {
+      const prefix = prefixOf(tool);
+      const narrower = widerThanDriven(prefix, calls(skill));
+      assert.ok(
+        !narrower,
+        `${skill}: "${tool}" is wider than the calls it covers — every one is \`${prefix} ${narrower}\`, so the rule reads \`Bash(${prefix} ${narrower}:*)\``
+      );
+    }
+  });
+});
+
+describe('the minimality reader is demonstrated, not just asserted', () => {
+  // The catalogue passes the check above, which is the point and also the problem: a rule
+  // nothing fires on is a rule nobody can tell is wired up. These cases are the widening
+  // the check exists to catch and the four shapes it deliberately leaves alone.
+  const worktree = [
+    ['git', 'worktree', 'list', '--porcelain'],
+    ['git', 'worktree', 'list', '-z']
+  ];
+
+  test('it names the subcommand when every call sits under one', () => {
+    assert.equal(widerThanDriven('git worktree', worktree), 'list');
+  });
+
+  test('it stays quiet when the calls spread across subcommands', () => {
+    assert.equal(
+      widerThanDriven('git worktree', [
+        ...worktree,
+        ['git', 'worktree', 'remove', '$dir']
+      ]),
+      undefined
+    );
+  });
+
+  test('a bare mention of the parent does not clear the wide rule', () => {
+    // `prune-branches`' REFERENCE explains its own narrowing as "`git worktree list`, not
+    // `git worktree`" — so the sentence arguing against the wide rule puts the bare word in
+    // the reader's hands, and counting it would make the explanation the loophole.
+    assert.equal(
+      widerThanDriven('git worktree', [...worktree, ['git', 'worktree']]),
+      'list'
+    );
+  });
+
+  test('it never demands a flag anchor, however single-shaped the call', () => {
+    assert.equal(widerThanDriven('git worktree list', worktree), undefined);
+    assert.equal(widerThanDriven('jq', [['jq', '-er', '.verify']]), undefined);
+  });
+
+  test('it demands nothing under a rule already anchored at a flag', () => {
+    assert.equal(
+      widerThanDriven('command -v', [['command', '-v', 'skills-ref']]),
+      undefined
+    );
+  });
+
+  test('it demands nothing on an argument that only looks like a subcommand', () => {
+    // A placeholder, a path and a variable each fail SUBCOMMAND, so a recipe written with
+    // one cannot be turned into a grant nobody could satisfy.
+    assert.equal(
+      widerThanDriven('gh api', [['gh', 'api', 'repos/{owner}/{repo}/labels']]),
+      undefined
+    );
+    assert.equal(
+      widerThanDriven('git verify-commit', [['git', 'verify-commit', '<sha>']]),
+      undefined
+    );
+  });
+
+  test('the reader finds a command inside a substitution and after a pipe', () => {
+    assert.deepEqual(
+      invocations(
+        'root=$(git rev-parse --show-toplevel) && gh pr list --json number | jq -er ".[0]"'
+      ),
+      [
+        ['git', 'rev-parse', '--show-toplevel'],
+        ['gh', 'pr', 'list', '--json', 'number'],
+        ['jq', '-er', '.[0]']
+      ]
+    );
+  });
+
+  test('it reads no command out of a comment', () => {
+    assert.deepEqual(invocations('# git worktree remove "$dir"'), []);
+    assert.deepEqual(invocations('git status   # git push --force'), [
+      ['git', 'status']
+    ]);
   });
 });

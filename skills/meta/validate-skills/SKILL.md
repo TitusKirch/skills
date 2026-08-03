@@ -59,10 +59,11 @@ The spec also carries **recommendations** (body under ~500 lines / ~5000 tokens,
 
 A separate check, reported in its own tier. The consuming repo's conventions come from **that repo's own contract**, not from this skill's opinion — read where the repo documents them and run the repo's own house lint where it has one. For this repo the contract is `skills/README.md` — its frontmatter and cross-skill-reference sections — plus the `pnpm skills:check` gate; the worked example and how to keep house rules from masquerading as spec rules: [REFERENCE.md](REFERENCE.md#the-house-style-tier). A repo with **no** documented house style has no tier-2 findings — that is a clean result, not a gap.
 
-**Cross-skill references get their own pass** in this tier, because they are the one place a skill assumes something about its **install environment**: every skill installs on its own, so a referenced sibling may not be there. Two rules, where the repo's contract carries them:
+**Cross-skill references get their own pass** in this tier, because they are the one place a skill assumes something about its **install environment**: every skill installs on its own, so a referenced sibling may not be there. Three rules, where the repo's contract carries them:
 
 - **The form** — a reference **names** the skill; it never carries a path. Not a relative link out of the folder, not an absolute `~/.claude/skills/…`, and **not a bare path in prose** either — an unlinked `` `work-review/REFERENCE.md` `` dangles exactly as a link would, and is the form a repo's own link lint cannot see.
-- **The kind** — a reference that is a **call** (the run hands work over, or depends on the skill to proceed) declares **required** or **optional**, plus what the run does when it is absent: required → stop and say why; optional → state the fallback. A reference that only **mentions** another skill is not a call and needs no declaration.
+- **The kind is declared** — a reference that is a **call** (the run hands work over, or depends on the skill to proceed) declares **required** or **optional**, plus what the run does when it is absent: required → stop and say why; optional → state the fallback. A reference that only **mentions** another skill is not a call and needs no declaration.
+- **The kind defaults to optional** — **required** is legitimate only where the skill has no job at all without the sibling (a drain whose every step is the delegation, checked before any state changes). A required **declaration** anywhere else — and any required call to a skill the repo does not itself ship — is the finding: it makes a precondition of something the run could have started without. Key the read on the declaration and where the check sits, never on how costly the fallback is: an optional call whose stated fallback is itself a stop is conformant.
 
 Telling a call from a mention is a read of the prose, not a pattern match — the grep only locates candidates. Locator recipes, the call/mention test and the false positives to avoid: [REFERENCE.md](REFERENCE.md#cross-skill-references).
 
@@ -70,13 +71,14 @@ Telling a call from a mention is a read of the prose, not a pattern match — th
 
 Per skill, and never merging the tiers:
 
+- **TL;DR** — first, before any finding: how many skills were validated, how many pass and how many fail, the count per tier, and whether the spec tier is **verified** or **UNVERIFIED**. That last one belongs in the lead precisely because it changes what every count below it means. **Leading the report** binds the form.
 - **Spec violations** — each with the offending field and the `skills-ref` message; the file is the skill's `SKILL.md`.
 - **Client extensions (non-portable)** — each such field, **which** clients define it (some are shared, so the answer is not always "Claude Code"), and the plain consequence. State it as the range it is: a strict validator **rejects** the skill, OpenCode **ignores** the field and loads it anyway, the defining clients **honour** it. A skill flagged only here is spec-clean but non-portable, not malformed — and where the field's job also has a portable form (a Codex sidecar, another client that honours the same key), name it, because that is the choice the author is actually making.
 - **Codex sidecar** — `agents/openai.yaml` present (what it configures) or absent (a client not targeted). **Not a violation** in either direction, and never listed among them.
 - **House-style deviations** — each with the field and the repo's own rule it breaks.
 - **Advisory** — spec recommendations worth noting (long body, deep reference chains).
 - **Spec tier status** — `verified` (skills-ref ran) or **UNVERIFIED** (it could not) — stated explicitly, so an unverified run is never mistaken for a clean one.
-- **Summary** — per skill pass/fail across a whole-repo run, so the one bad skill in twenty is obvious.
+- **Summary** — the per-skill pass/fail table across a whole-repo run, so the one bad skill in twenty is obvious. The lead states the counts; this states which skills they were, and neither replaces the other.
 
 ## What this skill does not do
 
@@ -112,6 +114,46 @@ legitimate there. The rule is about the message a human reads to decide — neve
 of a file.
 
 </skills-plan>
+
+<skills-tldr>
+
+## Leading the report
+
+The report this skill ends with is read **once, in a terminal**, by someone deciding what happens
+next. So it **opens with its result**: a `## TL;DR` section, before every other heading, carrying
+the whole answer in a few lines. A report that opens with its first group makes the reader
+reconstruct the total by reading every group and adding it up — which is the one thing they needed
+before deciding whether to read any of them.
+
+**Three things belong in the lead, and nothing else does:**
+
+- **The counts** — how much was found, per group, in the same words the groups below use. The
+  total is stated, never left to be summed.
+- **What the run acted on, or proposes to** — the preselected set, the merged set, the changed
+  set: the part that is not merely listed. Where nothing was acted on, say so in those words.
+- **The decision being asked for** — the one thing the reader is expected to do, said plainly, or
+  **no decision needed** where the run is finished. An ask that is only inferable from the groups
+  is an ask the reader has to assemble.
+
+**It leads the detail, it never replaces it.** Every group still renders in full underneath, and
+nothing is dropped, shortened or folded for having been counted above. The lead is an entry point;
+a summary that licenses hiding what it summarises is the failure this repo already forbids
+elsewhere.
+
+**Whatever the run could not establish belongs in the lead too**, not only in the section that
+holds it — a check that never ran, a list that could not be read, a tier the run declined to
+judge. Each changes what the counts mean, and a reader who stops after four lines must not stop
+with a picture the rest of the report would have corrected.
+
+**A run that found nothing still leads with it.** "Nothing found" is a result, and it belongs where
+every other result does: one line, naming the scope that was actually searched, so an empty report
+and an empty search are told apart.
+
+**The heading follows the output language**, as the rest of the report does — a German run reads
+`## Kurzfassung`. What is fixed is the position, not the wording. The `tldr` skill fixes this same
+opening for the summaries it writes on request; one house frame, reached two ways.
+
+</skills-tldr>
 
 ## Guardrails
 

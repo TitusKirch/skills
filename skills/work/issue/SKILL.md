@@ -1,8 +1,8 @@
 ---
 name: issue
 metadata:
-  summary: Creates/updates/searches issues across GitHub (gh) or Linear (MCP), tracker chosen by config.
-description: Manages issues — create, update, search/list, and bulk — across GitHub (gh CLI) or Linear (MCP), with the active tracker chosen per-repo by a committed config (.tituskirch-skills.json). Drafts title and body from a free-text description plus session context, previews once, and creates only after confirmation; switches to plan-only when asked. Use when the user wants to create, open, update, or find an issue or ticket, mentions GitHub issues or Linear, or says things like "open an issue", "create a ticket", "find the issue about X", "Issue erstellen", "Ticket anlegen".
+  summary: Creates/updates/searches issues across GitHub (gh), GitLab (glab), Linear (MCP) or local files, tracker chosen by config.
+description: Manages issues — create, update, search/list, and bulk — across GitHub (gh CLI), GitLab (glab CLI), Linear (MCP) or local issue files, with the active tracker and the host it talks to chosen per-repo by a committed config (.tituskirch-skills.json), self-hosted instances included. Drafts title and body from a free-text description plus session context, previews once, and creates only after confirmation; switches to plan-only when asked. Use when the user wants to create, open, update, or find an issue or ticket, mentions GitHub issues, GitLab issues or Linear, or says things like "open an issue", "create a ticket", "find the issue about X", "Issue erstellen", "Ticket anlegen".
 allowed-tools:
   - Read
   - Grep
@@ -17,11 +17,15 @@ allowed-tools:
   - Bash(gh label list:*)
   - Bash(gh project list:*)
   - Bash(gh repo view:*)
+  - Bash(glab issue list:*)
+  - Bash(glab issue view:*)
+  - Bash(glab label list:*)
+  - Bash(glab repo view:*)
 ---
 
 # issue
 
-Create, update, and search issues without caring which tracker the repo uses. One skill, two trackers — **GitHub** (via `gh`) or **Linear** (via its MCP server) — picked per-repo by a small committed config. The skill drafts the issue from your free-text description plus the session context, shows it once, and writes it only after you confirm — or just prints the command when you ask for a plan.
+Create, update, and search issues without caring which tracker the repo uses. One skill, four trackers — **GitHub** (via `gh`), **GitLab** (via `glab`), **Linear** (via its MCP server) or **local files** — picked per-repo by a small committed config, which also settles **which host** a forge-native tracker talks to. The skill drafts the issue from your free-text description plus the session context, shows it once, and writes it only after you confirm — or just prints the command when you ask for a plan.
 
 **Opted out?** If the repo config sets `issue` to `false`, this skill is **disabled** for the repo — stop immediately and tell the user the issue skill is turned off in `.tituskirch-skills.json`. An _absent_ `issue` block is **not** disabled (it falls back to detection/defaults). Check `.issue == false` on the resolved config before any action — and before indexing `.issue.tracker`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
@@ -29,7 +33,7 @@ Create, update, and search issues without caring which tracker the repo uses. On
 
 ### 1. Load config & cache (guided setup on first run)
 
-- **Config** — resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included). The `issue.*` section holds the tracker and rules. Resolution per setting: **config → native → built-in default**.
+- **Config** — resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included). The `issue.*` section holds the tracker and rules; the root `grillWith` holds the [interview engine](REFERENCE.md#which-engine--the-root-grillwith-key) — three states, so it is read by **presence**, never as a label-or-off. Resolution per setting: **config → native → built-in default**.
 - **No / incomplete config, or `/issue setup`** → run the guided setup (step below). Setup is also where the catalog cache is first filled.
 - **Catalog cache** — read `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (JSON). Reuse when younger than ~3 days **and** the `tracker` is unchanged; refresh when missing, stale, the tracker changed, or the user passes `--refresh`. Label staleness in the plan header (`Catalogs (cached, 2d ago): …`).
 
@@ -37,7 +41,7 @@ Config/cache schema, the full setup flow, and tracker recipes: [REFERENCE.md](RE
 
 ### 2. Determine the tracker
 
-From `issue.tracker` (`github` | `linear`). Then check availability: GitHub → `gh repo view --json nameWithOwner`; Linear → confirm the Linear MCP tools are present and authenticated. Unavailable/unauthenticated → say so and point to the fix (e.g. authenticate the Linear MCP), don't guess the other tracker.
+From `issue.tracker` (`github` | `gitlab` | `linear` | `local`). A forge-native tracker also needs its **host**, resolved per repo — config, then the `origin` remote, then whatever the CLI is already authenticated against ([REFERENCE.md](REFERENCE.md#the-forge-and-its-host)); never resolve it once and reuse it across repos. Then check availability: GitHub → `gh repo view --json nameWithOwner`; GitLab → `glab repo view` against the resolved host; Linear → confirm the Linear MCP tools are present and authenticated; `local` → the issue directory (nothing to authenticate). Unavailable/unauthenticated → say so, **naming the host that was tried**, and point to the fix (`glab auth login --hostname …`, authenticate the Linear MCP); don't guess another tracker.
 
 ### 3. Detect the action
 
@@ -45,7 +49,7 @@ From the phrasing: **create** (default for a new description), **update** (an is
 
 ### 4. Draft the content
 
-**Sharpen a thin request first.** When the free-text description plus session context is **thin or ambiguous**, engage a **grilling** pass _on the skill's own initiative_ — invoke the `grilling` skill to resolve the open decisions before they harden into a draft, one question at a time with a recommended answer each. A clear, complete request **skips it**; `--grill` / "grill me first" **forces** it; a missing `grilling` skill degrades to drafting as today rather than failing the run. **Target `grilling`, never `grill-me`** — the latter sets `disable-model-invocation: true`, so a skill cannot drive it. Grilling feeds the draft; it never replaces the single confirmation gate at step 6. Signals, override and fallback: [REFERENCE.md](REFERENCE.md#sharpening-the-request-grilling).
+**Sharpen a thin request first.** When the free-text description plus session context is **thin or ambiguous**, engage a **grilling** pass _on the skill's own initiative_ — drive the repo's interview engine to resolve the open decisions before they harden into a draft, one question at a time with a recommended answer each. A clear, complete request **skips it**; `--grill` / "grill me first" **forces** it. **Which engine is the root `grillWith` key** — absent means `grilling`, a name means that skill, and `null` / `false` means never grill and draft directly. The named engine must be one a skill may drive: **not installed** degrades to drafting as today rather than failing the run, and one declaring **`disable-model-invocation: true`** (`grill-me` and `batch-grill-me` both do) is a **config error to report**, never silently swapped for another engine. Grilling feeds the draft; it never replaces the single confirmation gate at step 6. Signals, override, the key and its three fallbacks: [REFERENCE.md](REFERENCE.md#sharpening-the-request-grilling).
 
 **The template is chosen first** — it settles part of the body _and_ part of the labels before either is drafted. Then, in order:
 
@@ -103,7 +107,7 @@ of a file.
 ## Guardrails
 
 - **Plan first, write only after confirmation.** Respect plan-only mode.
-- **Grill thin input, not clear input.** A thin or ambiguous request auto-engages a skippable `grilling` pass before drafting (and `--grill` forces one on any request); a complete request drafts straight through. Grilling only sharpens the draft — it never replaces the one confirmation gate, and a missing `grilling` skill degrades to today's behaviour rather than failing.
+- **Grill thin input, not clear input.** A thin or ambiguous request auto-engages a skippable grilling pass before drafting (and `--grill` forces one on any request); a complete request drafts straight through. Grilling only sharpens the draft — it never replaces the one confirmation gate. **The engine is whichever skill `grillWith` names**, `grilling` by default: a missing one degrades to today's behaviour rather than failing, one no skill may drive is **reported rather than substituted**, and `grillWith: null` / `false` means the pass never runs at all.
 - **Keep titles/bodies attribution-free** — no `Generated with`/🤖 line, no session/permalink URL, no agent self-naming (Claude, Codex, Copilot, Cursor, or any future assistant). Strip it if the harness injects it.
 - **No secrets** in titles/bodies — scan the drafted content and the session context for `.env`, keys, tokens; warn and exclude.
 - **Body states intent, not implementation** — describe _what_ is wanted (outcome, context, open questions), not _how_ to build it. Never reverse-engineer the repo's conventions into build steps, and never explore the codebase to pad the body — **unless the user explicitly asks** for an implementation plan.

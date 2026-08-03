@@ -1,6 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
   "forge": "github",
+  "grillWith": "grilling",
   "language": "en",
   "verify": "pnpm verify",
   "trustedBots": [
@@ -25,8 +26,10 @@
       "prune-branches",
       "prune-comments",
       "pull-request",
+      "refine-issue",
       "release",
       "tituskirch-skills-config",
+      "tldr",
       "update-deps",
       "validate-skills",
       "vhs-demo",
@@ -34,6 +37,7 @@
       "work-implement-queue",
       "work-review",
       "work-review-queue",
+      "write-contributing",
       "write-docs",
       "write-readme",
       "skills",
@@ -69,9 +73,6 @@
     },
     "labels": {
       "exclude": ["stack:*", "autorelease:*", "dependencies"]
-    },
-    "github": {
-      "template": null
     }
   },
   "docs": {
@@ -92,7 +93,8 @@
       "needsHuman": "ai: needs human",
       "done": "ai: done",
       "blocked": "ai: blocked",
-      "repo": false
+      "repo": false,
+      "needsTriage": "needs triage"
     },
     "review": {
       "maxRounds": 3

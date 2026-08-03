@@ -1,19 +1,28 @@
 #!/usr/bin/env node
 // Single source of truth for the skill registry.
 // Discovers skills from the filesystem (skills/<category>/<name>/SKILL.md
-// frontmatter) and projects them into nine artifacts: README.md's table, each
+// frontmatter) and projects them into eleven artifacts: README.md's table, each
 // skills/<category>/README.md, .claude-plugin/plugin.json, skills.sh.json, the
-// config contract mirrored into every skill that reads the config, the
-// author-authority block mirrored into every skill that reads third-party text,
-// the check-command contract mirrored into every skill that runs the gate, the
-// single-flight-lock spec mirrored into the four work-loop skills, and the
-// plan-presentation rule mirrored into every skill that presents a plan.
+// config contract mirrored into every skill that hosts it (and the resolver into
+// every skill that names it), the author-authority block mirrored into every skill
+// that reads third-party text, the check-command contract mirrored into every skill
+// that runs the gate, the single-flight-lock spec mirrored into the two work-loop
+// unit skills, the plan-presentation rule mirrored into every skill that presents a
+// plan, the report-lead rule mirrored into every skill that ends in a report, and the
+// forge/host resolution rule mirrored into every skill that drives a forge.
 //
 //   node scripts/gen-skills.ts           # rewrite whichever have drifted
 //   node scripts/gen-skills.ts --check   # exit 1 if any is stale (CI)
 //   node scripts/gen-skills.ts --paths   # list SKILL.md paths (for scripts)
 
-import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+  mkdirSync,
+  rmSync,
+  existsSync
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
@@ -36,6 +45,8 @@ export interface Paths {
   verifyBlock: string;
   worklockBlock: string;
   planBlock: string;
+  tldrBlock: string;
+  forgeBlock: string;
   resolver: string;
 }
 
@@ -51,6 +62,8 @@ export function paths(root: string): Paths {
     verifyBlock: join(root, 'scripts', 'verify-block.md'),
     worklockBlock: join(root, 'scripts', 'worklock-block.md'),
     planBlock: join(root, 'scripts', 'plan-block.md'),
+    tldrBlock: join(root, 'scripts', 'tldr-block.md'),
+    forgeBlock: join(root, 'scripts', 'forge-block.md'),
     resolver: join(root, 'scripts', 'resolve-config.sh')
   };
 }
@@ -89,21 +102,42 @@ const VERIFY_BASE_END = '</skills-verify>';
 const VERIFY_ISOLATED_OPEN = '<skills-verify-isolated>';
 const VERIFY_ISOLATED_END = '</skills-verify-isolated>';
 
-// The fourth mirrored contract, and the one that had to be mirrored rather than cited:
-// both queues pointed at `work-implement`'s REFERENCE for the lock spec — a pointer that
-// resolves to nothing on an installed copy — and then wrote the load-bearing half out
-// again anyway, in two wordings that had already diverged by a clause.
+// The fourth mirrored contract, and the only one that does not reach every skill using the
+// mechanic: it goes to the two work-loop *units*, not to the two queues that take the lock.
+// A queue cannot run without its worker — it names it and checks for it before any state
+// change — so it names the worker's REFERENCE for the spec rather than carrying a second
+// copy in a `SKILL.md` that has no REFERENCE to keep it out of the load path. What the
+// mirroring still prevents is what the queues did before it existed: cite a *path* an
+// installed copy does not have, and then write the load-bearing half out again anyway, in
+// two wordings that had already diverged by a clause. Naming a skill is not citing a path.
 const WORKLOCK_OPEN = '<skills-worklock>';
 const WORKLOCK_END = '</skills-worklock>';
 
-// The fifth mirrored contract, and the only one about the skill's *output*: a plan is read
-// once, in a terminal, so it has to render there. Every other contract here is about what a
-// skill reads or runs; this one is about what arrives in front of the human deciding. It was
-// mirrored rather than written per skill because the failure it prevents is silent — a plan
-// folded into `<details>` prints its summary and nothing else — and every plan-presenting
-// skill is one wording away from re-inventing it.
+// The fifth mirrored contract, and the first about the skill's *output* — the one below is
+// its other half: a plan is read once, in a terminal, so it has to render there. The four
+// contracts above are about what a skill reads or runs; this one is about what arrives in
+// front of the human deciding. It was mirrored rather than written per skill because the
+// failure it prevents is silent — a plan folded into `<details>` prints its summary and
+// nothing else — and every plan-presenting skill is one wording away from re-inventing it.
 const PLAN_OPEN = '<skills-plan>';
 const PLAN_END = '</skills-plan>';
+
+// The sixth, and the other half of the one above: the plan block says a report may hide
+// nothing, this one says what it opens with. They govern the same message from opposite
+// ends, which is why the roster here is a subset of that one rather than a list of its own
+// kind — a skill leads with a result only where it ends by reporting one. Split into two
+// blocks rather than folded into the plan body because the criteria differ: everything a
+// skill puts in front of a human has to render, while only the account a run *ends* with
+// has a result to lead with.
+const TLDR_OPEN = '<skills-tldr>';
+const TLDR_END = '</skills-tldr>';
+
+// The seventh, and the only one about where a skill is *pointing*: which forge drives the repo
+// and which host that forge lives on. It is mirrored rather than left per skill because the
+// host half fails silently — every skill assumed one instance, and a self-hosted GitLab or a
+// GitHub Enterprise repo is served the public host by a run that never noticed it guessed.
+const FORGE_OPEN = '<skills-forge>';
+const FORGE_END = '</skills-forge>';
 
 // The Agent Skills spec caps `description` at 1024 characters, and that cap is a cliff:
 // a skill one character over is non-conformant, and nothing about writing a description
@@ -196,7 +230,7 @@ const CATEGORIES: Record<Category, { title: string; description: string }> = {
   work: {
     title: 'Tracked work',
     description:
-      'Issues, the two AI work loops (implement and review), and handing work between sessions.'
+      'Issues, the two AI work loops (implement and review), handing work between sessions, and summarising one.'
   },
   docs: {
     title: 'Docs & READMEs',
@@ -239,7 +273,7 @@ export function discoverSkills(p: Paths): Skill[] {
           } catch (err) {
             // No SKILL.md means the directory is not a skill — skip it. Any other
             // read failure is not that, and swallowing it would drop the skill from
-            // all nine artifacts in one silent `--write`, reporting success while
+            // all eleven artifacts in one silent `--write`, reporting success while
             // deleting a published skill's row, entry and grouping.
             if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
             throw err;
@@ -429,6 +463,15 @@ export function syncPlugin(p: Paths, skills: Skill[], check: boolean): boolean {
 // shared is therefore mirrored *into* each skill and kept identical from here: the
 // config contract as text between markers, and the resolver as a real file the skill
 // can execute. A skill opts in by carrying the markers.
+//
+// The two opt-ins are separate, because the two things are: the contract is *prose*, and a
+// skill that cannot run without a named sibling may read that sibling's copy instead of
+// shipping one; the resolver is a file it *executes*, and no naming makes another folder's
+// copy runnable. So the resolver follows the mention rather than the block — every block
+// host names it (the block links it), plus the queue skills, which delegate the prose and
+// still run the script. Keying it on the block alone would freeze their copy at whatever
+// was last committed, drift-checked by nothing.
+const RESOLVER_PATH = 'templates/resolve-config.sh';
 export function configBody(p: Paths): string {
   const raw = readFileSync(p.configBlock, 'utf8');
   const marker = '<!-- config:body -->';
@@ -490,6 +533,19 @@ export function worklockBody(p: Paths): string {
   return raw.slice(at + marker.length).trim();
 }
 
+// One body, no variants: which forge a repo uses and which host it lives on are resolved the
+// same way whether the answer is then used to open a merge request or to list issues. What
+// each skill states for itself is the commands it drives once the pair is known.
+export function forgeBody(p: Paths): string {
+  const raw = readFileSync(p.forgeBlock, 'utf8');
+  const marker = '<!-- forge:body -->';
+  const at = raw.indexOf(marker);
+  if (at === -1) {
+    throw new Error(`${p.forgeBlock}: missing ${marker}`);
+  }
+  return raw.slice(at + marker.length).trim();
+}
+
 // One body, no variants either: a terminal renders the same for every skill, so what a plan
 // may look like does not vary with what the skill is planning.
 export function planBody(p: Paths): string {
@@ -498,6 +554,17 @@ export function planBody(p: Paths): string {
   const at = raw.indexOf(marker);
   if (at === -1) {
     throw new Error(`${p.planBlock}: missing ${marker}`);
+  }
+  return raw.slice(at + marker.length).trim();
+}
+
+// One body, no variants: what a report leads with does not vary with what it reports on.
+export function tldrBody(p: Paths): string {
+  const raw = readFileSync(p.tldrBlock, 'utf8');
+  const marker = '<!-- tldr:body -->';
+  const at = raw.indexOf(marker);
+  if (at === -1) {
+    throw new Error(`${p.tldrBlock}: missing ${marker}`);
   }
   return raw.slice(at + marker.length).trim();
 }
@@ -531,7 +598,7 @@ export function syncConfigContract(
 
   for (const skill of skills) {
     const dir = join(p.skills, skill.path);
-    let hosts = 0;
+    let shipsResolver = false;
 
     for (const name of ['SKILL.md', 'REFERENCE.md']) {
       const file = join(dir, name);
@@ -543,23 +610,40 @@ export function syncConfigContract(
       }
       const opening = current.match(CONFIG_OPEN_RE);
       const to = current.indexOf(CONFIG_END);
-      if (!opening || to === -1) continue;
-      const from = opening.index as number;
-      assertPlacement(current, from, `skills/${skill.path}/${name}`);
-      hosts += 1;
-      const next =
-        current.slice(0, from) +
-        expected +
-        current.slice(to + CONFIG_END.length);
-      if (norm(next) !== norm(current)) {
-        stale.push(`skills/${skill.path}/${name} config block`);
-        if (!check) writeFileSync(file, next);
+      let next = current;
+      if (opening && to !== -1) {
+        const from = opening.index as number;
+        assertPlacement(current, from, `skills/${skill.path}/${name}`);
+        next =
+          current.slice(0, from) +
+          expected +
+          current.slice(to + CONFIG_END.length);
+        if (norm(next) !== norm(current)) {
+          stale.push(`skills/${skill.path}/${name} config block`);
+          if (!check) writeFileSync(file, next);
+        }
       }
+      // Read off the rewritten text, not what was on disk: the mention a block host
+      // relies on comes from the block body this run just wrote, so checking `current`
+      // would ship no resolver on the run that introduces the block.
+      if (next.includes(RESOLVER_PATH)) shipsResolver = true;
     }
 
-    if (!hosts) continue;
-
     const target = join(dir, 'templates', 'resolve-config.sh');
+
+    // The mention is the whole trigger, in both directions. A skill that stops naming the
+    // script keeps a copy nothing points at — drift-checked by nothing, and one more file
+    // an installed skill ships without reason — so the sync removes it rather than only
+    // ever adding. Without this the roster can only grow, and the "and to nobody else"
+    // half of the contract holds by accident.
+    if (!shipsResolver) {
+      if (existsSync(target)) {
+        stale.push(`skills/${skill.path}/templates/resolve-config.sh (orphan)`);
+        if (!check) rmSync(target);
+      }
+      continue;
+    }
+
     let currentResolver = '';
     try {
       currentResolver = readFileSync(target, 'utf8');
@@ -580,8 +664,9 @@ export function syncConfigContract(
 // Mirror a tagged block into every skill carrying its tag: one source, drift-checked, the
 // mechanic behind both the author-authority rule and the check-command contract. A skill opts
 // in by carrying the tag, and each body is a `## ` section — self-delimiting, so unlike the
-// config block no placement check is needed. Every carrier is also a config-carrying skill, so
-// the resolver these bodies read `$resolved` from is already shipped by syncConfigContract.
+// config block no placement check is needed. Every body that reads `$resolved` — the full
+// authority variant and both verify variants — sits in a skill that hosts the config block, so
+// the resolver it reads that variable from is already shipped by syncConfigContract.
 //
 // Generic rather than one function per contract: the third copy of this loop is where the
 // contracts would start disagreeing about what counts as drift.
@@ -740,6 +825,16 @@ export function main(argv: string[], root: string = ROOT): RunResult {
   stale.push(
     ...syncTaggedBlock(p, skills, check, 'plan', [
       { open: PLAN_OPEN, end: PLAN_END, body: planBody(p) }
+    ])
+  );
+  stale.push(
+    ...syncTaggedBlock(p, skills, check, 'tldr', [
+      { open: TLDR_OPEN, end: TLDR_END, body: tldrBody(p) }
+    ])
+  );
+  stale.push(
+    ...syncTaggedBlock(p, skills, check, 'forge', [
+      { open: FORGE_OPEN, end: FORGE_END, body: forgeBody(p) }
     ])
   );
 
