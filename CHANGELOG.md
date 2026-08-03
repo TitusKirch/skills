@@ -1,5 +1,88 @@
 # Changelog
 
+## [0.17.0](https://github.com/TitusKirch/skills/compare/v0.16.0...v0.17.0) (2026-08-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **work:** a repo setting work.queueBranch: true now needs a workflow that cuts the queue branch and opens its PR. The drain previously did both and stopped the whole run when it could not.
+* **skills:** a config mapping `work.linear.states.done` no longer moves the board on the accept verdict; add `states.accepted` (and list it in `statuses`) to restore it. Until then the accept verdict leaves the state untouched, which is the existing "unmapped step" behaviour and the intended failure direction — a board that lags rather than one that claims a ship.
+
+### Features
+
+* **ci:** run the skill conformance check in CI ([026417c](https://github.com/TitusKirch/skills/commit/026417c570d05957dc8db9864b98ab1875185208)), closes [#105](https://github.com/TitusKirch/skills/issues/105)
+* **issue:** pin the untriaged marker as a configured label ([#179](https://github.com/TitusKirch/skills/issues/179)) ([885d243](https://github.com/TitusKirch/skills/commit/885d2435f78fc3a7fee31b9b8ee543ba1cc4b8c2))
+* **issue:** select the grilling interview engine with a root grillWith key ([#214](https://github.com/TitusKirch/skills/issues/214)) ([5e44797](https://github.com/TitusKirch/skills/commit/5e44797eeb4f24cbce1a8616780b16ff0b3325d1))
+* **merge-deps:** extend to the GitLab forge ([#219](https://github.com/TitusKirch/skills/issues/219)) ([638ec05](https://github.com/TitusKirch/skills/commit/638ec051badad8117aba92abf7d8521aa35c08ba))
+* **prune-comments:** scope the Bash grant to read-only git ([e7c3465](https://github.com/TitusKirch/skills/commit/e7c3465b4c9dc529b2e7a8d5d67b5d94c8d020bd)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **pull-request:** base a stacked branch on the PR below it ([#200](https://github.com/TitusKirch/skills/issues/200)) ([850ca90](https://github.com/TitusKirch/skills/commit/850ca904bd4c35c49005c8e003c50829ae2d628b))
+* **refine-issue:** add skill that takes an issue to ai-ready ([#180](https://github.com/TitusKirch/skills/issues/180)) ([73e3d6e](https://github.com/TitusKirch/skills/commit/73e3d6e7b1e7f799b8a737d08856678ee35d093a))
+* **release:** mark shipped work Done at the default-branch merge ([7267e00](https://github.com/TitusKirch/skills/commit/7267e00fb865079b9936883ff2383499a7826ecf)), closes [#160](https://github.com/TitusKirch/skills/issues/160)
+* **release:** state the GitHub-only limitation as a decision ([#218](https://github.com/TitusKirch/skills/issues/218)) ([e3cf795](https://github.com/TitusKirch/skills/commit/e3cf795af1f20cff0aef4d0e3b2e4636d02466a3))
+* **skills:** add a local file-based issue tracker driver ([#202](https://github.com/TitusKirch/skills/issues/202)) ([0cefe26](https://github.com/TitusKirch/skills/commit/0cefe2600462731876b2bd1e70e5d25e93e5cf27))
+* **skills:** add GitLab as a third forge and issue tracker ([#216](https://github.com/TitusKirch/skills/issues/216)) ([975d4a0](https://github.com/TitusKirch/skills/commit/975d4a06a0a96e97c0b081c6ab9b0575f8a81b8d))
+* **skills:** lead every run report with a TL;DR ([#212](https://github.com/TitusKirch/skills/issues/212)) ([af5e031](https://github.com/TitusKirch/skills/commit/af5e031864c1c3180ad338868f9cb9e0fb5e3fcc))
+* **skills:** link into every client's skills path ([c925b7e](https://github.com/TitusKirch/skills/commit/c925b7e2956dd86b15a3317a6ca244c495e2dfd0)), closes [#118](https://github.com/TitusKirch/skills/issues/118)
+* **skills:** make a blanket Bash grant a named exception ([8e8a98a](https://github.com/TitusKirch/skills/commit/8e8a98a2136c5f85d2e55020f4be036e13dc01ab)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **skills:** make a cross-skill call optional by default ([#192](https://github.com/TitusKirch/skills/issues/192)) ([1b1a684](https://github.com/TitusKirch/skills/commit/1b1a6844c6bc0f14a77d484948d93462dfb6b82e))
+* **skills:** permit a thin shape for alias-style skills ([#195](https://github.com/TitusKirch/skills/issues/195)) ([7a1cc4e](https://github.com/TitusKirch/skills/commit/7a1cc4eafa53a54469f36a76f19b9b5731ac2d15))
+* **skills:** pin grant minimality against the calls a skill drives ([#201](https://github.com/TitusKirch/skills/issues/201)) ([5d09445](https://github.com/TitusKirch/skills/commit/5d094454c585fa901d5657f48e1b10db55a88bda))
+* **skills:** separate drain concurrency from the run cap ([#199](https://github.com/TitusKirch/skills/issues/199)) ([f3933ba](https://github.com/TitusKirch/skills/commit/f3933ba282e423cd24c362b9be039b13839cdfc6))
+* **skills:** stop the work loop loading the config and lock blocks twice ([#198](https://github.com/TitusKirch/skills/issues/198)) ([6a63d1e](https://github.com/TitusKirch/skills/commit/6a63d1ed95a10b699ea7bdf531f3c9a157b5cf9f))
+* **tldr:** add a summariser skill with a fixed section frame ([#196](https://github.com/TitusKirch/skills/issues/196)) ([cb6001e](https://github.com/TitusKirch/skills/commit/cb6001ee9fce95794357f94b54cfb266d65b3a43))
+* **update-deps:** add Go as a fourth ecosystem ([#194](https://github.com/TitusKirch/skills/issues/194)) ([bcd07bc](https://github.com/TitusKirch/skills/commit/bcd07bcd14d54d6796a8ce782438c4f4bc4dced6))
+* **validate-skills:** map client extensions across four clients ([8b094ed](https://github.com/TitusKirch/skills/commit/8b094ed4a3c8569f276242bbf52ac41467313e64)), closes [#109](https://github.com/TitusKirch/skills/issues/109)
+* **validate-skills:** scope the Bash grant to what it drives ([60cbd2d](https://github.com/TitusKirch/skills/commit/60cbd2dee3ea8e8c2850d339e591c3911fd1deb7)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **work-implement-queue:** report a drain's queue state so a loop knows to wait or stop ([#190](https://github.com/TitusKirch/skills/issues/190)) ([c56f166](https://github.com/TitusKirch/skills/commit/c56f166f189875881ed696f45417680bcbae07df))
+* **work-implement:** drive tdd where a test can reach the change ([#171](https://github.com/TitusKirch/skills/issues/171)) ([48236af](https://github.com/TitusKirch/skills/commit/48236af76f1167729c67d110e69715a3179e1ef8))
+* **work-implement:** give the block clause a diagnosis discipline ([#172](https://github.com/TitusKirch/skills/issues/172)) ([5bf95df](https://github.com/TitusKirch/skills/commit/5bf95df8d18ceb19b5cd45d76930ee8471e53193))
+* **work-implement:** group a worktree drain's PRs behind one queue branch ([#217](https://github.com/TitusKirch/skills/issues/217)) ([fbe31b9](https://github.com/TitusKirch/skills/commit/fbe31b9d9eda6e69d923a1bf8e0f7bc5cdfb134d))
+* **work-implement:** honour blockedBy relations under branch worktree ([#174](https://github.com/TitusKirch/skills/issues/174)) ([2c30e74](https://github.com/TitusKirch/skills/commit/2c30e74f5c165bd11abce0fbace4486c022885f0))
+* **work-implement:** name the collision gap in worktree + parallel mode ([#188](https://github.com/TitusKirch/skills/issues/188)) ([e2c24e7](https://github.com/TitusKirch/skills/commit/e2c24e7fda4e1bfc6d2dbebc0e0cb49dfdb5ce5b))
+* **work-implement:** pace the backpressure wait by mode, not a fixed interval ([#210](https://github.com/TitusKirch/skills/issues/210)) ([a14a2ba](https://github.com/TitusKirch/skills/commit/a14a2ba6a318546a6ea8cba9fb8c95fcb7f6db4b))
+* **work-implement:** read an order-free relation as a parallel-batch mutex ([#184](https://github.com/TitusKirch/skills/issues/184)) ([087e5ad](https://github.com/TitusKirch/skills/commit/087e5ade6f6fa58a3f4615df84a94289041c04f9))
+* **work-implement:** route the loops' feedback to the pull request ([#193](https://github.com/TitusKirch/skills/issues/193)) ([8c0292b](https://github.com/TitusKirch/skills/commit/8c0292b7f943de17b22cd927c510608d7fca8351))
+* **work-implement:** rule a rebase conflict on a shared branch ([#173](https://github.com/TitusKirch/skills/issues/173)) ([c829f7c](https://github.com/TitusKirch/skills/commit/c829f7c88a8b721eb1a0619cdc096cae7327ae30))
+* **work-implement:** state the recommended effort per loop ([#213](https://github.com/TitusKirch/skills/issues/213)) ([3c53efd](https://github.com/TitusKirch/skills/commit/3c53efdc1c8e6db46bf86ab06636ce47e75056ff))
+* **work-implement:** withhold issues whose labels contradict each other ([#177](https://github.com/TitusKirch/skills/issues/177)) ([f28ef33](https://github.com/TitusKirch/skills/commit/f28ef330c560f830c891e2851ae9df7b1ddc1f14))
+* **work:** keep AI pull requests in draft until review is confident ([#215](https://github.com/TitusKirch/skills/issues/215)) ([84f2f55](https://github.com/TitusKirch/skills/commit/84f2f55f62f8a3a19d32d701c5b373b77d5a15d0))
+* **work:** let the repo own the queue branch, not the drain ([240f740](https://github.com/TitusKirch/skills/commit/240f740b53a267b68d5074e1508a477010bc0e03))
+* **work:** settle the owner decisions behind the needs-human backlog ([#207](https://github.com/TitusKirch/skills/issues/207)) ([e76e050](https://github.com/TitusKirch/skills/commit/e76e05044557faa48996c828db2d508f7e9c3ef6))
+* **write-contributing:** add skill that writes and maintains CONTRIBUTING.md ([#178](https://github.com/TitusKirch/skills/issues/178)) ([2fb2b1f](https://github.com/TitusKirch/skills/commit/2fb2b1faa5f01d35dc5befe9130fb4ef5e2d4ef5))
+* **write-contributing:** apply "never transcribe" to every list ([#208](https://github.com/TitusKirch/skills/issues/208)) ([442c1d5](https://github.com/TitusKirch/skills/commit/442c1d506427e5c17f4bfa1fdccac066dc06bd58))
+* **write-docs:** reconcile ADRs written in a foreign format ([#197](https://github.com/TitusKirch/skills/issues/197)) ([e17ccfb](https://github.com/TitusKirch/skills/commit/e17ccfb974036bc687151cf336d1c7601db63e2d))
+* **write-docs:** reconcile the ADR contract with Nygard ([#189](https://github.com/TitusKirch/skills/issues/189)) ([330de14](https://github.com/TitusKirch/skills/commit/330de141d1eee049b8cacb95a640b24889be7ce9))
+* **write-docs:** state when a decision earns an ADR ([#183](https://github.com/TitusKirch/skills/issues/183)) ([48e0aa6](https://github.com/TitusKirch/skills/commit/48e0aa6268e1eb74144c223069734df173c95d1f))
+
+
+### Bug Fixes
+
+* **merge-deps:** check out the PR head detached so cleanup needs no force ([1557d6a](https://github.com/TitusKirch/skills/commit/1557d6a33e4623d7745b9646443e71130f9ded28)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **merge-deps:** derive the verify worktree's path instead of carrying it ([3669551](https://github.com/TitusKirch/skills/commit/3669551b5c3f05b00245c7039d86649c7e3160a9)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **merge-deps:** reclaim the verify worktree and move it out of work/ ([0c057cd](https://github.com/TitusKirch/skills/commit/0c057cd544ddcd025ddfe38894658e3b2d505296)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **merge-deps:** resolve the PR head in the shell that fetched it ([75ded77](https://github.com/TitusKirch/skills/commit/75ded7725810082965bbf1dd3ace2b2b14d65240)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **prune-branches:** describe the branch grants by what they do ([309719c](https://github.com/TitusKirch/skills/commit/309719c09d41144c3fb7ffb688683dc3364e8364)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **prune-comments:** drop the shell and the stream editor from the grant ([652c661](https://github.com/TitusKirch/skills/commit/652c661e4783d7984df4926af695ad6e71d9e5cf)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **prune-comments:** grant git symbolic-ref at the read the skill drives ([9214d48](https://github.com/TitusKirch/skills/commit/9214d4886f637310ecbdd80aba93f3b6a4383a92)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **pull-request:** grant gh api at the one call the skill drives ([3402543](https://github.com/TitusKirch/skills/commit/3402543bd071593980be645c8b7b0d21992d13f8)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **pull-request:** grant git branch at the read the skill drives ([9b0ae27](https://github.com/TitusKirch/skills/commit/9b0ae2742321dbaba0e050b54a3a5036bd8916e2)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **release:** keep the shipped-marking step inert when a filter is missing ([1eeee97](https://github.com/TitusKirch/skills/commit/1eeee97da29a3e42acef4d4b2213a73195f5de72)), closes [#160](https://github.com/TitusKirch/skills/issues/160)
+* **skills:** clear git log, and treat gh as the exec route it is ([18ff2fa](https://github.com/TitusKirch/skills/commit/18ff2fa33ed8a850d1b1501d43c89ef88af67429)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **skills:** declare the cache reads two grants still left out ([fc5c089](https://github.com/TitusKirch/skills/commit/fc5c089e751139637e744a2a8ae1f2d9b108a36b))
+* **skills:** declare the reads every run already makes ([93615a0](https://github.com/TitusKirch/skills/commit/93615a078f9d464e6de8ec1867caa7515758e336)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **skills:** make a presented plan render where it is read ([fccccc2](https://github.com/TitusKirch/skills/commit/fccccc2153b3d1a6cd513abe0f85555ef57595ff)), closes [#157](https://github.com/TitusKirch/skills/issues/157)
+* **skills:** scope every remaining grant to what its skill drives ([7d5a9e5](https://github.com/TitusKirch/skills/commit/7d5a9e56c66017d92a13d8358c769c1b9f63909b)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **skills:** stop the AI verdict writing a Linear state that means shipped ([cbdd577](https://github.com/TitusKirch/skills/commit/cbdd577e15bae902820060e8dd367cb43f2f9f7f)), closes [#160](https://github.com/TitusKirch/skills/issues/160)
+* **skills:** write the two read-only grants at the subcommand they drive ([fc3a2b7](https://github.com/TitusKirch/skills/commit/fc3a2b7cca1c9af0fb8fc73502496f5d23b2beff))
+* **validate-skills:** drop the commands that can reach a shell ([fc5fb9e](https://github.com/TitusKirch/skills/commit/fc5fb9e6e4dae49bcee554f7fa65e35aab840291)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **validate-skills:** tag an extension with every client that defines it ([#181](https://github.com/TitusKirch/skills/issues/181)) ([09a7f4c](https://github.com/TitusKirch/skills/commit/09a7f4c979e2a05cb0b663ab22d6965385975a53))
+* **work-implement:** install dependencies before verifying in a worktree ([e14f27c](https://github.com/TitusKirch/skills/commit/e14f27c599454e472f51c441649dcdb87f563356)), closes [#152](https://github.com/TitusKirch/skills/issues/152)
+* **work-implement:** state that a mapped Linear state is best-effort ([#191](https://github.com/TitusKirch/skills/issues/191)) ([931bea5](https://github.com/TitusKirch/skills/commit/931bea53a4bb8ae04ad5c388a4318217f772c796))
+* **work-review:** derive the gate worktree's path instead of carrying it ([d3e17b1](https://github.com/TitusKirch/skills/commit/d3e17b1d3ed320f3ac99cfcae3860a8a3008caa2)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **work-review:** reclaim the gate worktree before creating it ([4aabf00](https://github.com/TitusKirch/skills/commit/4aabf002bf4ffe3cfd6ac9d7b0c389c9bb8ab5f0)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **work-review:** remove the throwaway worktree without --force ([6b64fb4](https://github.com/TitusKirch/skills/commit/6b64fb44b97fcee695cb3c849c82688885d09864)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+* **work-review:** say that a deny rule refuses rather than prompts ([e9e5980](https://github.com/TitusKirch/skills/commit/e9e5980b3133b85fad8e636fa92b128e7e61cc55)), closes [#135](https://github.com/TitusKirch/skills/issues/135)
+
 ## [0.16.0](https://github.com/TitusKirch/skills/compare/v0.15.0...v0.16.0) (2026-07-27)
 
 
