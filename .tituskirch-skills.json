@@ -110,7 +110,8 @@
     "worktree": {
       "work": {
         "branch": "worktree",
-        "parallel": true
+        "parallel": true,
+        "queueBranch": true
       }
     }
   }
