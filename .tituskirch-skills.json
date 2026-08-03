@@ -108,7 +108,7 @@
     ]
   },
   "profiles": {
-    "worktree": {
+    "fleet": {
       "work": {
         "concurrency": 8,
         "branch": "worktree",
