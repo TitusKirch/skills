@@ -152,7 +152,7 @@ So **name the skill and drop the path** — `` `work-review` ``, not a pointer i
 A reference that is a **call** — the run hands work to that skill, or depends on it to proceed — states **which kind it is** and **what happens when the skill is absent**:
 
 - **Required** → the run **stops**, naming the missing skill and why it cannot continue. A required call that says nothing fails somewhere mid-run instead of up front.
-- **Optional** → the **fallback** is stated: what the run does instead — degrade, skip that pass, carry on. `issue` → `grilling` is the model to copy: "If the `grilling` skill is not installed, skip this pass and draft as today."
+- **Optional** → the **fallback** is stated: what the run does instead — degrade, skip that pass, carry on. `issue` → its interview engine is the model to copy: "If the named engine is not installed, skip this pass and draft as today."
 
 A reference that is only a **mention** — naming another skill as whose job something is ("committing is `atomic-commit`'s job", "the complement to `write-readme`") — is **not** a call and needs no declaration. What decides it is whether the run _hands over work_, not whether the name appears: adding a required/optional declaration to a mention is as wrong as omitting one from a call.
 

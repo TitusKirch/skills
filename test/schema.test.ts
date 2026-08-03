@@ -463,6 +463,40 @@ describe('the feedback destination', () => {
   });
 });
 
+// grillWith names the interview skill the drafting skills drive, at the root
+// because two of them drive it (issue and refine-issue) and an interview style is
+// a property of the repo. It names a *skill*, not a mode, so a round-based engine
+// docks by having its name typed here — no schema change, no release.
+describe('the interview engine', () => {
+  test('a skill name is what the key takes', () => {
+    accepts({ grillWith: 'grilling' }, 'the default engine, named explicitly');
+    accepts(
+      { grillWith: 'batch-grilling' },
+      'a second engine docks by name alone'
+    );
+  });
+
+  test('off is spelled either way, and absent is not off', () => {
+    accepts({ grillWith: null }, 'null — never grill');
+    accepts({ grillWith: false }, "false — the repo's other spelling for off");
+    accepts({ language: 'en' }, 'absent — drive grilling when installed');
+  });
+
+  test('a profile may switch the engine for its context', () => {
+    accepts(
+      { grillWith: 'grilling', profiles: { ci: { grillWith: null } } },
+      'an unattended context never grills'
+    );
+  });
+
+  test('rejects what cannot name a skill', () => {
+    rejects({ grillWith: '' }, 'empty skill name');
+    rejects({ grillWith: true }, 'true names no skill');
+    rejects({ grillWith: ['grilling'] }, 'one engine, not a list');
+    rejects({ grillWith: { skill: 'grilling' } }, 'a name, not an object');
+  });
+});
+
 describe('nothing about existing configs changed', () => {
   test('a config with no profiles key is still valid', () => {
     accepts({ language: 'en', pr: { base: 'dev' } }, 'plain config');
