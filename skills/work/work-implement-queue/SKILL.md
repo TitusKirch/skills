@@ -43,14 +43,14 @@ Before building the queue, reclaim issues an earlier implement-run crashed on: a
 
 ### 4. Announce the batch — then drain
 
-**`ai: ready` is already the human's approval** to work an issue — the label means "scoped + approved for an AI agent to pick up". So the drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, branch strategy and parallel mode — with the **concurrency** it will run at when that mode is `parallel` (call out any **dependency-forced order**, any **mutex-forced wave split**, plus issues **deferred** or **skipped**), then drain. Say so too when `work.queueBranch` is on, naming the `ai/queue-<hash>` the PRs will target and whether it is being reused or cut. Under `/loop` it runs unattended.
+**`ai: ready` is already the human's approval** to work an issue — the label means "scoped + approved for an AI agent to pick up". So the drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, branch strategy and parallel mode — with the **concurrency** it will run at when that mode is `parallel` (call out any **dependency-forced order**, any **mutex-forced wave split**, plus issues **deferred** or **skipped**), then drain. Say so too when `work.queueBranch` is on, naming the open `ai/queue-<hash>` the PRs will target — or that none is open yet, so the first PRs go to `pr.base` until the repo's workflow cuts one. Under `/loop` it runs unattended.
 
 - **Plan-only triggers** ("just show me", "dry run", "nur den Plan", "don't run") still stop after the plan.
 - If the ready-gate is **widened** (`labels.ready: false`, so issues were never explicitly opted-in), confirm before working those — there is no per-issue approval to lean on.
 
 ### 5. Drain
 
-**First, if `work.queueBranch` is on** (`worktree` only — inert under `branch:<name>`, which opens no per-issue PR to group): **reuse or cut the queue branch, and open its PR, before the first worker starts.** An `ai/queue-*` PR already **open** against `pr.base` → reuse that branch; none open → cut `ai/queue-<hash>` from `pr.base` and open the `ai/queue-<hash>` → `pr.base` PR. The hash only keeps concurrent drains apart and encodes nothing later read back. Hand the branch to every worker as its base — that is the whole of what the mode changes for them. Doing this **here** rather than at step 1 means an empty queue cuts nothing. **Cannot cut the branch or open that PR → stop and report**, having drained nothing: falling back to `pr.base`, or draining onto a branch carrying no PR, is how work is stranded where nobody looks for it. The drain **never merges or fast-forwards** that PR — the target repo's own workflow lands it. Rules: **Queue branch** in `work-implement`'s REFERENCE.
+**`work.queueBranch` needs nothing from the drain** (`worktree` only — inert under `branch:<name>`, which opens no per-issue PR to group). The queue branch and its PR are the **target repo's workflow's** to cut, retarget and land; each worker simply aims its own PR at an open `ai/queue-*` when there is one, resolved per issue at its own step 8 because the branch can appear mid-drain. Nothing to prepare here, and nothing that can fail here. Rules: **Queue branch** in `work-implement`'s REFERENCE.
 
 For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-implement` on exactly that issue:
 
@@ -78,7 +78,7 @@ Summarise each issue and its outcome (handed to `reviewRequested` / `blocked` re
 
 Issues now in `reviewRequested` are the drain's hand-off — the `work-review-queue` picks them up. Name the count.
 
-**Under `work.queueBranch`, the queue PR is a hand-off artifact too** — report its url beside them, and say plainly that this drain does **not** land it: landing belongs to the target repo's fast-forward workflow, and that workflow can only act while the queue branch still contains `pr.base`'s tip. Where anything else has landed on `pr.base` since, say so too — the fast-forward is off the table until that repo puts the branch back on top, which is its call and not this drain's. A queue PR nobody knows is waiting is the mode's failure mode; naming it every run is what keeps it from becoming one.
+**Under `work.queueBranch`, name the base each PR was actually opened against** — the open `ai/queue-<hash>`, or `pr.base` where none was open yet. Say plainly that the repo's workflow may **move** those bases afterwards, and that doing so is expected rather than drift: this drain neither cuts that branch, nor opens its PR, nor lands it. Where more than one `ai/queue-*` PR was open, report that too — the run took `pr.base` and left the ambiguity to the repo.
 
 **Then name the queue's state**, so a repeating driver (`/loop`, cron, a human) knows whether to run again, wait, or stop — instead of that rule living in whoever typed the loop prompt. **Query the tracker again first**: work that became eligible while the last issue was being implemented is already there, and waiting on input that exists wastes an interval. Then decide **in this order**:
 
@@ -184,7 +184,7 @@ opening for the summaries it writes on request; one house frame, reached two way
 - **Never run a declared mutex pair concurrently** — split them across waves of the same run, under either branch strategy. A mutex **delays**; it never defers, labels, or blocks, and the skill never writes a `mutex:` label.
 - **Never work an issue whose labels contradict each other** — `needsTriage` beside a lifecycle label is withheld and reported, never resolved by obeying the more permissive of the two, and never written to the tracker.
 - **This loop never reviews.** It produces `reviewRequested`/`blocked` only; `done`/`changes-requested`/`needs human` are the review loop's and the human's.
-- **The queue branch is opt-in, and the drain never lands it** — off unless `work.queueBranch` says otherwise, because only the repo knows whether a workflow exists to fast-forward it; the drain opens that PR and stops there, holding no credential that could write to a protected branch. Cutting the branch or opening the PR fails → stop, never fall back to `pr.base`.
+- **The queue branch is opt-in, and the drain neither makes nor lands it** — off unless `work.queueBranch` says otherwise, because only the repo knows whether the workflow that cuts and fast-forwards it exists. A worker **aims** at an open `ai/queue-*` and does nothing else with it; none open is not a failure, it opens against `pr.base` as usual. The loop holds no credential that could write to a protected branch, and now none that writes to `ai/queue-*` either.
 - Inherits `work-implement`'s attribution-free, secret-free, only-this-issue guardrails.
 
 ## Reference
