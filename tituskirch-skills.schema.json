@@ -415,7 +415,9 @@
               "properties": {
                 "id": {
                   "type": ["integer", "string"],
-                  "description": "The account's immutable GitLab user id — what the match is actually made on, re-asserted per merge request before the skill touches it. GitLab's merge-request API filters on author_id (numeric, mutually exclusive with author_username), and a bot account backed by an access token is an ordinary user there, so nothing but the id distinguishes it."
+                  "minimum": 1,
+                  "minLength": 1,
+                  "description": "The account's immutable GitLab user id — what the match is actually made on, re-asserted per merge request before the skill touches it. GitLab's merge-request API filters on author_id (numeric, mutually exclusive with author_username), and a bot account backed by an access token is an ordinary user there, so nothing but the id distinguishes it. Constrained to an id an account could hold — GitLab mints user ids from 1 — because this half is the one that matches: an empty or zero id fails closed, matching nothing, which reads on the run as a healthy empty queue rather than as a broken config."
                 },
                 "login": {
                   "type": "string",

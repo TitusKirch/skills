@@ -539,6 +539,28 @@ describe("merge-deps' GitLab bot identity", () => {
     rejects({ mergeDeps: { gitlab: { bot: {} } } }, 'an empty identity');
   });
 
+  // The id is the half that actually matches, so an unusable one is worse than a
+  // missing one: it fails closed (nothing equals it, nothing is touched) and so
+  // reads on the run as a healthy empty queue rather than as a broken config.
+  test('an id has to be one an account could actually have', () => {
+    rejects(
+      { mergeDeps: { gitlab: { bot: { id: '', login: 'renovate-bot' } } } },
+      'an empty id — half an identity wearing both keys'
+    );
+    rejects(
+      { mergeDeps: { gitlab: { bot: { id: 0, login: 'renovate-bot' } } } },
+      'a zero id — GitLab mints user ids from 1, so this is no account'
+    );
+    rejects(
+      { mergeDeps: { gitlab: { bot: { id: -4207, login: 'renovate-bot' } } } },
+      'a negative id'
+    );
+    accepts(
+      { mergeDeps: { gitlab: { bot: { id: '4207', login: 'renovate-bot' } } } },
+      'the id as a string — the shape trustedBots already allows'
+    );
+  });
+
   test('it names an identity, never a way of finding one', () => {
     rejects(
       { mergeDeps: { gitlab: { bot: 'renovate-bot' } } },
