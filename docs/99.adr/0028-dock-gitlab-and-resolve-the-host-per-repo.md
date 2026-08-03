@@ -36,3 +36,13 @@ A second gap surfaced alongside it and is **not** GitLab-specific: the skills as
 **A fourth tracker is a fourth thing to keep in step**, the cost [ADR-0023](0023-back-the-local-tracker-with-committed-files.md) already accepted for the third. The mirrored block is what keeps the _host_ half from multiplying with it: one source, drift-checked, rather than five wordings of the same ladder.
 
 **The host key can be set wrong in a way nothing detects.** A `forgeHost` naming an instance the CLI is not authenticated against fails at the availability probe, which is the right place — but a `forgeHost` naming the _wrong reachable_ instance succeeds and works against another project. The mitigation is prose, not machinery: the host is named in the plan whenever it is not the forge's public one, so the one reader who can spot it is shown it.
+
+## Amendments
+
+### 2026-08-03 — one of the two deferred skills came back
+
+The decision above stands. One clause of it does not: `merge-deps` no longer stays GitHub-only.
+
+The Decision paired `release` and `merge-deps` as skills with "unresolved questions of their own", each tracked separately. `merge-deps`' question was whether its **select-by-author guarantee** survives a forge where the author is not a constant — GitHub runs Dependabot, GitLab's Renovate is always self-run. It was answered yes, and the answer is [ADR-0029](0029-reproduce-the-author-guarantee-from-a-configured-identity.md): one configured identity, matched on an immutable id, in a key that can only ever narrow. So the `<skills-forge>` roster this record names as five skills is **six**, `merge-deps` included, and `test/isolation.test.ts` pins that rather than this paragraph.
+
+`release`'s clause is untouched — it stays GitHub-only, and its question is still open. This addendum **refines, it does not supersede**: nothing about the axis, the driver or the host ladder changed, and the deferral was always stated as a deferral.

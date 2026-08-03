@@ -190,12 +190,15 @@ const TLDR_CARRIERS = [
  * skill that starts driving a forge without the block re-derives the ladder its own way,
  * and a listed one that lost its block keeps prose promising a resolution it no longer has.
  *
- * `release` and `merge-deps` are deliberately absent: both are GitHub-only, and stating
- * that limitation is tracked on its own rather than papered over with a rule they do not
- * follow. The two queue skills are absent for the standing reason — they name their
+ * `release` is deliberately absent: it is GitHub-only, and stating that limitation is
+ * tracked on its own rather than papered over with a rule it does not follow. `merge-deps`
+ * was absent for the same reason and no longer is — its author guarantee turned out to be
+ * reproducible on GitLab from a configured identity, so it drives both forges and carries
+ * the block. The two queue skills are absent for the standing reason — they name their
  * worker's REFERENCE instead of mirroring, which the suite at the bottom of this file pins.
  */
 const FORGE_CARRIERS = [
+  'repo/merge-deps',
   'repo/prune-branches',
   'repo/pull-request',
   'work/issue',

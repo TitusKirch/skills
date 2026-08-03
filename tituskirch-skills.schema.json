@@ -14,7 +14,7 @@
       "type": "string",
       "enum": ["github", "gitlab"],
       "default": "github",
-      "description": "Code forge for the forge-bound skills — where pull requests (GitLab: merge requests) and releases live. github is driven by the gh CLI, gitlab by glab. This is the single home for the forge axis; the issue tracker is a separate axis (issue.tracker / work.tracker). Not every forge-bound skill implements every forge: pull-request and prune-branches speak both, while release and merge-deps are GitHub-only and say so when they meet another forge rather than degrading silently."
+      "description": "Code forge for the forge-bound skills — where pull requests (GitLab: merge requests) and releases live. github is driven by the gh CLI, gitlab by glab. This is the single home for the forge axis; the issue tracker is a separate axis (issue.tracker / work.tracker). Not every forge-bound skill implements every forge: pull-request, prune-branches and merge-deps speak both — merge-deps needs mergeDeps.gitlab.bot on GitLab, since its queue's author is not a constant there — while release is GitHub-only and says so when it meets another forge rather than degrading silently."
     },
     "forgeHost": {
       "type": ["string", "null"],
@@ -73,7 +73,7 @@
       ]
     },
     "mergeDeps": {
-      "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since mergeDeps.merge defaults to false. Named mergeDeps (not deps) to disambiguate against the separate update-deps skill: this section is only ever about merging the Dependabot PR queue. Scope is fixed to pull requests authored by app/dependabot; that is a hard constraint of the skill and deliberately not configurable.",
+      "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since mergeDeps.merge defaults to false. Named mergeDeps (not deps) to disambiguate against the separate update-deps skill: this section is only ever about merging the dependency-bot request queue. Scope is fixed to a single author: on GitHub the constant app/dependabot, deliberately not configurable; on GitLab the one identity mergeDeps.gitlab.bot names, since no constant exists there. Either way it is one author and never a selector — the key can only narrow.",
       "oneOf": [
         {
           "$ref": "#/$defs/mergeDepsShape"
@@ -401,6 +401,32 @@
           "minimum": 1,
           "default": 5,
           "description": "Max PRs merged per run. Default: 5."
+        },
+        "gitlab": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "GitLab-only settings, read when forge is gitlab and inert otherwise.",
+          "properties": {
+            "bot": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "login"],
+              "description": "The single account whose merge requests are this repo's dependency queue on GitLab. Required there, with no default: GitHub's app/dependabot is a constant the forge itself runs, while Renovate on GitLab is always self-run — its author is either a dedicated user holding a personal access token or the internal bot user GitLab mints for a project or group access token, a per-repo, per-instance fact. No identity configured means the skill stops; it never infers one from a branch prefix, a label or a title. It names exactly one identity and never a selector type, which is the one shape that could widen the guarantee the skill rests on. The schema does not demand it alongside forge:gitlab, because a profile fragment must stay valid on its own and a gitlab repo need not use this skill at all — the stop is a runtime rule.",
+              "properties": {
+                "id": {
+                  "type": ["integer", "string"],
+                  "minimum": 1,
+                  "minLength": 1,
+                  "description": "The account's immutable GitLab user id — what the match is actually made on, re-asserted per merge request before the skill touches it. GitLab's merge-request API filters on author_id (numeric, mutually exclusive with author_username), and a bot account backed by an access token is an ordinary user there, so nothing but the id distinguishes it. Constrained to an id an account could hold — GitLab mints user ids from 1 — because this half is the one that matches: an empty or zero id fails closed, matching nothing, which reads on the run as a healthy empty queue rather than as a broken config."
+                },
+                "login": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The account's username (e.g. \"renovate-bot\", \"project_4_bot_a1b2c3\") — present so the entry is readable and so the queue can be narrowed with glab mr list --author, never used for matching. A username is reusable once an account is renamed or deleted, so a username that disagrees with its id is the rename signal: report it, never silently trust it. Same id/login split as trustedBots, deliberately one object rather than that key's array: this names the queue, not an allowlist."
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -826,7 +852,7 @@
           ]
         },
         "mergeDeps": {
-          "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since mergeDeps.merge defaults to false. Named mergeDeps (not deps) to disambiguate against the separate update-deps skill: this section is only ever about merging the Dependabot PR queue. Scope is fixed to pull requests authored by app/dependabot; that is a hard constraint of the skill and deliberately not configurable.",
+          "description": "merge-deps skill settings, or false to disable the merge-deps skill for the repo. Absent is not disabled — it means report-only, since mergeDeps.merge defaults to false. Named mergeDeps (not deps) to disambiguate against the separate update-deps skill: this section is only ever about merging the dependency-bot request queue. Scope is fixed to a single author: on GitHub the constant app/dependabot, deliberately not configurable; on GitLab the one identity mergeDeps.gitlab.bot names, since no constant exists there. Either way it is one author and never a selector — the key can only narrow.",
           "oneOf": [
             {
               "$ref": "#/$defs/mergeDepsShape"
