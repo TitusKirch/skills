@@ -402,11 +402,13 @@ gh api "repos/$owner/$repo/dependabot/alerts" --paginate \
 ```bash
 # --author narrows readably; the API filter is author_id, and the two are
 # mutually exclusive, so pick one. Pages cap at 100 — follow them.
-glab mr list --all --per-page 100 --output json --author "$bot_login" \
+glab mr list --per-page 100 --output json --author "$bot_login" \
   | jq '[.[] | {number: .iid, title, headRefName: .source_branch,
                 baseRefName: .target_branch, isDraft: .draft,
                 mergeStatus: .detailed_merge_status, authorId: .author.id}]'
 ```
+
+> **Do not reach for `--all` here, and do not copy it in from a sibling skill's recipe.** On `glab` it is a **state** widener, not a paging one — _"defaults to open merge requests; use `--all` to include closed and merged requests"_ — so it is the opposite of `gh pr list --state open` one recipe above, not its counterpart. `glab mr list` is already open-only; there is no `--opened` flag to say so explicitly (`-c/--closed` and `-M/--merged` are the openers). A branch-pruning skill passes `--all` **correctly**, because closed and merged requests are exactly what it is hunting — which makes the two recipes look copy-pasteable when they are not. Here it would put already-merged and closed requests into assessment, the report and, eventually, `glab mr merge`. The author guarantee still holds — the author narrows either way — but "select strictly by author" never meant "and whatever state".
 
 **Re-assert authorship** before touching any MR — on the **id**, which is what the narrowing above did not prove:
 
@@ -451,19 +453,24 @@ glab mr merge "$n" --squash --remove-source-branch --yes
 
 ```bash
 body=$(glab api "projects/:id/merge_requests/$n" --jq '.description')
-printf '%s' "$body" | sed 's/- \[ \] <!-- rebase-check -->/- [x] <!-- rebase-check -->/' > "$tmp"
-glab mr update "$n" --description "$(cat "$tmp")"
+glab mr update "$n" --description "$(printf '%s' "$body" \
+  | sed 's/- \[ \] <!-- rebase-check -->/- [x] <!-- rebase-check -->/')"
 ```
+
+The substitution stays in the pipeline rather than going through a temp file — there is no path to define, so there is none to get wrong. The `sed` replaces a **substring**: Renovate writes the marker followed by prose on the same line, and the trailing text survives untouched.
 
 **Open advisories** — Ultimate only, and reported as a tier fact rather than as zero:
 
 ```bash
 # GraphQL, since the REST vulnerability_findings endpoint is deprecated.
-glab api --method POST /graphql -f query='
+# `graphql` — no leading slash. It is a keyword glab special-cases, not a path.
+glab api --method POST graphql -f query='
   { project(fullPath: "GROUP/REPO") {
       vulnerabilities(state: DETECTED) { nodes { title severity } } } }'
 # errors / null on anything below Ultimate → say the tier does not expose them
 ```
+
+> **The leading slash is the one that lies to you.** `glab api` takes _either_ a v4 REST path _or_ the bare keyword `graphql`; `/graphql` defeats the special case and resolves to `https://<host>/api/v4/graphql`, which does not exist, instead of `https://<host>/api/graphql`, which does. The resulting **404 is indistinguishable from the tier answer** — so on an Ultimate project that does expose advisories, the run reports "your tier does not expose them" and is confidently wrong about the cause. That inverts the rule this whole section exists to protect. Before reporting a tier, be sure the request was the right one.
 
 ## Reading the bump level
 
@@ -488,6 +495,7 @@ The tier a request lands in — patch / minor / grouped / major — is read from
 - **Say which tier, not which error.** "GitLab dependency scanning is an Ultimate feature; this project's tier does not expose it" is actionable. "Could not read alerts (403)" invites a permissions hunt that will not end.
 - **It is still never zero.** An unreadable advisory list is `unknown`, exactly as an unrun pipeline is — the [same rule](#assessment-checklist), applied to a different absence. A report that omits the line entirely lets a reader infer a clean project.
 - **Ultimate, and it reads → treat it as GitHub's.** Same buckets: advisories with a request behind them, advisories with none, advisories with no fix available.
+- **A 404 is not a tier answer.** Below Ultimate the query comes back with GraphQL `errors` or a `null` project — a _response_. A 404 means the request never reached the GraphQL endpoint at all, and the [most likely cause is the call, not the plan](#gitlab--glab). Report a tier only from a reply that actually answered; otherwise it is `unknown` with the request named, which is the honest version of the same absence.
 
 ## Cascading rebase
 

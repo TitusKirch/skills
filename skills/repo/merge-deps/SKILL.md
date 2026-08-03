@@ -34,7 +34,8 @@ gh pr list --state open --search "author:app/dependabot" \
   --json number,title,headRefName,baseRefName,isDraft,mergeable,mergeStateStatus
 
 # GitLab — narrow on the login for readability, prove on the id. Pages cap at 100.
-glab mr list --all --per-page 100 --output json --author "$bot_login"
+# No --all: it widens to closed and merged, and this queue is open requests only.
+glab mr list --per-page 100 --output json --author "$bot_login"
 ```
 
 - **Re-assert the author per request** before touching it — `author.login` must equal `app/dependabot` on GitHub; `author.id` must equal `mergeDeps.gitlab.bot.id` on GitLab. The list narrows; this is what proves it. On GitLab the login the list was narrowed with is **not** the proof: a username is reusable after a rename, so a login that disagrees with its id is the rename signal — report it and leave the MR alone.
