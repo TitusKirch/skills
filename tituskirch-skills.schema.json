@@ -611,7 +611,7 @@
         "queueBranch": {
           "type": "boolean",
           "default": false,
-          "description": "Group a worktree drain's pull requests behind one queue branch: every issue PR targets ai/queue-<hash> instead of pr.base, and the drain opens a single ai/queue-<hash> -> pr.base pull request to close the run. Opt-in, and deliberately off by default, because the mode only completes where the target repo owns a workflow that fast-forwards its integration branch onto that PR's head once it is green — without one, the issue PRs land on a branch nothing ever merges. The drain never merges or fast-forwards the queue PR itself and needs no bypass-capable credential. Inert under branch:<name>, which opens no per-issue PR at all. Default: false."
+          "description": "Group a worktree drain's pull requests behind one queue branch: each issue branch is cut as ai/queue/<ref>-<slug> instead of ai/<ref>-<slug>, and each issue PR targets an open ai/queue-<hash> instead of pr.base. The ai/queue/ prefix is the signal — it is what asks the target repo's workflow to group that PR, so this key, not the repo, decides whether a given run is grouped; a repo carrying the workflow states only that it can group. Opt-in, and deliberately off by default, because the mode only completes where the target repo owns a workflow that cuts the queue branch and fast-forwards its integration branch onto that PR's head once it is green — without one, the prefix matches nothing and every issue PR falls back to pr.base. The drain never cuts, merges or fast-forwards the queue branch itself and needs no bypass-capable credential. Inert under branch:<name>, which opens no per-issue PR at all. Default: false."
         },
         "feedback": {
           "type": "string",

@@ -58,30 +58,30 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 }
 ```
 
-| Key                                         | Effect                                                                                                                                                       |
-| :------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `work.tracker`                              | `github`, `gitlab`, `linear` or `local`; falls back to `issue.tracker`                                                                                       |
-| `work.cap`                                  | max issues a single drain works across the run (mandatory bound; default 10) — see [Cap and concurrency](#cap-and-concurrency)                               |
-| `work.concurrency`                          | max workers running **at once** under `parallel: true`; defaults to `work.cap`, inert when `parallel` is `false`                                             |
-| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)                                               |
-| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))                                                   |
-| `work.queueBranch`                          | aim a `worktree` drain's PRs at an open `ai/queue-<hash>` the repo's workflow maintains; **opt-in, default `false`** — see [Queue branch](#queue-branch)     |
-| `work.feedback`                             | where both loops write their round-by-round output: `pr` or `issue`; **no fixed default** — [it follows `branch`](#feedback-destination)                     |
-| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                                                        |
-| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                                                              |
-| `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review                                        |
-| `work.labels.needsTriage`                   | the "nobody has assessed this yet" label (labelOrOff); **opt-in — defaults to off**; see [contradictory labels](#contradictory-labels)                       |
-| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"                                          |
-| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                                                              |
-| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                                                            |
-| `work.loop.mode`                            | how a [backpressure](#queue-state) wait is paced: `fixed`, `adaptive` or `auto`; default `auto` — [how long to wait](#how-long-to-wait--workloopmode)        |
-| `work.loop.wait`                            | seconds a repeating driver waits before re-checking a drain that ended in [backpressure](#queue-state); the floor under `adaptive`; default 120              |
-| `work.loop.maxWait`                         | ceiling on a **single** wait, not a total budget; default 600 (Claude Code truncates a `Bash` call there)                                                    |
-| `work.priorityLabels`                       | GitHub priority labels, highest first; the `local` tracker matches its `priority` field against the same ladder; Linear ignores them (native priority field) |
-| `work.local.dir`                            | `local` issue directory; falls back to `issue.local.dir`, then `.agents/issues` — see [Tracker — local](#tracker--local-files)                               |
-| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                                                           |
-| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                                                             |
-| `work.linear.states`                        | Linear workflow state names; **no default**, and a [best-effort write](#the-board-has-a-second-writer) — see below                                           |
+| Key                                         | Effect                                                                                                                                                              |
+| :------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `work.tracker`                              | `github`, `gitlab`, `linear` or `local`; falls back to `issue.tracker`                                                                                              |
+| `work.cap`                                  | max issues a single drain works across the run (mandatory bound; default 10) — see [Cap and concurrency](#cap-and-concurrency)                                      |
+| `work.concurrency`                          | max workers running **at once** under `parallel: true`; defaults to `work.cap`, inert when `parallel` is `false`                                                    |
+| `work.branch`                               | `worktree` (own branch + PR per issue) or `branch:<name>` (all issues on one shared branch, e.g. `branch:dev`)                                                      |
+| `work.parallel`                             | `false` sequential / `true` concurrent — independent of `branch` (see [Branch strategy](#branch-strategy))                                                          |
+| `work.queueBranch`                          | cut a `worktree` drain's branches under `ai/queue/` and aim their PRs at an open `ai/queue-<hash>`; **opt-in, default `false`** — see [Queue branch](#queue-branch) |
+| `work.feedback`                             | where both loops write their round-by-round output: `pr` or `issue`; **no fixed default** — [it follows `branch`](#feedback-destination)                            |
+| `work.labels.*`                             | lifecycle label names; each is a **string** or **`false`** (mechanic off — see below)                                                                               |
+| `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                                                                     |
+| `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review                                               |
+| `work.labels.needsTriage`                   | the "nobody has assessed this yet" label (labelOrOff); **opt-in — defaults to off**; see [contradictory labels](#contradictory-labels)                              |
+| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"                                                 |
+| `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                                                                     |
+| `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                                                                   |
+| `work.loop.mode`                            | how a [backpressure](#queue-state) wait is paced: `fixed`, `adaptive` or `auto`; default `auto` — [how long to wait](#how-long-to-wait--workloopmode)               |
+| `work.loop.wait`                            | seconds a repeating driver waits before re-checking a drain that ended in [backpressure](#queue-state); the floor under `adaptive`; default 120                     |
+| `work.loop.maxWait`                         | ceiling on a **single** wait, not a total budget; default 600 (Claude Code truncates a `Bash` call there)                                                           |
+| `work.priorityLabels`                       | GitHub priority labels, highest first; the `local` tracker matches its `priority` field against the same ladder; Linear ignores them (native priority field)        |
+| `work.local.dir`                            | `local` issue directory; falls back to `issue.local.dir`, then `.agents/issues` — see [Tracker — local](#tracker--local-files)                                      |
+| `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                                                                  |
+| `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                                                                    |
+| `work.linear.states`                        | Linear workflow state names; **no default**, and a [best-effort write](#the-board-has-a-second-writer) — see below                                                  |
 
 **`false` disables a mechanic:** `labels.ready: false` → no AI gate (any matching issue is eligible); `labels.working: false` → no lease label (weaker race protection); `labels.reviewRequested: false` → the PR's existence is the signal; `labels.reviewing: false` → **no review lease** — the review loop relies on its lock alone, with no cross-clone claim (this is the **default**, so an unset `reviewing` keeps today's behaviour); `labels.blocked: false` → comment only / Linear state; `labels.needsTriage: false` → **no contradiction check** — the loop cannot see an untriaged flag it was never given (this is the **default**); `labels.repo: false` → no repo filter (GitHub, or a single-repo Linear team).
 
@@ -875,16 +875,29 @@ Two **independent** knobs — `work.branch` (where work lands) × `work.parallel
 - **Every extra worktree pays a full install** — the real price of concurrency, and on a repo whose dependencies run to hundreds of megabytes the install can outlast the implementation it gates. This is the cost `work.concurrency` exists to bound, and the reason it is a knob of its own rather than a second meaning for `cap` ([cap and concurrency](#cap-and-concurrency)): how many workers a machine can carry at once is not how many issues a run should work. Making that cheaper — copying or linking the heavy directories into a new worktree — is the repo's own call, never something a worker does behind the run's back: one `node_modules` shared by two live workers is one install either of them can leave wrong for the other.
 - **Serialized integration** — for a shared `branch:<name>` target under `parallel: true`, parallel work is produced in isolated worktrees and landed one commit at a time (push → rebase → retry). This is what makes `branch:dev` + `parallel` race-free.
 - **Mutex** — two issues a human has declared **order-free but colliding** (`mutex: <group>` on GitHub, `related` on Linear) never share a concurrent batch under `parallel: true`, in **either** branch mode; they run in different waves of the **same** run ([parallel-batch mutex](#parallel-batch-mutex)). Under `parallel: false` there is nothing to enforce.
-- **`worktree`** branches off `pr.base`; the worktree with committed+pushed work is removed after the PR is opened (commits live on the remote/branch). Under [`queueBranch`](#queue-branch) the **PR's base** is an open `ai/queue-<hash>` where one exists — the only thing the gate changes, and it changes nothing about where the issue branch is cut from.
+- **`worktree`** branches off `pr.base` as `ai/<ref>-<slug>`; the worktree with committed+pushed work is removed after the PR is opened (commits live on the remote/branch). Under [`queueBranch`](#queue-branch) that branch is **named** `ai/queue/<ref>-<slug>` instead, and the **PR's base** is an open `ai/queue-<hash>` where one exists — the name and the base are the only two things the gate changes, and neither changes where the issue branch is **cut from**.
 - **Dependencies** — the tracker's relations are read under **both** strategies; what differs is what a run can do about them. Under `branch:<name>` the drain works prerequisites first within the run ([dependency ordering](#dependency-ordering)); the shared branch accumulates, so the dependent issue just sees the code. Under `worktree` each issue branches off a clean `pr.base` and sees nothing of its siblings, so **no order the run picks can satisfy an edge** — the dependent is **deferred** until its prerequisite lands on `pr.base`. Stacked branches remain a **v2** concern — deferred, with the rationale recorded in this skill's `DESIGN.md`.
 
 ### Queue branch
 
-**`work.queueBranch: true` retargets a `worktree` drain's pull requests at one shared branch** — every issue PR opens against an open `ai/queue-<hash>` instead of `pr.base`. Default **`false`**; **inert under `branch:<name>`**, which opens no per-issue PR to group.
+**`work.queueBranch: true` groups a `worktree` drain's pull requests behind one shared branch** — each issue branch is cut as `ai/queue/<ref>-<slug>`, and each issue PR opens against an open `ai/queue-<hash>` instead of `pr.base`. Default **`false`**; **inert under `branch:<name>`**, which opens no per-issue PR to group.
 
-**The drain does not own that branch.** Cutting `ai/queue-<hash>`, opening its PR into `pr.base` and landing it are all the **target repo's own workflow's** — the same side that already held the landing credential. What the opt-in buys is that the drain **aims** at the branch, never that it **makes** one. So the repo is the single authority on whether a drain's PRs are grouped at all, and `work.queueBranch` says only _this repo has that workflow; point at it_.
+**The drain does not own the queue branch.** Cutting `ai/queue-<hash>`, opening its PR into `pr.base` and landing it are all the **target repo's own workflow's** — the same side that already held the landing credential. What the opt-in buys is that the drain **aims** at the branch, never that it **makes** one.
 
-**What changes is the base, and nothing else.** Each issue still gets its own branch, its own worktree, its own PR and its own review — the isolation the mode is chosen for is untouched.
+**But the run decides whether its PRs are grouped; the repo decides only whether they _can_ be.** The repo's workflow fires on the branch **prefix** the worker chose, so a drain under `queueBranch: false` cuts `ai/<ref>-<slug>`, matches nothing, and stays on `pr.base` **even in a repo that carries the workflow**. A repo carrying it states that it _can_ group, never that it always will — which is what keeps a queue-on and a queue-off profile distinguishable in the same repo.
+
+**The prefix is the signal, because at `opened` there is no other one.** The workflow sees a worker PR at `opened` and has nothing else to go on: the base is `pr.base`, the body is generic, and a **label would be a race** — `opened` fires before the drain could apply one. The branch name is the only field the run controls at the moment the workflow reads the PR, so the mode is written into it.
+
+| `work.queueBranch` | worker branch           | grouped by the repo's workflow    |
+| :----------------- | :---------------------- | :-------------------------------- |
+| `false` (default)  | `ai/<ref>-<slug>`       | no                                |
+| `true`             | `ai/queue/<ref>-<slug>` | yes, wherever the workflow exists |
+
+The queue branch itself stays `ai/queue-<hash>` — a **hyphen**, not a slash — so the three prefixes are disjoint: `ai/queue-<hash>` does not match `ai/queue/` and so can never be retargeted onto itself, and git holds `ai/queue-a1b2c3d` and `ai/queue/42-fix` side by side with no directory/file conflict.
+
+**The mode binds to the issue, not to the round.** A re-work checks out the issue's **existing** branch and pushes to the **existing** PR, so `opened` never fires again: an issue first implemented under a queue-off profile stays ungrouped in a later queue-on run, and one started grouped stays grouped. Switching profiles changes what the **next** issue does, never what an in-flight one does.
+
+**What changes is the branch's name and the PR's base, and nothing else.** Each issue still gets its own branch, its own worktree, its own PR and its own review — the isolation the mode is chosen for is untouched.
 
 **The base is resolved per pull request, not once per drain.** With the mode on, immediately before opening each issue PR:
 
@@ -909,12 +922,12 @@ q=$(gh pr list --state open --base "$base" --json number,headRefName \
 
 **The drain still never lands anything** — no merge, no fast-forward, no bypass-capable credential. That was always the point of the split, and moving the branch's creation to the repo only widens it: the loop now holds no write to `ai/queue-*` either. Every constraint on the landing — chiefly that a fast-forward exists only while the queue branch still contains `pr.base`'s tip, so anything else landing there closes the window — is the repo's to state and to recover from, on the side that owns the workflow.
 
-| Step | Who           | Does                                                                       |
-| :--- | :------------ | :------------------------------------------------------------------------- |
-| 1    | Worker        | pushes its branch, opens its PR against the base the rule above resolved   |
-| 2    | Repo workflow | ensures `ai/queue-<hash>` and its PR exist; retargets that worker PR at it |
-| 3    | Next worker   | finds the queue PR already open and aims at it directly                    |
-| 4    | Repo workflow | lands the queue PR once it is green and approved                           |
+| Step | Who           | Does                                                                                                  |
+| :--- | :------------ | :---------------------------------------------------------------------------------------------------- |
+| 1    | Worker        | pushes `ai/queue/<ref>-<slug>`, opens its PR against the base the rule above resolved                 |
+| 2    | Repo workflow | sees the `ai/queue/` head; ensures `ai/queue-<hash>` and its PR exist; retargets that worker PR at it |
+| 3    | Next worker   | finds the queue PR already open and aims at it directly                                               |
+| 4    | Repo workflow | lands the queue PR once it is green and approved                                                      |
 
 **The CI saving is the repo's to make, and this skill does not promise it.** Grouping only saves runner minutes where the repo's workflows **decline to run** on the queue branch — a `ci.yml` scoped `pull_request.branches: [main, dev]` triggers nothing for a PR against `ai/queue-*`, so CI runs once, on the queue PR. A repo **without** that filter runs the same workflows on every issue PR exactly as before and saves nothing; what it gets from the mode is one merge into `pr.base` instead of n, which is noise reduction. Weigh it against where it runs, too: on a **public** repo Actions minutes are free, so the saving there is tidiness rather than money.
 
