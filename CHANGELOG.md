@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.18.0](https://github.com/TitusKirch/skills/compare/v0.17.0...v0.18.0) (2026-08-05)
+
+
+### Features
+
+* **queue:** cut the queue branch on the first worker PR ([#222](https://github.com/TitusKirch/skills/issues/222)) ([f08f1ab](https://github.com/TitusKirch/skills/commit/f08f1ab2c6a62fbce38955fc17c2e3f09f179096))
+
+
+### Bug Fixes
+
+* **ci:** let the queue PR body wrap itself ([3d21234](https://github.com/TitusKirch/skills/commit/3d21234aa674f07a2ff793d3695254b65e10d3d9))
+* **ci:** read the Queue App PEM from this owner's own -ci mirror ([98dee88](https://github.com/TitusKirch/skills/commit/98dee8854970c10258c117a229668a56eb5dc5c9))
+* **work:** let the run decide whether its PRs are grouped ([8b22325](https://github.com/TitusKirch/skills/commit/8b22325a93809800c5b5409faae3bdd0cac59202)), closes [#223](https://github.com/TitusKirch/skills/issues/223)
+
 ## [0.17.0](https://github.com/TitusKirch/skills/compare/v0.16.0...v0.17.0) (2026-08-03)
 
 
