@@ -52,7 +52,7 @@ Flip the label to `working` (`ready → working` or `changes-requested → worki
 
 Assert a **clean tree** first. Then per `work.branch`:
 
-- **`worktree`** — a fresh branch off `pr.base` (e.g. `dev`) named for the issue (`ai/<ref>-<slug>`). Own branch → own PR. For a **re-work**, check out the issue's existing branch instead of branching fresh. [`work.queueBranch`](REFERENCE.md#queue-branch) changes none of this — it moves the **PR's base** at step 8, not where the branch is cut from.
+- **`worktree`** — a fresh branch off `pr.base` (e.g. `dev`) named for the issue. **The name carries the run's queue mode**: `ai/<ref>-<slug>` normally, `ai/queue/<ref>-<slug>` when [`work.queueBranch`](REFERENCE.md#queue-branch) is on — that prefix is the only signal the repo's grouping workflow ever gets, so it is what decides whether this PR is grouped. Own branch → own PR. For a **re-work**, check out the issue's existing branch instead of branching fresh — which is why the mode binds to the **issue**, not to the round. Where the branch is **cut from** is `pr.base` either way; `queueBranch` moves only the name here and the **PR's base** at step 8.
 - **`branch:<name>`** — work on that shared branch (e.g. `branch:dev`); commits land there directly (review happens **after** they land — see [review-after-land](REFERENCE.md#review-after-land)).
 
 Branch naming, parallel/worktree handling and serialized integration: [REFERENCE.md](REFERENCE.md#branch-strategy).
