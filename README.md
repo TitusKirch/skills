@@ -21,11 +21,52 @@ bunx skills add TitusKirch/skills       # bun
 
 That's it. Every skill in this bundle is now discoverable inside your agent — no manifest editing, no symlink dance.
 
+## 📦 Install & run
+
+The `skills.sh` CLI is the path for users — the four package-manager forms are the hook above. Set `DISABLE_TELEMETRY=1` to opt out of its anonymous install-count telemetry.
+
+Then invoke a skill by name or trigger phrase:
+
+```text
+/write-readme draft a README for my new Laravel package
+```
+
+Your agent picks the right one from the `description:` field in each `SKILL.md` — write that field tight and it routes correctly.
+
+<details>
+<summary><b>Two other install paths</b> — symlink locally, or copy a single skill by hand</summary>
+
+### Symlink locally (recommended when developing on this repo)
+
+```bash
+git clone https://github.com/TitusKirch/skills.git
+cd skills
+pnpm install
+pnpm skills:link        # symlinks every skill into ~/.claude/skills/ and ~/.agents/skills/
+pnpm skills:list        # lists every SKILL.md in the repo
+pnpm skills:unlink      # removes only the symlinks pointing back into this repo
+```
+
+Both destinations, every run: `~/.claude/skills/` is the only user-scope path Claude Code reads, and `~/.agents/skills/` is the vendor-neutral one Codex, Cursor, OpenCode and Gemini CLI read — Codex reads nothing else this repo links to. `skills:unlink` clears both.
+
+Restart your agent (Claude Code: `/reload-plugins`). Because the skills live as symlinks, edits in the working copy are picked up live.
+
+### Install a single skill by hand
+
+Copy one skill folder into:
+
+- **User scope** — `~/.claude/skills/<skill-name>/` (Claude Code) or `~/.agents/skills/<skill-name>/` (Codex, Cursor, OpenCode, Gemini CLI) — available in every project.
+- **Project scope** — `.claude/skills/<skill-name>/` or `.agents/skills/<skill-name>/` — committed alongside the consuming project.
+
+</details>
+
 ## ✨ Features
 
 - **🧩 Self-contained skills** — each folder under `skills/` ships a `SKILL.md` (YAML frontmatter + body) plus optional templates, references and scripts. No runtime code.
-- **🛡️ Lint-clean by construction** — `oxlint` + `oxfmt` (markdown-first) gated by husky + commitlint + lint-staged. CI runs the same checks.
-- **🔁 Three install paths** — `skills.sh` CLI for users, `pnpm skills:link` for live local dev, hand-copy for one-off picks.
+- **⚙️ Configurable per repo** — one committed `.tituskirch-skills.json` tells every skill which forge, tracker, branch and language _this_ repo uses. Absent config means built-in defaults.
+- **🔁 Two AI work loops** — an implement loop that builds and pushes, a review loop that judges the result as an independent agent; the issue's label is the entire handover.
+- **🛡️ Lint-clean by construction** — `oxlint` + `oxfmt` (markdown-first) gated by husky + commitlint + lint-staged. CI runs the same checks, plus a conformance check against the [Agent Skills spec](https://agentskills.io/specification).
+- **📥 Three install paths** — `skills.sh` CLI for users, `pnpm skills:link` for live local dev, hand-copy for one-off picks.
 - **📋 House-style enforced** — the [`write-readme`](skills/docs/write-readme/SKILL.md) skill prescribes the README layout, section emojis and badge palette so every kirchDev repo looks the same.
 - **🚀 Release-please ready** — Conventional Commits drive automated versioning + CHANGELOG via release-please on `main`.
 
@@ -86,56 +127,39 @@ Configure the skills themselves, per repo.
 
 <!-- skills:end -->
 
-## 📦 Installation
+## ⚙️ Configuration
 
-### Option A — `skills.sh` CLI (recommended for users)
+Most skills read an optional, committed `.tituskirch-skills.json` at the **consuming** repo's root — the one place that says which forge, tracker, branch and language that repo uses:
 
-```bash
-npx skills add TitusKirch/skills        # npm
-pnpm dlx skills add TitusKirch/skills   # pnpm
-yarn dlx skills add TitusKirch/skills   # yarn
-bunx skills add TitusKirch/skills       # bun
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json",
+  "forge": "github",
+  "language": "de",
+  "verify": "pnpm verify",
+  "pr": { "base": "dev" }
+}
 ```
 
-Set `DISABLE_TELEMETRY=1` to opt out of the CLI's anonymous install-count telemetry.
+Resolution per setting is **config → detected → built-in default**, so a repo without the file keeps today's behaviour. Run `/tituskirch-skills-config` to have [that skill](skills/meta/tituskirch-skills-config/SKILL.md) write and reconcile the file rather than hand-rolling it. Every key and its allowed values live in [`tituskirch-skills.schema.json`](tituskirch-skills.schema.json) — point `$schema` at the raw URL and your editor completes them; which skill reads which key is listed in [`skills/README.md`](skills/README.md#shared-config).
 
-### Option B — symlink locally (recommended when developing on this repo)
+## 🔁 The AI work loop
 
-```bash
-git clone https://github.com/TitusKirch/skills.git
-cd skills
-pnpm install
-pnpm skills:link        # symlinks every skill into ~/.claude/skills/ and ~/.agents/skills/
-pnpm skills:list        # lists every SKILL.md in the repo
-pnpm skills:unlink      # removes only the symlinks pointing back into this repo
-```
-
-Both destinations, every run: `~/.claude/skills/` is the only user-scope path Claude Code reads, and `~/.agents/skills/` is the vendor-neutral one Codex, Cursor, OpenCode and Gemini CLI read — Codex reads nothing else this repo links to. `skills:unlink` clears both.
-
-Restart your agent (Claude Code: `/reload-plugins`). Because the skills live as symlinks, edits in the working copy are picked up live.
-
-### Option C — install a single skill by hand
-
-Copy one skill folder into:
-
-- **User scope** — `~/.claude/skills/<skill-name>/` (Claude Code) or `~/.agents/skills/<skill-name>/` (Codex, Cursor, OpenCode, Gemini CLI) — available in every project.
-- **Project scope** — `.claude/skills/<skill-name>/` or `.agents/skills/<skill-name>/` — committed alongside the consuming project.
-
-## 🚀 Quick start
-
-Once installed, invoke a skill by name or trigger phrase. The `write-readme` skill, for example, activates on prompts like:
+Eight of the skills above form two loops: **implement** ([`work-implement`](skills/work/work-implement/SKILL.md) and its queue) claims an issue, builds, verifies and pushes; **review** ([`work-review`](skills/work/work-review/SKILL.md) and its queue) judges the pushed result as a structurally fresh agent. Nothing passes between them in memory — the issue's `ai:` label is the entire handover, which is why a crashed run resumes instead of restarting and why both loops can drain at the same time.
 
 ```text
-/write-readme draft a README for my new Laravel package
+ai: ready → ai: working → ai: review requested → ai: done
+                  ↑                  ↓
+          ai: changes requested ←────┘
 ```
 
-Your agent picks the right skill based on the `description:` field in each `SKILL.md` — write that field tight and it will route correctly.
+`ai: ready` is the only label a human sets by hand — that opt-in is what makes the drains unattended. Full vocabulary, escalation states and loop ownership: [AI work lifecycle](docs/1.concepts/2.ai-work-lifecycle.md).
 
 ## ➕ Adding a new skill
 
-Drop a `skills/<category>/<name>/SKILL.md`, run `pnpm skills:sync` — it regenerates the table above, the category's `README.md`, [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) and [`skills.sh.json`](skills.sh.json) from the frontmatter — then commit as `feat(<name>): add skill`.
+Drop a `skills/<category>/<name>/SKILL.md`, run `pnpm skills:sync` — it regenerates **every** derived artifact from your frontmatter, from the table above and the category `README.md` to [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json), [`skills.sh.json`](skills.sh.json)'s groupings and the shared blocks mirrored into each skill. Hand-editing any of them is pointless: `pnpm skills:check` fails the gate on drift.
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full workflow and [`skills/README.md`](skills/README.md) for the frontmatter contract.
+Then commit as `feat(<name>): add skill`. The frontmatter contract is in [`skills/README.md`](skills/README.md); what spans more than one skill lives in [`docs/`](docs/index.md).
 
 ## 💡 Inspiration
 
@@ -143,12 +167,12 @@ The local `pnpm skills:link` / `:list` / `:unlink` scripts are modelled on [matt
 
 ## 🤝 Contributing
 
-PRs welcome. Conventional Commits required (enforced via commitlint). Husky runs `oxlint` + `oxfmt` on `git commit` — primarily on markdown, since that's what skills are made of.
+PRs welcome — branch off `dev` and target `dev`. Conventional Commits required (enforced via commitlint). Husky runs `oxlint` + `oxfmt` on `git commit` — primarily on markdown, since that's what skills are made of.
 
 > [!TIP]
-> Run `pnpm check:fix` before pushing — CI will catch what husky missed.
+> Run `pnpm verify` before pushing. It is the whole gate — lint, format, artifact drift, types and tests — and CI runs `on: pull_request` only, so nothing checks a commit that reaches `dev` any other way.
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`SECURITY.md`](SECURITY.md).
+The full workflow is in [`CONTRIBUTING.md`](CONTRIBUTING.md), the disclosure process in [`SECURITY.md`](SECURITY.md), and why things are shaped the way they are in [`docs/99.adr/`](docs/99.adr/index.md).
 
 ## 🛣️ Versioning
 
