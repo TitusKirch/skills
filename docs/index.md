@@ -5,9 +5,9 @@ description: 'Reusable agent skills — how they are built, configured per repo,
 
 # TitusKirch skills
 
-This repository publishes reusable agent skills — for Claude Code, Codex, Cursor, OpenCode and friends. Each skill is self-documenting in place — `SKILL.md`, plus `REFERENCE.md` and `DESIGN.md` where the mechanics or the reasoning need room. A skill ships on its own, so it has to carry its own documentation.
+This repository publishes reusable agent skills — for Claude Code, Codex, Cursor, OpenCode and friends. Each skill is self-documenting in place — `SKILL.md`, plus a `REFERENCE.md` where the mechanics need room (and, for `work-implement` alone, a `DESIGN.md`). A skill ships on its own, so it has to carry every rule that steers what it does.
 
-That leaves exactly one thing without a home: what spans **more than one** skill. This tree is only that.
+That leaves two things without a home, and this tree is both: what spans **more than one** skill, and the **record of what was decided** — including a single skill's own shape, because a record addresses a human and an installed copy does not need it ([ADR-0031](99.adr/0031-keep-rationale-as-repo-memory.md)).
 
 ## Sections
 

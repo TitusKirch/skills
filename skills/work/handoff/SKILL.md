@@ -108,4 +108,4 @@ Resumed work that is being parked again **updates the existing document** — sa
 
 ## Reference
 
-The folder and naming contract, id allocation, the document contract, the status vocabulary, the resume rules, the relationship to the sibling skills, and the reasoning behind it all: [REFERENCE.md](REFERENCE.md).
+**Two branches, and step 1 settles which.** **Writing one** — open it at step 3 for the folder and file schema and how an id is allocated (and what happens when two runs allocate the same one), then at step 4 for the document contract and status vocabulary, since a document that quietly assumes the writer's session is the failure this skill exists to prevent. **Resuming one** — open it at step 6 for the resume rules and the lifecycle that puts the delete at the end of the work rather than at the read. And **when the note looks like it should be something else** — an ADR, a tracker issue, a commit — the same file draws that line: [REFERENCE.md](REFERENCE.md).

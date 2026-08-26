@@ -8,7 +8,7 @@ Mechanics for the [`tldr`](SKILL.md) skill. No tracker, no forge, no file: the o
 
 ## Config
 
-**None.** `tldr` owns no section in `.tituskirch-skills.json`; it reads only the shared root `language`, which decides the prose and the heading names. Precedent: `handoff` and `update-deps` own no section either — and here there is nothing left for a repo to vary, because the frame is deliberately not negotiable ([Decisions](#decisions)).
+**None.** `tldr` owns no section in `.tituskirch-skills.json`; it reads only the shared root `language`, which decides the prose and the heading names. Precedent: `handoff` and `update-deps` own no section either — and here there is nothing left for a repo to vary, because the frame is deliberately not negotiable: a `tldr.*` section could only ever be empty, and adding one later is additive while removing one is a break.
 
 <skills-config>
 
@@ -119,17 +119,3 @@ Headings are written in the resolved output `language`, so a German run reads:
 | `handoff`       | **Different reader, different artifact.** A handoff is a **committed document** written for **another agent** to continue from, and it is deleted when the work lands. A summary is **terminal text** for the **human in this session**, and nothing outlives the message. Neither calls the other. |
 | `pull-request`  | **Different input.** A PR body is composed from a **branch's commits** and lands on the forge. A summary covers a scope of the **conversation**, most of which never becomes a commit, and lands nowhere.                                                                                           |
 | `atomic-commit` | **Adjacent, not overlapping.** Both read the working diff; one turns it into commits, the other into prose a person reads once. A summary never commits, and a commit message is not a summary of the session.                                                                                      |
-
-## Decisions
-
-Settled in a `grilling` pass on the issue that specified this skill, rather than inferred:
-
-- **One skill, invoked on request — not a persistent formatter.** The obvious second half, "shorten every answer from now on", is a different genus: it is an **output style**, and it fights the mechanism a skill is invoked by. A skill fires on a description match, which is exactly the reliability an "every response" promise needs and cannot have — the persistent formatters that exist have to write "still active if unsure" precisely to compensate. Two skills would also put two near-identical descriptions in competition at every invoke.
-- **The "last answer" scope stays.** It is the cheapest of the three, runs on the same machinery, and dropping it would leave the skill unable to answer the most common form of the request.
-- **Fixed frame, named middle.** Naming every section for its content maximises fit per run and destroys skimmability across runs; fixing every section produces `## Verified — none` on a summary of a paragraph of prose. Fixing the ends and naming the middle keeps the shape a reader has learned while letting the substance be called what it is.
-- **An empty section is dropped, not filled.** Rejected: **every section always, "none" included** — maximally predictable and diffable, but it pads a two-line summary with empty headings, and a frame that is mostly filler stops being read.
-- **Git is read whenever the subject is work.** Rejected: **conversation context only** — cheap, and usable outside a repo, but it goes quietly incomplete after a compaction with nothing to signal the gap.
-- **Terminal text, never a file.** This is the line against `handoff`. A summary that lands in the repo is a document with a lifecycle, an id and a deletion rule, which is a different skill and already exists.
-- **No config section.** The frame is fixed on purpose, so there is nothing for a repo to vary; a `tldr.*` section could only ever be empty, and adding one later is additive while removing one is a break. `language` is read because every skill that writes prose reads it.
-- **`work/`, not a new category.** Its neighbour `handoff` is likewise neither an issue nor a work loop, and a fifth category holding exactly one skill would be reserved for neighbours that do not exist. `docs/` was the other candidate — it is the category that produces text — but everything in it writes a file into the repo, and this skill writes none.
-- **The name is `tldr`, not `work-tldr`.** The category carries the grouping; a shared stem is for a family read as one unit (`work-implement` / `work-implement-queue`), which this is not.

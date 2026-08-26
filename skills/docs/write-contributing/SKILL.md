@@ -147,9 +147,9 @@ of a file.
 
 ## Reference
 
-- Section catalogue, derivation table with per-fact recipes, reconcile rules and config keys: [REFERENCE.md](REFERENCE.md).
-- Skeleton to fill: [`templates/CONTRIBUTING.template.md`](templates/CONTRIBUTING.template.md).
-- Neighbours, named rather than called: `write-readme` owns `README.md`, `write-docs` owns the `docs/` tree. A contributing guide that starts explaining architecture belongs in `docs/`; one that starts selling the project belongs in the README.
+- **Open it before writing down any repo-specific fact** — the derivation table names the file that owns each one (branch base, gate command, commit convention, package manager), which is what "derived, not retyped" comes to in practice. The section catalogue settles where a section sits in the house order, and the reconcile rules settle what a run may rewrite once a guide already exists: [REFERENCE.md](REFERENCE.md).
+- **Fill this on the scaffold job, where there is no guide yet**: [`templates/CONTRIBUTING.template.md`](templates/CONTRIBUTING.template.md).
+- **When the material turns out not to be contributing material at all**, hand it over rather than absorbing it: `write-readme` owns `README.md`, `write-docs` owns the `docs/` tree. A guide that starts explaining architecture belongs in `docs/`; one that starts selling the project belongs in the README.
 
 ## Gap report (mandatory final step)
 

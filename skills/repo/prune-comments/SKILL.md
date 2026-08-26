@@ -58,7 +58,7 @@ Its one principle, from which everything else follows:
 
 **A third verdict exists, and it is not removal.** A comment that **contradicts** the code has drifted, and deleting it hides a discrepancy someone needs to see — the fix may be to correct the comment, or to correct the code. Report it in its own block as _contradicts the code_, and **change nothing**.
 
-**Out of scope, deliberately: commented-out code.** It is dead code wearing comment syntax, not a comment that restates anything — a different judgement with a different risk. Name it in the report if you pass it; never remove it. [Why](REFERENCE.md#decisions).
+**Out of scope, deliberately: commented-out code.** It is dead code wearing comment syntax, not a comment that restates anything — a different judgement with a different risk. The question there is "is this still wanted?", not "does the code already say this" — and the linter rules for it already exist. Name it in the report if you pass it; never remove it.
 
 ### 4. Present — candidates with their evidence, before anything is edited
 
@@ -178,4 +178,4 @@ opening for the summaries it writes on request; one house frame, reached two way
 
 ## Reference
 
-The redundancy catalogue with before/after pairs, the protected list, the directive catalogue per ecosystem, comment forms by language, scope recipes, removal mechanics, and the reasoning behind the defaults: [REFERENCE.md](REFERENCE.md).
+**Open it at step 3, before calling any comment redundant** — the delete test worked through the redundancy catalogue's before/after pairs, the protected list, and the directives that only look like comments (`eslint-disable`, `noqa` and the rest), which is where a run that guesses does real damage. **At step 1** for the scope recipes, **at step 2** for the comment forms the language in front of you actually uses, and **at step 5** for the removal mechanics: [REFERENCE.md](REFERENCE.md).

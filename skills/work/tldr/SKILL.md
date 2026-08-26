@@ -109,4 +109,4 @@ of a file.
 
 ## Reference
 
-The section frame in full, scope resolution, the content-source rule, the language contract, how this sits beside `handoff` and `pull-request`, and the reasoning behind the fixed frame: [REFERENCE.md](REFERENCE.md).
+**Open it at step 1 whenever the request does not name its scope** — last answer, the task just finished, or the whole session — because resolving that wrong summarises the wrong thing convincingly. **At step 2** for the content-source rule that decides when git state has to be read rather than the session recalled, and **at step 3** for the section frame in full and the language the headings take: [REFERENCE.md](REFERENCE.md). Where a summary is the wrong artefact altogether, the same file names the neighbours it hands to — `handoff` and `pull-request`.

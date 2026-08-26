@@ -125,5 +125,5 @@ Then apply, and end with the before/after visible-line count and the "what moved
 
 ## Reference
 
-- Transformation playbook, `<details>` patterns, and the envprism before/after: [REFERENCE.md](REFERENCE.md).
-- House-style source of truth (emojis, badges, closers): `write-readme` and its `REFERENCE.md`.
+- **Open it at step 2, the moment a section needs a specific transform** — which `<details>` shape a given block folds into, how bold-density is thinned, how Install and Quick start merge with the requirement stated once, and the envprism before/after when a plan needs a precedent to point at: [REFERENCE.md](REFERENCE.md).
+- **When the question turns out to be house style rather than compaction** — which emoji a section takes, which badge, which closer — it is `write-readme`'s answer, not this skill's. Compaction never re-decides it.

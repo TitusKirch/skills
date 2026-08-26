@@ -8,7 +8,7 @@ Mechanics for the [`handoff`](SKILL.md) skill. No backend, no forge, no tracker 
 
 ## Config
 
-**None.** `handoff` owns no section in `.tituskirch-skills.json`; it reads only the shared root `language` (the document's prose language). Precedent: `update-deps` owns no section either — see [Decisions](#decisions) for why the folder is deliberately not a config key.
+**None.** `handoff` owns no section in `.tituskirch-skills.json`; it reads only the shared root `language` (the document's prose language). Precedent: `update-deps` owns no section either. **The folder is deliberately not a config key**: it is a fleet convention, and a `handoff.dir` key would let each repo diverge on the one thing every other machine has to guess right — defeating the convention it configures. The escape hatch is unnecessary too, because handoffs are transient, so changing the convention fleet-wide is nearly free.
 
 <skills-config>
 
@@ -87,7 +87,7 @@ Handoffs live in **`.agents/handoffs/`** — repo root, flat, no subfolders.
 
 - **Tracked and committed.** Not gitignored, not `~/`-local, not a scratch dir. The point of a handoff is to be picked up **on another machine or remotely**, and anything outside the repo is invisible to them. This is the decisive constraint; everything else about the folder is negotiable.
 - **Never scaffolded empty.** The folder appears with the first handoff and legitimately disappears with the last one — an empty `.agents/handoffs/` means the same thing as no folder at all.
-- This follows **no cross-tool standard**, because none exists for handoff state. See [Decisions](#decisions).
+- This follows **no cross-tool standard**, because none exists for handoff state. `AGENTS.md` is the one settled cross-tool convention and it is a _file of instructions_ rather than a folder of working state; the `.agents/` draft scopes itself explicitly to **configuration**, not to session or handoff state. So the name borrows a plausible-looking neighbour's rather than complying with anything, and it is stated as a preference — never as standards-alignment.
 
 ## File schema
 
@@ -137,7 +137,7 @@ issue: 44
 | `branch`  | no       | The branch the work lives on. **Omitted only when the work was never pushed** — and then `Progress` says so outright. |
 | `issue`   | no       | Tracker reference (`44`, `ENG-123`) when the work has one. A link, never a lifecycle.                                 |
 
-**There is no author, agent or model field, and there never will be one** — see [Decisions](#decisions).
+**There is no author, agent or model field, and there never will be one.** A handoff is a note to the next worker, and which tool typed it changes nothing about what that worker does. Such a field would exist purely to be signed — and a template that invites an agent to sign its work propagates that habit into every repo installing this skill. The omission is the point, not an oversight.
 
 ### Status vocabulary
 
@@ -204,17 +204,3 @@ The document outlives every read: only the commit that **finishes** the work rem
 | `work-implement`    | **Different state, different home.** `work-implement` is resumable because the _tracker label_ holds its state — a handoff is for work with no tracker issue, or for the session context a label cannot hold. They compose rather than overlap — `issue` in the frontmatter links them, and nothing more. A handoff never drives a lifecycle label.                                                                                            |
 | `atomic-commit`     | Owns every commit this skill makes — the work in [step 2](SKILL.md#2-make-the-work-reachable--before-writing-anything), the handoff in [step 5](SKILL.md#5-commit-the-handoff), the deletion in [step 8](SKILL.md#8-delete-the-handoff-when-the-work-is-done). One skill owns commits; this one does not hand-roll them. **Optional** at all three — not installed, commit in the repo's own Conventional Commits conventions and push anyway. |
 | `grilling`          | **Complementary, no dependency.** `grilling` interrogates a plan _before_ work exists; `handoff` carries work that already exists across a session boundary. They meet at `Open questions` — a resumed handoff's open questions are natural grilling material — but `handoff` never interviews. It records what is known; it does not decide what is not.                                                                                      |
-
-## Decisions
-
-The issue that specified this skill left most of its shape open and asked for research. What was settled, and why:
-
-- **`.agents/handoffs/` follows no standard — it is a choice, made knowing that.** The research was done and it came back negative. **`AGENTS.md`** is the one genuinely settled cross-tool convention, but it is a _file of instructions_, not a folder of working state — different artifact, no guidance here. **`.agent/`** (singular) is an open proposal with no maintainer consensus. **`.agents/`** (plural) is a community **draft** whose scope is explicitly **configuration**, and explicitly **not** session or handoff state. So nothing in the ecosystem covers this, and `.agents/handoffs/` borrows a plausible-looking neighbour's name rather than complying with anything. Recorded as a preference, not as standards-alignment: a later folder rename is cheap — handoffs are transient, so at any moment there is almost nothing to move — while a false claim of convention-following is not, because it would silently become the reason nobody revisits it.
-- **Committed, not local.** The decisive constraint, and the one that is not up for debate: the point is to continue the work **on another machine or remotely**, and anything outside the repo is invisible to them. Everything awkward downstream — the push precondition, secret discipline, handoff files in code review — is a cost this buys, not a flaw to fix.
-- **The push precondition follows from that.** Committing the _note_ while leaving the _work_ on one laptop keeps the letter of "committed" and breaks its entire purpose. So the work is pushed first, or the document says outright that it was not.
-- **No config section.** Nothing about a handoff genuinely varies per repo. The folder is a fleet convention, and a `handoff.dir` key would let each repo diverge on the one thing every other machine has to guess right — defeating the convention it configures. The escape hatch is also unnecessary: because handoffs are transient, changing the convention fleet-wide is nearly free, which is exactly the property a config key would exist to buy. Adding a section later is additive; removing one is a break.
-- **Ids come from git history, not the folder.** Falls directly out of delete-on-done: a folder of live handoffs has forgotten every completed one, and `max(ls) + 1` would hand out `0001` again the day the queue empties. Ids are permanent references — a human's "continue 0003", a commit message — so reuse makes an old reference resolve to new work. Gaps are the sequence working. Rejected: a counter file (`.agents/handoffs/.next`), which is one more committed thing to conflict on, and which git history already tells us for free.
-- **Resume never guesses.** Explicit id, or the single unambiguous handoff, or ask. Rejected: "the latest" — recency is a guess that always produces a confident-looking answer, and resuming the wrong thread of work is unrecoverable in a way that asking one question never is.
-- **Status has two values and no `done`.** The file's existence _is_ the liveness, so `done` could only describe a file that should already be gone — modelling it would legitimise the stale handoff. `blocked` stays because a blocked handoff is otherwise indistinguishable from a live one until the reader is four paragraphs in.
-- **Prose in the body, machine fields in the frontmatter** — the same split as an ADR's frontmatter (`write-docs`), for the same reason: `Goal` / `Context` / `Progress` are prose and belong where they read; `status` / `branch` / `updated` are looked _up_.
-- **No author, agent or model field.** A handoff is a note to the next worker, and which tool typed it changes nothing about what the next worker does. The field would exist purely to be signed — and a _template_ that invites an agent to sign its work would propagate that habit into every repo that installs this skill. The omission is the point, not an oversight.

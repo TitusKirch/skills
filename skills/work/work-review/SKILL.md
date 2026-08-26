@@ -105,4 +105,6 @@ Report the verdict and the reasoning. Inside a `work-review-queue` drain, return
 
 ## Reference
 
-Config, the selection query, the round-count recipe, the escalation policy, review-after-land, and the feedback recipes: [REFERENCE.md](REFERENCE.md). The implement half and the shared lifecycle: `work-implement`.
+Config, the selection query, the round-count recipe, the escalation policy, review-after-land and the feedback recipes — everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). The implement half and the shared lifecycle: `work-implement`.
+
+**One file per tracker recipe, and a repo reads exactly one.** `work.tracker` (falling back to `issue.tracker`) is a single value, so step 1 settles the branch before any recipe is opened: [`trackers/github.md`](trackers/github.md), [`trackers/gitlab.md`](trackers/gitlab.md), [`trackers/linear.md`](trackers/linear.md), [`trackers/local.md`](trackers/local.md).

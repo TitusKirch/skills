@@ -93,6 +93,6 @@ of a file.
 
 ## Reference
 
-- Section-by-section setup, the profile rules, the reconcile sweeps, and the config contract: [REFERENCE.md](REFERENCE.md).
-- Every key, type, enum, and default: [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json) — the single source of truth.
-- Per-section setup detail and forge/tracker recipes stay with each owning skill: `issue`, `pull-request`, `release`, `merge-deps`, `prune-branches`, `work-implement`, `write-docs`.
+- **Open the half the routing step picked** — the section-by-section walk-through when the config is missing or a section is incomplete, the reconcile-and-check sweeps when it already exists. The profile rules are a third branch, reached only where the repo runs under more than one execution context, which most do not: [REFERENCE.md](REFERENCE.md).
+- **Whenever the question is a key's type, enum or default, this answers it and `REFERENCE.md` does not** — it is the single source of truth: [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json).
+- **When a section needs more than its keys** — what a forge or tracker recipe actually does with the value once set — that detail stays with the skill that owns the section: `issue`, `pull-request`, `release`, `merge-deps`, `prune-branches`, `work-implement`, `write-docs`.

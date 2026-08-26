@@ -39,7 +39,7 @@ Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/
 
 **The ready gate may be off.** `work.labels.ready` resolving to `false` means the repo runs no approval gate at all — everything below still applies, and the report ends with the decisions that were closed instead of a label to apply. Tell "off" apart from "absent": absent means the default (`ai: ready`), `false` means the mechanic is disabled.
 
-Config schema and all mechanics: [REFERENCE.md](REFERENCE.md).
+Config schema and everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). The tracker recipes are one file each — [`trackers/github.md`](trackers/github.md) and [`trackers/linear.md`](trackers/linear.md), the two trackers this skill drives.
 
 ### 2. Resolve the target issue
 
@@ -148,4 +148,6 @@ of a file.
 
 ## Reference
 
-Config, the candidate query, the open-decision taxonomy, the already-solved and duplicate recipes, the `Decided` block shape, the report format and the two tracker recipes: [REFERENCE.md](REFERENCE.md). What happens to the issue once a human applies the label: `work-implement-queue`.
+Config, the candidate query, the open-decision taxonomy, the already-solved and duplicate recipes, the `Decided` block shape and the report format — everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). What happens to the issue once a human applies the label: `work-implement-queue`.
+
+**One file per tracker recipe, and a repo reads exactly one.** `work.tracker` (falling back to `issue.tracker`) is a single value, so the branch is settled before either is opened: [`trackers/github.md`](trackers/github.md) or [`trackers/linear.md`](trackers/linear.md).

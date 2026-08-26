@@ -17,7 +17,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT } from './helpers.ts';
+import { ROOT, branchFilesOf } from './helpers.ts';
 import { discoverSkills, paths } from '../scripts/gen-skills.ts';
 
 /**
@@ -273,8 +273,30 @@ const NO_BASH: Record<string, string> = {
  * `DESIGN.md` is deliberately not one of them. It records what was decided *and what was
  * rejected*, so a command shown there may be the one the skill does **not** run — reading
  * it would clear a grant by quoting the argument against it.
+ *
+ * **Branch files count, and have to.** A skill whose material forks on one config value
+ * keeps each fork in its own directory beside `SKILL.md` (`trackers/`, `ecosystems/` —
+ * see the branch-file rules in `skills/README.md`), and the tracker recipes that live
+ * there are exactly where a grant like `Bash(gh issue view:*)` is driven. Reading only the
+ * two top-level files would fail a grant the skill demonstrably needs, purely because the
+ * recipe moved out of the unconditional load path.
  */
 const PROSE_FILES = ['SKILL.md', 'REFERENCE.md'];
+
+/**
+ * Every markdown file a skill ships that this reader takes commands from.
+ *
+ * What counts as a branch directory is `helpers.ts`' answer, not this file's — the
+ * branch-file suite asks the same question, and two readers disagreeing about it would
+ * leave a real branch directory checked by neither.
+ */
+function prosePaths(skill: string): string[] {
+  const dir = join(ROOT, 'skills', skill);
+  return [
+    ...PROSE_FILES.map((f) => join(dir, f)),
+    ...branchFilesOf(dir).map((f) => join(dir, f))
+  ];
+}
 
 /**
  * Fence info strings read as shell.
@@ -572,8 +594,7 @@ function calls(skill: string): string[][] {
   if (hit) return hit;
 
   const found: string[][] = [];
-  for (const file of PROSE_FILES) {
-    const path = join(ROOT, 'skills', skill, file);
+  for (const path of prosePaths(skill)) {
     if (!existsSync(path)) continue;
     for (const source of shellSources(body(readFileSync(path, 'utf8'))))
       found.push(...invocations(source));
@@ -903,7 +924,7 @@ describe('a grant is no broader than the calls the skill drives', () => {
       const prefix = tokens(prefixOf(tool));
       assert.ok(
         calls(skill).some((c) => drives(c, prefix)),
-        `${skill}: "${tool}" pre-approves a command no recipe in its SKILL.md or REFERENCE.md drives — drop the grant, show the call, or name it in UNDEMONSTRATED with the reason this reader cannot see it`
+        `${skill}: "${tool}" pre-approves a command no recipe in its SKILL.md, REFERENCE.md or branch files drives — drop the grant, show the call, or name it in UNDEMONSTRATED with the reason this reader cannot see it`
       );
     }
   });

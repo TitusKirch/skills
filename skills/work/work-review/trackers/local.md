@@ -1,0 +1,9 @@
+# Tracker — local (files)
+
+The **local files** branch of `work-review` — reached when `work.tracker` (falling back to `issue.tracker`) resolves to `local`. Everything a run needs whatever its tracker stays in `REFERENCE.md`.
+
+**A "label move" here is a frontmatter write.** The same transitions in the same order — lease first (`reviewRequested → reviewing`, writing `assignee`), verdict after — but each is one rewritten `state:` line, guarded by the state it expects to replace and committed by a `mv`, in the **main working tree's** store rather than the current worktree's copy (`work-implement`'s `trackers/local.md`). `work.linear.states` is inert here, so the verdict writes the lifecycle key and nothing else.
+
+**The write asserts that tree is on `pr.base` first, and fails loudly when it is not.** Under `work.branch: worktree` with `parallel: false` the implement drain checks issue branches out **in place**, taking the store with them — so a verdict written while the tree is off `pr.base` commits onto someone else's PR branch and is invisible to every later read. Stopping is the correct outcome there; retry once the other drain is back on `pr.base`, or run that checkout under `branch:<name>`, where the store never moves. The rule, the assert and why the cell is supported rather than refused: **Which tree is the tracker** in `work-implement`'s `trackers/local.md`.
+
+**The mechanism transfers; the lease's cross-clone property does not.** Writing `reviewing` as a frontmatter field is a faithful translation of the label flip, and nothing above changes — but it does **not** carry the guarantee **The `reviewing` lease** in `REFERENCE.md` describes, because the store lives inside the checkout. Read that section before enabling `labels.reviewing` here; the recommendation there is to leave it off.

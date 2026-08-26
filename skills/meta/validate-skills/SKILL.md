@@ -169,4 +169,4 @@ opening for the summaries it writes on request; one house frame, reached two way
 
 ## Reference
 
-The spec rule catalog and its tier assignment, the client extension matrix (which client defines which field) and the one re-tiered `skills-ref` line, the Codex `agents/openai.yaml` sidecar and OpenCode's tolerance, discovering skills, getting and running `skills-ref` (install, invocation, exit codes, output), the unavailable-tool handling, the house-style tier — cross-skill references included — with this repo as the worked example, and where `skill-creator` fits: [REFERENCE.md](REFERENCE.md).
+**Open it at step 2, before running `skills-ref`** — how to obtain and invoke it, what its exit codes and output mean, and the one line this repo re-tiers on purpose; **when it cannot be obtained**, the unavailable-tool handling that stops a weaker hand-check being reported as a pass. **At step 3**, the house-style tier, cross-skill references included. And **whenever a finding's tier is in doubt**, the rule catalog and the client matrix settle it, and place `skill-creator`: [REFERENCE.md](REFERENCE.md).
