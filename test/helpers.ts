@@ -6,12 +6,53 @@
 // repo and pass for the wrong reason.
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  mkdtempSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * Directories inside a skill folder that hold something other than branch files.
+ *
+ * `templates/` holds assets the agent *fills in or runs* rather than recipes it drives —
+ * a document skeleton's placeholder text is not a call — and `evals/` is dev-only fixture
+ * data stripped before install. Everything else one level down is a branch directory
+ * (`skills/README.md`, **Branch files**).
+ *
+ * Shared rather than answered per suite: two readers disagreeing about what a branch
+ * directory is would leave a real one checked by neither.
+ */
+export const NOT_BRANCH_DIRS = new Set(['templates', 'evals']);
+
+/** The branch directories a skill ships, named relative to the skill folder. */
+export function branchDirsOf(skillDir: string): string[] {
+  return readdirSync(skillDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !NOT_BRANCH_DIRS.has(entry.name))
+    .map((entry) => entry.name)
+    .sort();
+}
+
+/**
+ * Every branch file a skill ships, as a path relative to the skill folder — the form a
+ * markdown link target in `SKILL.md` takes, so the two compare directly.
+ */
+export function branchFilesOf(skillDir: string): string[] {
+  return branchDirsOf(skillDir).flatMap((dir) =>
+    readdirSync(join(skillDir, dir))
+      .filter((file) => file.endsWith('.md'))
+      .sort()
+      .map((file) => `${dir}/${file}`)
+  );
+}
 
 export interface Sandbox {
   /** A real git repo — the resolver locates the config via `git rev-parse`. */

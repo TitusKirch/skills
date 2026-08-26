@@ -15,9 +15,9 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT } from './helpers.ts';
+import { ROOT, branchFilesOf } from './helpers.ts';
 import { discoverSkills, paths } from '../scripts/gen-skills.ts';
 
 /**
@@ -284,24 +284,18 @@ const NO_BASH: Record<string, string> = {
 const PROSE_FILES = ['SKILL.md', 'REFERENCE.md'];
 
 /**
- * Directories inside a skill folder that are not branch files.
+ * Every markdown file a skill ships that this reader takes commands from.
  *
- * `templates/` holds assets the agent *fills in or runs* rather than recipes it drives —
- * a document skeleton's placeholder text is not a call — and `evals/` is dev-only fixture
- * data stripped before install. Everything else one level down is a branch directory.
+ * What counts as a branch directory is `helpers.ts`' answer, not this file's — the
+ * branch-file suite asks the same question, and two readers disagreeing about it would
+ * leave a real branch directory checked by neither.
  */
-const NOT_BRANCH_DIRS = new Set(['templates', 'evals']);
-
-/** Every markdown file a skill ships that this reader takes commands from. */
 function prosePaths(skill: string): string[] {
   const dir = join(ROOT, 'skills', skill);
-  const paths = PROSE_FILES.map((f) => join(dir, f));
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (!entry.isDirectory() || NOT_BRANCH_DIRS.has(entry.name)) continue;
-    for (const file of readdirSync(join(dir, entry.name)))
-      if (file.endsWith('.md')) paths.push(join(dir, entry.name, file));
-  }
-  return paths;
+  return [
+    ...PROSE_FILES.map((f) => join(dir, f)),
+    ...branchFilesOf(dir).map((f) => join(dir, f))
+  ];
 }
 
 /**
