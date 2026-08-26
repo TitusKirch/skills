@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.19.0](https://github.com/TitusKirch/skills/compare/v0.18.0...v0.19.0) (2026-08-26)
+
+
+### Features
+
+* **prune-branches:** trim the body under the advisory size budget ([57d23e0](https://github.com/TitusKirch/skills/commit/57d23e040a3ece3e96cd18f72135273121e35de8)), closes [#240](https://github.com/TitusKirch/skills/issues/240)
+* **skills:** move per-skill rationale out of the shipped mechanics ([25bc8e7](https://github.com/TitusKirch/skills/commit/25bc8e7b73a1cbb40d356b7247159c59e8a0649e)), closes [#239](https://github.com/TitusKirch/skills/issues/239)
+* **skills:** move the tracker recipes into branch files ([f07f6b8](https://github.com/TitusKirch/skills/commit/f07f6b808924689b60401f69076dabc0a3cfd03f)), closes [#238](https://github.com/TitusKirch/skills/issues/238)
+* **skills:** read a skill's branch files as prose it drives ([443b509](https://github.com/TitusKirch/skills/commit/443b509544474c897895aed7fa8de3ef76cfaf86)), closes [#238](https://github.com/TitusKirch/skills/issues/238)
+* **skills:** state the occasion in each reference pointer ([f31fae4](https://github.com/TitusKirch/skills/commit/f31fae40547eae6f68e41c29e0b8c1797a83fd1f)), closes [#242](https://github.com/TitusKirch/skills/issues/242)
+* **update-deps:** add container images as a fifth ecosystem ([5aa9c82](https://github.com/TitusKirch/skills/commit/5aa9c8225049a23d554cfc8896a8e2ec4a6c2185)), closes [#233](https://github.com/TitusKirch/skills/issues/233)
+* **update-deps:** add GitHub Actions refs as a sixth ecosystem ([3279f6f](https://github.com/TitusKirch/skills/commit/3279f6fb15cbb453f11274021309c049538f900b)), closes [#234](https://github.com/TitusKirch/skills/issues/234)
+* **update-deps:** add GitLab CI references as a seventh ecosystem ([0ada66c](https://github.com/TitusKirch/skills/commit/0ada66c55da06fa5c2fb9278db071f3e2ef90eab)), closes [#235](https://github.com/TitusKirch/skills/issues/235)
+* **update-deps:** move the ecosystem models into branch files ([a269f21](https://github.com/TitusKirch/skills/commit/a269f213dc75dd32a4622c25403ef4594aea4426)), closes [#238](https://github.com/TitusKirch/skills/issues/238)
+* **update-deps:** trim the body under the advisory size budget ([9d34c23](https://github.com/TitusKirch/skills/commit/9d34c23f93be61120de33d775c479b3463e0875f)), closes [#240](https://github.com/TitusKirch/skills/issues/240)
+* **work-implement-queue:** trim the body toward the advisory size budget ([2826c38](https://github.com/TitusKirch/skills/commit/2826c38abdab209cb8cc71625111402d9314fa7e)), closes [#240](https://github.com/TitusKirch/skills/issues/240)
+
+
+### Bug Fixes
+
+* **prune-branches:** drop the duplicated header row from the classify table ([33f6a3d](https://github.com/TitusKirch/skills/commit/33f6a3d84083856f611a6479309e83986f8b05f8)), closes [#240](https://github.com/TitusKirch/skills/issues/240)
+* **pull-request:** the stacked-branch check is not unconditional ([3876f44](https://github.com/TitusKirch/skills/commit/3876f4423f724099ebf67366621ae867c21d026c)), closes [#242](https://github.com/TitusKirch/skills/issues/242)
+* **skills:** trim the two longest reference pointers under the size budget ([e0838ce](https://github.com/TitusKirch/skills/commit/e0838ce35ff6534724de215f2ab19c609edad3dc)), closes [#242](https://github.com/TitusKirch/skills/issues/242)
+* **update-deps:** resolve an action tag to a commit, not a tag object ([27d9ca8](https://github.com/TitusKirch/skills/commit/27d9ca80ba1e4865cde120a23e90846e614d4529)), closes [#234](https://github.com/TitusKirch/skills/issues/234)
+
 ## [0.18.0](https://github.com/TitusKirch/skills/compare/v0.17.0...v0.18.0) (2026-08-05)
 
 
