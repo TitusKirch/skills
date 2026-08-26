@@ -206,4 +206,4 @@ opening for the summaries it writes on request; one house frame, reached two way
 
 ## Reference
 
-**Open it at step 2** for the sources a never-offered set is built from — miss one and the run offers a branch it must never delete. **At step 3** for the squash- and rebase-merge detection, the case a plain `git branch --merged` answers wrongly, and for the four categories in full. **At step 5** for the deletion mechanics and how a branch deleted in error is recovered. The `git` / forge recipes, the config keys and the report layout are there for the steps around them: [REFERENCE.md](REFERENCE.md).
+**At step 2** for the sources a never-offered set is built from, **step 3** for the four categories and the squash- and rebase-merge detection `git branch --merged` gets wrong, **step 5** for deletion and recovery, **step 6** for the report layout: [REFERENCE.md](REFERENCE.md).
