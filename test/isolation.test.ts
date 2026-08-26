@@ -1,12 +1,20 @@
 // A skill is installable on its own, so nothing it ships may point outside its own
 // folder — not the generated config block, and not a hand-written "see also" into a
-// sibling skill. These tests enforce that, and that what stays inside still resolves.
+// sibling skill. These tests enforce that, that what stays inside still resolves, and —
+// for the branch files, which sit a directory down and are reached only by a pointer —
+// that everything inside is still reached.
 
 import { test, describe, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { ROOT, sandbox, type Sandbox } from './helpers.ts';
+import {
+  ROOT,
+  branchDirsOf,
+  branchFilesOf,
+  sandbox,
+  type Sandbox
+} from './helpers.ts';
 import { discoverSkills, paths } from '../scripts/gen-skills.ts';
 
 const boxes: Sandbox[] = [];
@@ -615,6 +623,80 @@ describe('nothing a skill ships points out of its folder', () => {
       }
     }
     assert.deepEqual(broken, [], 'intra-skill links must not dangle');
+  });
+});
+
+/**
+ * The skills whose material forks on one config value, and the directory each one's forks
+ * live in (`skills/README.md`, **Branch files**).
+ *
+ * Declared rather than discovered, for the reason every roster above is: both failure
+ * directions are silent on disk. A skill that grows a branch directory unlisted here would
+ * be checked by nothing, and an entry left behind by a skill that folded its branches back
+ * into `REFERENCE.md` would pin a shape that skill no longer has.
+ *
+ * One directory each, because the axis has to be decided before any deep file is opened —
+ * a second axis in the same skill is a second decision, and that is a different shape.
+ */
+const BRANCH_DIRS: Record<string, string> = {
+  'repo/update-deps': 'ecosystems',
+  'work/issue': 'trackers',
+  'work/refine-issue': 'trackers',
+  'work/work-implement': 'trackers',
+  'work/work-review': 'trackers'
+};
+
+/**
+ * A branch file no pointer reaches is worse than no split at all: the prose left
+ * `REFERENCE.md` and became *unreachable* rather than deep. The suite above checks that a
+ * pointer in `SKILL.md` resolves to something; this one checks the other direction, that
+ * every branch file on disk has a pointer at all.
+ *
+ * It asserts a **fact** — the file exists, and a line in `SKILL.md` links it — never a
+ * wording. Whether the pointer states *the branch that reaches the file*, which is the
+ * other half of the rule, is left to review: a syntactic stand-in for it (the sentence
+ * contains "when", a fixed clause shape) would be satisfied by "Read it when you need the
+ * reference", which is exactly the formality this is meant to catch.
+ */
+describe('every branch file is reachable from the SKILL.md that forks on it', () => {
+  test('the branch directories on disk are exactly the roster', () => {
+    const onDisk: Record<string, string[]> = {};
+    for (const path of allSkills()) {
+      const dirs = branchDirsOf(join(ROOT, 'skills', path));
+      if (dirs.length > 0) onDisk[path] = dirs;
+    }
+    const declared = Object.fromEntries(
+      Object.entries(BRANCH_DIRS).map(([path, dir]) => [path, [dir]])
+    );
+    assert.deepEqual(
+      onDisk,
+      declared,
+      'a branch directory appeared or vanished without the roster moving'
+    );
+  });
+
+  test('every branch file is named from its own SKILL.md', () => {
+    const unreachable: string[] = [];
+    let read = 0;
+    for (const path of Object.keys(BRANCH_DIRS)) {
+      const dir = join(ROOT, 'skills', path);
+      // Only `SKILL.md` holds the links: `REFERENCE.md` and the branch files name each
+      // other in prose, so a mention there is not a pointer an agent can follow.
+      const named = new Set(relativeLinks(join(dir, 'SKILL.md')));
+      for (const file of branchFilesOf(dir)) {
+        read += 1;
+        if (!named.has(file)) unreachable.push(`${path}: ${file}`);
+      }
+    }
+    assert.ok(
+      read > 0,
+      'no branch file was read — the walk found nothing to check'
+    );
+    assert.deepEqual(
+      unreachable,
+      [],
+      'a branch file that no SKILL.md pointer names is unreachable once installed'
+    );
   });
 });
 
