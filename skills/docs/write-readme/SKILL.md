@@ -115,5 +115,5 @@ of a file.
 
 ## Reference
 
-- Section emoji catalogue, badge templates and color palette: see [REFERENCE.md](REFERENCE.md).
-- Skeleton to copy: [templates/README.template.md](templates/README.template.md).
+- **Open it the moment a hero, a section, a feature bullet or a badge needs its house-style value.** Every one of them is a catalogue lookup, never a choice a run makes for itself — a guessed emoji or an invented badge colour is exactly the drift this skill exists to prevent: [REFERENCE.md](REFERENCE.md).
+- **Copy this first and fill it in place** — the canonical section order is already in it: [templates/README.template.md](templates/README.template.md).

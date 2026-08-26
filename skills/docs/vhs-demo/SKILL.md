@@ -119,5 +119,5 @@ Quick start covers the first run; afterwards only the cadence differs:
 
 ## Reference
 
-- Tape directives, theme list and a worked envprism walkthrough: [REFERENCE.md](REFERENCE.md).
-- Templates to copy: [`templates/vhs.Dockerfile`](templates/vhs.Dockerfile), [`templates/demo.tape`](templates/demo.tape).
+- **Open it while writing or editing the `.tape`** — when the directive you need is not already in the tape in front of you, when a theme has to be named exactly, or when a first demo needs a worked walkthrough to take its pacing from: [REFERENCE.md](REFERENCE.md).
+- **Copy these on the first run, before the quick start assumes they exist**: [`templates/vhs.Dockerfile`](templates/vhs.Dockerfile), [`templates/demo.tape`](templates/demo.tape).

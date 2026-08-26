@@ -170,4 +170,4 @@ opening for the summaries it writes on request; one house frame, reached two way
 
 ## Reference
 
-Config keys, the promotion modes in detail, the `gh` recipes, the validation checklist, and the reasoning behind the defaults: [REFERENCE.md](REFERENCE.md).
+**Open it at step 2** for the promotion modes and the chains a repo with more than two stages walks — that is what decides whether this run opens a promotion PR at all, or none. **At step 4** for the validation checklist the human's decision rests on, and **at step 5** for the `gh` recipes and how a release is marked shipped. It also states why the skill drives GitHub alone and stops on any other `forge` value, which is a settled decision rather than a gap: [REFERENCE.md](REFERENCE.md).

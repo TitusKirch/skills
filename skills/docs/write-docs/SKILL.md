@@ -156,8 +156,9 @@ of a file.
 
 ## Reference
 
-- Section catalogue, core, presets, frontmatter contract, page types, status marker, ADR contract, reconcile rules, config keys: [REFERENCE.md](REFERENCE.md).
-- Page skeletons to copy: [`templates/`](templates/).
+- **Open it where the body's routing matrix stops deciding for you** — which sections a preset scaffolds, what frontmatter and status marker a new page carries, which type a slug is allowed to be, whether a subject belongs in a folder or a section, and what a reconcile may change rather than only report: [REFERENCE.md](REFERENCE.md).
+- **Open it in full before writing or importing an ADR, every time.** `99.adr/` is append-only, so the id, the naming, the required sections and the supersession rule have to be right on entry — there is no later edit that repairs them: [REFERENCE.md](REFERENCE.md#architecture-decision-records).
+- **Copy one per page you are about to create**, matched to that page's type: [`templates/`](templates/).
 
 ## Gap report (mandatory final step)
 

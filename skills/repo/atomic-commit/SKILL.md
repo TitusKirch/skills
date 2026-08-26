@@ -118,4 +118,4 @@ of a file.
 
 ## Reference
 
-Convention-detection recipes, hunk-staging mechanics, the type catalogue, commitlint-aware rules, and worked examples: [REFERENCE.md](REFERENCE.md).
+**Open it at step 1** for the recipes that read a repo's conventions instead of assuming them — the commitlint rules in force, the scope vocabulary, and whether the repo is release-gated. **At step 3, the moment one file carries two concerns**, for the hunk-level staging mechanics and a worked split of exactly that. **Whenever a commit's type or grouping is not obvious**, for the type catalogue, the grouping heuristics and the plan's output shape: [REFERENCE.md](REFERENCE.md).

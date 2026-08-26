@@ -117,4 +117,4 @@ of a file.
 
 ## Reference
 
-Per-forge detection recipes (GitHub and GitLab), how the forge and its host are resolved, stacked-branch detection and its refusal cases, the umbrella-title heuristics, template-filling rules, the plan-output format, and worked examples: [REFERENCE.md](REFERENCE.md).
+**Open it at step 1** for the per-forge detection recipes and how the forge and its host are resolved — a self-hosted instance is settled there rather than guessed — and, on **every** branch, for the stacked-branch reading: that check is unconditional because basing a PR wrongly fails silently, and its refusal cases say where it stops rather than picking a base. **At step 3** for the umbrella-title heuristics and the template-filling rules, **at step 4** for the plan's exact shape: [REFERENCE.md](REFERENCE.md).

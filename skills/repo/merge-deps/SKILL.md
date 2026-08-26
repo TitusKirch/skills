@@ -180,4 +180,4 @@ opening for the summaries it writes on request; one house frame, reached two way
 
 ## Reference
 
-Config keys, the queue's author on each forge, the merge modes, the two-bases problem, the `gh`/`glab`/`git` recipes, the assessment checklist, and the reasoning behind the defaults: [REFERENCE.md](REFERENCE.md).
+**Open it at step 2** for the queue's author on each forge and the author-authority rule selection turns on — reading the identity wrong here is how a run touches somebody else's request. **At step 3** for the assessment checklist and the two-bases problem, which is why a green check on the request as filed is not the evidence it looks like. **At step 4** for the `gh` / `glab` / `git` recipes, the merge modes, and the cascading rebase that follows once one request lands and stales the rest. Config keys belong to step 1: [REFERENCE.md](REFERENCE.md).

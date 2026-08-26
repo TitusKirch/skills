@@ -178,4 +178,4 @@ opening for the summaries it writes on request; one house frame, reached two way
 
 ## Reference
 
-The redundancy catalogue with before/after pairs, the protected list, the directive catalogue per ecosystem, comment forms by language, scope recipes, removal mechanics, and the reasoning behind the defaults: [REFERENCE.md](REFERENCE.md).
+**Open it at step 3, before calling any comment redundant** — the delete test worked through the redundancy catalogue's before/after pairs, the protected list, and the directives that only look like comments (`eslint-disable`, `noqa` and the rest), which is where a run that guesses does real damage. **At step 1** for the scope recipes, **at step 2** for the comment forms the language in front of you actually uses, and **at step 5** for the removal mechanics: [REFERENCE.md](REFERENCE.md).
