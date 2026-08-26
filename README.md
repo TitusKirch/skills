@@ -87,7 +87,7 @@ Commits, pull requests, releases and dependency updates — each driven by the r
 | [`prune-comments`](skills/repo/prune-comments/SKILL.md) | Reports comments that only restate the code, and removes them after confirmation.                                               |
 | [`pull-request`](skills/repo/pull-request/SKILL.md)     | Opens a pull request (GitLab, a merge request) from the current branch; forge and host chosen by config.                        |
 | [`release`](skills/repo/release/SKILL.md)               | Drives the release-please flow to a shipped release — promotes the integration branch, then merges the release PR. GitHub-only. |
-| [`update-deps`](skills/repo/update-deps/SKILL.md)       | Updates a repo's dependencies via its own updater — minor by default, honouring gates and pins.                                 |
+| [`update-deps`](skills/repo/update-deps/SKILL.md)       | Updates a repo's dependencies through the repo's own tooling — minor by default, honouring gates and pins.                      |
 
 ### Tracked work
 
