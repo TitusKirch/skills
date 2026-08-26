@@ -1,11 +1,13 @@
 ---
 title: 'Let rationale travel with the skill'
 description: 'A skill keeps its own Decisions section, because the ADR log it would otherwise point at does not get installed.'
-status: 'accepted'
-date: '2026-07-27'
+status: 'superseded'
+date: '2026-08-26'
 ---
 
 # ADR-0014 — Let rationale travel with the skill
+
+> **Superseded by** [ADR-0031](0031-keep-rationale-as-repo-memory.md)
 
 ## Context
 

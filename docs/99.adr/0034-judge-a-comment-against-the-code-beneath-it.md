@@ -1,0 +1,31 @@
+---
+title: 'Judge a comment against the code beneath it'
+description: 'What was settled for prune-comments: the working diff is the default scope, a contradiction is reported rather than removed, and uncertainty is expressed as never-preselected rather than as never-listed.'
+status: 'accepted'
+date: '2026-08-26'
+---
+
+# ADR-0034 — Judge a comment against the code beneath it
+
+## Context
+
+`prune-comments` finds comments made redundant by the code beneath them and reports them as removal candidates. The issue that specified it left three questions open — the category and name, the default scope, and how far the language catalogue has to reach. Relocated from the skill's `REFERENCE.md` under [ADR-0031](0031-keep-rationale-as-repo-memory.md); every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
+
+## Decision
+
+- **Category `repo/`, name `prune-comments`.** The issue weighed `repo/` against `meta/`; `meta/` is for configuring the skills themselves, so it never fit. `docs/` was considered and rejected on a clean line: its skills produce and maintain **documentation artifacts** — a README, a `docs/` tree, a demo GIF — while this one edits **source files** and hands back a dirty tree, exactly as `update-deps` does. The verb-noun name matches its neighbours (`merge-deps`, `update-deps`, `write-docs`), and `prune-` is already this repo's verb for _report the candidates, delete only after confirmation_.
+- **Scope defaults to the working diff; a whole path only when named.** Judging a comment means reading the code around it, so the run's cost is real and a repo-wide sweep produces a report nobody reads. The change in front of the reader is also where the value is: a change is the single most common reason a comment stopped being true. Hence the fallback chain — working diff → the branch's commits against its integration branch → **ask**. "Scan everything" is available, but it is a request, never a default.
+- **A comment attached to a changed line is in scope even when the comment itself is untouched.** The narrower reading (only comment lines inside the diff) misses the case the skill exists for: the code moved, the comment did not. The wider reading (every comment in a touched file) turns a focused change into an unrelated diff. Attachment — directly above, or trailing — is the line between them.
+- **Languages: judgement is language-agnostic, the catalogue is not.** The delete test needs no parser, so nothing is gated on a language list; what is gated is the **doc form**, because that decides the never-preselected tier. The table covers what the house writes (TS/JS, PHP, Vue/HTML/CSS, Rust, Go, Python, shell, YAML, SQL); anything else is judged the same way, and lands in the never-preselected tier when its doc form cannot be confirmed. Rejected: shipping comment-syntax regexes per language — that is the linter's approach, and the linter is what this skill exists to complement.
+- **An unconfirmable doc convention downgrades a candidate; it does not delete the file from the run.** The alternative — report the language as skipped and list nothing — was rejected: it throws away a judgement the run is perfectly able to make and hides plain restatements behind a language the table happens not to name. The tier already exists for exactly this shape of uncertainty ("we judged, you decide"), so the uncertainty is expressed as _never preselected_, not as _never listed_. _Skipped_ stays what it says: paths the run never read.
+- **Two tiers of consent, not one.** Public API doc comments are the sharpest disagreement in the domain — thin ones are noise to one reader and the editor hover to the next, and they can feed generated documentation with consumers outside the repo. Listing them without preselecting them settles it without the skill taking a side.
+- **Contradictions are reported, never removed.** A comment that disagrees with its code is the highest-value finding of the whole run, and its resolution is genuinely ambiguous: correcting the comment and correcting the code are opposite outcomes. Silently deleting it would hide the discrepancy — the one failure mode worse than leaving noise in place.
+- **Commented-out code is out of scope.** It is dead code in comment clothing, not a comment restating anything: the question is "is this still wanted?", not "does the code say this already". Different question, different risk, and the linter rules the issue mentions already handle the mechanical part. It is named in the report when the run passes it, and never touched.
+- **No config section of its own, but three shared keys are read.** Every knob it could _own_ — the languages, the scope, how aggressive to be — is a per-run decision, and the skill has no unattended act to disable: it plans first, writes after confirmation, and never commits or pushes, so **not invoking it** is the off switch. That reasoning covers the knobs; it does not cover the facts. The check command (`verify`) and the integration branch (`pr.base`) are standing properties of the repo, already declared, already read by `update-deps` and `prune-branches` respectively — detecting them here would mean running a different gate against a different base than the repo says it uses. So the skill reads `verify`, `pr.base` and `language`, owns no section, and adds none. Revisit when a repo genuinely needs a standing prune policy; adding a section later is additive.
+- **It does not commit.** The verified, dirty tree is the hand-off — `atomic-commit` owns commit messages and this repo's conventions, `pull-request` owns PRs. Same delegation every writing skill here makes.
+
+## Consequences
+
+The never-preselected tier is what absorbs every kind of uncertainty this skill meets — a public-API doc comment, a language whose doc convention could not be confirmed — so nothing has to be dropped from the run to be handled honestly. _Skipped_ keeps its literal meaning: paths the run never read.
+
+Owning no config section is affordable only because the skill has no unattended act: it plans first, writes after confirmation, and never commits or pushes, so not invoking it is the off switch. The three keys it does read — `verify`, `pr.base`, `language` — are standing facts about the repo rather than knobs for this run.
