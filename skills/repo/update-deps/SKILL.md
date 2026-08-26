@@ -13,13 +13,13 @@ allowed-tools:
 
 # update-deps
 
-Move a repo's dependencies to their **newest allowed versions** — **minor by default**, `patch` or `major` only when explicitly asked. **Manual invocation only.** The skill **plans first** and writes only after confirmation, and it **never commits, pushes, opens a PR or merges** — the verified working tree is the deliverable ([why](REFERENCE.md#decisions)).
+Move a repo's dependencies to their **newest allowed versions** — **minor by default**, `patch` or `major` only when explicitly asked. **Manual invocation only.** The skill **plans first** and writes only after confirmation, and it **never commits, pushes, opens a PR or merges** — the verified working tree is the deliverable. `atomic-commit` owns commit messages and this repo's conventions and `pull-request` owns PRs, so a message derived here would be a second implementation of theirs, free to drift.
 
 Its one principle, from which everything else follows:
 
 > **The repo's own tooling and config decide what "allowed" means.** A release-age gate, an exact pin, a declared constraint, a private registry — each is a deliberate choice to **honour**, never an obstacle to route around. What the skill does not move, it **reports with the reason**. Silence is the one failure mode this skill exists to prevent.
 
-The sibling skill `merge-deps` triages the **Dependabot queue** — updates a bot already opened as PRs. This one **performs** the updates locally. Same domain, disjoint machinery; [why they stay separate](REFERENCE.md#decisions).
+The sibling skill `merge-deps` triages the **Dependabot queue** — updates a bot already opened as PRs. This one **performs** the updates locally. Same domain, disjoint machinery, and they cannot collide: `merge-deps` refuses any request its configured bot did not author, and this skill authors none.
 
 ## Workflow
 
@@ -62,6 +62,8 @@ So **always diff the gated plan against an ungated read** (`--maturity-period 0`
 **Where no gate can exist, say so — never just skip the step.** Cargo, Go, container images, GitHub Actions and GitLab CI have no `minimumReleaseAge` equivalent (neither the Go module proxy, nor any container registry, nor GitHub's tag API, nor GitLab's tag and catalog APIs offer one), so there is no gated-versus-ungated diff to run for them. Report that section **not applicable** for those ecosystems: a step silently omitted is indistinguishable from a step that found nothing withheld, which is the exact silence this skill exists to prevent.
 
 Same duty for **exact pins**: the default scope of `taze` skips them entirely, so they are invisible rather than reported. Do a `--include-locked` read to see them and report them as **held — exact pin**. [Pins](REFERENCE.md#exact-pins).
+
+**`packageManager` gets a line of its own, never a place inside a count.** It is a **toolchain** change rather than a dependency: bumping it re-points every contributor and every CI runner at once, and under `packageManagerStrict` a mismatch is fatal rather than cosmetic. So it is planned and reported on its own line, and never folded into "3 minor updates".
 
 Present the plan — moved, held, and why — and **write only after confirmation**. **The per-ecosystem package lists _are_ the plan**, so they arrive rendered, never folded away: several dozen lines of packages is the normal size of this plan, and it is exactly that bulk a human has to read to answer. How that constrains the form — and what to do instead when a list runs long — is [Presenting the plan](#presenting-the-plan) below; it binds this step and the report alike. Plan-only triggers ("dry run", "just show me", "nur den Plan", "nicht schreiben") → print the plan and the exact commands, then stop.
 

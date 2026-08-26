@@ -58,7 +58,7 @@ Its one principle, from which everything else follows:
 
 **A third verdict exists, and it is not removal.** A comment that **contradicts** the code has drifted, and deleting it hides a discrepancy someone needs to see — the fix may be to correct the comment, or to correct the code. Report it in its own block as _contradicts the code_, and **change nothing**.
 
-**Out of scope, deliberately: commented-out code.** It is dead code wearing comment syntax, not a comment that restates anything — a different judgement with a different risk. Name it in the report if you pass it; never remove it. [Why](REFERENCE.md#decisions).
+**Out of scope, deliberately: commented-out code.** It is dead code wearing comment syntax, not a comment that restates anything — a different judgement with a different risk. The question there is "is this still wanted?", not "does the code already say this" — and the linter rules for it already exist. Name it in the report if you pass it; never remove it.
 
 ### 4. Present — candidates with their evidence, before anything is edited
 
