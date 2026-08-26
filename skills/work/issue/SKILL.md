@@ -37,7 +37,7 @@ Create, update, and search issues without caring which tracker the repo uses. On
 - **No / incomplete config, or `/issue setup`** → run the guided setup (step below). Setup is also where the catalog cache is first filled.
 - **Catalog cache** — read `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (JSON). Reuse when younger than ~3 days **and** the `tracker` is unchanged; refresh when missing, stale, the tracker changed, or the user passes `--refresh`. Label staleness in the plan header (`Catalogs (cached, 2d ago): …`).
 
-Config/cache schema, the full setup flow, and tracker recipes: [REFERENCE.md](REFERENCE.md).
+Config/cache schema, the full setup flow and everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). The tracker recipes are one file each, and step 2 settles which: [`trackers/github.md`](trackers/github.md), [`trackers/gitlab.md`](trackers/gitlab.md), [`trackers/linear.md`](trackers/linear.md), [`trackers/local.md`](trackers/local.md).
 
 ### 2. Determine the tracker
 
@@ -64,7 +64,7 @@ What each of those rests on — how a template is picked and what `blank_issues_
 ### 5. Bulk & sub-issues
 
 - "Make X issues" / "split this into sub-issues" → draft **all** of them and present as **one** bundled plan.
-- Parent/child: Linear via `parentId`; GitHub via the sub-issues API. Mechanics: [REFERENCE.md](REFERENCE.md#sub-issues).
+- Parent/child: Linear via `parentId`; GitHub via the sub-issues API. Mechanics: [`trackers/github.md`](trackers/github.md#sub-issues).
 
 ### 6. Present the plan (always, before any write)
 
@@ -119,4 +119,6 @@ of a file.
 
 ## Reference
 
-Config/cache schema, the guided setup flow, the tracker-neutral issue-template rules, the default body structure for when none applies, GitHub and Linear tracker recipes, sub-issue mechanics, the plan-output format, and worked examples: [REFERENCE.md](REFERENCE.md).
+Config/cache schema, the guided setup flow, the tracker-neutral issue-template rules, the default body structure for when none applies, the plan-output format, and worked examples — everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md).
+
+**One file per tracker recipe, and a repo reads exactly one.** `issue.tracker` is a single value, so step 2 settles the branch before any recipe is opened: [`trackers/github.md`](trackers/github.md), [`trackers/gitlab.md`](trackers/gitlab.md), [`trackers/linear.md`](trackers/linear.md), [`trackers/local.md`](trackers/local.md) (sub-issue mechanics ride with the GitHub one).

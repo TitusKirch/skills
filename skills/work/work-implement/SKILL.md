@@ -26,7 +26,7 @@ This skill is the **implement half** of a two-loop workflow: it builds and pushe
 
 Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included); the `work.*` section holds tracker, label lifecycle, branch strategy, the [feedback destination](REFERENCE.md#feedback-destination) and Linear scope. Resolution per setting: **config → default**. Determine the tracker (`work.tracker`, falling back to `issue.tracker`) and confirm it is available/authenticated. Reuse the `issue` catalog cache for labels/teams/states.
 
-Config schema, the full lifecycle and all mechanics: [REFERENCE.md](REFERENCE.md).
+Config schema, the full lifecycle and everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). The tracker recipes are one file each, and this step settles which: [`trackers/github.md`](trackers/github.md), [`trackers/gitlab.md`](trackers/gitlab.md), [`trackers/linear.md`](trackers/linear.md), [`trackers/local.md`](trackers/local.md).
 
 ### 2. Resolve the target issue
 
@@ -109,4 +109,6 @@ Inside a `work-implement-queue` drain nobody waits on this worker — return `re
 
 ## Reference
 
-Config schema, the lifecycle state machine, selection query, lease & race rules, the test discipline `tdd` carries, branch strategies (`worktree` / `branch:<name>`, sequential & parallel) and the two tracker recipes: [REFERENCE.md](REFERENCE.md). Why it is shaped this way: [DESIGN.md](DESIGN.md).
+Config schema, the lifecycle state machine, selection query, lease & race rules, the test discipline `tdd` carries and the branch strategies (`worktree` / `branch:<name>`, sequential & parallel) — everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). Why it is shaped this way: [DESIGN.md](DESIGN.md).
+
+**One file per tracker recipe, and a repo reads exactly one.** `work.tracker` (falling back to `issue.tracker`) is a single value, so step 1 settles the branch before any recipe is opened: [`trackers/github.md`](trackers/github.md), [`trackers/gitlab.md`](trackers/gitlab.md), [`trackers/linear.md`](trackers/linear.md), [`trackers/local.md`](trackers/local.md).

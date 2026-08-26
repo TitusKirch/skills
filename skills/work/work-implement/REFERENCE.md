@@ -1,6 +1,6 @@
 # work-implement / work-implement-queue — Reference
 
-Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement-queue` (the drain). One tracker per repo (GitHub `gh` / GitLab `glab` / Linear MCP / [local files](#tracker--local-files)), chosen by config, on a host resolved per repo ([The forge and its host](#the-forge-and-its-host)). Reuses the `issue` skill's config file and catalog cache.
+Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement-queue` (the drain). One tracker per repo — GitHub `gh`, GitLab `glab`, Linear MCP, local files — chosen by config, one recipe each under `trackers/`, of which a repo reads exactly one, on a host resolved per repo ([The forge and its host](#the-forge-and-its-host)). Reuses the `issue` skill's config file and catalog cache.
 
 ## Principle
 
@@ -8,7 +8,7 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 
 **Config key vs label string.** The states are keyed by their config names — `reviewRequested`, `reviewing`, `changesRequested` — while the label _strings_ default to `ai: review requested`, `ai: reviewing`, `ai: changes requested`. This file names states by their **config key**; the human-facing diagrams below use the readable label. A repo that labels its issues differently pins its own string under `work.labels.<key>` — the key is what every rule below reasons about, never the string.
 
-**Two loops share this lifecycle.** The **implement loop** ([`work-implement`](SKILL.md) / `work-implement-queue`) owns `ready`/`changes-requested → working → reviewRequested`; the **review loop** (`work-review` / `work-review-queue`) owns `reviewRequested → reviewing → {done | changes-requested | needs human | blocked}`, reviewed by a **different** agent. `reviewRequested` (implement → review) and `changes-requested` (review → implement) are the two hand-off labels; `reviewing` is the review loop's **lease** — the tracker-global claim `working` is for the implement loop, giving cross-clone mutual exclusion the checkout-local lock cannot **on a tracker that is a server** (`github`, `linear`); on [`local`](#tracker--local-files) the store is inside the checkout, so the lease's domain collapses onto the lock's and it is not tracker-global at all — **The `reviewing` lease** in `work-review`'s REFERENCE states the consequence. **`reviewing` is opt-in** (`labels.reviewing` defaults to **off**): with it off, the review loop acts straight off `reviewRequested` exactly as before — lock only, no lease. This file documents the shared mechanics and the implement side; the review side lives in `work-review`'s REFERENCE.
+**Two loops share this lifecycle.** The **implement loop** ([`work-implement`](SKILL.md) / `work-implement-queue`) owns `ready`/`changes-requested → working → reviewRequested`; the **review loop** (`work-review` / `work-review-queue`) owns `reviewRequested → reviewing → {done | changes-requested | needs human | blocked}`, reviewed by a **different** agent. `reviewRequested` (implement → review) and `changes-requested` (review → implement) are the two hand-off labels; `reviewing` is the review loop's **lease** — the tracker-global claim `working` is for the implement loop, giving cross-clone mutual exclusion the checkout-local lock cannot **on a tracker that is a server** (`github`, `linear`); on `local` (`trackers/local.md`) the store is inside the checkout, so the lease's domain collapses onto the lock's and it is not tracker-global at all — **The `reviewing` lease** in `work-review`'s REFERENCE states the consequence. **`reviewing` is opt-in** (`labels.reviewing` defaults to **off**): with it off, the review loop acts straight off `reviewRequested` exactly as before — lock only, no lease. This file documents the shared mechanics and the implement side; the review side lives in `work-review`'s REFERENCE.
 
 ## Config
 
@@ -71,14 +71,14 @@ Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement
 | `work.labels.reviewRequested`               | the "pushed, awaiting AI review" hand-off label; default `ai: review requested`                                                                                     |
 | `work.labels.reviewing`                     | the review loop's **lease** label (labelOrOff); **opt-in — defaults to off**, so an unset repo keeps lock-only review                                               |
 | `work.labels.needsTriage`                   | the "nobody has assessed this yet" label (labelOrOff); **opt-in — defaults to off**; see [contradictory labels](#contradictory-labels)                              |
-| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the [single source](#repo-scope) of "this Linear issue is this repo"                                                 |
+| `work.labels.repo`                          | Linear repo-scope label (a string) or `false`; the single source of "this Linear issue is this repo" (`trackers/linear.md`)                                         |
 | `work.labels.{changesRequested,needsHuman}` | the two review hand-off labels (labelOrOff); consumed by the `work-review` loop                                                                                     |
 | `work.review.maxRounds`                     | max AI-review rounds before the reviewer escalates to `needsHuman`; default 3 (see `work-review`)                                                                   |
 | `work.loop.mode`                            | how a [backpressure](#queue-state) wait is paced: `fixed`, `adaptive` or `auto`; default `auto` — [how long to wait](#how-long-to-wait--workloopmode)               |
 | `work.loop.wait`                            | seconds a repeating driver waits before re-checking a drain that ended in [backpressure](#queue-state); the floor under `adaptive`; default 120                     |
 | `work.loop.maxWait`                         | ceiling on a **single** wait, not a total budget; default 600 (Claude Code truncates a `Bash` call there)                                                           |
 | `work.priorityLabels`                       | GitHub priority labels, highest first; the `local` tracker matches its `priority` field against the same ladder; Linear ignores them (native priority field)        |
-| `work.local.dir`                            | `local` issue directory; falls back to `issue.local.dir`, then `.agents/issues` — see [Tracker — local](#tracker--local-files)                                      |
+| `work.local.dir`                            | `local` issue directory; falls back to `issue.local.dir`, then `.agents/issues` — see `trackers/local.md`                                                           |
 | `work.linear.team`                          | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                                                                  |
 | `work.linear.statuses`                      | Linear workflow states an eligible issue may sit in; must cover what `states` writes — see below                                                                    |
 | `work.linear.states`                        | Linear workflow state names; **no default**, and a [best-effort write](#the-board-has-a-second-writer) — see below                                                  |
@@ -502,7 +502,7 @@ Without this, a `working` orphan carries neither `ready` nor `reviewRequested`, 
 
 The reclaim is gated by the **same assignee/age guard as the implement reconcile** (above), so one clone never kills another clone's **live** review: a `reviewing` issue assigned to a **different** runner — or, under one **shared bot identity**, to this runner — is presumed **live** and left alone unless the **weaker age fallback** clears it; only an **unassigned** one, or (with **distinct per-runner identities**) this runner's **own crashed lease**, is flipped back to `reviewRequested`. With `labels.reviewing` off there are no `reviewing` orphans and this job is inert. When the drain runs this, and under which lock: `work-review-queue`.
 
-**On `local`, review reconcile job (a) has no input where the repo has no forge.** It exists to close out a human's out-of-band action **on the PR** (merged → `done`, closed-unmerged → `blocked`), and the offline repo this tracker was built for has no PR to read. It degrades in the safe direction — no artifact to query means nothing to reconcile, and the issue simply stays `reviewRequested` — but the path stays shut: a human who accepts or abandons the work outside the loop has no signal the loop can pick up, and edits the issue file's `state` by hand instead, which on this tracker is a one-line edit rather than an API call. Job (b), the `reviewing` orphan reclaim, is unaffected: it reads the issue file, not a forge. A `local` repo that **does** have a forge keeps job (a) exactly as written — [`local` is a tracker, not a forge](#tracker--local-files).
+**On `local`, review reconcile job (a) has no input where the repo has no forge.** It exists to close out a human's out-of-band action **on the PR** (merged → `done`, closed-unmerged → `blocked`), and the offline repo this tracker was built for has no PR to read. It degrades in the safe direction — no artifact to query means nothing to reconcile, and the issue simply stays `reviewRequested` — but the path stays shut: a human who accepts or abandons the work outside the loop has no signal the loop can pick up, and edits the issue file's `state` by hand instead, which on this tracker is a one-line edit rather than an API call. Job (b), the `reviewing` orphan reclaim, is unaffected: it reads the issue file, not a forge. A `local` repo that **does** have a forge keeps job (a) exactly as written — `local` is a tracker, not a forge (`trackers/local.md`).
 
 Both move the issue's **lifecycle only** — label and assignee (on `local`, the `state` field), plus on Linear whatever state the lifecycle step they perform carries (the pre-push reclaim's `states.ready`, say) — never branches, and are **idempotent**: nothing to reclaim is the normal result. Their limit is what they never **read**: neither sweep **inspects** a workflow state, so neither detects a drifted one, let alone repairs it. A state [a second writer moved](#the-board-has-a-second-writer) stays moved unless some lifecycle step happens to write over it.
 
@@ -520,7 +520,7 @@ gh api graphql -f query='
   }' -F owner=<owner> -F repo=<repo> -F n=<n>
 ```
 
-For `branch:<name>` with no PR, "pushed artifact" = the issue's commits already on the remote branch (`git log origin/<branch> --grep "#<n>"`). **GitLab** — `glab api projects/:id/issues/:iid/related_merge_requests`, reading `state` and `merged_at` off each entry, which is the same present/absent question one call further along. **Linear** — the GitHub integration links the PR as an attachment; read it via `get_issue` for the PR url, then ask GitHub for state (`gh pr view <url> --json state,merged`). **`local`** — the issue file records no PR, so the artifact is found in git the same way: the PR whose head is the issue's branch where the repo has a forge, otherwise `git log` for the issue's commits ([Tracker — local](#tracker--local-files)).
+For `branch:<name>` with no PR, "pushed artifact" = the issue's commits already on the remote branch (`git log origin/<branch> --grep "#<n>"`). **GitLab** — `glab api projects/:id/issues/:iid/related_merge_requests`, reading `state` and `merged_at` off each entry, which is the same present/absent question one call further along. **Linear** — the GitHub integration links the PR as an attachment; read it via `get_issue` for the PR url, then ask GitHub for state (`gh pr view <url> --json state,merged`). **`local`** — the issue file records no PR, so the artifact is found in git the same way: the PR whose head is the issue's branch where the repo has a forge, otherwise `git log` for the issue's commits (`trackers/local.md`).
 
 ### Label vs body precedence
 
@@ -594,7 +594,7 @@ fi
 
 **`pr` mode with no pull request falls back to the issue, and says so in the run report.** Two ways that happens, and the routine one is not a misconfiguration: a `worktree` run that exits `blocked` at [verify](#running-the-repos-checks) never reached the push, so its PR does not exist yet — and the reason it blocked is exactly the output worth keeping. The other is a repo that sets `feedback: pr` on a `branch:<name>` loop, which opens no PR at all; there the fallback keeps the loop working and the run report names the mode as the thing to fix. Feedback is never dropped for want of a destination — the key routes it, it does not gate it.
 
-**Finding the thread.** On **GitHub** it is the PR for this issue — `gh pr list --head <branch>` for the branch this run pushed, or the `closedByPullRequestsReferences` query the [reconcile](#reconcile) already uses — written with `gh pr comment <pr>`. On **GitLab** it is the merge request — `glab mr list --source-branch <branch>`, or the `related_merge_requests` call the reconcile uses — written with `glab mr note <iid> --message <text>`; GitLab has no self-review refusal to work around, because it has no separate review verb here at all, so the note **is** the primitive rather than the fallback. On **Linear** the code PR is a **GitHub** PR ([Tracker — Linear](#tracker--linear-mcp)), so the thread is that PR's: take its url from the attachment Linear's GitHub integration puts on the issue (`get_issue`) and post there with `gh`. Linear's **own** diff threads are not that thread — they belong to Linear-native diffs, which this loop never produces — so nothing here reaches for them; a Linear issue with no PR attachment is the no-pull-request case above.
+**Finding the thread.** On **GitHub** it is the PR for this issue — `gh pr list --head <branch>` for the branch this run pushed, or the `closedByPullRequestsReferences` query the [reconcile](#reconcile) already uses — written with `gh pr comment <pr>`. On **GitLab** it is the merge request — `glab mr list --source-branch <branch>`, or the `related_merge_requests` call the reconcile uses — written with `glab mr note <iid> --message <text>`; GitLab has no self-review refusal to work around, because it has no separate review verb here at all, so the note **is** the primitive rather than the fallback. On **Linear** the code PR is a **GitHub** PR (`trackers/linear.md`), so the thread is that PR's: take its url from the attachment Linear's GitHub integration puts on the issue (`get_issue`) and post there with `gh`. Linear's **own** diff threads are not that thread — they belong to Linear-native diffs, which this loop never produces — so nothing here reaches for them; a Linear issue with no PR attachment is the no-pull-request case above.
 
 **The PR _comment_ is the primitive; the formal review is an upgrade that is not always available.** `gh pr comment <pr>` succeeds on any pull request the caller can see, one's own included, and lands in the same thread — which is all `feedback: pr` promises. `gh pr review <pr> --request-changes` (and `--approve`) is the richer form — it renders as a review, carries inline comments, and counts toward branch protection — but GitHub **refuses it on a pull request the caller authored**:
 
@@ -678,13 +678,13 @@ printf '%s' "$issues" | jq --arg t "$triage" \
 
 Linear: `list_issues` filtered by team + label(s) + states; order by the native priority field. The triage partition is the same rule on the labels `list_issues` already returns — Linear labels are team-scoped, so `labels.needsTriage` names a label of the configured team.
 
-**`local`**: the filter is the issue files' `state` field, which holds the **config key** and not the label string — so `ready`/`changesRequested` are matched by name and a `labels.<key>: false` simply means no file carries that key. [Tracker — local](#tracker--local-files) has the recipe.
+**`local`**: the filter is the issue files' `state` field, which holds the **config key** and not the label string — so `ready`/`changesRequested` are matched by name and a `labels.<key>: false` simply means no file carries that key. `trackers/local.md` has the recipe.
 
 ## Lease & race rules
 
 - **Claim before work** — flip `ready → working` + assign, _then_ implement. A second consumer sees "not ready" and skips.
 - **Fresh fetch each iteration** — a drain re-queries the next eligible issue every loop; it never snapshots the whole queue (stale `ready` states would be re-worked). [Dependency ordering](#dependency-ordering) plans the _sequence_ up front but does not exempt an issue from that re-check.
-- **Single-flight lock** — `work-implement-queue` takes a lock at a specified path in the git common dir ([the single-flight lock](#the-single-flight-lock)); a second implement-drain in the same checkout exits. This (not the label flip, which is not a true compare-and-swap) is what makes multi-consumer safe **within one checkout**; two clones each take their own lock and do not see each other ([the boundary](#the-single-flight-lock)). Cross-repo isolation on a shared Linear team comes from [repo scope](#repo-scope).
+- **Single-flight lock** — `work-implement-queue` takes a lock at a specified path in the git common dir ([the single-flight lock](#the-single-flight-lock)); a second implement-drain in the same checkout exits. This (not the label flip, which is not a true compare-and-swap) is what makes multi-consumer safe **within one checkout**; two clones each take their own lock and do not see each other ([the boundary](#the-single-flight-lock)). Cross-repo isolation on a shared Linear team comes from repo scope (`trackers/linear.md`).
 - **Direct invocation honours the lock too.** The lock is created by `work-implement-queue` for the whole batch, and a drain's workers run under it (they do not re-take it). A **directly-invoked** `work-implement` (`/work-implement 42`) runs outside a drain, so it must itself honour the lock: if a drain holds it, **stop and report** (the drain will reach the issue); otherwise take the lock for the run and release it after. This closes the race where a direct run and a drain both read `ready` and lease the same issue, and it stops the drain's [reconcile](#reconcile) from mistaking a live direct run's `working` issue for a crashed orphan.
 - **Clean-tree assert** between issues; a worker that left the tree dirty halts the drain rather than stacking onto uncommitted work.
 - **Git's `index.lock`** is the last-resort backstop; concurrency is made _impossible by construction_ (one live worker per tree), not merely locked.
@@ -1069,205 +1069,8 @@ The two trackers differ here, because only one of them has an order-free relatio
 
 **The boundary is the [lock's boundary](#the-single-flight-lock).** The mutex is enforced by the drain that composes the waves, so it holds over precisely what that drain controls: one checkout, whose implement lock a second drain — and a direct `/work-implement 42` — already honours. A worker in **another clone** is invisible here for the same reason the lock cannot see it, and a directly-invoked single-issue run has no batch to split, so the mutex is inert there too. Cross-clone coordination needs a central arbiter and stays out of scope.
 
-## Tracker — GitHub (`gh`)
-
-- **Lifecycle** — labels are flat (`ai: ready` …); flip with `gh issue edit <n> --add-label <x> --remove-label <y>`, assign with `--add-assignee`.
-- **Dependencies** — `blockedBy` / `parent`, GraphQL-only (see [dependency ordering](#dependency-ordering)).
-- **Mutex** — the `mutex: <group>` label convention (GitHub has no order-free relation); read straight off the labels `gh issue list --json …,labels` already returns, so it costs no extra call ([parallel-batch mutex](#parallel-batch-mutex)).
-- **Eligible** — `gh issue list --state open --label …`. Priority via `work.priorityLabels`.
-- **PR link** — `Closes #<n>` in the PR body links the PR to the issue, and auto-closes it on merge **into the default branch only**. With a non-default `pr.base` (e.g. `dev`) that merge fires neither, so the keyword is **traceability, not the route to [`done`](#terminal-done)**.
-- **Reconcile** — find an issue's PRs with `closedByPullRequestsReferences` (see [reconcile](#reconcile)).
-- **Label sync** — if the repo mirrors labels to Linear, that is the **integration's** job; the agent writes only the GitHub side. Never double-write.
-
-## Tracker — GitLab (`glab`)
-
-The same lifecycle over GitLab Issues, driven by `glab` against the [resolved host](#the-forge-and-its-host). The mechanics below are the GitHub ones in GitLab's spelling; anything not named here is unchanged.
-
-- **Lifecycle** — labels are flat, as on GitHub. Flip with `glab issue update <n> --label <x> --unlabel <y>`, assign with `--assignee <user>`. **One call carries both flags**, so the lease stays a single write; `--unlabel` is `gh`'s `--remove-label`. A **group label** is applied by name exactly like a project label, and reads back among the issue's labels either way.
-- **Dependencies** — the **linked-issue** relation with `link_type: blocks` / `is_blocked_by` (`glab api projects/:id/issues/:iid/links`). That is the edge, in place of GitHub's `blockedBy`/`parent`; GitLab's epics are a group-level object and are **not** read here.
-- **Mutex** — the same `mutex: <group>` label convention as GitHub, read off the labels the issue list already returns ([parallel-batch mutex](#parallel-batch-mutex)).
-- **Eligible** — `glab issue list --label '<ready>' --output json`, plus a second call for the changes-requested label. **`glab` ANDs a comma-separated `--label`**, where `gh`'s search qualifier ORs it, so the implement loop's two inputs are **two calls unioned locally** — never one comma-joined argument, which would select issues carrying _both_ labels and silently drain an empty queue. Priority via `work.priorityLabels`, exactly as on GitHub.
-- **MR link** — `Closes #<n>` in the merge-request description links and auto-closes on merge **into the default branch only** — the same rule as GitHub, so with a non-default `pr.base` it is traceability, not the route to [`done`](#terminal-done).
-- **Reconcile** — find an issue's merge requests with `glab api projects/:id/issues/:iid/related_merge_requests`, whose entries carry `state` and `merged_at`. That is the [reconcile](#reconcile)'s artifact query on this tracker.
-
-## Tracker — Linear (MCP)
-
-Server name varies (`mcp__claude_ai_Linear__*`, `mcp__linear__*`, …) — discover the tools at runtime, do not hardcode.
-
-- **Lifecycle** — `save_issue` with the issue's `id` (create and update are one tool, keyed on the `id`) to set the lifecycle label + assignee, plus that step's `work.linear.states` state when one is mapped — **one atomic call**, so label and state never drift **in the write**. What happens to the state afterwards is not the loop's to guarantee: the field has [a second writer](#the-board-has-a-second-writer). Step unmapped, or no `states` at all → write the label + assignee and **leave the state alone**. Never invent a state name: the map is the only source, and `statuses` is an eligibility filter, not a mapping.
-- **Eligible** — `list_issues` by team + `labels.ready` + `labels.repo` + `work.linear.statuses`; order by native priority.
-- **Dependencies** — `list_issues` returns no relations; fan out `get_issue(includeRelations: true)` (see [dependency ordering](#dependency-ordering)).
-- **Mutex** — the native `related` relation, read from that **same** fan-out response; pairwise, never transitive, and no `mutex:` label is needed on this tracker ([parallel-batch mutex](#parallel-batch-mutex)).
-- **Which steps write a state** — the **implement loop** writes `states.working` on the lease and `states.reviewRequested` after the push. The **review loop** writes `states.accepted` / `states.changesRequested` / `states.needsHuman` on its verdict; the implement reconcile writes `states.ready` when it reclaims a pre-push orphan. **`states.done` is written by neither** — it is the terminal shipped state, left to Linear's integration or the `release` skill ([AI-accepted is not shipped](#ai-accepted-is-not-shipped)). Linear's integration may also move the issue on a default-branch merge — a bonus, never the signal waited on, and the same integration overwrites these states on any other pull-request event too ([the board has a second writer](#the-board-has-a-second-writer)). `states.ready` is otherwise not written by the worker — it records where a human parks a startable issue, the anchor `statuses` should contain. The `blocked` side-exit is carried by `labels.blocked`.
-- **PR lives on GitHub** — even for a Linear-tracked repo, the code PR is a GitHub PR. The branch name / PR carries the **Linear key** (`ENG-123`) so Linear's GitHub integration **links** it. That link is traceability: on a non-default `pr.base` the integration's **merge** automation never fires, so [`done`](#terminal-done) comes from the sign-off or the reconcile — never from waiting on Linear. It is not otherwise idle, though — linking the PR is also what subscribes the issue to [a second writer](#the-board-has-a-second-writer) of its workflow state.
-- **Team is required**; resolve `work.linear.team` to its id via the cache. `states` is optional — resolve each mapped name to its id via the cache; a name that matches **no** state in the team is a config error → report it, do not fall back to a guess.
-
-### Repo scope
-
-Linear puts every repo's issues in one team, so the team alone cannot say "this issue is this repo." `work.labels.repo` (a stable label, e.g. `repo: TitusKirch/envprism`) is the discriminator — the **single source of truth** for repo identity in Linear, and the cross-repo race-breaker. It is read here to **filter** and (when the `issue` skill applies it on create) to **tag** — projects are unsuitable because they are completable. Set it to a **string** to filter by that label; set it to **`false`** only for a **single-repo Linear team** — a deliberate opt-out where the team already _is_ the repo, so no filter is needed and the drain **proceeds**. The schema now **requires** the key present when `tracker: linear`, so an _absent_ key is a config error to report — never a licence to reach into another repo's issues.
-
-## Tracker — local (files)
-
-No service, no auth, no network: the issues are **committed markdown files** in the repo, `<dir>/NNNN-slug.md`, one per issue. `<dir>` is `work.local.dir`, falling back to `issue.local.dir` and then to `.agents/issues` — the same two-step fallback `work.linear.team` takes. Why files, and why these answers rather than the plausible alternatives: [ADR-0023](https://github.com/TitusKirch/skills/blob/main/docs/99.adr/0023-back-the-local-tracker-with-committed-files.md).
-
-**The forge axis is untouched.** `local` is a **tracker**, not a forge: the root `forge` key still says where pull requests go, so a repo may file its issues in-tree and open its PRs on GitHub. `work.branch`, the push and the PR keep their meanings — but a store that lives **in the tree** does interact with `work.branch: worktree`, and that is [the next section](#which-tree-is-the-tracker), not an absence of interaction.
-
-### Which tree is the tracker
-
-The issue files are **committed**, so under `work.branch: worktree` — and under `parallel: true`, which _is_ worktrees ([Branch strategy](#branch-strategy)) — every per-issue worktree checks out **its own copy** of `<dir>/NNNN-slug.md` on its own branch. Three copies of an issue are three answers to "what state is it in", and only one of them can be the tracker.
-
-**The store is the main working tree's `<dir>`, resolved absolutely** — the same directory from inside any worktree, and the one path both drains can derive rather than carry. A per-issue worktree's copy is a **checkout artifact: read nothing from it, write nothing to it.** It is a snapshot of the state at branch-off and goes stale the moment the drain advances the issue.
-
-```sh
-# The tracker's tree. `git worktree list` always prints the main working tree first,
-# and this resolves identically from inside a linked worktree — derived, never carried
-# (the same reason the drains derive their worktree paths instead of passing them).
-main=$(git worktree list --porcelain | sed -n '1s/^worktree //p')
-[ -n "$main" ] || { echo "cannot resolve the main working tree" >&2; exit 1; }
-```
-
-Skip that rule and the failure is **silent**, which is the shape this driver is most exposed to:
-
-1. the drain leases `state: 'working'` in the store;
-2. the worker's worktree, branched off `pr.base` beforehand, still reads `state: 'ready'`;
-3. the worker advances to `reviewRequested` in whichever copy its cwd happens to land in — into the worktree, it either commits lifecycle churn onto the PR branch or dirties the tree and trips the [clean-tree assert](#lease--race-rules); into the store, the PR branch still carries a stale `ready`;
-4. the review drain greps the store, sees no `reviewRequested`, and the issue is **invisible to the review queue** — indistinguishable from a drained one.
-
-Two consequences follow from there being exactly one writable copy:
-
-- **Only one side ever edits the file, so the merge stays clean.** Transitions are written and committed in the main working tree; a per-issue **worktree** carries the issue file exactly as it was cut and no worker ever touches its own copy. A file changed on one side only merges without a conflict — that is precisely what the never-write-the-worktree rule buys, and precisely what is lost the moment a worker edits its own copy.
-- **`branch:<name>` + `parallel: false` escapes the question entirely.** There the shared branch is the main tree's branch and the store and the work are the same checkout, so the rule costs that configuration nothing. **`branch:<name>` + `parallel: true` does not escape it** — [Branch strategy](#branch-strategy) says that combination produces its work **in isolated worktrees** and lands it serialized, which is exactly why `branch:dev` + `parallel` is the race-free pairing — so the store is split there precisely as it is under `worktree`, and the rule applies unchanged.
-
-**The remaining cell, `worktree` + `parallel: false`, is the one this rule does not cover — and it is the default pairing**, so it gets a rule of its own rather than an exemption. Per [Branch strategy](#branch-strategy) that combination is _one tree, hops_: the main working tree checks the issue branch out **in place**. The store is the same path in that same tree, so it travels with the branch, and the discriminator is no longer the **tree** but the **branch it currently holds**. Every step of "the store is the main working tree's `<dir>`" is satisfied while the failure happens anyway:
-
-1. the drain writes `state: 'working'` in the store while the tree is on `pr.base`;
-2. the tree hops onto `ai/0042-…`, and the store — same path, same tree — is now that branch's copy;
-3. the worker advances to `reviewRequested`; the write commits onto the **PR branch**, or dirties the tree;
-4. the tree hops back to `pr.base`, the review drain greps the store and sees no `reviewRequested` — **invisible to the review queue**, indistinguishable from a drained one. Step 4 of the walkthrough above, reached without breaking a single rule.
-
-**So the store is written only while the tracker's tree is on `pr.base`.** The transition before the hop is written before it, the transition after the work is written after the hop back — never from the issue branch. This is a **rule about ordering, not about paths**, which is why the `$main` resolution above does not catch it, and it holds in every configuration: under `branch:<name>` the shared branch **is** `pr.base`, and under `parallel: true` the drain never leaves it, so the assert below is free there and load-bearing only in the hopping cell.
-
-```sh
-# Assert before every store write. $main is the tracker's tree, resolved above;
-# $resolved is the config from the resolver. pr.base falls back to the repo's
-# default branch, exactly as the branch base does everywhere else.
-base=$(printf '%s' "$resolved" | jq -er '.pr.base // empty' 2>/dev/null) || base=
-[ -n "$base" ] || base=$(git -C "$main" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
-[ -n "$base" ] || { echo "cannot resolve pr.base — refusing to write the store" >&2; exit 1; }
-
-head=$(git -C "$main" rev-parse --abbrev-ref HEAD)
-[ "$head" = "$base" ] || { echo "refusing to write the store: $main is on $head, not $base" >&2; exit 1; }
-```
-
-An unresolvable base **stops the write** rather than defaulting to one: guessing `main` on a repo whose base is `dev` writes the transition to the wrong branch's copy, which is the same silent failure this section exists to close.
-
-**The assert binds the review drain too**, and that is where this cell costs something. The review loop writes the same store, and it does not hop — so while the implement drain sits on an issue branch, a concurrent review drain's write **fails loudly** instead of landing in that branch's copy. A drain that stops with a message beats one that writes a verdict into a file nobody reads again, but the two loops genuinely do not overlap cleanly here. **Where both drains run against one checkout, prefer `branch:<name>`**: the tree never leaves the shared branch, so the store never moves and the assert is free.
-
-Rejected: **declaring the cell unsupported.** It is the default pairing (`branch` defaults to `worktree`, `parallel` to `false`), so refusing it would make `tracker: local` unusable until a repo configures its way out of a default it never chose. Rejected: **moving the store out of the working tree** for this cell — the issue files are committed by construction ([ADR-0023](https://github.com/TitusKirch/skills/blob/main/docs/99.adr/0023-back-the-local-tracker-with-committed-files.md)), and a store outside the tree is a different tracker, not a fix to this one.
-
-The main working tree is also the one place the two drains agree on **without exchanging state**. A repo whose main tree sits on a branch that lacks `<dir>` is not a special case: the existence check below reports it as the setup problem it is.
-
-### The file
-
-```markdown
----
-number: 42
-title: 'Add a local file-based issue tracker driver'
-state: 'ready'
-priority: 'low'
-labels: ['feature', 'research']
-assignee: null
-blockedBy: [38]
-parent: null
----
-
-## What problem are you trying to solve?
-
-…the body, exactly as the `issue` skill would have written it for a forge…
-```
-
-- **Frontmatter is the tracker's data; the prose is the issue.** Only the fields above are read as tracker state — a line in the body is text, never a relation, a state or a priority, the same split the [label-vs-body rule](#label-vs-body-precedence) draws everywhere else.
-- **`state` holds the config key** (`ready`, `working`, `reviewRequested`, `reviewing`, `changesRequested`, `needsHuman`, `done`, `blocked`), **never the `work.labels.*` string.** A file has no label catalog to resolve a string against, so the key — the thing every rule in this file already reasons about — is what is written. The `labels.*` strings are simply unused here, and `labels.<key>: false` still turns the mechanic off: no file carries that key, so nothing selects on it.
-- **`priority` is matched against [`work.priorityLabels`](#config)** — verbatim, or against an entry's segment after a `: ` separator, so a ladder of `priority: high` accepts both `'priority: high'` and a bare `'high'`. **Unmatched or absent ranks lowest**, never highest: an unranked issue must not jump the queue.
-- **`assignee`** is what the [reconcile's guard](#reconcile) reads. It is only as distinct as the runner's own git identity, and nothing here proves it is per-runner — so the default-to-shared rule applies unchanged: take the **age-gated** path, never a bare-assignee reclaim.
-- **`labels`** is free-form and carries no lifecycle meaning; the loop never writes it.
-- **Nothing is ever deleted.** `done` and `blocked` are states, not removals — a skill never deletes or moves an issue file. Archiving is the repo's own business.
-- **Reading is quote-tolerant; writing is canonical.** The file is advertised as human-readable and hand-editable, and `state: ready` is as valid a YAML scalar as `state: 'ready'` — so a matcher that accepts only the quoted form drops a hand-written issue out of **every** queue, silently, exactly the way the empty-directory trap does. Every read therefore tolerates optional quotes and trailing space; every write emits the single-quoted form, so a file the loop has touched is canonical without a hand-written one being rejected:
-
-  ```sh
-  # the one matcher — ONE regex, written out in full at each of its three uses
-  # (this loop's Eligible, work-review's selection, the transition guard below).
-  # $key is a config key; ERE, so quote it for grep -E:
-  "^state:[[:space:]]*['\"]?$key['\"]?[[:space:]]*$"
-  ```
-
-  **Inline it; never wrap it in a shell helper.** A `state_re()` function is the obvious deduplication and is wrong here for the reason stated twice already: **each command runs in its own process**, so a function defined in one command does not exist in the next. `$(state_re state ready)` then expands to the **empty string**, and `grep -qE ""` matches **any non-empty line** — the matcher does not fail, it matches everything, so the guard below passes unconditionally and the queries select the whole directory. Same failure shape as the empty `--label` the [selection query](#selection-query) warns about, and the reason three written-out copies are cheaper than one definition that has to travel.
-
-  This is the opposite call from the `## AI review — round N` heading, whose exact wording **is** load-bearing because `work-review`'s round count parses it — and which says so where it is defined.
-
-### Resolving the store, and the empty-directory trap
-
-**`local.dir` is repo-relative, so it is never used as a path on its own.** Every command here runs in its own process with **no guaranteed cwd** — and the loop's own verify recipe `cd`s into a worktree — so a bare `"$dir"` resolves against whatever the process happened to inherit: a missing directory in one command and, worse, a _different_ tree's copy in the next. Anchor it, and anchor it to the [tracker's tree](#which-tree-is-the-tracker) rather than the current one:
-
-```sh
-# $resolved comes from the resolver — see "Reading the config" in this file.
-# $main is the main working tree — see "Which tree is the tracker".
-dir=$(printf '%s' "$resolved" | jq -er '.work.local.dir // .issue.local.dir // empty' 2>/dev/null) || dir=
-[ -n "$dir" ] || dir=.agents/issues
-case "$dir" in /*) store=$dir ;; *) store=$main/$dir ;; esac
-[ -d "$store" ] || { echo "tracker is local but $store does not exist" >&2; exit 1; }
-```
-
-`$store` — absolute, anchored, existence-checked — is what every recipe below and in `work-review`'s REFERENCE reads and writes; a bare `$dir` never appears again.
-
-The check is that `$store` **exists**. A missing directory under `tracker: local` is a **setup problem to report**, not an empty queue — the same distinction the [selection query](#selection-query) draws for a label the tracker lacks, and it fails the same silent way: a glob that matches nothing reads exactly like a backlog that is done.
-
-### Eligible
-
-```sh
-# the implement loop's two inputs, by config key; drop a key whose mechanic is off.
-# Quotes are optional in the file (see "The file"), so the match tolerates them.
-grep -lE "^state:[[:space:]]*['\"]?(ready|changesRequested)['\"]?[[:space:]]*$" "$store"/*.md 2>/dev/null
-```
-
-Order the matches by `priority` (above), then by `number` — the file tracker's stand-in for creation order, and stable in a way a filesystem listing is not.
-
-### Writing a transition
-
-Every lifecycle move is one rewritten frontmatter line, written to a sibling temp file and **`mv`-ed over the issue** — so a crash leaves either the old file or the new one, never a half-written issue. Read-then-write in **one** command: these skills run each command in its own process, so a state read on one line is a stale fact by the next.
-
-```sh
-# $f is "$store/NNNN-slug.md" — always under the tracker's tree, never the current
-# worktree's copy. $from/$to are config keys, $who the runner identity.
-awk -v to="$to" -v who="$who" '
-  NR == 1 && $0 == "---" { fm = 1; print; next }
-  fm && $0 == "---"      { fm = 0; print; next }
-  fm && /^state:/        { print "state: \047" to "\047"; next }
-  fm && /^assignee:/     { print "assignee: " (who == "" ? "null" : "\047" who "\047"); next }
-                         { print }
-' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
-```
-
-The write emits the **canonical quoted** form while the `/^state:/` match accepts whatever the file holds — the read-tolerant / write-canonical rule from [The file](#the-file), which is also why the guard below cannot be quote-strict. Guard it with the `$from` state in the **same** command, with the matcher [written out](#the-file) rather than called from a helper the next process will not have:
-
-```sh
-grep -qE "^state:[[:space:]]*['\"]?$from['\"]?[[:space:]]*$" "$f" || exit 1
-```
-
-so a run that lost the race stops instead of overwriting — and so the guard cannot fail **open**, which an unresolved helper would make it do silently. **This is no more a compare-and-swap than the label flip is** — as everywhere else in this file, the [single-flight lock](#the-single-flight-lock) is what makes multi-consumer safe within a checkout, and the reconcile's guard is what covers the clones it cannot see.
-
-### Referencing the issue from git
-
-Reference the issue by its **path** — `Refs .agents/issues/0042-….md` — and **not** by `#42`. On a repo whose forge is GitHub a bare `#42` renders as a link to an unrelated GitHub issue, which is worse than no reference at all. The branch name needs no new rule: `ai/<ref>-<slug>` with the padded number as the ref (`ai/0042-add-a-local-tracker`), derivable from the filename alone.
-
-That path is also the [reconcile's](#reconcile) artifact query — `git log origin/<branch> --grep '0042-'` for a shared branch, or the PR whose head is the issue's branch where the repo has a forge.
-
-### What is inert here
-
-[Repo scope](#repo-scope) (the files are already in the repo), `work.linear.*`, and the [catalog cache](#catalog-cache). Where the review loop puts its verdict — appended to the issue file, which is also where the round count is read from — is `work-review`'s REFERENCE.
-
 ## Setup
 
-No own setup flow — `work` piggybacks on the `issue` skill's config + cache and only adds the `work.*` keys. The lifecycle labels must already **exist** on the configured tracker's catalog (the agent filters by them, it does not create them) — on [`local`](#tracker--local-files) there is no catalog and nothing to create, because the state is a field in the file rather than a name in a list.
+No own setup flow — `work` piggybacks on the `issue` skill's config + cache and only adds the `work.*` keys. The lifecycle labels must already **exist** on the configured tracker's catalog (the agent filters by them, it does not create them) — on `local` (`trackers/local.md`) there is no catalog and nothing to create, because the state is a field in the file rather than a name in a list.
 
 **When `issue` is `false`.** The work skills lean on the `issue` section four ways — `work.tracker` falls back to `issue.tracker`, `work.linear.team` to `issue.linear.team`, `work.local.dir` to `issue.local.dir`, and the [catalog cache](#catalog-cache) is the `issue` skill's. A repo may disable the `issue` skill (`issue: false`) while still running the queue; then none of those inheritances hold. So a repo that sets `issue: false` **and** enables `work` must set `work.tracker` (and, on Linear, `work.linear.team`) explicitly, and the cache is populated by the work run itself rather than inherited. On `local` nothing further is required — every key there has a default — but a repo whose directory is not `.agents/issues` must restate it under `work.local.dir`, since the `issue` section it was borrowing is gone. If both are needed but `work.tracker` is absent, stop and report rather than guess.

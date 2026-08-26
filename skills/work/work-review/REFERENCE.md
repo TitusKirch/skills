@@ -303,13 +303,13 @@ test -n "$review" && gh issue list --state open --label "$review" --json number,
 
 ```sh
 # $store is the ABSOLUTE store path — the main working tree's issue directory, resolved
-# as in "Tracker — local (files)" (work-implement's REFERENCE). Never a bare "$dir":
+# as in work-implement's trackers/local.md. Never a bare "$dir":
 # it is repo-relative and each of these commands runs in its own process with no
 # guaranteed cwd. Quotes are optional in the file, so the match tolerates them.
 grep -lE "^state:[[:space:]]*['\"]?reviewRequested['\"]?[[:space:]]*$" "$store"/*.md 2>/dev/null
 ```
 
-The empty-result trap is the same shape and worse: a missing directory globs to nothing and reads exactly like a drained queue, so assert `$store` exists before selecting. Layout, fields, the anchoring and the transition write: **Tracker — local (files)** in `work-implement`'s REFERENCE.
+The empty-result trap is the same shape and worse: a missing directory globs to nothing and reads exactly like a drained queue, so assert `$store` exists before selecting. Layout, fields, the anchoring and the transition write: `work-implement`'s `trackers/local.md`.
 
 ## The `reviewing` lease
 
@@ -327,7 +327,7 @@ When it resolves to a **string**: flip `reviewRequested → reviewing` **and ass
 
 **On `local` the lease is _not_ tracker-global, and the guarantee this section opens with does not transfer.** What makes `reviewing` reach past the review lock on the other two trackers is that the tracker is **one server both clones write to**; on `local` the store is a directory **inside the checkout**, so a `state: 'reviewing'` field is visible to exactly the clones the lock is already visible to. Its domain **collapses onto the lock's**, and the competing-verdict hazard above is fully reopened: two clones that do not share the filesystem both read `reviewRequested`, both lease, and both write a verdict — precisely as they would with the lease off.
 
-**The reconcile's assignee/age guard is not the mitigation.** That guard keeps a sweep from reclaiming a review another clone is **live** on; nothing in it adjudicates a `done` written in one clone against a `changes-requested` written in the other, and no sweep ever sees both. Nor does the `assignee` field help: **Tracker — local (files)** in `work-implement`'s REFERENCE states it is only as distinct as the runner's own git identity, which forces the weaker age-gated path — and an age gate reading a file the other clone cannot see decides nothing about that clone.
+**The reconcile's assignee/age guard is not the mitigation.** That guard keeps a sweep from reclaiming a review another clone is **live** on; nothing in it adjudicates a `done` written in one clone against a `changes-requested` written in the other, and no sweep ever sees both. Nor does the `assignee` field help: `work-implement`'s `trackers/local.md` states it is only as distinct as the runner's own git identity, which forces the weaker age-gated path — and an age gate reading a file the other clone cannot see decides nothing about that clone.
 
 So the honest reading is that **on `local` the lease buys nothing the review lock does not already give — leave `work.labels.reviewing` off**, which is already its default. Setting it breaks nothing: the flip, the verdict and the orphan reclaim all work as written, and the reclaim is still worth having **within** a checkout. It must simply not be mistaken for a cross-clone claim, because on `local` there is no such thing to be had — that limit is the [single-flight lock's boundary](#the-single-flight-lock), and on this tracker the lease sits inside it rather than outside.
 
@@ -359,7 +359,7 @@ fi
 
 **Linear** — read the issue's history/activity and count the state/label changes onto the `reviewRequested` state. Before deciding `changes-requested`, compare the count to `work.review.maxRounds`: at or above it, escalate to `needs human` instead — with a comment summarising the still-unresolved feedback.
 
-**`local`** — a file has no event log, so the count is read from the **verdicts themselves**: one `## AI review — round N` heading per round, appended by this loop ([Feedback recipes](#feedback-recipes)), counted with `grep -c '^## AI review — round '` against the file in the **main working tree's** store (a per-issue worktree's copy is a stale checkout artifact — **Tracker — local (files)** in `work-implement`'s REFERENCE). That is why the verdict is appended to the issue rather than carried in a commit — the artifact that makes the count derivable is the same one the next implement round has to read. `grep -c` answers `0` on a file with no verdicts yet, which is a genuine zero; a **missing or unreadable file** is the unreadable case and escalates to `needs human`, exactly as an unreachable timeline does. `git log` on the file would be the tempting second source and is not used: a rebase, a squash or a hand-edit rewrites it, while the headings travel with the content.
+**`local`** — a file has no event log, so the count is read from the **verdicts themselves**: one `## AI review — round N` heading per round, appended by this loop ([Feedback recipes](#feedback-recipes)), counted with `grep -c '^## AI review — round '` against the file in the **main working tree's** store (a per-issue worktree's copy is a stale checkout artifact — `work-implement`'s `trackers/local.md`). That is why the verdict is appended to the issue rather than carried in a commit — the artifact that makes the count derivable is the same one the next implement round has to read. `grep -c` answers `0` on a file with no verdicts yet, which is a genuine zero; a **missing or unreadable file** is the unreadable case and escalates to `needs human`, exactly as an unreachable timeline does. `git log` on the file would be the tempting second source and is not used: a rebase, a squash or a hand-edit rewrites it, while the headings travel with the content.
 
 ## Escalation to `needs human`
 
@@ -576,14 +576,8 @@ Append the section **and** rewrite the `state` field in the **same** command, so
 
 **De-dupe on re-review.** Because review is idempotent, before posting feedback check whether an equivalent comment from a prior crashed run already exists; update or skip rather than double-post.
 
-## Tracker recipes
+## What the review writes
 
-Label moves mirror the implement loop's own **Tracker — GitHub (`gh`)** and **Tracker — GitLab (`glab`)** recipes. The reviewer writes the **lease** label `reviewing` on claim (only when `labels.reviewing` is configured — flip `reviewRequested → reviewing`, `--add-assignee`), then the **verdict** labels (`done` / `changesRequested` / `needsHuman` / `blocked`) and their mapped Linear states; the review reconcile writes `reviewRequested` when it reclaims a `reviewing` orphan (dropping the assignee). It never writes `working`/`ready` (those are the implement loop's). On **Linear** the `reviewing` lease sets the label via `save_issue`; `work.linear.states` has no `reviewing` mapping, so the workflow state is left untouched (the "unmapped step leaves the state alone" rule in the implement REFERENCE).
+The reviewer writes the **lease** label `reviewing` on claim (only when `labels.reviewing` is configured — `reviewRequested → reviewing`, plus the assignee), then one **verdict** label (`done` / `changesRequested` / `needsHuman` / `blocked`); the review reconcile writes `reviewRequested` when it reclaims a `reviewing` orphan, dropping the assignee. It never writes `working`/`ready` — those are the implement loop's.
 
-**On `local` a "label move" is a frontmatter write.** The same transitions, the same order — lease first (`reviewRequested → reviewing`, writing `assignee`), verdict after — but each is one rewritten `state:` line, guarded by the state it expects to replace and committed by a `mv`, in the **main working tree's** store rather than the current worktree's copy (**Tracker — local (files)** in `work-implement`'s REFERENCE). `work.linear.states` is inert there, so the verdict writes the lifecycle key and nothing else.
-
-**The write asserts that tree is on `pr.base` first, and fails loudly when it is not.** Under `work.branch: worktree` with `parallel: false` the implement drain checks issue branches out **in place**, taking the store with them — so a verdict written while the tree is off `pr.base` commits onto someone else's PR branch and is invisible to every later read. Stopping is the correct outcome there; retry once the other drain is back on `pr.base`, or run that checkout under `branch:<name>`, where the store never moves. The rule, the assert and why the cell is supported rather than refused: **Which tree is the tracker** in `work-implement`'s REFERENCE.
-
-**The mechanism transfers; the lease's cross-clone property does not.** Writing `reviewing` as a frontmatter field is a faithful translation of the label flip, and nothing above changes — but it does **not** carry the guarantee [The `reviewing` lease](#the-reviewing-lease) describes, because the store lives inside the checkout. Read that section before enabling `labels.reviewing` on `local`; the recommendation there is to leave it off.
-
-**The verdict labels and their Linear states do not share a name.** Three map straight through — `changesRequested` → `states.changesRequested`, `needsHuman` → `states.needsHuman`, and `blocked` carries no state at all. The fourth does not: the `done` verdict writes **`states.accepted`**, and `states.done` is the shipped state neither loop writes ([Accepted is not shipped](#accepted-is-not-shipped)). A repo whose `states` maps `done` but not `accepted` gets the "unmapped step" outcome — label written, board untouched — which is the intended failure direction.
+**How each tracker performs those writes is its own recipe**, one file per tracker under `trackers/`, of which a repo reads exactly one: `trackers/github.md`, `trackers/gitlab.md`, `trackers/linear.md`, `trackers/local.md`.
