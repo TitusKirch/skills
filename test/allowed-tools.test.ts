@@ -15,7 +15,7 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from './helpers.ts';
 import { discoverSkills, paths } from '../scripts/gen-skills.ts';
@@ -273,8 +273,36 @@ const NO_BASH: Record<string, string> = {
  * `DESIGN.md` is deliberately not one of them. It records what was decided *and what was
  * rejected*, so a command shown there may be the one the skill does **not** run — reading
  * it would clear a grant by quoting the argument against it.
+ *
+ * **Branch files count, and have to.** A skill whose material forks on one config value
+ * keeps each fork in its own directory beside `SKILL.md` (`trackers/`, `ecosystems/` —
+ * see the branch-file rules in `skills/README.md`), and the tracker recipes that live
+ * there are exactly where a grant like `Bash(gh issue view:*)` is driven. Reading only the
+ * two top-level files would fail a grant the skill demonstrably needs, purely because the
+ * recipe moved out of the unconditional load path.
  */
 const PROSE_FILES = ['SKILL.md', 'REFERENCE.md'];
+
+/**
+ * Directories inside a skill folder that are not branch files.
+ *
+ * `templates/` holds assets the agent *fills in or runs* rather than recipes it drives —
+ * a document skeleton's placeholder text is not a call — and `evals/` is dev-only fixture
+ * data stripped before install. Everything else one level down is a branch directory.
+ */
+const NOT_BRANCH_DIRS = new Set(['templates', 'evals']);
+
+/** Every markdown file a skill ships that this reader takes commands from. */
+function prosePaths(skill: string): string[] {
+  const dir = join(ROOT, 'skills', skill);
+  const paths = PROSE_FILES.map((f) => join(dir, f));
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || NOT_BRANCH_DIRS.has(entry.name)) continue;
+    for (const file of readdirSync(join(dir, entry.name)))
+      if (file.endsWith('.md')) paths.push(join(dir, entry.name, file));
+  }
+  return paths;
+}
 
 /**
  * Fence info strings read as shell.
@@ -572,8 +600,7 @@ function calls(skill: string): string[][] {
   if (hit) return hit;
 
   const found: string[][] = [];
-  for (const file of PROSE_FILES) {
-    const path = join(ROOT, 'skills', skill, file);
+  for (const path of prosePaths(skill)) {
     if (!existsSync(path)) continue;
     for (const source of shellSources(body(readFileSync(path, 'utf8'))))
       found.push(...invocations(source));
@@ -903,7 +930,7 @@ describe('a grant is no broader than the calls the skill drives', () => {
       const prefix = tokens(prefixOf(tool));
       assert.ok(
         calls(skill).some((c) => drives(c, prefix)),
-        `${skill}: "${tool}" pre-approves a command no recipe in its SKILL.md or REFERENCE.md drives — drop the grant, show the call, or name it in UNDEMONSTRATED with the reason this reader cannot see it`
+        `${skill}: "${tool}" pre-approves a command no recipe in its SKILL.md, REFERENCE.md or branch files drives — drop the grant, show the call, or name it in UNDEMONSTRATED with the reason this reader cannot see it`
       );
     }
   });
