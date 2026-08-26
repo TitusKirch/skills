@@ -78,8 +78,6 @@ Each branch lands in **exactly one** category, tested in this order. Overlap is 
 
 | #   | Category                     | Evidence                                                                           | Tier              |
 | :-- | :--------------------------- | :--------------------------------------------------------------------------------- | :---------------- |
-| #   | Category                     | Evidence                                                                           | Tier              |
-| :-- | :--------------------------- | :--------------------------------------------------------------------------------- | :---------------- |
 | 1   | **Merged**                   | the forge merged its request, or every commit is already in the integration branch | default set       |
 | 2   | **Upstream gone**            | `%(upstream:track)` is `[gone]` after a pruning fetch                              | default set       |
 | 3   | **Closed request, unmerged** | a PR/MR with this head was closed with `mergedAt` null                             | never preselected |
