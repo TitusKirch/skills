@@ -10,6 +10,7 @@ skills/
       SKILL.md        # required — frontmatter + body
       REFERENCE.md    # optional — mechanics, recipes, config tables
       DESIGN.md       # optional — why the skill is shaped this way
+      <branch>/       # optional — one file per branch of a single config value; see below
       templates/      # optional — templates, prompts, scripts the skill ships with
       evals/          # optional — dev-only eval fixtures; stripped by skill-creator packaging & skills:link
 ```
@@ -201,8 +202,25 @@ Create `<category>/<skill-name>/SKILL.md` per the frontmatter contract above —
 A few skills depart from the layout above on purpose, and one frontmatter question is settled in principle but still open per skill. Recorded here so the next author copying a skill treats these as deliberate, not drift to "correct" blindly:
 
 - **Supporting files are distributed unevenly.** `DESIGN.md` exists for `work-implement` only. The two queue skills (`work-implement-queue`, `work-review-queue`) carry their author-authority and plan blocks inline in `SKILL.md` and ship **no `REFERENCE.md`** — for them the drain _is_ the whole skill, and the two biggest contracts they would otherwise mirror (the config block and the lock spec) they [name on their worker](#reading-the-config--mirrored-not-linked) instead. Splitting a `SKILL.md` into a `REFERENCE.md` is a structural refactor (byte-identity, sync, mirrored-block boundaries), not a mechanical alignment, so it stays a per-skill judgement.
-- **Reference chains run two levels deep, and stop there.** The standard recommends keeping file references **one level deep** — what `SKILL.md` points at should not itself require opening something else. Fourteen skills go one hop further: `SKILL.md` → `REFERENCE.md` → `templates/…`. That hop is what [mirrored, not linked](#reading-the-config--mirrored-not-linked) costs — a skill has to be installable alone, so `resolve-config.sh` and the document templates ship **inside** the folder, and the `REFERENCE.md` documenting the contract is where they are named. What bounds the depth is **what the second hop lands on**: an asset the agent runs or fills in — `templates/resolve-config.sh`, `handoff`'s and `write-docs`'s document templates, `write-readme`'s skeleton — never another document to read. So **sibling documents are not cross-linked**: `SKILL.md` links `REFERENCE.md` and `DESIGN.md`, and neither links the other, so each is entered from `SKILL.md` and read straight through. Flattening the chain instead would mean inlining the config contract into all twenty-two `SKILL.md`s — exactly what the mirrored block exists to prevent. Advisory either way: these are spec recommendations, not requirements, and `skills-ref` reports zero violations.
+- **Reference chains run two levels deep, and stop there.** The standard recommends keeping file references **one level deep** — what `SKILL.md` points at should not itself require opening something else. Fourteen skills go one hop further: `SKILL.md` → `REFERENCE.md` → `templates/…`. That hop is what [mirrored, not linked](#reading-the-config--mirrored-not-linked) costs — a skill has to be installable alone, so `resolve-config.sh` and the document templates ship **inside** the folder, and the `REFERENCE.md` documenting the contract is where they are named. What bounds the depth is **what the second hop lands on**: an asset the agent runs or fills in — `templates/resolve-config.sh`, `handoff`'s and `write-docs`'s document templates, `write-readme`'s skeleton — never another document to read. So **sibling documents are not cross-linked**: `SKILL.md` links `REFERENCE.md`, `DESIGN.md` and any branch file, and none of them links another, so each is entered from `SKILL.md` and read straight through — where one has to reach another it **names** the file or the section instead, which is a citation rather than a hop. Flattening the chain instead would mean inlining the config contract into all twenty-two `SKILL.md`s — exactly what the mirrored block exists to prevent. Advisory either way: these are spec recommendations, not requirements, and `skills-ref` reports zero violations.
 - **`allowed-tools` content is settled per skill, and the migration that settled it is finished.** The frontmatter contract settled the field's _semantics_ — pre-approval, not restriction (see the [field note](#field-notes) above) — while **what each skill declares** stayed a per-skill decision rather than one list for the whole catalogue, because rewriting the catalogue's tool lists on a guess would have been a large, likely-wrong diff. What changed is which form a skill gets for free. [ADR-0017](../docs/99.adr/0017-make-a-blanket-bash-grant-a-named-exception.md) made the scoped form the default and a blanket `Bash` a **named exception**, enumerated with its reason in [`test/allowed-tools.test.ts`](../test/allowed-tools.test.ts) and pinned in both directions — so a new skill cannot inherit the blanket grant by copying its neighbour. What is left is not a backlog: each skill still granting one does so for a reason that will not expire. **Which skills those are is the test's to say, not this page's** — a roster here is a second copy that goes stale the moment the list moves, which is exactly how this bullet came to name two skills long after eleven were scoped.
+
+## Branch files
+
+A **branch file** is a recipe a given repo, by construction, never reads. Where a skill's material forks on a **single config value** — `update-deps` on the ecosystem step 1 detects, `issue` on `issue.tracker`, `work-implement` / `work-review` / `refine-issue` on `work.tracker` — each fork gets its own file in a directory named for the axis, and a repo opens exactly the ones it has:
+
+```text
+update-deps/ecosystems/{composer,cargo,go,container-images,github-actions,gitlab-ci}.md
+issue/trackers/{github,gitlab,linear,local}.md
+```
+
+Three rules keep the shape honest:
+
+- **`REFERENCE.md` keeps everything unconditional.** What every branch needs stays there; only what one branch reaches moves out. A branch that needs no file — Node in `update-deps`, which is the default path in `Range → command` — gets none rather than a stub.
+- **Branch files are named from `SKILL.md`**, so they sit on level 1 beside `REFERENCE.md` rather than a hop behind it, and the two-levels rule above holds unchanged. The pointer states **the branch that reaches the file**, not what the file contains — an agent needs to know _when_ to open it.
+- **Nothing else links them.** `REFERENCE.md` and the branch files name each other in prose; only `SKILL.md` holds the links.
+
+The axis has to be **decided before any deep file is opened** — one config value, or one detection step. A split by task or by topic is not this shape, and [ADR-0025](../docs/99.adr/0025-keep-the-work-loops-reference-whole.md) turned one down.
 
 ## Evaluating a skill
 
