@@ -1,8 +1,8 @@
 ---
 name: update-deps
 metadata:
-  summary: Updates a repo's dependencies via its own updater — minor by default, honouring gates and pins.
-description: Updates a repo's dependencies across Node (npm / pnpm / bun), PHP (Composer), Rust (Cargo) and Go (modules), monorepos included — minor by default, with patch or major only when explicitly asked. Detects ecosystems from lockfiles and drives the repo's own updater (taze when present, else the native one), so a release-age gate or an exact pin is honoured, and whatever is held back is reported with its reason. Always runs the advisory check, reporting loudly anything vulnerable this run cannot fix. Invoke manually only — plans first, writes only after confirmation, and never commits, pushes, opens a pull request or merges. Use when the user wants to update, upgrade or refresh dependencies, bump packages to newer versions, run taze, composer update, cargo update or go get, check for outdated packages or dependency advisories, or says things like "update the deps", "upgrade the packages", "Abhängigkeiten aktualisieren", "Pakete updaten".
+  summary: Updates a repo's dependencies through the repo's own tooling — minor by default, honouring gates and pins.
+description: Updates a repo's dependencies across Node (npm / pnpm / bun), PHP (Composer), Rust (Cargo), Go (modules) and container images (Dockerfile / Compose), monorepos included — minor by default, patch or major only when explicitly asked. Detects ecosystems from lockfiles and manifests and drives the repo's own updater where there is one, so a release-age gate or an exact pin is honoured and what is held back is reported with its reason. Always runs the advisory check, reporting loudly what it cannot fix. Invoke manually only — plans first, writes after confirmation, never commits, pushes, opens a pull request or merges. Use when the user wants to update, upgrade or refresh dependencies, bump packages or image tags, run taze, composer update, cargo update or go get, check for outdated packages or dependency advisories, or says things like "update the deps", "upgrade the packages", "Abhängigkeiten aktualisieren", "Pakete updaten".
 allowed-tools:
   - Bash
   - Read
@@ -28,6 +28,7 @@ The sibling skill `merge-deps` triages the **Dependabot queue** — updates a bo
 - **Ecosystems, from lockfiles** — `pnpm-lock.yaml` → pnpm, `bun.lock`/`bun.lockb` → bun, `package-lock.json` → npm, `composer.lock`/`composer.json` → Composer, `Cargo.lock`/`Cargo.toml` → Cargo (including a nested `src-tauri/Cargo.toml`), `go.mod`/`go.sum` → the Go toolchain. Full table: [REFERENCE.md](REFERENCE.md#detection).
 - **`packageManager` in `package.json` overrides the lockfile guess** — it is the repo's explicit statement. Where `packageManagerStrict` is set, a wrong manager is not a style slip; the install is **rejected outright**.
 - **The package-manager config is an input, not scenery** — `pnpm-workspace.yaml` (pnpm 10+ keeps its settings **there**, not in `.npmrc`), `.npmrc` (auth, registries, scope routing), `composer.json`'s `config` (`minimum-stability`, `prefer-stable`, repositories). Read them **before** planning; they change what the answer even is.
+- **Container images are detected from manifests, because they have no lockfile** — `Dockerfile`, `*.Dockerfile`, `Containerfile`, `compose.yaml`/`compose.yml`/`docker-compose.yml` and their override files. A repo may carry several of each; every one is a manifest to read, and all of them together are **one** ecosystem with **one** plan section — never one run per file. [REFERENCE.md](REFERENCE.md#container-images-version-model).
 - **A repo may carry several at once** (PHP app + JS frontend) — each ecosystem is its own run, its own plan, its own report section.
 
 ### 2. Range — minor by default
@@ -42,6 +43,8 @@ The sibling skill `merge-deps` triages the **Dependabot queue** — updates a bo
 
 **Go's `major` is the one range this skill will not perform.** A Go major lives in the **module path** (`example.com/pkg/v2`), so moving to it edits every importing file rather than a version string — a source rewrite, not an update, and outside what "never widen a constraint" permits. A `major` run on Go **names the available `/vN` and stops**, leaving the code untouched. [Go's version model](REFERENCE.md#gos-version-model).
 
+**A container tag is not semver, and treating it as one is how this ecosystem goes wrong.** The range still maps: `patch` and `minor` move within the same major track (`postgres:16.2 → 16.4`), and `major` is a base-image change (`node:22 → node:24`) reported separately as breaking, like every other ecosystem's. What the range does **not** reach is the rest of the tag — a **floating** tag (`:latest`, `node:22`) is already open by the repo's choice and is reported, never rewritten; a **digest pin** (`image@sha256:…`) is this ecosystem's exact pin, held and named; a **variant suffix** (`-alpine`, `-slim`) names a base OS, not a version. [The container tag model](REFERENCE.md#container-images-version-model).
+
 ### 3. Plan — read-only first, and make the gate visible
 
 Run the updater **read-only** and show the version diff. Then do the part a plain read does **not** tell you:
@@ -50,7 +53,7 @@ Run the updater **read-only** and show the version diff. Then do the part a plai
 
 So **always diff the gated plan against an ungated read** (`--maturity-period 0`) and report the delta as **held by the gate, with the age**. Recipe and a worked example: [REFERENCE.md](REFERENCE.md#the-release-age-gate). The ungated read is a **read** — never the thing you write with.
 
-**Where no gate can exist, say so — never just skip the step.** Cargo and Go have no `minimumReleaseAge` equivalent (the Go module proxy offers none), so there is no gated-versus-ungated diff to run for them. Report that section **not applicable** for those ecosystems: a step silently omitted is indistinguishable from a step that found nothing withheld, which is the exact silence this skill exists to prevent.
+**Where no gate can exist, say so — never just skip the step.** Cargo, Go and container images have no `minimumReleaseAge` equivalent (neither the Go module proxy nor any container registry offers one), so there is no gated-versus-ungated diff to run for them. Report that section **not applicable** for those ecosystems: a step silently omitted is indistinguishable from a step that found nothing withheld, which is the exact silence this skill exists to prevent.
 
 Same duty for **exact pins**: the default scope of `taze` skips them entirely, so they are invisible rather than reported. Do a `--include-locked` read to see them and report them as **held — exact pin**. [Pins](REFERENCE.md#exact-pins).
 
@@ -62,14 +65,16 @@ Present the plan — moved, held, and why — and **write only after confirmatio
 - **No taze → native** — `pnpm update`, `npm update`, `bun update`, `composer update`, `cargo update`. These move **within the declared ranges** only; what that does and does not mean per ecosystem: [REFERENCE.md](REFERENCE.md#range--command).
 - **Cargo has no taze** — drive the repo's own script where it exists (`pnpm cargo:outdated` and friends), else `cargo update`, which moves the **lock** within the constraints in `Cargo.toml` and never rewrites them — the newest compatible release under a caret **is** the minor. Rewriting a constraint is an explicit `major` only (`cargo upgrade --incompatible`, from cargo-edit). A nested `src-tauri/Cargo.toml` is its own manifest, its own run. [REFERENCE.md](REFERENCE.md#cargos-constraint-model).
 - **Go has no ranges at all** — `go.mod` records an **exact** version per module, so the range lives in the command, not the manifest: `go get -u=patch ./...` for `patch`, `go get -u ./...` for `minor`, each followed by `go mod tidy`. A `major` is a module-path change and is **reported, not performed** (above). [REFERENCE.md](REFERENCE.md#gos-version-model).
+- **Container images have no updater to drive**, so this is the one ecosystem where the skill **resolves and writes itself**: resolve the tags through whatever the environment already has — the registry v2 API, or `crane` / `skopeo` / `docker` where one is present — and edit the `FROM` or `image:` line in the manifest. There is **no lockfile** to regenerate and nothing to install afterwards. **No resolver available → report it and skip the ecosystem**, never fetch one on the fly; that is the same answer an absent cargo-edit already gets. Registry auth for a private registry is the repo's own config to honour, and an unreachable registry is a **reported gap, never a zero**. [REFERENCE.md](REFERENCE.md#container-images-version-model).
 - **Install through the repo's own manager**, then let the lockfile be regenerated by it. Never hand-edit a lockfile.
 - **Never bypass the config to force a version through** — no `--no-frozen-lockfile` to dodge a mismatch, no lowering or disabling the release-age gate, no `--force`. A version the repo's own config refuses is **held and reported**, not smuggled in.
 
 ### 5. Security — every run, independent of the range
 
-Run the advisory check **every time**, even on a `patch` run, even when nothing else moves — `pnpm audit` / `npm audit` / `bun audit` / `composer audit` / `cargo audit` / `govulncheck ./...`.
+Run the advisory check **every time**, even on a `patch` run, even when nothing else moves — `pnpm audit` / `npm audit` / `bun audit` / `composer audit` / `cargo audit` / `govulncheck ./...` / `docker scout cves` or `trivy image`.
 
 - **A vulnerable dependency whose fix lies outside the run's range is reported loudly** — never dropped because the range said no. "The fix is a major and this was a minor run" is a finding for a human, not a reason for silence.
+- **A scanner that is not installed is reported as _unavailable_, never as clean.** The container scanners are where this bites first — `docker scout` and `trivy` are both optional, as `cargo audit` and `govulncheck` already are — but an advisory step that never ran and one that found nothing are opposite facts, and only one of them says the ecosystem is safe.
 - **The gate applies to security fixes too.** A patch published hours ago will not install under a 3-day gate. Report the advisory, the fix version, its age, and the repo's **own** sanctioned exception (`minimumReleaseAgeExclude`) — then stop. Excepting a package is a human's call, [not the skill's](REFERENCE.md#the-release-age-gate).
 - **Never weaken the repo's config to land a fix.** A security advisory is not a licence to bypass; it is a reason to escalate.
 
@@ -83,8 +88,8 @@ One report, every section of it visible on arrival — same form rule as the pla
 
 - **TL;DR** — first, before any group: how many packages moved and across which ecosystems, how many were held, how many advisories this run does **not** fix, and the verify result. **Leading the report** below binds the form.
 - **Moved** — package, from → to, bump level, per ecosystem.
-- **Held, with the reason** — release-age gate (and the version it withheld, or **not applicable** where the ecosystem has none), exact pin, major outside range, a Go `/vN` the run will not perform, declared constraint, excluded by the repo's updater config.
-- **Advisories** — open ones, which are fixed by this run, which are not, and why not.
+- **Held, with the reason** — release-age gate (and the version it withheld, or **not applicable** where the ecosystem has none), exact pin, a container **digest pin**, **floating tag** or **ARG-interpolated tag**, major outside range, a Go `/vN` the run will not perform, declared constraint, excluded by the repo's updater config.
+- **Advisories** — open ones, which are fixed by this run, which are not, and why not. A scanner that was **unavailable** belongs here too, named as such rather than left out.
 - **Verify** — the command and its result.
 - **Hand-off** — the tree is dirty and verified; committing is `atomic-commit`'s job and a PR is `pull-request`'s. Name them; do not do them.
 
@@ -164,6 +169,7 @@ opening for the summaries it writes on request; one house frame, reached two way
 - **Plan first; write only after confirmation.**
 - **Never bypass the repo's config** — not the release-age gate, not `packageManagerStrict`, not a frozen lockfile, not a registry. If the repo's own tooling refuses, the answer is a report.
 - **Never widen a constraint** (`~` → `^`) and **never unpin an exact pin** unless explicitly asked. Moving a pin `1.2.0` → `1.3.0` still needs the ask — the pin exists to stop exactly that. **Go's `/vN` major sits past this line, not on it**: it rewrites import paths in source, so it is reported and **never performed**, `major` run or not.
+- **Never pin a floating tag, and never change a variant suffix.** `:latest`, `node:22` and `alpine:3` already resolve to the newest thing in their track — the exact parallel of a GitHub Actions `@v4` ref — so rewriting one narrows what the repo deliberately left open. `-alpine`, `-slim` and `-bookworm` are a base-OS choice, so `22-alpine → 24-slim` is a different image, not an update. Both are **reported**, never moved.
 - **Never touch an ecosystem that was not in scope** for the run.
 - **Never edit a lockfile by hand**, and never resolve a conflict in one — regenerate it with the repo's manager.
 - **Never commit, push, open a PR or merge.** The deliverable is a verified tree.
@@ -171,4 +177,4 @@ opening for the summaries it writes on request; one house frame, reached two way
 
 ## Reference
 
-Detection table, the range → command mapping per ecosystem, the release-age gate (with a worked example), exact pins, Composer's constraint model, monorepos, and the reasoning behind the defaults: [REFERENCE.md](REFERENCE.md).
+Detection table, the range → command mapping per ecosystem, the release-age gate (with a worked example), exact pins, Composer's constraint model, the container tag model, monorepos, and the reasoning behind the defaults: [REFERENCE.md](REFERENCE.md).

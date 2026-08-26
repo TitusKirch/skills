@@ -1,6 +1,6 @@
 # update-deps — Reference
 
-Mechanics for the [`update-deps`](SKILL.md) skill. Scope is **Node** (npm / pnpm / bun), **PHP** (Composer), **Rust** (Cargo) and **Go** (modules), monorepos included. The updater is **detected from the repo**, never configured — see [Decisions](#decisions).
+Mechanics for the [`update-deps`](SKILL.md) skill. Scope is **Node** (npm / pnpm / bun), **PHP** (Composer), **Rust** (Cargo), **Go** (modules) and **container images** (Dockerfile / Compose), monorepos included. The updater is **detected from the repo**, never configured — see [Decisions](#decisions). Container images are the one ecosystem with no updater to detect, so the skill resolves and writes that one itself — [why](#container-images-version-model).
 
 ## Config
 
@@ -100,36 +100,43 @@ and only one of them licenses going on.
 
 ## Detection
 
-Lockfile-driven, with `packageManager` as the override:
+Lockfile-driven, with `packageManager` as the override — except for the one ecosystem that has no lockfile at all:
 
-| Signal                            | Ecosystem | Manager  |
-| :-------------------------------- | :-------- | :------- |
-| `pnpm-lock.yaml`                  | Node      | pnpm     |
-| `bun.lock` / `bun.lockb`          | Node      | bun      |
-| `package-lock.json`               | Node      | npm      |
-| `composer.lock` / `composer.json` | PHP       | Composer |
-| `Cargo.lock` / `Cargo.toml`       | Rust      | Cargo    |
-| `go.mod` / `go.sum`               | Go        | `go`     |
+| Signal                                                              | Ecosystem        | Manager                                   |
+| :------------------------------------------------------------------ | :--------------- | :---------------------------------------- |
+| `pnpm-lock.yaml`                                                    | Node             | pnpm                                      |
+| `bun.lock` / `bun.lockb`                                            | Node             | bun                                       |
+| `package-lock.json`                                                 | Node             | npm                                       |
+| `composer.lock` / `composer.json`                                   | PHP              | Composer                                  |
+| `Cargo.lock` / `Cargo.toml`                                         | Rust             | Cargo                                     |
+| `go.mod` / `go.sum`                                                 | Go               | `go`                                      |
+| `Dockerfile`, `*.Dockerfile`, `Containerfile`                       | Container images | **none** — the skill resolves and writes¹ |
+| `compose.yaml` / `compose.yml` / `docker-compose.yml` (+ overrides) | Container images | **none** — the skill resolves and writes¹ |
+
+¹ The only row with no manager to drive, because no updater owns this ecosystem. What stands in for one — the registry v2 API, `crane`, `skopeo` or `docker` — and what happens when none is present: [the container tag model](#container-images-version-model).
 
 - **`packageManager` in `package.json` wins** over the lockfile guess — it is the repo's explicit statement, and under `packageManagerStrict: true` a wrong manager is **rejected**, not merely discouraged.
 - **`taze` in `devDependencies` outranks the native updater** for the Node side, whichever manager it is — taze rewrites `package.json` and installs through the repo's own manager, so it is manager-agnostic.
 - **A `src-tauri/Cargo.toml` is a real Cargo manifest** — a Tauri app carries its Rust crate there, not at the root, so detection looks below the root too. It is its own ecosystem run, alongside the Node manifest a Tauri repo also has.
 - **`go.mod` is both manifest and lockfile** — it records an exact version per module, so there is no separate lock to consult and `go.sum` holds checksums rather than a resolution. The signal is the **module file**; `go.sum` merely accompanies it. There is no updater to outrank the toolchain: Go ships `go get` and nothing taze-shaped exists for it.
+- **The container signals are manifests, and there are usually several.** A repo commonly carries a `Dockerfile` plus a `compose.yaml` plus a `compose.override.yml`, and a monorepo carries one Dockerfile per app. Every one of them is read, and **all of them together are one ecosystem** — one run, one plan section, one report section. Splitting them per file would report the same registry, the same tag semantics and the same pin model once per manifest, which is why Dockerfile and Compose are [not two ecosystems](#decisions).
 - **Several ecosystems at once** → each is its own run, plan and report section. Never let one ecosystem's range leak into another's.
 
 ## Range → command
 
 **Only taze has real range granularity.** Every native Node updater collapses to "within the declared range" or "latest", with nothing in between:
 
-| Range               | taze (preferred) | pnpm / npm             | bun                   | Composer                        | Cargo                          | Go                      |
-| :------------------ | :--------------- | :--------------------- | :-------------------- | :------------------------------ | :----------------------------- | :---------------------- |
-| `patch`             | `taze patch -w`  | `pnpm update`¹         | `bun update`¹         | `composer update`¹              | `cargo update`¹                | `go get -u=patch ./...` |
-| `minor` _(default)_ | `taze minor -w`  | `pnpm update`¹         | `bun update`¹         | `composer update`¹              | `cargo update`¹                | `go get -u ./...`       |
-| `major`             | `taze major -w`  | `pnpm update --latest` | `bun update --latest` | `composer require <pkg>:^<new>` | `cargo upgrade --incompatible` | **report and stop**²    |
+| Range               | taze (preferred) | pnpm / npm             | bun                   | Composer                        | Cargo                          | Go                      | Container images        |
+| :------------------ | :--------------- | :--------------------- | :-------------------- | :------------------------------ | :----------------------------- | :---------------------- | :---------------------- |
+| `patch`             | `taze patch -w`  | `pnpm update`¹         | `bun update`¹         | `composer update`¹              | `cargo update`¹                | `go get -u=patch ./...` | resolve + edit the tag³ |
+| `minor` _(default)_ | `taze minor -w`  | `pnpm update`¹         | `bun update`¹         | `composer update`¹              | `cargo update`¹                | `go get -u ./...`       | resolve + edit the tag³ |
+| `major`             | `taze major -w`  | `pnpm update --latest` | `bun update --latest` | `composer require <pkg>:^<new>` | `cargo upgrade --incompatible` | **report and stop**²    | a base-image change³    |
 
 ¹ **Within the declared range only** — the manifest is not rewritten. Under `^1.2.0` that lands the newest 1.x (a minor, achieved); under `~1.2.0` it lands patches only; under an exact pin it does nothing. **The declared range is doing the ranging**, which is why native `patch` and `minor` share a command: the repo already said which it wanted. Cargo is a native updater in the same sense — `cargo update` moves the lock within `Cargo.toml`'s constraints — see [Cargo's constraint model](#cargos-constraint-model).
 
 ² **Go is the exception in this table** — its ranging lives in the **flag**, not the manifest (`go.mod` has no ranges to declare), and its `major` is not a version bump at all but a **module-path** change. Name the available `/vN` and stop — see [Go's version model](#gos-version-model). Follow every Go write with `go mod tidy`, which is what reconciles `go.mod` and `go.sum` after a `go get`.
+
+³ **Container images are the other exception** — there is no command at all, because no updater owns the ecosystem. `patch` and `minor` move within the same major track (`16.2 → 16.4`), `major` is a base-image change (`node:22 → node:24`) needing the explicit ask like any other major, and the run performs both by resolving the tag itself and editing the manifest line. Which references are in scope at all — floating tags, digest pins, variant suffixes and `ARG` interpolation are each excluded, for different reasons — is [the container tag model](#container-images-version-model).
 
 Useful taze flags (`taze --help` is the authority; all verified against `taze@19.14.1`):
 
@@ -267,11 +274,52 @@ This is the same shape as the missing-toolchain rule elsewhere (`cargo upgrade` 
 
 **Advisories are the one part that needs no special case.** `govulncheck ./...` (from `golang.org/x/vuln`) satisfies the [security step](#security) as-is, and it is sharper than most: it reports only vulnerabilities the code actually _reaches_. Like `cargo audit`, it is a **separate tool** — a missing `govulncheck` is reported, never auto-installed.
 
+## Container images' version model
+
+**A container tag is an arbitrary string that _conventionally_ carries a version.** `FROM node:22-alpine` and `image: postgres:16.2` pin third-party code as surely as any dependency line — they go stale and they carry CVEs no Node, PHP, Rust or Go pass will ever surface — but the registry guarantees nothing about what the string means. Every rule below follows from that one fact, and reading a tag as semver is the failure mode this section exists to prevent.
+
+**One reference is `<registry>/<repository>:<tag>` or `…@sha256:<digest>`.** The part this skill may move is the **version segment of the tag**, and only where the rest of the reference stays identical.
+
+### What is in scope, and what is held
+
+| Reference                  | Example                          | This run                                                                |
+| :------------------------- | :------------------------------- | :---------------------------------------------------------------------- |
+| Pinned version tag         | `postgres:16.2`                  | **moves** — `16.4` under `minor`, `17` only under an explicit `major`   |
+| Version tag with a variant | `node:22-alpine`                 | **moves the version only** — `24-alpine`, never `24-slim`               |
+| Floating tag               | `:latest`, `node:22`, `alpine:3` | **held — floating**, reported and never rewritten                       |
+| Digest pin                 | `nginx@sha256:…`                 | **held — digest pin**, named on every run                               |
+| `ARG`-interpolated tag     | `FROM node:${NODE_VERSION}`      | **held — not statically resolvable**, reported with the `ARG` default   |
+| Compose `build:` service   | `build: ./api`                   | **not a dependency** — it points at a Dockerfile this run already reads |
+| Stage alias                | `FROM build`                     | **not a registry reference** — internal to the multi-stage build        |
+
+- **A floating tag moves on its own, so pinning it is a narrowing, not an update.** `:latest`, `node:22` and `alpine:3` already resolve to the newest thing in their track; the repo chose that openness deliberately, exactly as a GitHub Actions `@v4` ref does. Report it as floating and leave it alone. Reporting is not optional — a floating tag the run silently passes over reads as a tag that was checked and found current.
+- **A digest pin is this ecosystem's exact pin.** `image@sha256:…` names one immutable manifest, so nothing resolves "newer" for it without a human choosing a new digest. **Held is right; invisible is not** — the same reasoning that puts a `taze -l` read on every Node run, so that pins are named rather than absent.
+- **A variant suffix is a base-OS choice, never a version.** `-alpine`, `-slim`, `-bookworm` and friends select a different image, built from a different base, with a different libc and a different package set. `22-alpine → 24-alpine` is an update; `22-alpine → 24-slim` is a substitution nobody asked for. Move the version segment and carry the suffix through **verbatim**.
+- **An `ARG`-interpolated tag is not resolvable statically.** `FROM node:${NODE_VERSION}` defers the tag to build time, so the manifest does not say what runs. Report the reference **with the `ARG` default it would use**, and do not rewrite through the indirection — the `ARG` may be overridden by CI, and the run cannot see that.
+- **A Compose service with `build:` rather than `image:` is not a dependency**, it is a pointer to a Dockerfile this run already reads. Counting it would double-report the same `FROM` lines. A service carrying **both** is a build with a tag to push to; the `image:` there names the repo's own artefact, not a dependency, so it is out of scope too.
+- **Multi-stage builds carry several `FROM` lines, and each is its own reference.** `FROM node:22 AS build` … `FROM build` — the second names a stage in the same file, not a registry, and resolving it against a registry is how a build gets silently rerouted to an unrelated public image. Track the stage aliases declared by `AS` and exclude every `FROM` that names one.
+
+### Resolving and writing, with no updater to drive
+
+This is the **first ecosystem where the skill resolves and writes itself**, and that is a consequence of the domain rather than a preference: no updater owns a Dockerfile the way taze owns `package.json` or `go get` owns `go.mod`.
+
+- **Resolve through whatever the environment already has.** The registry v2 API (`GET /v2/<repo>/tags/list`) needs nothing installed; `crane ls`, `skopeo list-tags` and `docker` are used where one is present. Preference is irrelevant — the first one available is the right one.
+- **Write the manifest file directly.** The `FROM` line in a Dockerfile, the `image:` value in a Compose service. **There is no lockfile**, so nothing is regenerated and nothing is installed afterwards; the edited manifest is the whole write.
+- **No resolver available → report it and skip the ecosystem.** Never install one on the fly. This is the same answer the skill already gives when `cargo upgrade` needs an absent cargo-edit, and it discharges the same rule: the repo's tooling decides, and the skill does not reach past it.
+- **Registry auth is the repo's own config to honour.** A private registry the environment is already logged in to resolves like any other; one it is not, or one that is simply unreachable, is a **reported gap** — never a zero, and never a silent omission from the plan. "No newer tag found" and "the registry did not answer" are opposite facts.
+
+### The gate and the advisories
+
+**No release-age gate exists here, and that must be said rather than skipped.** No container registry offers a `minimumReleaseAge` equivalent, so the [gated-versus-ungated diff](#the-release-age-gate) has nothing to compare and there is no held-by-gate row for the container side. **Report the section _not applicable_** — the same rule [Cargo](#cargos-constraint-model) and [Go](#gos-version-model) already carry, for the same reason: a step silently omitted reads exactly like a step that ran and found nothing withheld.
+
+**Advisories run every time, like every other ecosystem's.** `docker scout cves <image>` or `trivy image <image>` where one is available. Both are **separate tools**, as `cargo audit` and `govulncheck` are, so a missing one is **reported as unavailable, never as clean** — see [Security](#security).
+
 ## Monorepos
 
 - **pnpm** — `packages:` in `pnpm-workspace.yaml`. **npm / bun** — `workspaces` in `package.json`. **Composer** — path repositories. **Cargo** — `[workspace]` in `Cargo.toml`; `cargo update` at the workspace root resolves the whole member tree into one `Cargo.lock`. **Go** — `go.work`; each member keeps its **own** `go.mod`, so an update is per-module and there is no single lock to resolve at the root.
 - **taze `-r`** walks every workspace `package.json`. Note `--ignore-other-workspaces` defaults to **true** — a nested package with its own `.git`/`pnpm-workspace.yaml` is a different repo and is skipped, which is the correct default.
-- **Keep a shared dependency on one version across packages** — a version skew introduced by an update is a finding, not an outcome.
+- **Container images have no workspace concept** — there is nothing declaring which Dockerfiles belong to the repo, so every `Dockerfile` and Compose file under it is read wherever it sits, and they resolve together as [one ecosystem](#container-images-version-model). A monorepo with one Dockerfile per app is the ordinary case, not a special one.
+- **Keep a shared dependency on one version across packages** — a version skew introduced by an update is a finding, not an outcome. A **shared base image** is the same rule: three apps on `FROM node:22` that come out on two different tags is a skew, however green each one is alone.
 - **Resolve the lockfile once, at the root**, with one install after all manifests are written.
 
 ## Security
@@ -280,17 +328,22 @@ Run **every time**, independent of the range, and before declaring the run clean
 
 ```bash
 pnpm audit          # or: npm audit | bun audit | composer audit | cargo audit | govulncheck ./...
+docker scout cves <image>   # container images — or: trivy image <image>
 ```
 
-| Situation                           | Action                                                                 |
-| :---------------------------------- | :--------------------------------------------------------------------- |
-| Fix is inside the run's range       | it lands with the run — name it in the report as an advisory fix       |
-| Fix needs a **major**, run is minor | **report loudly**; never widen the range on your own initiative        |
-| Fix needs a Go **`/vN`** move       | report the path and stop — the migration is a human's, not the skill's |
-| Fix is blocked by the **gate**      | report advisory + fix + age + `minimumReleaseAgeExclude`; do not write |
-| **No fix available**                | report it every run — a vulnerability nobody can patch stays visible   |
+| Situation                              | Action                                                                  |
+| :------------------------------------- | :---------------------------------------------------------------------- |
+| Fix is inside the run's range          | it lands with the run — name it in the report as an advisory fix        |
+| Fix needs a **major**, run is minor    | **report loudly**; never widen the range on your own initiative         |
+| Fix needs a Go **`/vN`** move          | report the path and stop — the migration is a human's, not the skill's  |
+| Fix needs a **new base image**         | report the tag and stop — a `major` on a base image is the explicit ask |
+| Fix is blocked by the **gate**         | report advisory + fix + age + `minimumReleaseAgeExclude`; do not write  |
+| **No fix available**                   | report it every run — a vulnerability nobody can patch stays visible    |
+| **No scanner installed** for a section | report the ecosystem's advisory step **unavailable** — never as clean   |
 
 `pnpm audit --fix` writes `pnpm.overrides` into `package.json` — a real edit with real blast radius, so it is **proposed in the plan, never run implicitly**.
+
+**An unavailable scanner is a finding, not an omission.** `cargo audit`, `govulncheck`, `docker scout` and `trivy` all install separately, so a run on a machine without one has no advisory answer for that ecosystem — which is a different fact from having asked and been told nothing. Say which tool was missing and which section is therefore unanswered, and never install one to close the gap.
 
 ## Decisions
 
@@ -313,5 +366,6 @@ The issue that specified this skill left its defaults open. What was settled, an
 - **Composer is constraint-respecting in v1** — under a caret, `composer update` already achieves the newest minor, so v1 needs no constraint rewriting to deliver its headline promise. Rewriting (`composer bump`, `composer require pkg:^7`) is reserved for an explicit `major`, because for a library it narrows what consumers may install — a decision, not a refresh.
 - **Cargo is Composer-shaped, not npm-shaped** — added so a Tauri repo's `src-tauri/` crate is not silently skipped next to its Node frontend. `cargo update` moves the lock within `Cargo.toml`'s constraints and never rewrites them, so it slots into the existing native-updater, constraint-respecting path with **no new machinery** — a detection row and a command column, exactly as the Yarn note predicts for an added ecosystem. Constraint rewriting stays an explicit `major` (`cargo upgrade --incompatible`), and because that and `cargo audit` / `cargo outdated` are **separate tools** (cargo-edit, cargo-audit, cargo-outdated), a missing one is reported, never auto-installed — the same "the repo's tooling decides, the skill does not reach past it" rule that governs the gate. The default caret on a bare version (the inverse of npm's bare-is-pinned) is the one genuine footgun, so it earns its own line in the model.
 - **Go is in scope, but its `major` is not** — a Go repo carries `go.mod`/`go.sum`, which matched no detection signal, so a run on one ended with no ecosystem found: no error, no output, and an ecosystem the skill cannot see reports nothing at all — the one failure mode this skill exists to prevent. Adding it costs a detection row, a command column and a version-model section, exactly as Cargo did. The `major` column is where Go stops resembling the others: from `/v2` on, the major lives in the **module path**, so moving to it edits every importing file. That is a source rewrite, categorically larger than the constraint edit "never widen a constraint" was written to forbid, and no flag performs it. So a `major` run **names the available `/vN` and stops** — the same answer the skill already gives when `cargo upgrade` needs an absent cargo-edit: where the act exceeds what the skill may do alone, the deliverable is a report. Rejected doing the rewrite: a `/vN` bump commonly carries API changes beyond the path, so the ordinary outcome would be a tree that no longer builds, produced by an edit nobody asked for. Two consequences follow and are recorded rather than papered over — the **release-age gate reports _not applicable_** for Go (the module proxy has no `minimumReleaseAge` equivalent, and a silently skipped step reads identically to a passed one), and **`govulncheck` satisfies the advisory step unchanged**. Rejected leaving Go to Dependabot: that is today's behaviour and fine for repos running it, but it does not cover the local, on-demand update this skill exists for. `merge-deps` needs nothing here — it names no ecosystem anywhere, and Dependabot supports Go natively.
+- **Container images are one ecosystem, and the first one the skill updates itself** — a repo carrying only a `Dockerfile` and a `compose.yaml` matched no detection signal, so a run on it ended exactly the way a Go repo's run used to: no ecosystem found, no error, no output. `FROM node:22-alpine` and `image: postgres:16.2` pin third-party code, go stale and carry CVEs that no Node, PHP, Rust or Go pass will surface, so an ecosystem the skill cannot see is the one failure mode it exists to prevent. **Dockerfile and Compose are not two ecosystems** — same registry, same tag semantics, same digest-pin handling, same resolution — so splitting them would have written the version model twice and made the second addition a detection row on top of the first. Two things do not carry over from the ecosystems before it. First, **there is no updater to drive**: nothing owns a Dockerfile the way taze owns `package.json`, so the skill resolves tags through whatever the environment already has (registry v2, `crane`, `skopeo`, `docker`) and edits the manifest directly, with no lockfile to regenerate — and where no resolver exists it **reports and skips**, never installing one, which is the absent-cargo-edit answer again. Second, **a tag is not semver**: a floating tag (`:latest`, `node:22`) is the repo's deliberate openness and is reported rather than pinned — the same call the GitHub Actions `@v4` ref gets; a digest pin is this ecosystem's exact pin, held and named; a variant suffix (`-alpine`, `-slim`) is a base OS and never moves; an `ARG`-interpolated tag is reported with its default rather than rewritten through the indirection. Rejected **report-only**: it breaks no principle but makes container images the single ecosystem where the skill declines its headline promise of a verified tree. Rejected **driving Renovate locally** (`renovate --platform=local`): it knows this ecosystem natively and would keep "drive the repo's own updater" literally true, but this repo runs Dependabot, so Renovate would be a tool the **skill** brings rather than one the **repo** owns — the reach-past-the-repo the gate rules forbid everywhere else. Rejected **leaving it to Dependabot**: fine for a repo on a forge that runs it, and blind for the local, on-demand run this skill exists for — the same reasoning that put Go in scope. The two consequences Go already established repeat verbatim: the **release-age gate is _not applicable_** (no registry offers a `minimumReleaseAge` equivalent) and must say so, and the **advisory step still runs every time** — `docker scout cves` or `trivy image`, reported **unavailable** rather than clean where neither is installed. `merge-deps` needs nothing here either: it names no ecosystem anywhere, and Dependabot supports `docker` natively. **Scope is Dockerfile and Compose**; GitLab CI's `image:` / `services:` keys reference the same registry tags and reuse this model unchanged, but they are a **separate addition** — a detection row on top of this one, exactly as the Yarn note predicts.
 - **`packageManager` is a toolchain change, not a dependency** — taze offers it like any other row, but bumping it re-points every contributor and CI, and `packageManagerStrict` makes a mismatch fatal rather than cosmetic. It gets its own line in the plan; it never rides along inside "3 minor updates".
 - **Yarn is out of scope in v1** — the issue scoped Node to npm/pnpm/bun plus Composer. taze already reads yarn's config, so adding it later is a detection row, not a reshape.
