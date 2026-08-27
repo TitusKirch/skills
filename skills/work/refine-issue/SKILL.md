@@ -2,7 +2,7 @@
 name: refine-issue
 metadata:
   summary: Takes one filed issue to the point a human can approve it for the AI loop — finds the open decisions and closes them.
-description: Prepares a single filed issue for the AI work loop across GitHub (gh), Linear (MCP) or local issue files — reads it against the repo as it stands today, flags an issue already solved or duplicated, finds the decisions an agent may not make for itself (an architectural choice, a trade-off the repo inherits, a dependency, a requirement too loose to verify), and closes them with the human by driving grilling one question at a time. The answers go back into the issue body, so the loop reads a settled brief. It never applies the ai-ready label itself — it reports that the issue has earned it and leaves the approval to the human. Use when the user wants to get an issue ready for an agent, asks whether an issue is ready to hand over, wants one refined, sharpened or its open questions settled, or says things like "is issue 42 ready", "refine issue 42", "Issue 42 vorbereiten", "Issue abklären".
+description: Prepares a single filed issue for the AI work loop across GitHub (gh), GitLab (glab), Linear (MCP) or local issue files — reads it against the repo as it stands today, flags an issue already solved or duplicated, finds the decisions an agent may not make for itself (an architectural choice, a trade-off the repo inherits, a dependency, a requirement too loose to verify), and closes them with the human by driving grilling one question at a time. The answers go back into the issue body, so the loop reads a settled brief. It never applies the ai-ready label itself — it reports that the issue has earned it and leaves the approval to the human. Use when the user wants to get an issue ready for an agent, asks whether an issue is ready to hand over, wants one refined, sharpened or its open questions settled, or says things like "is issue 42 ready", "refine issue 42", "Issue 42 vorbereiten", "Issue abklären".
 allowed-tools:
   - Read
   - Grep
@@ -19,11 +19,17 @@ allowed-tools:
   - Bash(gh pr list:*)
   - Bash(gh label list:*)
   - Bash(gh repo view:*)
+  - Bash(glab api:*)
+  - Bash(glab issue list:*)
+  - Bash(glab issue view:*)
+  - Bash(glab mr list:*)
+  - Bash(glab label list:*)
+  - Bash(glab repo view:*)
 ---
 
 # refine-issue
 
-Take **one** filed issue and work out what stands between it and a human's approval to hand it to an agent — then close that gap **with** the human rather than around them. One issue, one tracker (**GitHub** via `gh`, **Linear** via its MCP, or **local files** committed in the repo), picked per-repo by the same committed config the `issue` skill uses.
+Take **one** filed issue and work out what stands between it and a human's approval to hand it to an agent — then close that gap **with** the human rather than around them. One issue, one tracker (**GitHub** via `gh`, **GitLab** via `glab`, **Linear** via its MCP, or **local files** committed in the repo), picked per-repo by the same committed config the `issue` skill uses.
 
 `issue` files an issue from a description that is fresh in someone's mind; the two work loops pick it up once it carries the ready label. This skill is the **step in between** — the one nothing helped with, so an issue either waited indefinitely or went to the loop under-decided. What it looks for is not "is this issue well written". It is: **which decisions are still open that the loop must not make on its own?** An agent handed an under-decided issue does not stall — it decides, quietly, and the choice surfaces as a fait accompli in the review.
 
@@ -35,11 +41,11 @@ Take **one** filed issue and work out what stands between it and a human's appro
 
 ### 1. Load config & resolve tracker
 
-Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included). The `work.*` section holds the tracker, the lifecycle label names and the Linear scope; `issue.language` (falling back to the root `language`) is what the answers are written in, and the root `grillWith` names the interview engine [step 6](#6-close-them--drive-the-interview-engine) drives. Resolution per setting: **config → default**. Determine the tracker (`work.tracker`, falling back to `issue.tracker`) and confirm it is available and authenticated. Reuse the `issue` catalog cache for labels and teams.
+Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included). The `work.*` section holds the tracker, the lifecycle label names and the Linear scope; `issue.language` (falling back to the root `language`) is what the answers are written in, and the root `grillWith` names the interview engine [step 6](#6-close-them--drive-the-interview-engine) drives. Resolution per setting: **config → default**. Determine the tracker (`work.tracker`, falling back to `issue.tracker`) and confirm it is available and authenticated — for a forge-native tracker that means **against the host this repo resolves**, never the forge's public one by assumption, which is what a self-hosted GitLab makes the normal case rather than the exception ([`trackers/gitlab.md`](trackers/gitlab.md)). Reuse the `issue` catalog cache for labels and teams.
 
 **The ready gate may be off.** `work.labels.ready` resolving to `false` means the repo runs no approval gate at all — everything below still applies, and the report ends with the decisions that were closed instead of a label to apply. Tell "off" apart from "absent": absent means the default (`ai: ready`), `false` means the mechanic is disabled.
 
-Config schema and everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). The tracker recipes are one file each — [`trackers/github.md`](trackers/github.md), [`trackers/linear.md`](trackers/linear.md) and [`trackers/local.md`](trackers/local.md), the three trackers this skill drives.
+Config schema and everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). The tracker recipes are one file each — [`trackers/github.md`](trackers/github.md), [`trackers/gitlab.md`](trackers/gitlab.md), [`trackers/linear.md`](trackers/linear.md) and [`trackers/local.md`](trackers/local.md), the four trackers this skill drives.
 
 ### 2. Resolve the target issue
 
@@ -92,7 +98,7 @@ The questions this finds are the ones `grilling` already asks well: one question
 
 **The body, never a comment.** The loop reads the body as its brief, so an answer that lives in a comment is an answer the worker never sees. Append a dated `Decided` block — one bullet per closed decision, in the configured language — and **never rewrite what the human wrote**: where an answer supersedes a line in the body, the block says so rather than editing the line away. Shape and an example: [REFERENCE.md](REFERENCE.md#writing-the-answers-into-the-body).
 
-**Preview the whole edited body, then write only after confirmation.** **Plan-only triggers** ("nur den Plan", "dry run", "just show me", "don't write it", "nicht schreiben") → print the exact `gh` command / MCP call and **stop**.
+**Preview the whole edited body, then write only after confirmation.** **Plan-only triggers** ("nur den Plan", "dry run", "just show me", "don't write it", "nicht schreiben") → print the exact write call the tracker recipe names — `gh issue edit`, `glab issue update`, `save_issue`, or the file append — and **stop**.
 
 ### 8. Report readiness — the human applies the label
 
@@ -102,7 +108,7 @@ The questions this finds are the ones `grilling` already asks well: one question
 | **still open**          | a decision deferred, or the engine unavailable       | which question is holding it, and what it would decide                          |
 | **not worth working**   | already solved or duplicated (step 4)                | the commit, PR or issue that already covers it, and the recommendation to close |
 
-**The untriaged marker is reported for removal in that same command.** `work.labels.needsTriage` (opt-in, **off** by default) means _not ready to hand over_ — and an issue whose every decision this run closed is exactly what stops that being true. So a `ready for the label` verdict prints one command that adds the ready label **and** removes the marker, because the two left standing together are the contradiction the implement queue withholds an issue for. A `still open` verdict prints neither: an issue holding an unanswered question keeps the marker, which is the one case where it is saying something true. Shape, and the Linear equivalent: [REFERENCE.md](REFERENCE.md#report-output).
+**The untriaged marker is reported for removal in that same command.** `work.labels.needsTriage` (opt-in, **off** by default) means _not ready to hand over_ — and an issue whose every decision this run closed is exactly what stops that being true. So a `ready for the label` verdict prints one command that adds the ready label **and** removes the marker, because the two left standing together are the contradiction the implement queue withholds an issue for. A `still open` verdict prints neither: an issue holding an unanswered question keeps the marker, which is the one case where it is saying something true. Shape, and what the command becomes on each of the other trackers: [REFERENCE.md](REFERENCE.md#report-output).
 
 The skill's terminal output is a **report**. It applies no lifecycle label, closes nothing, opens nothing, and touches no issue but this one.
 
@@ -150,4 +156,4 @@ of a file.
 
 Config, the candidate query, the open-decision taxonomy, the already-solved and duplicate recipes, the `Decided` block shape and the report format — everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). What happens to the issue once a human applies the label: `work-implement-queue`.
 
-**One file per tracker recipe, and a repo reads exactly one.** `work.tracker` (falling back to `issue.tracker`) is a single value, so the branch is settled before any of them is opened: [`trackers/github.md`](trackers/github.md), [`trackers/linear.md`](trackers/linear.md) or [`trackers/local.md`](trackers/local.md).
+**One file per tracker recipe, and a repo reads exactly one.** `work.tracker` (falling back to `issue.tracker`) is a single value, so the branch is settled before any of them is opened: [`trackers/github.md`](trackers/github.md), [`trackers/gitlab.md`](trackers/gitlab.md), [`trackers/linear.md`](trackers/linear.md) or [`trackers/local.md`](trackers/local.md).
