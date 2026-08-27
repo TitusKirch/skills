@@ -167,11 +167,37 @@ In that order, the optional one last.
 - **`Alternatives considered` is optional on purpose.** The reasoning it holds is what a later reader comes back for, and without a home it ends up buried mid-`Decision` or dropped entirely — but required is the one thing it must not be: the lifecycle below is append-only, so a section made mandatory today could never be added to the records already written, and it would freeze every one of them out of conformance permanently. An ADR whose alternatives are genuinely covered inside `Decision` omits the section rather than padding it.
 - **Optional is about writing it, not about editing it later.** Once the record is accepted this section is as immutable as the three above it — the [lifecycle](#lifecycle--append-only) governs the whole body, so an omitted `Alternatives considered` is not an invitation to add one to an accepted ADR afterwards.
 
+### What the body may hold
+
+The [lifecycle](#lifecycle--append-only) makes this a **content** rule rather than a length one: no sentence in an accepted record can ever be corrected, so **every sentence has to still be true years from now**.
+
+**The expiry test — a record may hold no sentence its author would later want to fix.** The tells are mechanical, and each marks a fact that belongs to a page which _may_ be edited when it moves:
+
+| Tell in the prose                                | What it actually is                                                                     |
+| :----------------------------------------------- | :-------------------------------------------------------------------------------------- |
+| _currently_ · _for now_ · _at present_ · _today_ | a state of the world, not a decision                                                    |
+| _is being_ removed / replaced / migrated         | work in flight, finished before the next reader arrives                                 |
+| a version, a release, a dependency's shape       | an implementation state, correct for exactly one release                                |
+| a claim about what some tickets contain          | their contents move; a pointer to the record's origin is fine, a summary of them is not |
+| a field list, an option table, a signature       | transcribed from code that stays correct on its own                                     |
+| any enumeration a later change will extend       | a convention, and conventions grow                                                      |
+
+Freezing a fact **on purpose** is legitimate — the state something was in on the day it was decided is often what makes the decision legible at all. Write it in the **past tense**, so the record dates its own claim instead of asserting it forever.
+
+Two sections attract borrowed material in particular:
+
+- **`Context` states the constraint, not the inventory.** It answers what _forced_ this decision, never what the project looked like at the time. A workaround that shipped with a bug is context — it proves the discipline did not hold; a tour of what the repo contained is not, and it is false within a release.
+- **`Consequences` are not conventions.** The moment a consequence prescribes how _future_ work is to be done, it is a rule, and it belongs in `conventions/` — where it is found without reading this record, and edited when it changes. What follows _from_ the decision stays; what is now _required of everyone_ moves out and is linked.
+
+**The [delta principle](SKILL.md#route--add--docs-exists) binds hardest here.** It forbids transcribing values, versions and option tables out of a file anywhere in the tree; in an append-only record the copy cannot even be corrected once that file moves on. Name the file and what is surprising about it — never its contents.
+
+**A record never instructs its own continuation.** "Extend this list here when you add one" describes a living page, which is the one thing the lifecycle forbids: the list belongs in `conventions/`, and the record decides only that it exists. The sole thing an accepted ADR may grow is a dated [amendment](#lifecycle--append-only).
+
 ### Size
 
 **An ADR can be a single paragraph. The value is in recording that a decision was made and why — not in filling out sections.** The three H2s are required as _headings_, not as a word budget: any of them may be one sentence, and "the consequences are the obvious ones" is a complete `Consequences` section.
 
-This is a **permission, not a ceiling** — no word count in either direction. A decision with four rejected alternatives earns the words it takes to name them, and append-only means an over-long record cannot be trimmed later anyway. The permission exists because the cost of a mandatory-looking section is paid at the moment of **writing**, where a record that feels like paperwork is a record that does not get made — and an unwritten ADR is the only failure mode this contract cannot recover from.
+This is a **permission, not a ceiling** — no word count in either direction. A decision with four rejected alternatives earns the words it takes to name them, and append-only means an over-long record cannot be trimmed later anyway. What bounds a record is therefore not its length but [what may go in it](#what-the-body-may-hold): a long record is a problem only when the words come from a page that should have stayed editable. The permission exists because the cost of a mandatory-looking section is paid at the moment of **writing**, where a record that feels like paperwork is a record that does not get made — and an unwritten ADR is the only failure mode this contract cannot recover from.
 
 ### Lifecycle — append-only
 
@@ -331,6 +357,9 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 - ❌ An ADR title that names the topic (`0021-adr-format`) instead of stating the decision as an imperative (`0021-drop-the-legacy-queue`).
 - ❌ Rewriting an accepted ADR to reflect a new decision instead of superseding it.
 - ❌ Context/decision/consequences as ADR frontmatter fields instead of body sections.
+- ❌ An ADR sentence describing the repo at the moment of writing rather than the decision — _currently_, _is being_, a version number, a transcribed field list ([the expiry test](#what-the-body-may-hold)).
+- ❌ An ADR instructing its own continuation ("extend this list here") instead of deciding that the list exists and pointing at the page allowed to grow.
+- ❌ A `Consequences` entry prescribing how future work is to be done — that is a convention, and it belongs where it can be edited.
 - ❌ MADR fields (`decision-makers`, `consulted`, `informed`) or MADR's section names on an ADR — the shape here is Nygard's.
 - ❌ A how-to without a closing checklist.
 - ❌ Restating upstream/framework behavior instead of linking it.

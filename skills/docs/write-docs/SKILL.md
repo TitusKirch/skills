@@ -77,6 +77,8 @@ Decisions that typically clear it: architectural shape · integration patterns b
 
 **Size is not the gate, and never a reason to skip one.** _An ADR can be a single paragraph. The value is in recording that a decision was made and why — not in filling out sections._ The required H2s stay, and any of them may be one sentence ([contract](REFERENCE.md#architecture-decision-records)).
 
+**What may go _in_ it is the separate question — and the one append-only makes permanent.** No sentence in an accepted record can be corrected, so every sentence has to still be true years from now. That rules out the state of the world (_currently_, _is being_, a version, a claim about what some tickets hold), anything transcribed out of a file, and any enumeration a later change will extend. `Context` carries the constraint that forced the decision, not an inventory of the project; a consequence that prescribes how future work is done is a convention and belongs in `conventions/`, where it can be edited. Freezing a fact deliberately is fine — write it in the past tense. The full test: [REFERENCE.md](REFERENCE.md#what-the-body-may-hold).
+
 **Offer an ADR proactively** once a decision clearly clears the threshold — same shape as the proactive trigger above: propose the record, plan → confirm → apply, and never write one unasked. _Clearly_ is the bar; a borderline call is the human's to make, so name it and let them answer.
 
 ## Scaffold — `docs/` is missing
@@ -157,7 +159,7 @@ of a file.
 ## Reference
 
 - **Open it where the body's routing matrix stops deciding for you** — which sections a preset scaffolds, what frontmatter and status marker a new page carries, which type a slug is allowed to be, whether a subject belongs in a folder or a section, and what a reconcile may change rather than only report: [REFERENCE.md](REFERENCE.md).
-- **Open it in full before writing or importing an ADR, every time.** `99.adr/` is append-only, so the id, the naming, the required sections and the supersession rule have to be right on entry — there is no later edit that repairs them: [REFERENCE.md](REFERENCE.md#architecture-decision-records).
+- **Open it in full before writing or importing an ADR, every time.** `99.adr/` is append-only, so the id, the naming, the required sections, what the body may hold and the supersession rule have to be right on entry — there is no later edit that repairs them: [REFERENCE.md](REFERENCE.md#architecture-decision-records).
 - **Copy one per page you are about to create**, matched to that page's type: [`templates/`](templates/).
 
 ## Gap report (mandatory final step)
