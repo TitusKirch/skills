@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/TitusKirch/skills/compare/v0.20.0...v0.21.0) (2026-08-27)
+
+
+### Features
+
+* **refine-issue:** add the local tracker recipe ([be1ce6f](https://github.com/TitusKirch/skills/commit/be1ce6fea3343180c136a3616e1084fecae6ef1c)), closes [#249](https://github.com/TitusKirch/skills/issues/249)
+
 ## [0.20.0](https://github.com/TitusKirch/skills/compare/v0.19.0...v0.20.0) (2026-08-27)
 
 
