@@ -167,11 +167,37 @@ In that order, the optional one last.
 - **`Alternatives considered` is optional on purpose.** The reasoning it holds is what a later reader comes back for, and without a home it ends up buried mid-`Decision` or dropped entirely — but required is the one thing it must not be: the lifecycle below is append-only, so a section made mandatory today could never be added to the records already written, and it would freeze every one of them out of conformance permanently. An ADR whose alternatives are genuinely covered inside `Decision` omits the section rather than padding it.
 - **Optional is about writing it, not about editing it later.** Once the record is accepted this section is as immutable as the three above it — the [lifecycle](#lifecycle--append-only) governs the whole body, so an omitted `Alternatives considered` is not an invitation to add one to an accepted ADR afterwards.
 
+### What the body may hold
+
+The [lifecycle](#lifecycle--append-only) makes this a **content** rule rather than a length one: no sentence in an accepted record can ever be corrected, so **every sentence has to still be true years from now**.
+
+**The expiry test — a record may hold no sentence its author would later want to fix.** The tells are mechanical, and each marks a fact that belongs to a page which _may_ be edited when it moves:
+
+| Tell in the prose                                | What it actually is                                                                     |
+| :----------------------------------------------- | :-------------------------------------------------------------------------------------- |
+| _currently_ · _for now_ · _at present_ · _today_ | a state of the world, not a decision                                                    |
+| _is being_ removed / replaced / migrated         | work in flight, finished before the next reader arrives                                 |
+| a version, a release, a dependency's shape       | an implementation state, correct for exactly one release                                |
+| a claim about what some tickets contain          | their contents move; a pointer to the record's origin is fine, a summary of them is not |
+| a field list, an option table, a signature       | transcribed from code that stays correct on its own                                     |
+| any enumeration a later change will extend       | a convention, and conventions grow                                                      |
+
+Freezing a fact **on purpose** is legitimate — the state something was in on the day it was decided is often what makes the decision legible at all. Write it in the **past tense**, so the record dates its own claim instead of asserting it forever.
+
+Two sections attract borrowed material in particular:
+
+- **`Context` states the constraint, not the inventory.** It answers what _forced_ this decision, never what the project looked like at the time. A workaround that shipped with a bug is context — it proves the discipline did not hold; a tour of what the repo contained is not, and it is false within a release.
+- **`Consequences` are not conventions.** The moment a consequence prescribes how _future_ work is to be done, it is a rule, and it belongs in `conventions/` — where it is found without reading this record, and edited when it changes. What follows _from_ the decision stays; what is now _required of everyone_ moves out and is linked.
+
+**The [delta principle](SKILL.md#route--add--docs-exists) binds hardest here.** It forbids transcribing values, versions and option tables out of a file anywhere in the tree; in an append-only record the copy cannot even be corrected once that file moves on. Name the file and what is surprising about it — never its contents.
+
+**A record never instructs its own continuation.** "Extend this list here when you add one" describes a living page, which is the one thing the lifecycle forbids: the list belongs in `conventions/`, and the record decides only that it exists. The sole thing an accepted ADR may grow is a dated [amendment](#lifecycle--append-only).
+
 ### Size
 
 **An ADR can be a single paragraph. The value is in recording that a decision was made and why — not in filling out sections.** The three H2s are required as _headings_, not as a word budget: any of them may be one sentence, and "the consequences are the obvious ones" is a complete `Consequences` section.
 
-This is a **permission, not a ceiling** — no word count in either direction. A decision with four rejected alternatives earns the words it takes to name them, and append-only means an over-long record cannot be trimmed later anyway. The permission exists because the cost of a mandatory-looking section is paid at the moment of **writing**, where a record that feels like paperwork is a record that does not get made — and an unwritten ADR is the only failure mode this contract cannot recover from.
+This is a **permission, not a ceiling** — no word count in either direction. A decision with four rejected alternatives earns the words it takes to name them, and append-only means an over-long record cannot be trimmed later anyway. What bounds a record is therefore not its length but [what may go in it](#what-the-body-may-hold): a long record is a problem only when the words come from a page that should have stayed editable. The permission exists because the cost of a mandatory-looking section is paid at the moment of **writing**, where a record that feels like paperwork is a record that does not get made — and an unwritten ADR is the only failure mode this contract cannot recover from.
 
 ### Lifecycle — append-only
 
@@ -201,14 +227,16 @@ The **reconcile** job therefore recognizes such a directory and offers to bring 
 
 **The gate belongs at the import step and nowhere later.** The log is [append-only](#lifecycle--append-only), so a record admitted wrongly can never be pruned — faithfully importing another tool's noise into a log that cannot be trimmed is a worse outcome than the blind spot the import exists to close. Ask it before the id is assigned, because after that there is no undo.
 
-A record that does **not** clear the bar has two outcomes, proposed in the same plan as the ones that do:
+Admission has **four** outcomes, all of them proposed in the same plan:
 
-| Outcome                            | When                                                                                                                                                                                          |
-| :--------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Route as an ordinary docs page** | the content is worth keeping but is not a decision this log records — it goes through the [routing matrix](SKILL.md#routing-matrix--what-you-changed--page-type--section) like any other page |
-| **Report and leave it alone**      | there is nothing to keep, or the call is genuinely the human's — named in the report, not moved, not imported                                                                                 |
+| Outcome                                      | When                                                                                                                                                                                          |
+| :------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Import the record**                        | it clears the bar, and what it holds is what a record nobody may correct should hold                                                                                                          |
+| **[Split it](#splitting-a-record-on-entry)** | it holds a decision this log wants **and** material the [expiry test](#what-the-body-may-hold) rejects, and the two come apart without a sentence being rewritten                             |
+| **Route it as an ordinary docs page**        | the content is worth keeping but is not a decision this log records — it goes through the [routing matrix](SKILL.md#routing-matrix--what-you-changed--page-type--section) like any other page |
+| **Report it and leave it alone**             | there is nothing to keep, the call is genuinely the human's, or the decision will not come apart from the rest without prose being rewritten — named in the report, not moved, not imported   |
 
-**Borderline is the human's call.** Name it in the plan and let them answer; never resolve it by importing "just in case", since that is the direction with no way back. Nothing is deleted either way — a record the reconciler declines to import stays exactly where it is.
+**Borderline is the human's call.** Name it in the plan and let them answer; never resolve it by importing "just in case", since that is the direction with no way back. Nothing is deleted either way — a record the reconciler declines to import stays exactly where it is. The single deletion this job permits belongs to a confirmed [split](#splitting-a-record-on-entry), never to a record the threshold turned down.
 
 | The import supplies    | From                                                                                                                                               |
 | :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -226,7 +254,23 @@ A record that does **not** clear the bar has two outcomes, proposed in the same 
 - **Re-homing is not rewriting.** The sentences are the author's and stay the author's — they move under the H2 they belong to, and a section the source never wrote is left empty rather than invented. Everything the reconciler cannot place goes in the plan for a human to place — and an empty required section decides the `status` the record enters at (next bullet).
 - **A record never lands `accepted` with a required section empty.** Immutability starts the moment the file enters `99.adr/`, so an empty `Context` / `Decision` / `Consequences` admitted at `accepted` is a hole append-only forbids ever filling. Either the human fills it **in the same plan, before the change is applied**, or the record lands `status: proposed` — the honest description of an incomplete one, and the status that leaves it free to be completed and accepted later. Empty **and** accepted is the one combination the import must not produce.
 - **Assigning an id does not break [append-only](#lifecycle--append-only).** The file was never accepted _in this log_, so the id is a **first assignment**, not a renumbering, and shaping it on entry is not an edit to an accepted record. From the moment it lands in `99.adr/` it is immutable like every other ADR.
-- **Idempotent** — an admitted record is gone from the source directory, so a second run has nothing left to propose for it. What the threshold declined is still there and is **reported** again, never re-proposed as an import; a directory emptied of everything admitted disappears from the job entirely.
+- **Idempotent** — an admitted record is gone from the source directory, so a second run has nothing left to propose for it; a split one is gone too, because both halves have landed. What the threshold declined is still there and is **reported** again, never re-proposed as an import; a directory emptied of everything admitted disappears from the job entirely.
+
+#### Splitting a record on entry
+
+**A foreign record is rarely all one thing**, and the one that most needs importing is usually the worst offender: a genuine decision, plus a naming convention telling the reader to extend a list, plus a version, plus a component that "is being removed". Every whole-file outcome is wrong for it — importing carries material the [expiry test](#what-the-body-may-hold) rejects into a log nobody may trim, routing loses the decision from the log, and leaving it alone is the blind spot the import exists to close.
+
+**So the record is split, and the split is one proposal.** The decision enters `99.adr/` as the record; what fails the expiry test goes through the [routing matrix](SKILL.md#routing-matrix--what-you-changed--page-type--section) as an ordinary page — in the **same** confirmed change, never as a follow-up, since a half-applied split leaves the log holding a record whose other half is nowhere. It rests on the same licence as the id assignment above: the file was never accepted _in this log_, so shaping it on entry is not an edit to an accepted record. And entry is the only moment the licence exists — from the moment the record lands in `99.adr/` its body is [append-only](#lifecycle--append-only).
+
+- **A split is a move, never a rewrite.** The sentences are the author's on both sides of it, exactly as re-homing leaves them, and each goes to one destination or the other whole. A record whose decision cannot be separated without rewriting prose is **not splittable** — report it and let the human decide, the same answer borderline admission gets.
+- **The human confirms it, and the plan names it per file.** Which sentences become the record and which become the page is stated file by file in the plan, and applied only on confirmation — the shape the empty-required-section rule above already uses. What a sentence _is_ is a judgement, and it is not the reconciler's to make alone.
+- **Cross-link both halves, both ways.** The record points at the page that now carries the convention; the page points back at the decision that established it. Neither half is left orphaned, and both pointers are written on entry, because afterwards the record may not gain one.
+- **A fragment that belongs on no page is dropped — the only thing a reconcile deletes.** Prose that fails the expiry test, records no decision and would not earn a page anywhere — a bare statement of state, "`system.*` currently holds two permissions" — is neither imported nor routed. Name it in the import plan and remove it **only** on explicit confirmation. It is bound to the record being imported and to nothing else: it never reaches an existing `docs/` page, since trimming one is rewriting prose and no reconcile may do that, and it never applies to a whole record — one that fails the threshold takes **report it and leave it alone**, where nothing is deleted either way.
+- **A missing target section is created in the same proposal.** Routing a fragment needs a section to route it into, and the repo may not have one — a `conventions/` that never appeared because nothing had earned it yet. Create it, directory and `index.md`, alongside the rest of the change: that is structure inside `docs/`, and both are already within the reconcile's blast radius. This holds for a plain **route it as an ordinary docs page** too, which always needed a target and never said what to do without one.
+- **The `status` question needs no rule of its own.** A split that empties a required section is already answered above — the human fills it in the same plan, or the record lands `proposed`.
+- **Unsure → report.** A wrong split costs what a wrong import costs, and the direction with no way back is unchanged. Propose one only where the seam is plain in the prose; otherwise name the record in the report and leave the call to the human.
+
+**An unsplit import carries its expiring material, and that is a priced cost rather than an oversight.** A record admitted whole enters with the author's sentences intact — the _currently_, the version, the enumeration a later change will extend, all of it. Faithfulness is what that buys, and [append-only](#lifecycle--append-only) is what it costs: nobody may fix those sentences afterwards. Say so in the plan rather than importing quietly, and where the human has not settled what the record should hold, `status: proposed` is available — the honest description of a record whose body is not yet what this log wants, and the status that leaves it free to be completed and accepted later.
 
 ## Reconcile rules
 
@@ -240,7 +284,7 @@ Desired-state and idempotent. Blast radius: **structure + frontmatter only, pros
 
 **`99.adr/` is exempt.** There the reconciler may only fix broken links and a missing/stale `index.md` row. It must **never** renumber an ADR, normalize `NNNN-title.md` to the dot-schema, close a numbering gap, rename a record whose title is not imperative, add a missing `Alternatives considered`, or touch body prose or `status` — ids are permanent, gaps are not deviations, and the body is append-only. A missing `title`/`description` is still worth proposing; everything else in an ADR is report-only.
 
-**The exemption covers the log, not what is outside it.** A [foreign ADR](#foreign-adrs--a-decision-log-written-elsewhere) has never entered `99.adr/`, so importing one is not an exception to the rule above — there is no id to renumber and no accepted record to edit. It is the single case where the reconciler moves a file into `99.adr/` and re-homes body prose, and it does so only as one confirmed proposal.
+**The exemption covers the log, not what is outside it.** A [foreign ADR](#foreign-adrs--a-decision-log-written-elsewhere) has never entered `99.adr/`, so importing one is not an exception to the rule above — there is no id to renumber and no accepted record to edit. It is the single case where the reconciler moves a file into `99.adr/`, re-homes body prose, [splits](#splitting-a-record-on-entry) part of it onto a page elsewhere in `docs/` or drops a named fragment of it — all of that inside one confirmed proposal, and none of it anywhere but the record being imported.
 
 Read the whole tree fresh every run — it is live state and is **never cached**.
 
@@ -331,9 +375,14 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 - ❌ An ADR title that names the topic (`0021-adr-format`) instead of stating the decision as an imperative (`0021-drop-the-legacy-queue`).
 - ❌ Rewriting an accepted ADR to reflect a new decision instead of superseding it.
 - ❌ Context/decision/consequences as ADR frontmatter fields instead of body sections.
+- ❌ An ADR sentence describing the repo at the moment of writing rather than the decision — _currently_, _is being_, a version number, a transcribed field list ([the expiry test](#what-the-body-may-hold)).
+- ❌ An ADR instructing its own continuation ("extend this list here") instead of deciding that the list exists and pointing at the page allowed to grow.
+- ❌ A `Consequences` entry prescribing how future work is to be done — that is a convention, and it belongs where it can be edited.
 - ❌ MADR fields (`decision-makers`, `consulted`, `informed`) or MADR's section names on an ADR — the shape here is Nygard's.
 - ❌ A how-to without a closing checklist.
 - ❌ Restating upstream/framework behavior instead of linking it.
-- ❌ Rewriting prose during a reconcile, or touching anything outside `docs/`. (Re-homing an [imported ADR](#foreign-adrs--a-decision-log-written-elsewhere)'s own sentences under the required H2s is the sole carve-out — the prose **moves**, it is never rewritten, and it never leaves `docs/`.)
+- ❌ Rewriting prose during a reconcile, or touching anything outside `docs/`. (An [imported ADR](#foreign-adrs--a-decision-log-written-elsewhere) is the sole carve-out — its own sentences are re-homed under the required H2s, or split onto a page in the same confirmed proposal; the prose **moves**, it is never rewritten, and it never leaves `docs/`.)
+- ❌ [Splitting](#splitting-a-record-on-entry) an imported record by rewriting a sentence so it fits one side — a split moves whole sentences or it does not happen, and a record that will not come apart is reported instead.
+- ❌ Deleting prose anywhere but a named, confirmed fragment of the record being imported — an existing page is never trimmed, and a record the threshold declined is never emptied.
 - ❌ Emoji in generated headings, landing pages, or prose — output is plain text.
 - ❌ Naming a specific docs tool/generator in the pages or the convention.
