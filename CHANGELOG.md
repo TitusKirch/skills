@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/TitusKirch/skills/compare/v0.21.0...v0.22.0) (2026-08-27)
+
+
+### Features
+
+* **refine-issue:** add the GitLab tracker recipe ([3eaa48c](https://github.com/TitusKirch/skills/commit/3eaa48c1ff4babe6d50c7e9a3d03072cd9bb7ac7)), closes [#250](https://github.com/TitusKirch/skills/issues/250)
+
 ## [0.21.0](https://github.com/TitusKirch/skills/compare/v0.20.0...v0.21.0) (2026-08-27)
 
 
