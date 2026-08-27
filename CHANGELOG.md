@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.20.0](https://github.com/TitusKirch/skills/compare/v0.19.0...v0.20.0) (2026-08-27)
+
+
+### Features
+
+* **write-docs:** bound an ADR's body to what stays true ([4167524](https://github.com/TitusKirch/skills/commit/416752417b0959f1f20d64269af2e3fba46531ef)), closes [#244](https://github.com/TitusKirch/skills/issues/244)
+* **write-docs:** let an imported ADR be split on entry ([409cee4](https://github.com/TitusKirch/skills/commit/409cee410bb19c9a74062d31d989f03c5665eacd)), closes [#246](https://github.com/TitusKirch/skills/issues/246)
+
+
+### Bug Fixes
+
+* **skills:** keep an unreadable lock record from evicting a live drain ([78c7fbd](https://github.com/TitusKirch/skills/commit/78c7fbdfac1052034d6ebb139b2b3df544842337)), closes [#247](https://github.com/TitusKirch/skills/issues/247)
+
 ## [0.19.0](https://github.com/TitusKirch/skills/compare/v0.18.0...v0.19.0) (2026-08-26)
 
 
