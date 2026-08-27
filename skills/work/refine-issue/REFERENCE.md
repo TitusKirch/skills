@@ -1,6 +1,6 @@
 # refine-issue — Reference
 
-Mechanics for the [SKILL.md](SKILL.md) workflow. One issue per run, one tracker (GitHub `gh` / Linear MCP / local files), chosen by config. Reuses the `issue` skill's config file and catalog cache.
+Mechanics for the [SKILL.md](SKILL.md) workflow. One issue per run, one tracker (GitHub `gh` / GitLab `glab` / Linear MCP / local files), chosen by config. Reuses the `issue` skill's config file and catalog cache.
 
 ## Principle
 
@@ -13,13 +13,14 @@ Mechanics for the [SKILL.md](SKILL.md) workflow. One issue per run, one tracker 
 | Key                        | Effect                                                                                                                                                                                                   |
 | :------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `work`                     | `false` disables the AI work loop for the repo, this skill with it — stop and say so                                                                                                                     |
-| `work.tracker`             | `github`, `linear` or `local`; falls back to `issue.tracker`                                                                                                                                             |
+| `work.tracker`             | `github`, `gitlab`, `linear` or `local`; falls back to `issue.tracker`                                                                                                                                   |
 | `work.labels.ready`        | the label this run reports an issue as having earned; default `ai: ready`, `false` = no approval gate at all                                                                                             |
 | `work.labels.*` (the rest) | the lifecycle strings that say an issue is already in the loop (step 3)                                                                                                                                  |
 | `work.labels.needsTriage`  | the "not ready to hand over" marker; **opt-in — defaults to off**; reported for removal beside the ready label                                                                                           |
 | `work.labels.repo`         | Linear repo-scope label (a string) or `false` — the discriminator the candidate and duplicate queries filter on                                                                                          |
 | `work.linear.team`         | Linear team name/key/id, resolved via the cache; falls back to `issue.linear.team`                                                                                                                       |
 | `work.local.dir`           | the local store's directory; falls back to `issue.local.dir`, then `.agents/issues`                                                                                                                      |
+| `forgeHost` (**root**)     | the host a forge-native tracker's CLI is pointed at, first rung of the ladder in `trackers/gitlab.md`; absent means derive it, never assume the forge's public host                                      |
 | `issue.language`           | the language the `Decided` block is written in; falls back to the root `language`                                                                                                                        |
 | `grillWith` (**root**)     | the interview skill step 6 drives — absent means `grilling`, `null`/`false` means never grill; three states, so [read it by presence](#reading-grillwith--three-states-not-two), never as a label-or-off |
 | `trustedBots`              | the apps and bots whose comments count as instruction ([Author authority](#author-authority))                                                                                                            |
@@ -52,7 +53,7 @@ fi
 
 `has("grillWith")` is asked of the **resolved root**, not of a section — the key is a root key, and asking it of `.issue` reports every config as absent. An empty `$engine` is the **never grill** state, not a missing one: [step 6](SKILL.md) reports the open decisions and stops, exactly as an absent engine does.
 
-**No writes are pre-approved.** This skill's `allowed-tools` names the reads it drives — `gh issue list` / `view`, `gh search issues`, `gh pr list`, `gh label list`, `gh repo view`, `gh api` for the one permission read the authority rules need, plus `jq`, `printf`, `mkdir`, `git rev-parse` and `git log` for the config, the cache and the already-solved check. **`gh issue edit` is deliberately absent**: writing the answers into the body is the one write this skill performs, it reaches the forge, and it is already behind the preview-and-confirm gate — so it asks, which is the correct cost for the only irreversible step in the run. The list is not a restriction; an unlisted command still runs once a person says yes.
+**No writes are pre-approved.** This skill's `allowed-tools` names the reads it drives — `gh issue list` / `view`, `gh search issues`, `gh pr list`, `gh label list`, `gh repo view`, `gh api` for the one permission read the authority rules need, their GitLab counterparts (`glab issue list` / `view`, `glab mr list`, `glab label list`, `glab repo view`, `glab api` for the member read), plus `jq`, `printf`, `mkdir`, `git rev-parse` and `git log` for the config, the cache and the already-solved check. **`gh issue edit` and `glab issue update` are deliberately absent**: writing the answers into the body is the one write this skill performs, it reaches the forge, and it is already behind the preview-and-confirm gate — so it asks, which is the correct cost for the only irreversible step in the run. On GitLab that absence does a second job, since `glab issue update` is also the command a lifecycle flip would use. The list is not a restriction; an unlisted command still runs once a person says yes.
 
 <skills-config>
 
@@ -140,7 +141,7 @@ gh issue list --state open --limit 100 \
   --json number,title,labels,createdAt
 ```
 
-Build the exclusions from the **resolved** `work.labels.*` strings, skipping any that resolve to `false`. On **Linear**, `list_issues` filtered by team plus `work.labels.repo`, with the same lifecycle labels excluded. On **local** the lifecycle is a frontmatter field rather than a label, so the same negation runs over the store's `state` line — the recipe is in `trackers/local.md`.
+Build the exclusions from the **resolved** `work.labels.*` strings, skipping any that resolve to `false`. On **GitLab** there is no negation qualifier to put them in, so the same exclusion is applied locally over the labels the list already returns — the recipe is in `trackers/gitlab.md`. On **Linear**, `list_issues` filtered by team plus `work.labels.repo`, with the same lifecycle labels excluded. On **local** the lifecycle is a frontmatter field rather than a label, so the same negation runs over the store's `state` line — the recipe is in `trackers/local.md`.
 
 **Present the list and ask.** The candidates are shown newest-first with their priority label, and the run works exactly the one the human picks. An empty list is reported as what it is — nothing is waiting on refinement — never as an error.
 
@@ -171,7 +172,8 @@ Both are read-only checks that fall out of reading the issue against the repo, a
 ```bash
 # What landed since the issue was filed — <since> is the issue's createdAt.
 # A local issue file carries no such field; `trackers/local.md` derives it from the
-# commit that added the file.
+# commit that added the file. On GitLab the second call is a merge-request list with
+# the date bound applied locally — `glab` has no `merged:>` qualifier, `trackers/gitlab.md`.
 git log --since=<since> --oneline
 gh pr list --state merged --search 'merged:><since>' --json number,title,mergedAt
 ```
@@ -184,7 +186,7 @@ Then read the code the issue describes. A defect that no longer reproduces and a
 gh search issues --repo <owner>/<repo> --state open '<the issue’s key terms>' --json number,title
 ```
 
-On **Linear**, `list_issues` for the team (plus `work.labels.repo`) and match on title and body. On **local**, `grep` over the store. Report the pair with the overlap named, recommend which should survive, and stop. Never close either, never edit one to point at the other.
+On **GitLab**, `glab issue list --search` — the search is a flag on the list call rather than its own command (`trackers/gitlab.md`). On **Linear**, `list_issues` for the team (plus `work.labels.repo`) and match on title and body. On **local**, `grep` over the store. Report the pair with the overlap named, recommend which should survive, and stop. Never close either, never edit one to point at the other.
 
 ## Writing the answers into the body
 
@@ -205,7 +207,7 @@ Four rules for the block:
 - **Superseding is stated, never silent.** An answer that contradicts an earlier line says so in the block; the earlier line stays where the human wrote it.
 - **In the configured language** (`issue.language`, falling back to the root `language`), whatever language the interview happened in.
 
-Write it with the tracker's own update call — `gh issue edit <n> --body-file <tmp>` on GitHub, `save_issue` with the issue's `id` on Linear, an append to the issue file on `local` (`trackers/local.md`) — after the preview is confirmed, and never together with a label change.
+Write it with the tracker's own update call — `gh issue edit <n> --body-file <tmp>` on GitHub, `glab issue update <n> --description "$(cat <tmp>)"` on GitLab (no `--body-file` there, `trackers/gitlab.md`), `save_issue` with the issue's `id` on Linear, an append to the issue file on `local` (`trackers/local.md`) — after the preview is confirmed, and never together with a label change.
 
 ## Report output
 
@@ -227,4 +229,4 @@ Apply it: gh issue edit 108 --add-label "ai: ready" --remove-label "needs triage
 
 **The `verdict` line is the point of the run**, and the command under it is printed rather than executed. Where the verdict is `still open`, the command is omitted entirely and the unanswered question takes its place — printing a command for a label the issue has not earned invites exactly the approval this skill refuses to grant.
 
-**`work.labels.needsTriage` rides along in that one command, as a `--remove-label`.** The untriaged marker means _not ready to hand over_, so this run is exactly what stops it being true: a refined issue with every decision closed is no longer undecided, and leaving the marker on beside the ready label produces the [contradiction](#config) the implement queue withholds an issue for. It is printed, **never run** — same as the label beside it. On **local** both live in the same file but in different frontmatter fields (`state` and `labels`), so the one command becomes one edit touching two lines — reported the same way, and stated in `trackers/local.md`. This skill writes the brief and nothing else, and one command a human runs once is the cheapest form the pairing can take; two commands, or a skill quietly clearing a label the human never watched it clear, both cost more than they buy. Omit the `--remove-label` when the label is unset (`needsTriage` defaults to **off**) or when the issue does not carry it, and omit the whole line whenever the verdict is `still open` — an issue holding an unanswered question **keeps** the marker, which is the one case where it is saying something true.
+**`work.labels.needsTriage` rides along in that one command, as a `--remove-label`.** The untriaged marker means _not ready to hand over_, so this run is exactly what stops it being true: a refined issue with every decision closed is no longer undecided, and leaving the marker on beside the ready label produces the [contradiction](#config) the implement queue withholds an issue for. It is printed, **never run** — same as the label beside it. On **GitLab** it is one `glab issue update <n> --label … --unlabel …`, both flags in the same call as on GitHub (`trackers/gitlab.md`). On **local** both live in the same file but in different frontmatter fields (`state` and `labels`), so the one command becomes one edit touching two lines — reported the same way, and stated in `trackers/local.md`. This skill writes the brief and nothing else, and one command a human runs once is the cheapest form the pairing can take; two commands, or a skill quietly clearing a label the human never watched it clear, both cost more than they buy. Omit the `--remove-label` when the label is unset (`needsTriage` defaults to **off**) or when the issue does not carry it, and omit the whole line whenever the verdict is `still open` — an issue holding an unanswered question **keeps** the marker, which is the one case where it is saying something true.
