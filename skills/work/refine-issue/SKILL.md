@@ -2,7 +2,7 @@
 name: refine-issue
 metadata:
   summary: Takes one filed issue to the point a human can approve it for the AI loop — finds the open decisions and closes them.
-description: Prepares a single filed issue for the AI work loop across GitHub (gh) or Linear (MCP) — reads it against the repo as it stands today, flags an issue already solved or duplicated, finds the decisions an agent may not make for itself (an architectural choice, a trade-off the repo inherits, a dependency, a requirement too loose to verify), and closes them with the human by driving grilling one question at a time. The answers go back into the issue body, so the loop reads a settled brief. It never applies the ai-ready label itself — it reports that the issue has earned it and leaves the approval to the human. Use when the user wants to get an issue ready for an agent, asks whether an issue is ready to hand over, wants one refined, sharpened or its open questions settled, or says things like "is issue 42 ready", "refine issue 42", "Issue 42 vorbereiten", "Issue abklären".
+description: Prepares a single filed issue for the AI work loop across GitHub (gh), Linear (MCP) or local issue files — reads it against the repo as it stands today, flags an issue already solved or duplicated, finds the decisions an agent may not make for itself (an architectural choice, a trade-off the repo inherits, a dependency, a requirement too loose to verify), and closes them with the human by driving grilling one question at a time. The answers go back into the issue body, so the loop reads a settled brief. It never applies the ai-ready label itself — it reports that the issue has earned it and leaves the approval to the human. Use when the user wants to get an issue ready for an agent, asks whether an issue is ready to hand over, wants one refined, sharpened or its open questions settled, or says things like "is issue 42 ready", "refine issue 42", "Issue 42 vorbereiten", "Issue abklären".
 allowed-tools:
   - Read
   - Grep
@@ -23,7 +23,7 @@ allowed-tools:
 
 # refine-issue
 
-Take **one** filed issue and work out what stands between it and a human's approval to hand it to an agent — then close that gap **with** the human rather than around them. One issue, one tracker (**GitHub** via `gh` or **Linear** via its MCP), picked per-repo by the same committed config the `issue` skill uses.
+Take **one** filed issue and work out what stands between it and a human's approval to hand it to an agent — then close that gap **with** the human rather than around them. One issue, one tracker (**GitHub** via `gh`, **Linear** via its MCP, or **local files** committed in the repo), picked per-repo by the same committed config the `issue` skill uses.
 
 `issue` files an issue from a description that is fresh in someone's mind; the two work loops pick it up once it carries the ready label. This skill is the **step in between** — the one nothing helped with, so an issue either waited indefinitely or went to the loop under-decided. What it looks for is not "is this issue well written". It is: **which decisions are still open that the loop must not make on its own?** An agent handed an under-decided issue does not stall — it decides, quietly, and the choice surfaces as a fait accompli in the review.
 
@@ -39,7 +39,7 @@ Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/
 
 **The ready gate may be off.** `work.labels.ready` resolving to `false` means the repo runs no approval gate at all — everything below still applies, and the report ends with the decisions that were closed instead of a label to apply. Tell "off" apart from "absent": absent means the default (`ai: ready`), `false` means the mechanic is disabled.
 
-Config schema and everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). The tracker recipes are one file each — [`trackers/github.md`](trackers/github.md) and [`trackers/linear.md`](trackers/linear.md), the two trackers this skill drives.
+Config schema and everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). The tracker recipes are one file each — [`trackers/github.md`](trackers/github.md), [`trackers/linear.md`](trackers/linear.md) and [`trackers/local.md`](trackers/local.md), the three trackers this skill drives.
 
 ### 2. Resolve the target issue
 
@@ -150,4 +150,4 @@ of a file.
 
 Config, the candidate query, the open-decision taxonomy, the already-solved and duplicate recipes, the `Decided` block shape and the report format — everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). What happens to the issue once a human applies the label: `work-implement-queue`.
 
-**One file per tracker recipe, and a repo reads exactly one.** `work.tracker` (falling back to `issue.tracker`) is a single value, so the branch is settled before either is opened: [`trackers/github.md`](trackers/github.md) or [`trackers/linear.md`](trackers/linear.md).
+**One file per tracker recipe, and a repo reads exactly one.** `work.tracker` (falling back to `issue.tracker`) is a single value, so the branch is settled before any of them is opened: [`trackers/github.md`](trackers/github.md), [`trackers/linear.md`](trackers/linear.md) or [`trackers/local.md`](trackers/local.md).
