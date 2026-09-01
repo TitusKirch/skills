@@ -1,5 +1,5 @@
 # region gitignore-sync
-# stacks: core, git, node, vscode, intellij, macos, windows, linux, agents, vscode, intellij, macos, windows, linux
+# stacks: core, git, node, vscode, intellij, macos, windows, linux, agents
 # ─────────────────────────────────────────
 
 # region core@v1
