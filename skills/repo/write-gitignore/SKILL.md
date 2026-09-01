@@ -18,6 +18,8 @@ allowed-tools:
   - Bash(gitignore-sync sync:*)
   - Bash(git rev-parse:*)
   - Bash(git ls-files:*)
+  - Bash(git check-ignore:*)
+  - Bash(grep:*)
   - Bash(jq:*)
   - Bash(mkdir:*)
   - Bash(cp:*)
