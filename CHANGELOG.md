@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.23.0](https://github.com/TitusKirch/skills/compare/v0.22.0...v0.23.0) (2026-09-01)
+
+
+### Features
+
+* **write-gitignore:** add the skill that drives gitignore-sync ([b0569bf](https://github.com/TitusKirch/skills/commit/b0569bfe4cf884781099f5ebd54f5674c74d8a85)), closes [#257](https://github.com/TitusKirch/skills/issues/257)
+
+
+### Bug Fixes
+
+* **write-gitignore:** enumerate the fourth repository.status value ([4899534](https://github.com/TitusKirch/skills/commit/489953464c55cb1c3dd08a7e49ba123986829b88)), closes [#257](https://github.com/TitusKirch/skills/issues/257)
+* **write-gitignore:** grant the commands the mandatory verification runs ([c061fcb](https://github.com/TitusKirch/skills/commit/c061fcb5f09e71ee82e3f27b8d436e3da6cfa6ef)), closes [#257](https://github.com/TitusKirch/skills/issues/257)
+* **write-gitignore:** ground the smothered example in a template that produces it ([83c740e](https://github.com/TitusKirch/skills/commit/83c740e6269aad73d9e92e60bb437f98c9fabba9)), closes [#257](https://github.com/TitusKirch/skills/issues/257)
+* **write-gitignore:** make repository.status complete where the modes turn on it ([78d0c8b](https://github.com/TitusKirch/skills/commit/78d0c8bd7b01172ede91947200cae13a7b757030)), closes [#257](https://github.com/TitusKirch/skills/issues/257)
+* **write-gitignore:** make the behaviour-verification snippets run as written ([cf203a2](https://github.com/TitusKirch/skills/commit/cf203a25d7da4bd57052253a203b7eb5a4910b2c)), closes [#257](https://github.com/TitusKirch/skills/issues/257)
+
 ## [0.22.0](https://github.com/TitusKirch/skills/compare/v0.21.0...v0.22.0) (2026-08-27)
 
 
