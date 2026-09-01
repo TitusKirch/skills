@@ -126,10 +126,14 @@ fix  .vscode           smothers !.vscode/extensions.json +2 — remove, vscode@v
 **Mandatory in migrate mode, and worth it wherever free-zone lines were removed.** `.idea` and `.idea/*` are different patterns to git, and a smothered exception changes what is ignored without looking suspicious in a pattern list — so the question is never "does the new file look right", it is **"does git ignore the same things"**.
 
 ```bash
-mkdir -p "$(git rev-parse --git-common-dir)/tituskirch-skills/write-gitignore"
-cp .gitignore "$(git rev-parse --git-common-dir)/tituskirch-skills/write-gitignore/gitignore.before"
-git ls-files --others --ignored --exclude-standard --directory   # snapshot, before and after
-diff -u before.txt after.txt
+run="$(git rev-parse --git-common-dir)/tituskirch-skills/write-gitignore"
+mkdir -p "$run"
+cp .gitignore "$run/gitignore.before"
+
+# snapshot A, before the migration — repeat into ignored.after once it is done
+git ls-files --others --ignored --exclude-standard --directory > "$run/ignored.before"
+
+diff -u "$run/ignored.before" "$run/ignored.after"
 ```
 
 Two snapshots, taken before the migration and again after: **what git ignores that it does not track**, and **which tracked files an ignore rule now matches**. Diff both. Anything that flipped is reported **with its reason** — the pattern that changed and why — and the backup under the git common dir is the way back. Full recipe, including the tracked-file half: [Behaviour verification](REFERENCE.md#behaviour-verification).

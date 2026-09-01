@@ -186,6 +186,10 @@ Under the **git common dir**, so it is never committed, never staged, and surviv
 ### Two snapshots, not one
 
 ```bash
+# Each command runs in its own process, so the derived path is recomputed here
+# rather than inherited from the block above.
+run="$(git rev-parse --git-common-dir)/tituskirch-skills/write-gitignore"
+
 # A — what git ignores that it does not track
 git ls-files --others --ignored --exclude-standard --directory > "$run/ignored.before"
 
@@ -196,6 +200,8 @@ git ls-files -z | git check-ignore --no-index --stdin --verbose > "$run/tracked.
 Repeat both after the migration into `*.after`, then:
 
 ```bash
+run="$(git rev-parse --git-common-dir)/tituskirch-skills/write-gitignore"
+
 diff -u "$run/ignored.before" "$run/ignored.after"
 diff -u "$run/tracked.before" "$run/tracked.after"
 ```
