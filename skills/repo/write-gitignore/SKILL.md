@@ -54,7 +54,7 @@ Run `gitignore-sync info --json` and read three things from it: that the binary 
 - **Too old** → the floor is **v0.2.0**, which is what carries `audit --recursive` and the `discover` classification this skill's triage is built on (`audit` itself landed in v0.1.0). Below it → offer the upgrade, same stop on decline.
 - **A linked dev build reports `0.0.0`, and that is not "too old".** `build.kind` is `linked` when the binary runs from a work tree, and a work tree's `package.json` carries the placeholder version release-please writes at publish time. **Probe the capability instead of trusting the number**: `gitignore-sync audit --help` naming `--recursive` is the evidence, and it is the same evidence the floor stands for. [Version floor](REFERENCE.md#the-version-floor-and-the-linked-build).
 
-Then read `repository.status` from the same output — `no region` / `in sync` / drifted — because it, not the file's length, decides which mode step 2 picks.
+Then read `repository.status` from the same output — `no file` / `no region` / `in sync` / `drifted` — because it, not the file's length, decides which mode step 2 picks.
 
 ### 2. Scope — one repo, or an estate
 
@@ -65,6 +65,8 @@ Then read `repository.status` from the same output — `no region` / `in sync` /
 | absent       | **adopt**   | Nothing to preserve. `init` detects, a human confirms the stacks, the region is written.   |
 | no region    | **migrate** | A grown hand-written file. Everything in it is somebody's decision until proven otherwise. |
 | has a region | **triage**  | The region is the CLI's; the **free zone** is what needs a verdict.                        |
+
+**A status that is none of those four is a parse failure, and it is a stop rather than a fourth mode.** The CLI hands back the parser's own error message as `repository.status` for a `.gitignore` it cannot read — deliberately, so the file is still described — and such a file is `hasRegion: false`, which makes **migrate** exactly the row it would be misread as. Do not take it: report the message verbatim, say the file could not be parsed, and let a human open it. Nothing downstream — least of all step 7's behaviour verification — is meaningful on a file the CLI never parsed. [Version floor](REFERENCE.md#the-version-floor-and-the-linked-build).
 
 **Several directories → estate mode.** `gitignore-sync audit --json ../*/` measures them together and the run switches to the aggregate view: it looks for **template candidates** and it **reports them**. Estate mode **writes nothing, anywhere** — not in the repos it measured, and above all not a template version into `kirchDev/gitignore-sync`. There is no cross-repo write in this skill, which is why it needs no working-directory guard to be safe.
 

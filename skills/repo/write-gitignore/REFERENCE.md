@@ -82,7 +82,9 @@ gitignore-sync audit --help    # names --recursive on a build at or above the fl
 
 `--recursive` present → the build is at or above the floor, whatever the version string says. Absent on a **published** version → report the version and offer the upgrade. Absent on a **linked** build → say that the work tree predates the feature, and name the work tree path `info` reported (`build.packageRoot`) so the human knows which checkout to update; do not try to build it.
 
-`info` also answers the question the modes turn on before any file is opened — `repository.status` is `no file`, `no region`, `in sync`, or drift — along with `repository.stacks`, the stacks the header already declares.
+`info` also answers the question the modes turn on before any file is opened — `repository.status` is `no file`, `no region`, `in sync`, or `drifted` — along with `repository.stacks`, the stacks the header already declares.
+
+Those four are the whole mode table, and they are not the whole field. A `.gitignore` the binary cannot **parse** comes back with the parser's error message in `status` (and `hasRegion: false`, `stacks: []`) — the CLI describes such a file rather than refusing to, which means the skill, not the CLI, is where it has to be caught. Treat any status outside the four as a parse failure: report the message the CLI gave, and stop. It is emphatically **not** `no region` wearing a different word — `no region` says the file parsed and declared nothing, this says the file did not parse at all, and routing it into **migrate** on the shared `hasRegion: false` would run step 7's behaviour verification over a file whose contents were never read.
 
 ## Reading the audit report
 
