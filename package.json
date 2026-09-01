@@ -55,7 +55,7 @@
     "lint-staged": "^17.3.0",
     "oxfmt": "0.64.0",
     "oxlint": "1.79.0",
-    "taze": "^19.16.0",
+    "taze": "^21.1.0",
     "typescript": "^7.0.2"
   },
   "engines": {
