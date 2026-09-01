@@ -82,7 +82,7 @@ gitignore-sync audit --help    # names --recursive on a build at or above the fl
 
 `--recursive` present → the build is at or above the floor, whatever the version string says. Absent on a **published** version → report the version and offer the upgrade. Absent on a **linked** build → say that the work tree predates the feature, and name the work tree path `info` reported (`build.packageRoot`) so the human knows which checkout to update; do not try to build it.
 
-`info` also answers the question the modes turn on before any file is opened — `repository.status` is `no region`, `in sync`, or drift — along with `repository.stacks`, the stacks the header already declares.
+`info` also answers the question the modes turn on before any file is opened — `repository.status` is `no file`, `no region`, `in sync`, or drift — along with `repository.stacks`, the stacks the header already declares.
 
 ## Reading the audit report
 
