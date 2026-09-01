@@ -149,6 +149,7 @@ const PLAN_CARRIERS = [
   'repo/pull-request',
   'repo/release',
   'repo/update-deps',
+  'repo/write-gitignore',
   'work/issue',
   'work/refine-issue',
   'work/tldr',
@@ -181,6 +182,7 @@ const TLDR_CARRIERS = [
   'repo/prune-comments',
   'repo/release',
   'repo/update-deps',
+  'repo/write-gitignore',
   'work/work-implement-queue',
   'work/work-review-queue'
 ];
@@ -253,7 +255,7 @@ describe('the generated config block is self-contained', () => {
   test('it is present in the skills that read config, and nowhere else by accident', () => {
     assert.equal(
       withConfigBlock.length,
-      17,
+      18,
       `found: ${withConfigBlock.join(', ')}`
     );
   });
@@ -389,6 +391,10 @@ const authorityClass: Record<
   'repo/prune-comments': { tier: 'reduced', reads: 'code comments' },
   'repo/release': { tier: 'reduced', reads: 'upstream changelogs' },
   'repo/update-deps': { tier: 'reduced', reads: 'changelogs and advisories' },
+  'repo/write-gitignore': {
+    tier: 'reduced',
+    reads: "a .gitignore's comments, generated third-party blocks included"
+  },
   'work/work-implement-queue': {
     tier: 'reduced',
     reads: 'issue references and PR state'

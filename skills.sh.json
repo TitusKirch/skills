@@ -10,7 +10,8 @@
         "prune-comments",
         "pull-request",
         "release",
-        "update-deps"
+        "update-deps",
+        "write-gitignore"
       ]
     },
     {
