@@ -4,59 +4,20 @@ name: CodeQL
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
     branches: [main, dev]
-    # ready_for_review is what makes the draft gate below reachable: the default
-    # types are opened/synchronize/reopened, and a draft becoming ready is none of
-    # them — so without this the analysis would never run on a PR that started as a
-    # draft. The AI work loop opens every PR as one.
     types: [opened, synchronize, reopened, ready_for_review]
   schedule:
     - cron: '34 23 * * 0'
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  analyze:
-    name: Analyze (${{ matrix.language }})
-    runs-on: ubuntu-latest
-    # The same draft gate the other two PR workflows carry, so a draft costs nothing
-    # here either. Written with the event-name guard rather than the bare
-    # `draft == false` those two use, because this workflow also runs on push, on a
-    # schedule and on dispatch — where there is no pull request to read a flag from.
-    # Neither of those triggers is gated, so nothing on main/dev goes unanalysed.
-    if: >-
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.draft == false
-    timeout-minutes: 20
+  codeql:
+    name: CodeQL
     permissions:
       security-events: write
       packages: read
       actions: read
       contents: read
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [actions, javascript-typescript]
-
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 1
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
-        with:
-          languages: ${{ matrix.language }}
-          build-mode: none
-          queries: security-extended,security-and-quality
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
-        with:
-          category: '/language:${{ matrix.language }}'
+    uses: kirchDev/workflows/.github/workflows/_codeql.yml@f81bbe5fb5e8055b55a1ef5f861cc63a8e253622 # v0.1.3
