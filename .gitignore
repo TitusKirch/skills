@@ -1,10 +1,9 @@
 # region gitignore-sync
-# stacks: core, git, node, vscode, intellij, macos, windows, linux
+# stacks: core, git, node, vscode, intellij, macos, windows, linux, agents, vscode, intellij, macos, windows, linux
 # ─────────────────────────────────────────
 
 # region core@v1
 .DS_Store
-.claude/settings.local.json
 # endregion
 
 # region git@v1
@@ -84,6 +83,11 @@ $RECYCLE.BIN/
 .directory
 .Trash-*
 .nfs*
+# endregion
+
+# region agents@v1
+.claude/settings.local.json
+.claude/worktrees/
 # endregion
 
 # endregion
