@@ -1,5 +1,7 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 
+# The checks come from this repo's own `verify` script in package.json.
+
 name: CI
 
 on:
@@ -8,55 +10,19 @@ on:
       - main
       - dev
     types: [opened, synchronize, reopened, ready_for_review]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - LICENSE
 
 permissions:
   contents: read
 
 jobs:
-  verify:
-    name: Verify
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # One step per command in `pnpm verify`, which is the gate run locally
-      # (the root `verify` key in .tituskirch-skills.json). `!cancelled()` is
-      # what stops a failing step from suppressing the ones after it, so one
-      # run reports every failure and names each in the job's step list.
-      #
-      # The two lists have to stay in step: test/ci-gate.test.ts fails if a
-      # command is added to `verify` without a step here, or the reverse.
-      - name: Lint
-        if: ${{ !cancelled() }}
-        run: pnpm lint
-
-      - name: Format
-        if: ${{ !cancelled() }}
-        run: pnpm format
-
-      - name: Skills in sync
-        if: ${{ !cancelled() }}
-        run: pnpm skills:check
-
-      - name: Typecheck
-        if: ${{ !cancelled() }}
-        run: pnpm typecheck
-
-      - name: Test
-        if: ${{ !cancelled() }}
-        run: pnpm test
+  check:
+    name: CI
+    uses: kirchDev/workflows/.github/workflows/_ci-check.yml@f81bbe5fb5e8055b55a1ef5f861cc63a8e253622 # v0.1.3
+    with:
+      # This repo's gate is `verify`, which chains `check`, `skills:check`,
+      # `typecheck` and `test` — the body expands it recursively.
+      gate-script: verify
