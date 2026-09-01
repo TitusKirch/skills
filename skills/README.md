@@ -100,6 +100,7 @@ Resolution per setting: **config → native/detected → built-in default** — 
 - [`tldr`](work/tldr/REFERENCE.md#config) — `language` (owns no section of its own)
 - [`write-docs`](docs/write-docs/REFERENCE.md#config) — `language`, `docs.*`
 - [`compact-readme`](docs/compact-readme/REFERENCE.md#config) — `docs` (owns no section of its own)
+- [`write-gitignore`](repo/write-gitignore/REFERENCE.md#config) — `language` (owns no section of its own)
 - [`work-implement`](work/work-implement/REFERENCE.md#config) — `language`, `verify`, `work.*`, `pr.base`
 - [`work-implement-queue`](work/work-implement/REFERENCE.md#config) — shares `work-implement`'s `work.*` config
 - [`work-review`](work/work-review/REFERENCE.md#config) — `language`, `verify`, `work.*`, `work.review.*`

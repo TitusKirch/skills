@@ -191,6 +191,8 @@ const EXEC_CLEARED: Record<string, string> = {
   'git branch':
     'lists, creates and deletes branch refs; takes no command as an argument',
   'git cat-file': 'prints an object; takes no command as an argument',
+  'git check-ignore':
+    'reports which ignore rule matches a path; takes no command as an argument, and the exec routes on `git` are global options that sit before the subcommand, where this prefix cannot reach them',
   'git cherry':
     'compares commits against an upstream; takes no command as an argument',
   'git commit':
