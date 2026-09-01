@@ -132,12 +132,12 @@ Then:
 
 The defect class a frequency count cannot see, and the one place this skill edits a file directly.
 
-A managed block that un-ignores a path — `intellij@v1` ships `.idea/*` plus `!.idea/runConfigurations` and friends — is **dead** the moment anything ignores the directory outright. Git never descends into an ignored directory, so it never reaches the `!` line at all. A bare `.idea` sitting in the free zone therefore disables every exception in the block above it, and **nothing about the file looks wrong**: both lines are present, both are valid, the pattern list reads fine.
+A managed block that un-ignores a path — `vscode@v1` ships `.vscode/*` plus `!.vscode/extensions.json`, `!.vscode/settings.json` and `!.vscode/mcp.json` — is **dead** the moment anything ignores the directory outright. Git never descends into an ignored directory, so it never reaches the `!` line at all. A bare `.vscode` sitting in the free zone therefore disables every exception in the block above it, and **nothing about the file looks wrong**: both lines are present, both are valid, the pattern list reads fine.
 
 `gitignore-sync check` reports it by name:
 
 ```text
-WARN  .idea ignores the whole directory, which disables !.idea/runConfigurations. Remove it — the managed block already covers it.
+WARN  .vscode ignores the whole directory, which disables !.vscode/extensions.json, !.vscode/settings.json, !.vscode/mcp.json. Remove it — the managed block already covers it.
 ```
 
 **The fix is to remove the free-zone line**, not to touch the block. The block already covers the directory in the spelling that keeps its exceptions alive; the bare line is a leftover from before the region existed.
@@ -146,7 +146,7 @@ Three rules around it:
 
 - **Explain before removing.** In the plan, name the exceptions the line is disabling — that is the behaviour being recovered, and it is the reason a reader agrees to the removal.
 - **The edit is free-zone only.** Never inside the region markers. Run `gitignore-sync check` afterwards: it is what proves the region still round-trips.
-- **Expect it in the behaviour diff.** Recovering `!.idea/runConfigurations` means files that were ignored are no longer ignored. That is the point, and [step 7](#behaviour-verification) is where it is shown rather than discovered later.
+- **Expect it in the behaviour diff.** Recovering `!.vscode/extensions.json` and its siblings means files that were ignored are no longer ignored. That is the point, and [step 7](#behaviour-verification) is where it is shown rather than discovered later.
 
 Equivalent spellings are the softer sibling: `check` reports them and merges nothing, because they are genuinely different patterns to git. Treat a reported equivalence as a **question for the human**, never an automatic removal — and note that a line already reported as smothering is deliberately left out of the equivalence report, because the specific finding already says what to do.
 

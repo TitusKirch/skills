@@ -96,7 +96,7 @@ The carrier evidence is what separates the second verdict from the third, and it
 
 **Two findings are not free-zone patterns and are handled on their own:**
 
-- **`smothered` — the defect a frequency count cannot see.** A bare `.idea` in the free zone beside a managed `intellij` block silently disables every `!` exception under it, because git never descends into an ignored directory. Nothing looks wrong in a pattern list; the behaviour is simply gone. `check` names the line and the exceptions it kills. **Explain it and remove the line** — the managed block already covers it. This is the one place the skill edits a file directly, and it edits the **free zone only**. [Smothered exceptions](REFERENCE.md#smothered-exceptions).
+- **`smothered` — the defect a frequency count cannot see.** A bare `.vscode` in the free zone beside a managed `vscode` block silently disables every `!` exception under it, because git never descends into an ignored directory. Nothing looks wrong in a pattern list; the behaviour is simply gone. `check` names the line and the exceptions it kills. **Explain it and remove the line** — the managed block already covers it. This is the one place the skill edits a file directly, and it edits the **free zone only**. [Smothered exceptions](REFERENCE.md#smothered-exceptions).
 - **A recursive sweep is triaged by `discover`'s classification, not by its contents.** `keeper` (a `*` + `!.gitignore` directory-holder) and `framework` (a stub under `storage/`, `bootstrap/cache`, `.husky`) are **owned by something else and left alone** — they are not findings and they are not candidates. `managed` is already the CLI's. **Only `plain` is worth a decision.** [The four kinds](REFERENCE.md#the-four-kinds-a-recursive-sweep-finds).
 
 ### 5. Present — the verdicts, with the evidence, before anything changes
@@ -107,7 +107,7 @@ Every proposal shows what it rests on, so the reader can check it without openin
 add  playwright        test-results/, playwright-report/ — 2 hand-written carriers
 keep tmp               project rule, this repo only
 drop .nyc_output       ballast: 5 carriers, all inside a generated toptal block
-fix  .idea             smothers !.idea/runConfigurations — remove, intellij@v1 covers it
+fix  .vscode           smothers !.vscode/extensions.json +2 — remove, vscode@v1 covers it
 ```
 
 - **Never present a count alone.** "12 leftovers" is not reviewable; twelve patterns with their carriers are.
@@ -134,7 +134,7 @@ diff -u before.txt after.txt
 
 Two snapshots, taken before the migration and again after: **what git ignores that it does not track**, and **which tracked files an ignore rule now matches**. Diff both. Anything that flipped is reported **with its reason** — the pattern that changed and why — and the backup under the git common dir is the way back. Full recipe, including the tracked-file half: [Behaviour verification](REFERENCE.md#behaviour-verification).
 
-A flip is not automatically wrong: recovering a smothered `!.idea/runConfigurations` is exactly the point, and it shows up here as a file no longer ignored. What is forbidden is a flip **nobody saw**.
+A flip is not automatically wrong: recovering a smothered `!.vscode/extensions.json` is exactly the point, and it shows up here as a file no longer ignored. What is forbidden is a flip **nobody saw**.
 
 ### 8. Report
 
