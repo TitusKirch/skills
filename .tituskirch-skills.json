@@ -98,7 +98,7 @@
       "needsTriage": "needs triage"
     },
     "review": {
-      "maxRounds": 3,
+      "maxRounds": 6,
       "timeout": 600
     },
     "priorityLabels": [
