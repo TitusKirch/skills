@@ -7,12 +7,6 @@ autoInstallPeers: true
 # Require packages to be at least 4320 minutes (3 days) old before install.
 minimumReleaseAge: 4320
 
-# Enforce package manager checks for project consistency.
-packageManagerStrict: true
-
-# Do not require an exact package manager version match.
-packageManagerStrictVersion: false
-
 # Prefer using the lockfile as-is for deterministic installs.
 preferFrozenLockfile: true
 
