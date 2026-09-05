@@ -23,7 +23,7 @@ permissions:
 jobs:
   check:
     name: CI
-    uses: kirchDev/workflows/.github/workflows/_ci-check.yml@7fd4eaf529500fcd07c527ae70c839ab9ac7d76f # v0.7.0
+    uses: kirchDev/workflows/.github/workflows/_ci-check.yml@94cbcbd676b989ac6c6327055a240132f5cd76a5 # v0.8.0
     with:
       # This repo's gate is `verify`, which chains `check`, `skills:check`,
       # `typecheck` and `test` — the body expands it recursively.
