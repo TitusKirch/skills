@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.24.0](https://github.com/TitusKirch/skills/compare/v0.23.0...v0.24.0) (2026-09-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* move to pnpm 12
+* this repository now requires pnpm 12.
+
+### Features
+
+* **ci:** call the central workflow bodies instead of copying them ([5e6ce71](https://github.com/TitusKirch/skills/commit/5e6ce71997cc8027d1a2c2032fa718401c6c7fb9))
+
+
+### Bug Fixes
+
+* **ci:** pin the workflow bodies to v0.2.0 and drop paths-ignore ([3a0a36b](https://github.com/TitusKirch/skills/commit/3a0a36b6ef92693fb6ab3191d8441a189aa75332))
+* **ci:** pin the workflow bodies to v0.5.0 ([af673eb](https://github.com/TitusKirch/skills/commit/af673ebdabe56b984e5dcbd2a5d8c3b057623b8e))
+* **ci:** pin the workflow bodies to v0.7.0 ([69bc594](https://github.com/TitusKirch/skills/commit/69bc5940db74d7ab67af83253df3d015e3e5b8e6))
+
+
+### Reverts
+
+* go back to pnpm 11.25.0 ([467450c](https://github.com/TitusKirch/skills/commit/467450ca354737fe701b379d8cc17f63cc058ef9))
+
+
+### Miscellaneous Chores
+
+* move to pnpm 12 ([ce61f24](https://github.com/TitusKirch/skills/commit/ce61f249cfd79421bccf22de5b7c9476ff9242fc))
+* move to pnpm 12 ([32f2a86](https://github.com/TitusKirch/skills/commit/32f2a86fb75a7aecd9f2b9aefafbbc03cff57406))
+
 ## [0.23.0](https://github.com/TitusKirch/skills/compare/v0.22.0...v0.23.0) (2026-09-01)
 
 
