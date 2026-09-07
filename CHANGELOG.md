@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.24.0](https://github.com/TitusKirch/skills/compare/v0.23.0...v0.24.0) (2026-09-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* move to pnpm 12
+* this repository now requires pnpm 12.
+
+### Features
+
+* **ci:** call the central workflow bodies instead of copying them ([5e6ce71](https://github.com/TitusKirch/skills/commit/5e6ce71997cc8027d1a2c2032fa718401c6c7fb9))
+* **write-docs:** add an opt-in duxt rendering mode ([#280](https://github.com/TitusKirch/skills/issues/280)) ([1e1ee99](https://github.com/TitusKirch/skills/commit/1e1ee996c9fa7757e1494202b547faee776a709f))
+* **write-docs:** maintain a multi-locale docs tree ([#279](https://github.com/TitusKirch/skills/issues/279)) ([ffc3008](https://github.com/TitusKirch/skills/commit/ffc3008be39115b27a4d23b77631437f1d7a0fbf))
+* **write-docs:** widen the package preset with two conditional sections ([#276](https://github.com/TitusKirch/skills/issues/276)) ([0741a5c](https://github.com/TitusKirch/skills/commit/0741a5cbab00458ea575b976dbc85425817ebe8c))
+* **write-readme:** catalogue four recurring section emojis ([#278](https://github.com/TitusKirch/skills/issues/278)) ([9a695b1](https://github.com/TitusKirch/skills/commit/9a695b16fed939b76e0d7357a4cf368e65ea2247))
+
+
+### Bug Fixes
+
+* **ci:** pin the workflow bodies to v0.2.0 and drop paths-ignore ([3a0a36b](https://github.com/TitusKirch/skills/commit/3a0a36b6ef92693fb6ab3191d8441a189aa75332))
+* **ci:** pin the workflow bodies to v0.5.0 ([af673eb](https://github.com/TitusKirch/skills/commit/af673ebdabe56b984e5dcbd2a5d8c3b057623b8e))
+* **ci:** pin the workflow bodies to v0.7.0 ([69bc594](https://github.com/TitusKirch/skills/commit/69bc5940db74d7ab67af83253df3d015e3e5b8e6))
+* **write-readme:** close the gap report to the three kinds it declares ([#277](https://github.com/TitusKirch/skills/issues/277)) ([741f023](https://github.com/TitusKirch/skills/commit/741f02329641b23f4382b0839d53107a69e4cea5))
+
+
+### Reverts
+
+* go back to pnpm 11.25.0 ([467450c](https://github.com/TitusKirch/skills/commit/467450ca354737fe701b379d8cc17f63cc058ef9))
+
+
+### Miscellaneous Chores
+
+* move to pnpm 12 ([ce61f24](https://github.com/TitusKirch/skills/commit/ce61f249cfd79421bccf22de5b7c9476ff9242fc))
+* move to pnpm 12 ([32f2a86](https://github.com/TitusKirch/skills/commit/32f2a86fb75a7aecd9f2b9aefafbbc03cff57406))
+
 ## [0.23.0](https://github.com/TitusKirch/skills/compare/v0.22.0...v0.23.0) (2026-09-01)
 
 
