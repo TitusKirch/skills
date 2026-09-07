@@ -51,7 +51,7 @@ These are the **prescribed** emojis for recurring sections. Use the same emoji f
 
 **Order & merging:** Installation / Quick start lead (before Features) so a reader reaches the install command fast; an optional **Why / Problem** block sits between the hook and Installation. Installation + Quick start may be merged into one **Install & run** section — this keeps a write-readme scaffold and a `compact-readme` pass in agreement.
 
-If you need a section that's not in the catalogue, pick a sensible emoji and **add it here in the same PR** so the next README stays consistent.
+If you need a section that's not in the catalogue, pick a sensible emoji and **report it in the gap report** — a `write-readme` run never edits this table itself. The run happens in the **target** repo while the catalogue ships with the skill, so there is no "same PR" the entry could land in; a human folds it into the catalogue here, in `TitusKirch/skills`, and the next README then stays consistent.
 
 ## Feature-bullet emojis
 
@@ -81,7 +81,7 @@ Each bullet starts with an emoji that reflects the feature's nature — these ar
 
 ## Badges
 
-Use shields.io with `style=flat-square`. **Never invent new colors** — pick from the palette below so every kirchDev README shares the same visual fingerprint. If a badge purpose isn't covered here, add it to this table in the same PR.
+Use shields.io with `style=flat-square`. **Never invent new colors** — pick from the palette below so every kirchDev README shares the same visual fingerprint. If a badge purpose isn't covered here, **report it in the gap report** instead of editing this table — the same rule the section catalogue above carries, and for the same reason: the run happens in the target repo, the palette lives with the skill.
 
 ### Badge color palette
 
