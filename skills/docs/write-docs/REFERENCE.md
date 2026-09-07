@@ -84,23 +84,23 @@ docs/
 
 Which sections to scaffold, by project type. **No section is implicit** — each preset states its whole set, and every one of them still faces the redirect test in [SKILL.md](SKILL.md#scaffold--docs-is-missing).
 
-| Preset    | Scaffolds                                             | Conditional    |
-| :-------- | :---------------------------------------------------- | :------------- |
-| `package` | `concepts`, `guides`                                  | `contributing` |
-| `cli`     | `getting-started`, `guides`                           | `contributing` |
-| `app`     | `getting-started`, `concepts`, `guides`, `operations` | `conventions`  |
-| `service` | `concepts`, `reference`, `operations`                 | `conventions`  |
-| `infra`   | `concepts`, `operations`                              | `conventions`  |
+| Preset    | Scaffolds                                             | Conditional                                    |
+| :-------- | :---------------------------------------------------- | :--------------------------------------------- |
+| `package` | `concepts`, `guides`                                  | `contributing`, `getting-started`, `reference` |
+| `cli`     | `getting-started`, `guides`                           | `contributing`                                 |
+| `app`     | `getting-started`, `concepts`, `guides`, `operations` | `conventions`                                  |
+| `service` | `concepts`, `reference`, `operations`                 | `conventions`                                  |
+| `infra`   | `concepts`, `operations`                              | `conventions`                                  |
 
-**Conditional** names the section that type most often earns, on a condition the repo has to meet: `contributing` when it accepts outside contributions, `conventions` when it carries project rules a newcomer would not guess. Either can be added to any preset — the column says which to expect, not which is allowed.
+**Conditional** names the sections that type most often earns, each on a condition the repo has to meet: `contributing` when it accepts outside contributions, `conventions` when it carries project rules a newcomer would not guess, and — on `package` — `getting-started` when the repo's first run is framework wiring rather than an install command, `reference` when the published surface has no `--help` and no schema to read instead. Any of them can be added to any preset — the column says which to expect, not which is allowed.
 
-Three sections are deliberately absent from most rows:
+Three sections are deliberately out of the base set on most rows. Two of them are not withdrawn where they are absent — they are the conditions above, stated:
 
-- **`getting-started` only where a README cannot carry it.** A README in the house style already covers install and first run, so the section would only redirect — and a section index that redirects is an [anti-pattern](#anti-patterns). It survives for a `cli` (install varies by channel: package manager, binary, script) and an `app` (a setup chain of env, services and migrations), and is dropped everywhere else.
-- **`reference` only for a `service`.** A lookup page is [the row to challenge](SKILL.md#routing-matrix--what-you-changed--page-type--section): a manifest, a schema or `--help` usually holds the real answer and never goes stale. An HTTP API with no published schema is the one case that earns the section outright.
+- **`getting-started` only where a README cannot carry it.** A README in the house style already covers install and first run, so the section would only redirect — and a section index that redirects is an [anti-pattern](#anti-patterns). It is a base section for a `cli` (install varies by channel: package manager, binary, script) and an `app` (a setup chain of env, services and migrations). What that argument assumes is an install command, which is the `package` condition: a first run that is **framework wiring** — registering a module, adding a config block, mounting a component — is a step no README hook covers, so the section holds a page rather than a redirect.
+- **`reference` outright only for a `service`.** A lookup page is [the row to challenge](SKILL.md#routing-matrix--what-you-changed--page-type--section): a manifest, a schema or `--help` usually holds the real answer and never goes stale. An HTTP API with no published schema is the one case that earns the section outright. That same test is the `package` condition: a published surface with **no `--help` and no schema** — components, composables and config keys readable only in source — has nothing machine-readable to defer to, so its lookup values are canonical here or nowhere.
 - **`adr` belongs to no preset** — the section appears when the first ADR is written, never scaffolded empty.
 
-`package` is **anything published that carries its own reference** — an npm library, a Composer package, a Nuxt module, an agent/skill set. What such a repo ships travels without `docs/`, so the tree holds only what spans the whole set; the per-artifact reference stays with the artifact. It is deliberately not named `library`: the case is the publishing, not the language or the format.
+`package` is **anything published that carries its own reference** — an npm library, a Composer package, a Nuxt module, an agent/skill set. What such a repo ships travels without `docs/`, so the tree holds only what spans the whole set; the per-artifact reference stays with the artifact — where there is one to stay with, an artifact carrying none being exactly what the conditional `reference` above covers. It is deliberately not named `library`: the case is the publishing, not the language or the format.
 
 `service` is an HTTP API or backend with no UI — the operational surface matters more than the guides, which is what separates it from `app`.
 
