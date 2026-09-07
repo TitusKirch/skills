@@ -2,6 +2,8 @@
 
 Mechanics for the [SKILL.md](SKILL.md) workflow: the section catalogue, the page contract, and the reconcile rules. The format is plain Markdown + frontmatter with numeric-prefixed paths — deliberately portable so any file-based docs generator can render and index it. Don't tie pages to a specific tool.
 
+**That is the default, not the only shape.** Most repos have no rendered site at all — their `docs/` is read on the forge, where a relative `.md` link is the only one that resolves and a component block shows as raw text — so portability is what the tree above is written for. A repo that _does_ publish its tree through a rendering theme opts into a [render mode](#render-mode), which flips five of the rules below and nothing else. The mode is **declared in the config**, never detected, and off wherever it is not written down.
+
 ## Tree shape
 
 ```text
@@ -20,9 +22,9 @@ docs/
 
 - **Root** is always `docs/` (fixed).
 - **Order comes from the numeric filename/dir prefix** (`1.`, `2.`, …) — never from frontmatter. The prefix is stripped from the rendered slug (`4.reference/1.configuration.md` → `/reference/configuration`).
-- **Every section directory has an `index.md`** (landing): frontmatter `title` + `description`, a plain-text H1. Generated docs are emoji-free. Templates: [`templates/section-index.md`](templates/section-index.md) for a section, [`templates/docs-index.md`](templates/docs-index.md) for the `docs/` landing page.
+- **Every section directory has an `index.md`** (landing): frontmatter `title` + `description`, a plain-text H1. Generated docs are emoji-free. Templates: [`templates/section-index.md`](templates/section-index.md) for a section, [`templates/docs-index.md`](templates/docs-index.md) for the `docs/` landing page. ([Flipped by the render mode](#render-mode): no body H1, and the index lists its pages with a component instead of by hand.)
 - **Pages** are `N.kebab.md` inside a section — except in `99.adr/`, which has its own contract (see [Architecture decision records](#architecture-decision-records)).
-- **Links** are relative `.md` links to real, verified paths.
+- **Links** are relative `.md` links to real, verified paths. ([Flipped by the render mode](#render-mode): absolute doc paths.)
 - **One topic per page; one how-to per topic** — others link, never duplicate steps.
 
 ## Section catalogue
@@ -41,6 +43,18 @@ The recognized sections. The slug is the directory name (after its numeric prefi
 | `adr`             | Architecture decision records — one decision per file.      |
 
 `adr` is the one slug with a **fixed prefix** (`99.adr/`) and its own page contract — see [Architecture decision records](#architecture-decision-records). No section is implicit: which ones a scaffold reaches for comes entirely from the [preset](#presets), and a section whose material is already canonical elsewhere is [dropped from the scaffold](SKILL.md#scaffold--docs-is-missing) rather than created as a redirect. The catalogue is organized by **documentation type** (intent) — every slug answers _what kind of page_, never _what subject_. A section not in this catalogue is allowed but triggers a **gap report** (see SKILL.md): only fold in a genuinely missing **type**. A **subject** section (`plugins`, `themes`, `integrations`, `billing`) is a category error — route its content through the type it fits (see the routing matrix), and nest it if it needs grouping (see below), rather than minting a top-level slug.
+
+### Named directories that are not sections
+
+A directory under `docs/` is not automatically a section. One is **named here** and is a mechanism instead — a store the tooling reads, holding no pages of its own:
+
+| Directory    | Is                                                                                                           |
+| :----------- | :----------------------------------------------------------------------------------------------------------- |
+| `_partials/` | the store for reusable content blocks a page includes (`Partial.vue`), under the [render mode](#render-mode) |
+
+- **It has no `index.md`, no numeric prefix and no place in the reading order** — nothing navigates into it, so a landing page for it would describe a directory no reader reaches.
+- **It is never a gap.** It is catalogued here, so a run that meets or creates one has matched the catalogue and reports `no gaps` on its account — the same standing `99.adr/` has as a section with its own contract. A directory of this kind found in a repo running **no** render mode is [report only](#reconcile-rules), not something the reconcile fixes.
+- **The catalogue is closed for these, as it is for sections.** A directory that is neither a catalogued section nor named above is an ordinary [gap report](SKILL.md#gap-report-mandatory-final-step).
 
 ## Nesting & subject grouping
 
@@ -84,7 +98,7 @@ description: Wire a new provider into the registry and expose it in the UI.
 - **`title`** — required. Short, the page's name.
 - **`description`** — required. One line; it doubles as the page's summary for search/LLM consumers, so make it self-contained.
 - **Nothing else** — order lives in the filename, page type in the section + template, status in an optional marker callout (see below). The contract stays minimal on purpose; any future field is rolled out across the tree by the reconciler, not added ad hoc.
-- **One exception**: an ADR adds `status` + `date` (see [Architecture decision records](#architecture-decision-records)). It is a distinct artifact, not a licence to extend the contract elsewhere.
+- **Two exceptions, both named.** An ADR adds `status` + `date` (see [Architecture decision records](#architecture-decision-records)); a repo running the [render mode](#render-mode) may carry that mode's theme fields. Neither is a licence to extend the contract elsewhere: a field outside those two sets is still an unknown key, and the reconciler still strips it.
 
 ## Page types
 
@@ -98,6 +112,8 @@ Type is implied by **section + template** — never a frontmatter field. Skeleto
 | reference              | A lookup entry — terse, tabular, complete.            | `reference.md` |
 | ADR                    | One decision + its reasoning; append-only.            | `adr.md`       |
 
+**The skeletons are written for the portable default.** Under the [render mode](#render-mode) they are still the right starting point — the frontmatter, the section order and the prose shape are unchanged — but the mode's flips apply as the template is copied, so the page that lands drops the body H1 and writes the mode's own form of a section index and a status marker. Apply them on copy; there is no second set of templates, and a copied skeleton is never the reason a rule was missed.
+
 ## Status marker
 
 A lightweight lifecycle signal in the page body (not frontmatter, never required, no emoji). Place a note callout right under the H1:
@@ -107,7 +123,60 @@ A lightweight lifecycle signal in the page body (not frontmatter, never required
 > **Status:** in development
 ```
 
-Values: `in development` · `planned` · `deprecated` — a shipped page omits the marker. The reconciler doesn't enforce it but can check it when present. An ADR does not use this marker — its lifecycle lives in the `status` frontmatter field.
+Values: `in development` · `planned` · `deprecated` — a shipped page omits the marker. The reconciler doesn't enforce it but can check it when present. An ADR does not use this marker — its lifecycle lives in the `status` frontmatter field. ([Flipped by the render mode](#render-mode), and as a correctness fix rather than a matter of taste: the blockquote form has no transform there and renders as an ordinary quote with the literal `[!NOTE]` in it.)
+
+## Render mode
+
+The tree above is written to be read **as files** — on the forge, in an editor, by an LLM. A repo that also **publishes** it through a rendering theme needs a different page on four counts, and the site's requirement wins on each: a theme that renders `title` as the `<h1>` makes the body's own heading a second one, a rendered site resolves absolute doc paths and not relative `.md` ones, a self-maintaining page list beats a hand-written bullet per page, and the theme's own frontmatter fields have to survive the reconciler. A fifth is a plain rendering bug rather than a preference. `docs.render` names the target and flips exactly those five.
+
+**Portability stays the default, and this is why.** Most repos here publish nothing — their `docs/` is read on the forge, where a relative `.md` link is the only form that resolves and a component block shows as raw text. Flipping the rules globally would break the common case to serve the rarer one, so the mode is opt-in and everything not listed below is unchanged by it.
+
+### What flips
+
+| Rule                                              | Portable (default)                     | Under the mode                                                                      |
+| :------------------------------------------------ | :------------------------------------- | :---------------------------------------------------------------------------------- |
+| The [body H1](#tree-shape)                        | a plain-text H1 under the frontmatter  | **no body H1** — the theme renders `title` as the `<h1>`                            |
+| [Links](#tree-shape)                              | relative `.md` links to verified paths | **absolute doc paths** — the only form that resolves, and the form the build checks |
+| A [section index](#tree-shape)'s page list        | a hand-written bullet per page         | the theme's **page-cards** component — self-maintaining, which is why it exists     |
+| The [frontmatter contract](#frontmatter-contract) | `title` + `description`, nothing else  | plus the **theme's own fields**, which the reconciler then leaves alone             |
+| The [status marker](#status-marker)               | a `> [!NOTE]` blockquote               | the theme's **callout** component                                                   |
+
+Nothing else moves. The mode changes the **form of a page**, never [what belongs in docs at all](SKILL.md#what-belongs-in-docs-at-all), the [section catalogue](#section-catalogue), the [presets](#presets), the numeric-prefix ordering, the [delta principle](SKILL.md#route--add--docs-exists), or the one-topic-per-page rule.
+
+**`99.adr/` keeps its own contract under the mode too.** That section already [overrides the general page contract](#architecture-decision-records), and the override is not lifted here: a record's H1 is part of its [file schema](#file-schema), and the log is [append-only](#lifecycle--append-only) — so a mode switched on later could never remove the H1 from the records already written, and the reconciler is forbidden from touching an accepted body to try. A second heading on a rendered ADR is cosmetic; a decision log split into a pre-mode and a post-mode shape is not.
+
+### The target, and why its contract is linked rather than copied
+
+The one target implemented is **`duxt`** (`@kirchdev/duxt`), and it already publishes what a page must look like:
+
+| For                    | Read                                                                                     |
+| :--------------------- | :--------------------------------------------------------------------------------------- |
+| The frontmatter fields | duxt's `pageSchema` (`sources.ts`), documented in its own `4.reference/3.frontmatter.md` |
+| The components         | duxt's `app/components/content/` — one file per block                                    |
+
+**This skill states only what it owns — the five flips above — and points at duxt for the rest.** A field list or a component table copied into this file would be correct until duxt's next release and then quietly wrong, with nothing to catch it; the same reasoning that keeps the [delta principle](SKILL.md#route--add--docs-exists) from transcribing a schema into a page. So: resolve the fields from duxt when writing frontmatter under the mode, and never enumerate them here.
+
+**A generic `site` mode was rejected.** Naming no target would oblige this skill to invent a contract it can validate against nothing — and "a rendered site" is not one shape: the five flips above are duxt's answers, not universal ones. A second target docks by being named in the config key and getting its own row here, not by generalising this one.
+
+### The status marker under the mode
+
+The blockquote form carries **no transform** in duxt — there is no blockquote-alert handling in the layer — so it renders as an ordinary quote with the literal `[!NOTE]` still in it. That is a rendering bug, which is why this flip is a correctness fix rather than a matter of style.
+
+The marker becomes a **callout** (`Callout.vue`). Its types are `info` · `tip` · `warning` · `danger` — there is **no `note`**, and `info` is the default, so an untyped callout is the nearest thing to what `[!NOTE]` meant. The marker's own values are unchanged (`in development` · `planned` · `deprecated`), and a shipped page still omits it. Don't map each value to a type: which types exist is duxt's to change, and a mapping written here is the copied contract this section just refused.
+
+### The rest of the component set is permitted, never required
+
+duxt's own tree reaches for roughly eight blocks — callouts, page cards, package-manager and tabbed switchers, step lists, file trees, field groups, code groups — and a page that uses one **where it genuinely fits** is writing the mode correctly, not going off-piste.
+
+But this skill **prescribes none of them**. It cannot judge per page whether a component suits the material, and a table mapping case to component would be the same copied contract that the section above rejects. The set stays discoverable in `app/components/content/`; reach for a block when the material calls for it, and write plain Markdown when it does not.
+
+### Declared, never detected
+
+The mode is `docs.render` in `.tituskirch-skills.json` (see [Config](#config)) — written down, or absent.
+
+**Detection was ruled out by the target's own design.** duxt is multi-repo: a repo whose `docs/` is pulled into someone else's site carries no dependency to detect. Sniffing for one would read that tree as portable and write the **portable** contract into precisely the tree that needs the other — the failure mode with no signal at all, since portable pages render on a site, just wrongly.
+
+The **reconciler reads the same key**, which is the other half of the mode working: without it, the theme's frontmatter fields are unknown keys and the [mechanical auto-fix](#reconcile-rules) strips them on its next pass, from exactly the pages that need them.
 
 ## Architecture decision records
 
@@ -276,11 +345,13 @@ Admission has **four** outcomes, all of them proposed in the same plan:
 
 Desired-state and idempotent. Blast radius: **structure + frontmatter only, prose untouched, inside `docs/` only, plan + diff first** (see SKILL.md). Categorize each deviation:
 
-| Category      | Examples                                                                                                                              | Action          |
-| :------------ | :------------------------------------------------------------------------------------------------------------------------------------ | :-------------- |
-| Mechanical    | numbering gaps/dupes · missing `index.md` · removed/unknown frontmatter keys · `N.kebab.md` rename · unambiguous broken relative link | auto-fix        |
-| Value-needing | missing required `title`/`description` · a [foreign ADR directory](#foreign-adrs--a-decision-log-written-elsewhere) to import         | propose + ask   |
-| Report only   | how-to without a checklist · page fits no section · suspected upstream duplication · secret found                                     | report, no edit |
+| Category      | Examples                                                                                                                      | Action          |
+| :------------ | :---------------------------------------------------------------------------------------------------------------------------- | :-------------- |
+| Mechanical    | numbering gaps/dupes · missing `index.md` · removed/unknown frontmatter keys · `N.kebab.md` rename · unambiguous broken link  | auto-fix        |
+| Value-needing | missing required `title`/`description` · a [foreign ADR directory](#foreign-adrs--a-decision-log-written-elsewhere) to import | propose + ask   |
+| Report only   | how-to without a checklist · page fits no section · suspected upstream duplication · secret found                             | report, no edit |
+
+**Resolve the [render mode](#render-mode) before categorizing anything.** Two of the mechanical fixes are written against the portable contract and become destructive under the mode: _unknown frontmatter keys_ would strip the theme's fields off exactly the pages that need them, and _broken link_ would rewrite the mode's absolute doc paths as dangling relatives. Under the mode, read those two against the mode's rules instead — the theme's fields are known keys, an absolute doc path is the correct form, and a missing body H1 is not a deviation to restore. This is the whole reason the mode is a config key the reconciler can read rather than something each run infers.
 
 **`99.adr/` is exempt.** There the reconciler may only fix broken links and a missing/stale `index.md` row. It must **never** renumber an ADR, normalize `NNNN-title.md` to the dot-schema, close a numbering gap, rename a record whose title is not imperative, add a missing `Alternatives considered`, or touch body prose or `status` — ids are permanent, gaps are not deviations, and the body is append-only. A missing `title`/`description` is still worth proposing; everything else in an ADR is report-only.
 
@@ -297,6 +368,7 @@ Read the whole tree fresh every run — it is live state and is **never cached**
   "language": "de",
   "docs": {
     "preset": "app",
+    "render": "duxt",
     "language": { "title": "en", "body": "de" },
     "instructions": "…"
   }
@@ -306,6 +378,7 @@ Read the whole tree fresh every run — it is live state and is **never cached**
 | Key                 | Effect                                                                                                                                               |
 | :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `docs.preset`       | `package` / `cli` / `app` / `service` / `infra` — which sections to scaffold; falls back to repo detection, then asks                                |
+| `docs.render`       | `duxt` — the [render mode](#render-mode)'s target; absent or `null` is the portable default. **Declared, never detected**                            |
 | `docs.language`     | docs language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`, then the existing docs/repo language, then `en` |
 | `docs.instructions` | free-text guidance for generated docs (tone, house conventions) — additive preference only, never overrides the docs format or guardrails            |
 
@@ -315,6 +388,7 @@ Read the whole tree fresh every run — it is live state and is **never cached**
 # $resolved comes from the resolver — see "Reading the config" in this file.
 disabled=$(printf '%s' "$resolved" | jq -er 'if .docs == false then 1 else empty end' 2>/dev/null) || disabled=
 preset=$(printf '%s' "$resolved" | jq -er '.docs.preset // empty' 2>/dev/null) || preset=
+render=$(printf '%s' "$resolved" | jq -er '.docs.render // empty' 2>/dev/null) || render= # empty = portable; `null` and absent mean the same thing here
 lang=$(printf '%s' "$resolved" | jq -er '.docs.language // .language // empty' 2>/dev/null) || lang= # may be a { title, body } object, not a scalar
 instructions=$(printf '%s' "$resolved" | jq -er '.docs.instructions // empty' 2>/dev/null) || instructions=
 ```
@@ -367,7 +441,7 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 
 - ❌ A section `index.md` whose body only points elsewhere — a promise of pages with none behind it. Either it lists real pages, or the section should not exist yet.
 - ❌ Order in frontmatter instead of the filename prefix.
-- ❌ A `type:` (or `icon:`/`nav:`) frontmatter field — the contract is `title` + `description` only (an ADR adds `status` + `date`; nothing else does).
+- ❌ A `type:` (or `icon:`/`nav:`) frontmatter field — the contract is `title` + `description` only (an ADR adds `status` + `date`, and a repo running the [render mode](#render-mode) adds that mode's theme fields; nothing else does).
 - ❌ A subject-matter top-level section (`plugins/`, `themes/`, `integrations/`) instead of routing content into a type section (nested if needed).
 - ❌ A second page on a topic that already has one — edit in place. (ADRs excepted — a new decision is a new ADR.)
 - ❌ An unprefixed `docs/adr/`, or any prefix other than `99`, for the ADR section.
@@ -385,4 +459,8 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 - ❌ [Splitting](#splitting-a-record-on-entry) an imported record by rewriting a sentence so it fits one side — a split moves whole sentences or it does not happen, and a record that will not come apart is reported instead.
 - ❌ Deleting prose anywhere but a named, confirmed fragment of the record being imported — an existing page is never trimmed, and a record the threshold declined is never emptied.
 - ❌ Emoji in generated headings, landing pages, or prose — output is plain text.
-- ❌ Naming a specific docs tool/generator in the pages or the convention.
+- ❌ Naming a specific docs tool/generator in the pages or the convention — outside the [render mode](#render-mode), whose entire purpose is to target one, and which is off unless `docs.render` says otherwise.
+- ❌ Writing a component block, an absolute doc path or a theme frontmatter field into a repo whose config does **not** declare the mode — a component shows as raw text on the forge, and the reconciler strips the field on its next pass.
+- ❌ Keeping the portable form under the mode — a body H1 the theme renders a second time, a hand-written bullet list where the page-cards component belongs, a `> [!NOTE]` that renders with its marker showing.
+- ❌ [Detecting](#declared-never-detected) the mode from a dependency, a lockfile or a config file instead of reading `docs.render` — the target is multi-repo, so the tree that most needs the mode is the one carrying no trace of it.
+- ❌ Copying the target's frontmatter field list or component set into this file instead of [pointing at it](#the-target-and-why-its-contract-is-linked-rather-than-copied) — a copy is correct until the next release, and nothing catches it afterwards.

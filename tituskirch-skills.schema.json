@@ -559,6 +559,11 @@
           "enum": ["package", "cli", "app", "service", "infra"],
           "description": "Project type — selects the whole set of sections to scaffold; none is implicit. Falls back to repo detection, then asks."
         },
+        "render": {
+          "type": ["string", "null"],
+          "enum": ["duxt", null],
+          "description": "The rendering target this repo's docs/ tree is published through, which flips the five page rules a rendered site needs (no body H1, absolute doc paths, ::page-cards in a section index, theme frontmatter fields, ::callout for the status marker). null or absent is the portable default: plain Markdown with relative .md links, which is what a tree read on the forge needs and what most repos are. Declared, never detected — duxt is multi-repo, so a tree pulled into someone else's site carries no dependency to detect, and detection would read that tree as portable and write the wrong contract into exactly the one that needs the other."
+        },
         "language": {
           "$ref": "#/$defs/language",
           "description": "Overrides the root language for generated docs."
