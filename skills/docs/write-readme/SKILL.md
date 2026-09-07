@@ -58,19 +58,26 @@ allowed-tools:
 
 ## Gap report (mandatory final step)
 
-After writing the README, end the turn with a short report listing anything that wasn't covered by [REFERENCE.md](REFERENCE.md):
+After writing the README, end the turn with a short report naming what [REFERENCE.md](REFERENCE.md) **prescribes** but does not yet cover.
 
-- **Sections without a prescribed emoji** — any H2 you had to invent an emoji for because it isn't in the section catalogue.
-- **Badges without a palette color** — any badge purpose that didn't fit `primary` / `neutral` / `success` / `laravel` / `php` / `node` / `warning`.
-- **Hero-emoji gaps** — if you fell back to 📦 because no project-type matched.
+**Three kinds are reportable, and nothing else.** They mirror REFERENCE.md's three prescriptive tables one for one — a gap is a hole in a table that _binds_, so what the skill does not prescribe cannot have one. There is deliberately **no catch-all line**: a fourth kind arrives only when the skill grows a fourth prescriptive table, and gains its report line in that same change.
+
+- **Hero-emoji gaps** — you fell back to 📦 because no project type in the hero table matched.
+- **Sections without a prescribed emoji** — an H2 you had to invent an emoji for because it isn't in the section catalogue.
+- **Badges without a palette color** — a badge _purpose_ that fits none of `primary` / `neutral` / `success` / `laravel` / `php` / `node` / `warning`.
+
+Two things look like gaps and are not:
+
+- **Feature-bullet emojis are free-form — never report one.** REFERENCE.md's `Feature-bullet emojis` table says so itself: it is a suggestion list, not a catalogue, so an emoji it doesn't list is the table working as designed, with nothing to fold back in. Borrowing one from the section catalogue is fine too — the two already overlap on 🏢, 🧪, 🔍, 🧩 and 🗂️.
+- **A missing badge _set_ is not a missing palette _color_.** The reportable case is a purpose with no token, never a project shape without a ready-made block under **Standard sets**. A public package that hasn't reached the registry yet takes the standard npm set unchanged — that is the decision, not a gap in it.
 
 Format:
 
 ```text
 Gap report — improvements for write-readme:
+- Hero type "{description}" — no catalogue entry; used {emoji}.
 - Section "{name}" — no catalogue entry; used {emoji} as ad-hoc choice.
 - Badge "{purpose}" — no palette token; used color={hex}.
-- Hero type "{description}" — no catalogue entry; used {emoji}.
 ```
 
 If everything was covered, say so: `Gap report: no gaps — every section and badge matched the catalogue.`
