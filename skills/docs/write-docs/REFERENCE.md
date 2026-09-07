@@ -26,6 +26,7 @@ docs/
 - **Pages** are `N.kebab.md` inside a section — except in `99.adr/`, which has its own contract (see [Architecture decision records](#architecture-decision-records)).
 - **Links** are relative `.md` links to real, verified paths. ([Flipped by the render mode](#render-mode): absolute doc paths.)
 - **One topic per page; one how-to per topic** — others link, never duplicate steps.
+- **A locale root** — `docs/de-DE/` — is a whole translated tree, not a section, and appears only where [`docs.locales`](#config) lists it. The default locale has no folder of its own; it _is_ the source root ([Locales](#locales)).
 
 ## Section catalogue
 
@@ -42,7 +43,7 @@ The recognized sections. The slug is the directory name (after its numeric prefi
 | `contributing`    | How to develop and contribute.                              |
 | `adr`             | Architecture decision records — one decision per file.      |
 
-`adr` is the one slug with a **fixed prefix** (`99.adr/`) and its own page contract — see [Architecture decision records](#architecture-decision-records). No section is implicit: which ones a scaffold reaches for comes entirely from the [preset](#presets), and a section whose material is already canonical elsewhere is [dropped from the scaffold](SKILL.md#scaffold--docs-is-missing) rather than created as a redirect. The catalogue is organized by **documentation type** (intent) — every slug answers _what kind of page_, never _what subject_. A section not in this catalogue is allowed but triggers a **gap report** (see SKILL.md): only fold in a genuinely missing **type**. A **subject** section (`plugins`, `themes`, `integrations`, `billing`) is a category error — route its content through the type it fits (see the routing matrix), and nest it if it needs grouping (see below), rather than minting a top-level slug.
+`adr` is the one slug with a **fixed prefix** (`99.adr/`) and its own page contract — see [Architecture decision records](#architecture-decision-records). No section is implicit: which ones a scaffold reaches for comes entirely from the [preset](#presets), and a section whose material is already canonical elsewhere is [dropped from the scaffold](SKILL.md#scaffold--docs-is-missing) rather than created as a redirect. The catalogue is organized by **documentation type** (intent) — every slug answers _what kind of page_, never _what subject_. A section not in this catalogue is allowed but triggers a **gap report** (see SKILL.md): only fold in a genuinely missing **type**. A **subject** section (`plugins`, `themes`, `integrations`, `billing`) is a category error — route its content through the type it fits (see the routing matrix), and nest it if it needs grouping (see below), rather than minting a top-level slug. A **locale root** (`de-DE/`) is neither: it holds a translated copy of the whole tree, so the catalogue applies _inside_ it and never _to_ it, and it never triggers a gap report ([Locales](#locales)).
 
 ### Named directories that are not sections
 
@@ -60,27 +61,60 @@ A directory under `docs/` is not automatically a section. One is **named here** 
 
 Sections hold pages, but a page slot can be a **subject folder** when one topic spans several pages — the `reference` section nests (`reference/rest-api/v1/…`). Group by subject **inside** a type section, never as a new top-level slug: an external integration's how-it-works belongs at `concepts/integrations/wordpress.md`, not `plugins/wordpress.md`. Keeping the top level type-only is what keeps the tree the same shape across every repo. `99.adr/` is the exception that proves the rule — it is **flat**, never nested.
 
+## Locales
+
+A tree can be maintained in more than one language. [`docs.language`](#config) is the **default locale** — the tree at the source root, with **no folder of its own** — and [`docs.locales`](#config) names the **additional** ones, each a folder directly inside `docs/`:
+
+```text
+docs/
+  index.md                     # the default locale, at the root
+  1.getting-started/
+    index.md
+    1.installation.md
+  de-DE/                       # a locale root — not a section
+    index.md
+    1.getting-started/
+      index.md
+      1.installation.md
+```
+
+**A locale root is not a section slug.** It carries no numeric prefix, it is not in the [catalogue](#section-catalogue), and it never triggers a [gap report](SKILL.md#gap-report-mandatory-final-step) — the catalogue describes what lives _inside_ a tree, and a locale root holds a whole tree rather than a page's worth of one type. A run that reads `docs/de-DE/` as an unknown section has made a category error, and so has one that reads it as a subject folder.
+
+**Listing a locale is the whole switch.** It binds the skill to **maintain and translate** that tree — in scaffold, in route/add and in a reconcile sweep alike. There is no second key confirming it: a repo that lists a locale has already said what it wants. An **absent** `docs.locales` leaves single-locale behaviour exactly as it is, so nothing here reaches a repo that has not opted in.
+
+**Structure is derived, never authored.** Every listed locale's tree is regenerated from the default one, so its section numbering, its `index.md` files and its section shape all follow from the source. **Paths match the source exactly** — same numeric prefixes, same kebab slugs, untranslated — because a renderer resolves a translation by path; translating a filename breaks the lookup and orphans the page. What _is_ translated is the content: the `title` and `description` frontmatter, and the body prose.
+
+**A translated page is generated output, not a hand-maintained one.** When the source page changes, a sweep **rewrites** the translation rather than reporting it stale, so the trees are never out of step. That is a knowing trade: a correction made directly in `docs/de-DE/` does not survive the next sweep, and a reviewer who does not read that language will not catch it in the diff. It follows as a rule rather than a caveat — **a correction belongs in the source page, or in the wording guidance [`docs.instructions`](#config) carries, never in the translated file.**
+
+**Structural drift between a locale tree and the default one is not a finding.** Because the locale tree is derived, there is nothing to judge it against on its own terms — a numbering gap or a missing page there is a **sweep that has not run yet**, not a deviation to report. This is why the [reconcile categories](#reconcile-rules) do not apply inside a locale root.
+
+**A missing translation is legitimate.** A renderer resolves a missing page through a documented chain — the locale, its base language, a sibling region, a configured fallback, then the untranslated original — so the reader gets the nearest language rather than a 404. An untranslated page is therefore **not a defect to fix** and never blocks anything; it is simply a page the next sweep will write.
+
+**The ADR log's authority is the default-locale tree.** A translated ADR is a rendering of a record, not a record: [append-only](#lifecycle--append-only) binds the source file in `99.adr/`, so regenerating its translation is not an edit to an accepted record. Ids, filenames and `status` are copied from the source untouched, and a decision is never superseded from inside a locale tree.
+
+**A locale sourced from another repository is the consuming site's config, not this one's.** A renderer can pull a locale from a separate repo; this skill only ever writes inside this repo's `docs/`, so such a locale is out of its reach entirely — it is neither scaffolded, translated, nor reported on here.
+
 ## Presets
 
 Which sections to scaffold, by project type. **No section is implicit** — each preset states its whole set, and every one of them still faces the redirect test in [SKILL.md](SKILL.md#scaffold--docs-is-missing).
 
-| Preset    | Scaffolds                                             | Conditional    |
-| :-------- | :---------------------------------------------------- | :------------- |
-| `package` | `concepts`, `guides`                                  | `contributing` |
-| `cli`     | `getting-started`, `guides`                           | `contributing` |
-| `app`     | `getting-started`, `concepts`, `guides`, `operations` | `conventions`  |
-| `service` | `concepts`, `reference`, `operations`                 | `conventions`  |
-| `infra`   | `concepts`, `operations`                              | `conventions`  |
+| Preset    | Scaffolds                                             | Conditional                                    |
+| :-------- | :---------------------------------------------------- | :--------------------------------------------- |
+| `package` | `concepts`, `guides`                                  | `contributing`, `getting-started`, `reference` |
+| `cli`     | `getting-started`, `guides`                           | `contributing`                                 |
+| `app`     | `getting-started`, `concepts`, `guides`, `operations` | `conventions`                                  |
+| `service` | `concepts`, `reference`, `operations`                 | `conventions`                                  |
+| `infra`   | `concepts`, `operations`                              | `conventions`                                  |
 
-**Conditional** names the section that type most often earns, on a condition the repo has to meet: `contributing` when it accepts outside contributions, `conventions` when it carries project rules a newcomer would not guess. Either can be added to any preset — the column says which to expect, not which is allowed.
+**Conditional** names the sections that type most often earns, each on a condition the repo has to meet: `contributing` when it accepts outside contributions, `conventions` when it carries project rules a newcomer would not guess, and — on `package` — `getting-started` when the repo's first run is framework wiring rather than an install command, `reference` when the published surface has no `--help` and no schema to read instead. Any of them can be added to any preset — the column says which to expect, not which is allowed.
 
-Three sections are deliberately absent from most rows:
+Three sections are deliberately out of the base set on most rows. Two of them are not withdrawn where they are absent — they are the conditions above, stated:
 
-- **`getting-started` only where a README cannot carry it.** A README in the house style already covers install and first run, so the section would only redirect — and a section index that redirects is an [anti-pattern](#anti-patterns). It survives for a `cli` (install varies by channel: package manager, binary, script) and an `app` (a setup chain of env, services and migrations), and is dropped everywhere else.
-- **`reference` only for a `service`.** A lookup page is [the row to challenge](SKILL.md#routing-matrix--what-you-changed--page-type--section): a manifest, a schema or `--help` usually holds the real answer and never goes stale. An HTTP API with no published schema is the one case that earns the section outright.
+- **`getting-started` only where a README cannot carry it.** A README in the house style already covers install and first run, so the section would only redirect — and a section index that redirects is an [anti-pattern](#anti-patterns). It is a base section for a `cli` (install varies by channel: package manager, binary, script) and an `app` (a setup chain of env, services and migrations). What that argument assumes is an install command, which is the `package` condition: a first run that is **framework wiring** — registering a module, adding a config block, mounting a component — is a step no README hook covers, so the section holds a page rather than a redirect.
+- **`reference` outright only for a `service`.** A lookup page is [the row to challenge](SKILL.md#routing-matrix--what-you-changed--page-type--section): a manifest, a schema or `--help` usually holds the real answer and never goes stale. An HTTP API with no published schema is the one case that earns the section outright. That same test is the `package` condition: a published surface with **no `--help` and no schema** — components, composables and config keys readable only in source — has nothing machine-readable to defer to, so its lookup values are canonical here or nowhere.
 - **`adr` belongs to no preset** — the section appears when the first ADR is written, never scaffolded empty.
 
-`package` is **anything published that carries its own reference** — an npm library, a Composer package, a Nuxt module, an agent/skill set. What such a repo ships travels without `docs/`, so the tree holds only what spans the whole set; the per-artifact reference stays with the artifact. It is deliberately not named `library`: the case is the publishing, not the language or the format.
+`package` is **anything published that carries its own reference** — an npm library, a Composer package, a Nuxt module, an agent/skill set. What such a repo ships travels without `docs/`, so the tree holds only what spans the whole set; the per-artifact reference stays with the artifact — where there is one to stay with, an artifact carrying none being exactly what the conditional `reference` above covers. It is deliberately not named `library`: the case is the publishing, not the language or the format.
 
 `service` is an HTTP API or backend with no UI — the operational surface matters more than the guides, which is what separates it from `app`.
 
@@ -343,7 +377,7 @@ Admission has **four** outcomes, all of them proposed in the same plan:
 
 ## Reconcile rules
 
-Desired-state and idempotent. Blast radius: **structure + frontmatter only, prose untouched, inside `docs/` only, plan + diff first** (see SKILL.md). Categorize each deviation:
+Desired-state and idempotent. Blast radius: **structure + frontmatter only, prose untouched, inside `docs/` only, plan + diff first** (see SKILL.md) — with one configured exception, the [locale trees](#locale-trees-are-regenerated-not-categorized) below. Categorize each deviation:
 
 | Category      | Examples                                                                                                                      | Action          |
 | :------------ | :---------------------------------------------------------------------------------------------------------------------------- | :-------------- |
@@ -356,6 +390,14 @@ Desired-state and idempotent. Blast radius: **structure + frontmatter only, pros
 **`99.adr/` is exempt.** There the reconciler may only fix broken links and a missing/stale `index.md` row. It must **never** renumber an ADR, normalize `NNNN-title.md` to the dot-schema, close a numbering gap, rename a record whose title is not imperative, add a missing `Alternatives considered`, or touch body prose or `status` — ids are permanent, gaps are not deviations, and the body is append-only. A missing `title`/`description` is still worth proposing; everything else in an ADR is report-only.
 
 **The exemption covers the log, not what is outside it.** A [foreign ADR](#foreign-adrs--a-decision-log-written-elsewhere) has never entered `99.adr/`, so importing one is not an exception to the rule above — there is no id to renumber and no accepted record to edit. It is the single case where the reconciler moves a file into `99.adr/`, re-homes body prose, [splits](#splitting-a-record-on-entry) part of it onto a page elsewhere in `docs/` or drops a named fragment of it — all of that inside one confirmed proposal, and none of it anywhere but the record being imported.
+
+### Locale trees are regenerated, not categorized
+
+The three categories above judge a tree against the convention. A [locale tree](#locales) is **derived from the default tree**, so there is nothing to judge it against on its own terms: its numbering, its `index.md` files and its section shape all come from the source, and a gap in any of them means the sweep has not run, not that the tree deviates. So inside a locale root the reconciler **does not categorize at all** — it **regenerates**, and structural drift against the default tree is never a finding to report.
+
+**This is the one place a reconcile writes prose, and it is a deliberate exception.** Where `docs.locales` lists a locale, the sweep rewrites that tree's translated `title`, `description` and body from the source. The exception is **scoped to the locale trees**: the default-locale tree keeps _prose untouched_ in full, exactly as before, and a repo that lists no locales never reaches this path. It is also why a correction made inside `docs/de-DE/` does not survive — the fix belongs in the source page or in `docs.instructions`.
+
+`99.adr/` inside a locale tree is regenerated with everything else, and that does **not** collide with [append-only](#lifecycle--append-only): the record is the source file, and its translation is a rendering of one. Ids, filenames and `status` are copied across untouched, and a decision is never superseded from inside a locale tree.
 
 Read the whole tree fresh every run — it is live state and is **never cached**.
 
@@ -370,17 +412,21 @@ Read the whole tree fresh every run — it is live state and is **never cached**
     "preset": "app",
     "render": "duxt",
     "language": { "title": "en", "body": "de" },
+    "locales": ["de-DE", "pt-BR"],
     "instructions": "…"
   }
 }
 ```
 
-| Key                 | Effect                                                                                                                                               |
-| :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs.preset`       | `package` / `cli` / `app` / `service` / `infra` — which sections to scaffold; falls back to repo detection, then asks                                |
-| `docs.render`       | `duxt` — the [render mode](#render-mode)'s target; absent or `null` is the portable default. **Declared, never detected**                            |
-| `docs.language`     | docs language — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`, then the existing docs/repo language, then `en` |
-| `docs.instructions` | free-text guidance for generated docs (tone, house conventions) — additive preference only, never overrides the docs format or guardrails            |
+| Key                 | Effect                                                                                                                                                                                  |
+| :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs.preset`       | `package` / `cli` / `app` / `service` / `infra` — which sections to scaffold; falls back to repo detection, then asks                                                                   |
+| `docs.render`       | `duxt` — the [render mode](#render-mode)'s target; absent or `null` is the portable default. **Declared, never detected**                                                               |
+| `docs.language`     | docs language, and the tree's **default locale** — scalar (a code/name or `match`) or `{ title, body }`; falls back to root `language`, then the existing docs/repo language, then `en` |
+| `docs.locales`      | the **additional** locale trees to maintain and translate, each a folder inside the source (`docs/de-DE/`); absent → single-locale, unchanged ([Locales](#locales))                     |
+| `docs.instructions` | free-text guidance for generated docs (tone, house conventions) — additive preference only, never overrides the docs format or guardrails                                               |
+
+**`docs.language` and `docs.locales` answer different questions**, so a multilingual repo sets both: the first names the locale living at the source root, the second the folders beside it. The default locale is therefore **never** listed in `docs.locales` — it has no folder to name, and listing it would ask for `docs/en-GB/` alongside the root tree it already is. The schema cannot catch that (`docs.language` may be `match` or a `{ title, body }` object), so it is a rule the skill holds: on finding the default locale in the list, say so and drop it rather than scaffolding the duplicate tree.
 
 `language` is a shared root key; `docs.*` is this skill's section (`commit.*`/`pr.*`/`issue.*` belong to the other skills). `match` mirrors the repo/source language. `docs.instructions` mirrors `commit.instructions` / `pr.instructions` / `issue.instructions` — additive wording guidance that never overrides the docs format or guardrails. Set `docs` to `false` (instead of an object) to opt the repo out entirely — the skill then **stops with a "disabled" notice** instead of falling back; an _absent_ block still falls back to defaults/detection. Full schema: the repo-root [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json).
 
@@ -390,6 +436,7 @@ disabled=$(printf '%s' "$resolved" | jq -er 'if .docs == false then 1 else empty
 preset=$(printf '%s' "$resolved" | jq -er '.docs.preset // empty' 2>/dev/null) || preset=
 render=$(printf '%s' "$resolved" | jq -er '.docs.render // empty' 2>/dev/null) || render= # empty = portable; `null` and absent mean the same thing here
 lang=$(printf '%s' "$resolved" | jq -er '.docs.language // .language // empty' 2>/dev/null) || lang= # may be a { title, body } object, not a scalar
+locales=$(printf '%s' "$resolved" | jq -er '.docs.locales // [] | .[]' 2>/dev/null) || locales= # one per line; empty means single-locale
 instructions=$(printf '%s' "$resolved" | jq -er '.docs.instructions // empty' 2>/dev/null) || instructions=
 ```
 
@@ -464,3 +511,11 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 - ❌ Keeping the portable form under the mode — a body H1 the theme renders a second time, a hand-written bullet list where the page-cards component belongs, a `> [!NOTE]` that renders with its marker showing.
 - ❌ [Detecting](#declared-never-detected) the mode from a dependency, a lockfile or a config file instead of reading `docs.render` — the target is multi-repo, so the tree that most needs the mode is the one carrying no trace of it.
 - ❌ Copying the target's frontmatter field list or component set into this file instead of [pointing at it](#the-target-and-why-its-contract-is-linked-rather-than-copied) — a copy is correct until the next release, and nothing catches it afterwards.
+- ❌ Reading a [locale root](#locales) (`de-DE/`) as a section, a subject folder, or an unknown directory to gap-report — it holds a whole tree, not a page's worth of one type.
+- ❌ A folder for the default locale (`docs/en-GB/` beside the root tree it already is), or the default locale listed in `docs.locales`.
+- ❌ Translating a filename or a numeric prefix — a path is how a renderer finds a translation, so it is copied from the source untouched.
+- ❌ Correcting a translation inside `docs/de-DE/` — a translated page is generated output, so the fix belongs in the source page or in `docs.instructions`.
+- ❌ Reporting a locale tree's numbering, missing page or section shape as drift — it is derived, so a gap is an unrun sweep, not a deviation.
+- ❌ A stub or placeholder page standing in for a missing translation — a renderer already falls back to the nearest language, so the stub only hides that the sweep has not run.
+- ❌ Superseding an ADR, or renumbering one, from inside a locale tree — the record is the source file; the translation is a rendering of it.
+- ❌ Rewriting prose in the default-locale tree during a reconcile because `docs.locales` is set — the exception is scoped to the locale trees.

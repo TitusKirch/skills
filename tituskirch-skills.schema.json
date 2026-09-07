@@ -566,11 +566,22 @@
         },
         "language": {
           "$ref": "#/$defs/language",
-          "description": "Overrides the root language for generated docs."
+          "description": "Overrides the root language for generated docs. It is also the docs tree's default locale — the tree at the source root, with no folder of its own. docs.locales names the additional ones."
+        },
+        "locales": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[A-Za-z]{2,3}(-[A-Za-z]{4})?(-([A-Za-z]{2}|[0-9]{3}))?$"
+          },
+          "description": "Additional locale trees the repo keeps current, beside the default locale docs.language names — each a folder inside the source (docs/de-DE/), never a section slug. Listing a locale is the whole switch: write-docs maintains and translates that tree, including in a reconcile sweep, and a translated page is generated output rather than a hand-maintained one. Absent leaves single-locale behaviour exactly as it is. Tags are BCP 47 (de-DE, pt-BR, zh-Hans-CN); a locale sourced from another repository is the consuming site's own config, not this key's, since write-docs only ever writes inside this repo's docs/."
         },
         "instructions": {
           "$ref": "#/$defs/instructions",
-          "description": "Free-text guidance for generated docs (tone, house conventions). Additive preference only — never overrides the docs format or the skill's guardrails."
+          "description": "Free-text guidance for generated docs (tone, house conventions). Additive preference only — never overrides the docs format or the skill's guardrails. With docs.locales set it is also where wording guidance for the translated trees belongs, since a correction made in a translated file does not survive the next sweep."
         }
       }
     },
