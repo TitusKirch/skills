@@ -21,33 +21,37 @@ Pick one and use it consistently across the README's `# {emoji} {name}` and any 
 
 These are the **prescribed** emojis for recurring sections. Use the same emoji for the same kind of section across all kirchDev READMEs — readers should be able to find "Versioning" by scanning for 🛣️ without reading the heading.
 
-| Section                                    | Emoji | Notes                                              |
-| :----------------------------------------- | :---: | :------------------------------------------------- |
-| Why / Problem                              |  🤔   | Problem → solution framing, right after the hook.  |
-| Installation / Stack                       |  📦   | "Installation" for libs, "Stack" for infra.        |
-| Quick start / Setup                        |  🚀   | "Quick start" for libs, "Setup" for infra/apps.    |
-| Features / Highlights                      |  ✨   | "Features" for libs, "Highlights" for infra/apps.  |
-| Configuration                              |  ⚙️   | Use when there's a non-trivial config table.       |
-| Testing / CI / scripting                   |  🧪   | Test suites; also "use in CI / scripting" blocks.  |
-| Multi-tenant / Org / Workspace scoping     |  🏢   | Anything tenant-aware.                             |
-| Sessions / device management               |  📱   | Listing, naming, revoking sessions/devices.        |
-| Events / listeners / broadcasting          |  📡   | Emitted events, listeners, broadcast channels.     |
-| Overridable contracts / extension points   |  🧩   | Swappable interfaces, custom implementations.      |
-| Decision trace / Observability / Debugging |  🔍   | Inspection, tracing, debug surfaces.               |
-| Cascade / Cleanup / Lifecycle              |  🧹   | Delete semantics, GC, retention.                   |
-| Migration (from / to)                      |  🔁   | Migrating from another package, or workflow loops. |
-| Layout / Repo structure                    |  🗂️   | File tree blocks.                                  |
-| Adding things                              |  ➕   | "How do I add a new X?" sections.                  |
-| Contributing                               |  🤝   | Always this emoji.                                 |
-| Versioning                                 |  🛣️   | Always this emoji.                                 |
-| License                                    |  📄   | Always this emoji.                                 |
-| Security policy                            |  🔐   | When linking SECURITY.md prominently.              |
-| FAQ                                        |  ❓   | If included.                                       |
-| Roadmap                                    |  🗺️   | If included.                                       |
+| Section                                    | Emoji | Notes                                                                                               |
+| :----------------------------------------- | :---: | :-------------------------------------------------------------------------------------------------- |
+| Why / Problem                              |  🤔   | Problem → solution framing, right after the hook.                                                   |
+| Installation / Stack                       |  📦   | "Installation" for libs, "Stack" for infra.                                                         |
+| Quick start / Setup                        |  🚀   | "Quick start" for libs, "Setup" for infra/apps.                                                     |
+| Features / Highlights                      |  ✨   | "Features" for libs, "Highlights" for infra/apps.                                                   |
+| Configuration                              |  ⚙️   | The options themselves (table / keys). Not for resolution order — see 🎚️.                           |
+| Testing / CI / scripting                   |  🧪   | Test suites; also "use in CI / scripting" blocks.                                                   |
+| Multi-tenant / Org / Workspace scoping     |  🏢   | Anything tenant-aware.                                                                              |
+| Sessions / device management               |  📱   | Listing, naming, revoking sessions/devices.                                                         |
+| Events / listeners / broadcasting          |  📡   | Emitted events, listeners, broadcast channels.                                                      |
+| Overridable contracts / extension points   |  🧩   | Swappable interfaces, custom implementations.                                                       |
+| Decision trace / Observability / Debugging |  🔍   | Inspection, tracing, debug surfaces.                                                                |
+| Cascade / Cleanup / Lifecycle              |  🧹   | Delete semantics, GC, retention.                                                                    |
+| Migration (from / to)                      |  🔁   | Migrating from another package, or workflow loops.                                                  |
+| Layout / Repo structure                    |  🗂️   | File tree blocks.                                                                                   |
+| Adding things                              |  ➕   | "How do I add a new X?" sections.                                                                   |
+| Data model / Schema                        |  🗄️   | Entities, tables, the stored shape.                                                                 |
+| Translation / i18n / Localisation          |  🌍   | Locale files, message catalogues, RTL.                                                              |
+| Gates / Pipeline stages                    |  🚦   | Ordered checks something passes through.                                                            |
+| Configuration resolution / Precedence      |  🎚️   | Only when precedence needs a section of its own (env vs file vs default). A plain option list → ⚙️. |
+| Contributing                               |  🤝   | Always this emoji.                                                                                  |
+| Versioning                                 |  🛣️   | Always this emoji.                                                                                  |
+| License                                    |  📄   | Always this emoji.                                                                                  |
+| Security policy                            |  🔐   | When linking SECURITY.md prominently.                                                               |
+| FAQ                                        |  ❓   | If included.                                                                                        |
+| Roadmap                                    |  🗺️   | If included.                                                                                        |
 
 **Order & merging:** Installation / Quick start lead (before Features) so a reader reaches the install command fast; an optional **Why / Problem** block sits between the hook and Installation. Installation + Quick start may be merged into one **Install & run** section — this keeps a write-readme scaffold and a `compact-readme` pass in agreement.
 
-If you need a section that's not in the catalogue, pick a sensible emoji and **add it here in the same PR** so the next README stays consistent.
+If you need a section that's not in the catalogue, pick a sensible emoji and **report it in the gap report** — a `write-readme` run never edits this table itself. The run happens in the **target** repo while the catalogue ships with the skill, so there is no "same PR" the entry could land in; a human folds it into the catalogue here, in `TitusKirch/skills`, and the next README then stays consistent.
 
 ## Feature-bullet emojis
 
@@ -77,7 +81,7 @@ Each bullet starts with an emoji that reflects the feature's nature — these ar
 
 ## Badges
 
-Use shields.io with `style=flat-square`. **Never invent new colors** — pick from the palette below so every kirchDev README shares the same visual fingerprint. If a badge purpose isn't covered here, add it to this table in the same PR.
+Use shields.io with `style=flat-square`. **Never invent new colors** — pick from the palette below so every kirchDev README shares the same visual fingerprint. If a badge purpose isn't covered here, **report it in the gap report** instead of editing this table — the same rule the section catalogue above carries, and for the same reason: the run happens in the target repo, the palette lives with the skill.
 
 ### Badge color palette
 

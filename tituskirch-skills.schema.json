@@ -559,13 +559,29 @@
           "enum": ["package", "cli", "app", "service", "infra"],
           "description": "Project type — selects the whole set of sections to scaffold; none is implicit. Falls back to repo detection, then asks."
         },
+        "render": {
+          "type": ["string", "null"],
+          "enum": ["duxt", null],
+          "description": "The rendering target this repo's docs/ tree is published through, which flips the five page rules a rendered site needs (no body H1, absolute doc paths, ::page-cards in a section index, theme frontmatter fields, ::callout for the status marker). null or absent is the portable default: plain Markdown with relative .md links, which is what a tree read on the forge needs and what most repos are. Declared, never detected — duxt is multi-repo, so a tree pulled into someone else's site carries no dependency to detect, and detection would read that tree as portable and write the wrong contract into exactly the one that needs the other."
+        },
         "language": {
           "$ref": "#/$defs/language",
-          "description": "Overrides the root language for generated docs."
+          "description": "Overrides the root language for generated docs. It is also the docs tree's default locale — the tree at the source root, with no folder of its own. docs.locales names the additional ones."
+        },
+        "locales": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[A-Za-z]{2,3}(-[A-Za-z]{4})?(-([A-Za-z]{2}|[0-9]{3}))?$"
+          },
+          "description": "Additional locale trees the repo keeps current, beside the default locale docs.language names — each a folder inside the source (docs/de-DE/), never a section slug. Listing a locale is the whole switch: write-docs maintains and translates that tree, including in a reconcile sweep, and a translated page is generated output rather than a hand-maintained one. Absent leaves single-locale behaviour exactly as it is. Tags are BCP 47 (de-DE, pt-BR, zh-Hans-CN); a locale sourced from another repository is the consuming site's own config, not this key's, since write-docs only ever writes inside this repo's docs/."
         },
         "instructions": {
           "$ref": "#/$defs/instructions",
-          "description": "Free-text guidance for generated docs (tone, house conventions). Additive preference only — never overrides the docs format or the skill's guardrails."
+          "description": "Free-text guidance for generated docs (tone, house conventions). Additive preference only — never overrides the docs format or the skill's guardrails. With docs.locales set it is also where wording guidance for the translated trees belongs, since a correction made in a translated file does not survive the next sweep."
         }
       }
     },

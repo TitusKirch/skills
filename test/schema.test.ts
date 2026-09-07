@@ -730,6 +730,129 @@ describe('the interview engine', () => {
   });
 });
 
+// docs.render names the rendering target a repo's docs/ tree is published through,
+// and it is *declared* rather than detected: duxt is multi-repo, so a tree pulled into
+// someone else's site carries no dependency to detect and would be read as portable —
+// writing the wrong contract into exactly the tree that needs the other one. Absent has
+// to stay valid and has to mean the portable default, since that is what every config
+// written before the key existed means, and `null` has to be sayable so a profile can
+// switch the mode back off for its context.
+describe('the docs render mode', () => {
+  test('accepts the one target, at the root and in a profile', () => {
+    accepts({ docs: { render: 'duxt' } }, 'the mode the key exists for');
+    accepts(
+      { docs: { preset: 'package', render: 'duxt' } },
+      'it sits beside preset, not instead of it'
+    );
+    accepts(
+      { profiles: { ci: { docs: { render: 'duxt' } } } },
+      'a profile may switch the target for its context'
+    );
+  });
+
+  test('omitting it stays valid — absent is the portable default', () => {
+    accepts({ docs: { preset: 'package' } }, 'no render key');
+    accepts({ docs: { render: null } }, 'null — portable, said out loud');
+    accepts(
+      {
+        docs: { render: 'duxt' },
+        profiles: { ci: { docs: { render: null } } }
+      },
+      'a profile turning the mode back off'
+    );
+  });
+
+  test('rejects a target nothing implements, and anything but a name', () => {
+    accepts({ docs: false }, 'the whole section off is unaffected');
+    rejects({ docs: { render: 'nuxt-content' } }, 'no second target exists');
+    rejects(
+      { docs: { render: 'portable' } },
+      'portable is absence, not a name'
+    );
+    rejects({ docs: { render: '' } }, 'an empty target');
+    rejects(
+      { docs: { render: true } },
+      'render is not a switch — it names a target'
+    );
+    rejects({ docs: { render: ['duxt'] } }, 'one target, not a list');
+    rejects(
+      { profiles: { ci: { docs: { render: 'nuxt-content' } } } },
+      'the enum still applies inside a profile'
+    );
+  });
+});
+
+// docs.locales names the *additional* locale trees. docs.language stays the
+// default locale — the tree at the source root with no folder of its own — so
+// the two keys answer different questions and a repo sets both. Listing a
+// locale is the whole switch: it binds write-docs to maintain and translate
+// that tree, and an absent key leaves single-locale behaviour untouched.
+describe('docs.locales — the additional locale trees', () => {
+  test('a listed locale is an additional tree beside the default one', () => {
+    accepts({ docs: { locales: ['de-DE'] } }, 'one additional locale');
+    accepts(
+      { docs: { language: 'en-GB', locales: ['de-DE', 'pt-BR'] } },
+      'a default locale plus two more'
+    );
+    accepts(
+      { docs: { preset: 'package', locales: ['de-DE'] } },
+      'alongside the other docs keys'
+    );
+  });
+
+  test('absent is single-locale, and stays valid', () => {
+    accepts({ docs: {} }, 'no locales key at all');
+    accepts({ docs: { language: 'en' } }, 'a default locale and nothing else');
+  });
+
+  test('a profile may list locales for its own context', () => {
+    accepts(
+      { profiles: { ci: { docs: { locales: ['de-DE'] } } } },
+      'a docs fragment carrying only locales'
+    );
+  });
+
+  test('a tag may be region-qualified, script-qualified, or a bare language', () => {
+    accepts({ docs: { locales: ['pt-BR'] } }, 'language + region');
+    accepts(
+      { docs: { locales: ['zh-Hans-CN'] } },
+      'language + script + region'
+    );
+    accepts({ docs: { locales: ['es-419'] } }, 'a numeric UN M.49 region');
+    accepts({ docs: { locales: ['de'] } }, 'a bare language subtag');
+  });
+
+  test('an empty list is rejected — absent is how a repo says no', () => {
+    rejects({ docs: { locales: [] } }, 'an empty list states nothing');
+  });
+
+  test('a locale is named once', () => {
+    rejects({ docs: { locales: ['de-DE', 'de-DE'] } }, 'a duplicated locale');
+  });
+
+  test('rejects what cannot name a locale tree', () => {
+    rejects({ docs: { locales: 'de-DE' } }, 'a scalar, not a list');
+    rejects({ docs: { locales: [''] } }, 'an empty tag');
+    rejects(
+      { docs: { locales: ['de_DE'] } },
+      'an underscore is not a separator'
+    );
+    rejects({ docs: { locales: ['German'] } }, 'a language name, not a tag');
+    rejects({ docs: { locales: [null] } }, 'a null entry');
+  });
+
+  // duxt can source a locale from an entirely different repository
+  // ({ locale: 'de-DE', repo: 'acme/docs-de' }). That is the consuming site's
+  // config, not this one: write-docs only ever writes inside this repo's docs/,
+  // so the object form has no meaning here and must not be silently accepted.
+  test("the repo-hosted form is duxt's config, not this key's", () => {
+    rejects(
+      { docs: { locales: [{ locale: 'de-DE', repo: 'acme/docs-de' }] } },
+      'a locale sourced from another repository'
+    );
+  });
+});
+
 describe('nothing about existing configs changed', () => {
   test('a config with no profiles key is still valid', () => {
     accepts({ language: 'en', pr: { base: 'dev' } }, 'plain config');
