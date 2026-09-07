@@ -730,6 +730,58 @@ describe('the interview engine', () => {
   });
 });
 
+// docs.render names the rendering target a repo's docs/ tree is published through,
+// and it is *declared* rather than detected: duxt is multi-repo, so a tree pulled into
+// someone else's site carries no dependency to detect and would be read as portable —
+// writing the wrong contract into exactly the tree that needs the other one. Absent has
+// to stay valid and has to mean the portable default, since that is what every config
+// written before the key existed means, and `null` has to be sayable so a profile can
+// switch the mode back off for its context.
+describe('the docs render mode', () => {
+  test('accepts the one target, at the root and in a profile', () => {
+    accepts({ docs: { render: 'duxt' } }, 'the mode the key exists for');
+    accepts(
+      { docs: { preset: 'package', render: 'duxt' } },
+      'it sits beside preset, not instead of it'
+    );
+    accepts(
+      { profiles: { ci: { docs: { render: 'duxt' } } } },
+      'a profile may switch the target for its context'
+    );
+  });
+
+  test('omitting it stays valid — absent is the portable default', () => {
+    accepts({ docs: { preset: 'package' } }, 'no render key');
+    accepts({ docs: { render: null } }, 'null — portable, said out loud');
+    accepts(
+      {
+        docs: { render: 'duxt' },
+        profiles: { ci: { docs: { render: null } } }
+      },
+      'a profile turning the mode back off'
+    );
+  });
+
+  test('rejects a target nothing implements, and anything but a name', () => {
+    accepts({ docs: false }, 'the whole section off is unaffected');
+    rejects({ docs: { render: 'nuxt-content' } }, 'no second target exists');
+    rejects(
+      { docs: { render: 'portable' } },
+      'portable is absence, not a name'
+    );
+    rejects({ docs: { render: '' } }, 'an empty target');
+    rejects(
+      { docs: { render: true } },
+      'render is not a switch — it names a target'
+    );
+    rejects({ docs: { render: ['duxt'] } }, 'one target, not a list');
+    rejects(
+      { profiles: { ci: { docs: { render: 'nuxt-content' } } } },
+      'the enum still applies inside a profile'
+    );
+  });
+});
+
 // docs.locales names the *additional* locale trees. docs.language stays the
 // default locale — the tree at the source root with no folder of its own — so
 // the two keys answer different questions and a repo sets both. Listing a
