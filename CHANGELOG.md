@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.25.0](https://github.com/TitusKirch/skills/compare/v0.24.0...v0.25.0) (2026-09-08)
+
+
+### Features
+
+* **decide:** add a skill that puts open decisions in a dialog ([7f66b1c](https://github.com/TitusKirch/skills/commit/7f66b1c06679720f21ac3ad91179204f87a11e14)), closes [#283](https://github.com/TitusKirch/skills/issues/283)
+
+
+### Bug Fixes
+
+* **skills:** name decide as the third grillWith consumer ([7c5d658](https://github.com/TitusKirch/skills/commit/7c5d658ba69cc77eaa0483b14f3e25ac02254428)), closes [#283](https://github.com/TitusKirch/skills/issues/283)
+
 ## [0.24.0](https://github.com/TitusKirch/skills/compare/v0.23.0...v0.24.0) (2026-09-07)
 
 
