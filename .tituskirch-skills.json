@@ -20,6 +20,7 @@
     "scopeVocab": [
       "atomic-commit",
       "compact-readme",
+      "decide",
       "handoff",
       "issue",
       "merge-deps",

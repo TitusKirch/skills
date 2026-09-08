@@ -108,6 +108,8 @@ The questions this finds are the ones `grilling` already asks well: one question
 | **still open**          | a decision deferred, or the engine unavailable       | which question is holding it, and what it would decide                          |
 | **not worth working**   | already solved or duplicated (step 4)                | the commit, PR or issue that already covers it, and the recommendation to close |
 
+**A `still open` verdict has a next step**: `decide` asks those unanswered questions as select dialogs, so closing them costs a few answers rather than a retyped list.
+
 **The untriaged marker is reported for removal in that same command.** `work.labels.needsTriage` (opt-in, **off** by default) means _not ready to hand over_ — and an issue whose every decision this run closed is exactly what stops that being true. So a `ready for the label` verdict prints one command that adds the ready label **and** removes the marker, because the two left standing together are the contradiction the implement queue withholds an issue for. A `still open` verdict prints neither: an issue holding an unanswered question keeps the marker, which is the one case where it is saying something true. Shape, and what the command becomes on each of the other trackers: [REFERENCE.md](REFERENCE.md#report-output).
 
 The skill's terminal output is a **report**. It applies no lifecycle label, closes nothing, opens nothing, and touches no issue but this one.
