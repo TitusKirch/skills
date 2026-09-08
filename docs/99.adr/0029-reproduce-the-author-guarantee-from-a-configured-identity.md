@@ -9,7 +9,7 @@ date: '2026-08-03'
 
 ## Context
 
-`merge-deps` selects the pull requests it may touch **strictly by author**, and that selection is its central safety guarantee: no human's request and no other bot's request is ever seen, let alone merged. [ADR-0028](0028-dock-gitlab-and-resolve-the-host-per-repo.md) docked GitLab on the forge axis and deliberately left this skill out, alongside `release`, on the grounds that both had unresolved questions of their own.
+`merge-deps` selects the pull requests it may touch **strictly by author**, and that selection is its central safety guarantee: no human's request and no other bot's request is ever seen, let alone merged. [ADR-0028](/adr/0028-dock-gitlab-and-resolve-the-host-per-repo) docked GitLab on the forge axis and deliberately left this skill out, alongside `release`, on the grounds that both had unresolved questions of their own.
 
 The unresolved question here was specific. The guarantee rests on a fact that holds only on GitHub: **`app/dependabot` is a constant.** GitHub runs the bot, so the login is identical in every repo on the forge, which is why the skill names it outright and why its REFERENCE records that selection is deliberately **not** a config key — a `mergeDeps.selector` could only ever let a repo _widen_ the one constraint that must not widen.
 
@@ -18,7 +18,7 @@ On GitLab there is no constant to name:
 - **The counterpart is Renovate.** GitLab runs it for its own projects and it is the de-facto standard there. `dependabot-gitlab` exists and would have reused every artifact the skill already reads, but it is alpha and self-hosted.
 - **There is no hosted identity to pin.** Mend's hosted GitLab app is offline indefinitely, so Renovate on GitLab is always self-run. Its author is either a dedicated user holding a personal access token or the internal bot user GitLab mints for a project or group access token — a per-repo, per-instance fact, and structurally indistinguishable from a person on the API.
 
-So the choice was between leaving the skill GitHub-only — the route [ADR-0028](0028-dock-gitlab-and-resolve-the-host-per-repo.md) recorded and the one `release` still takes — and finding a form of the guarantee that survives the identity becoming configurable.
+So the choice was between leaving the skill GitHub-only — the route [ADR-0028](/adr/0028-dock-gitlab-and-resolve-the-host-per-repo) recorded and the one `release` still takes — and finding a form of the guarantee that survives the identity becoming configurable.
 
 ## Decision
 

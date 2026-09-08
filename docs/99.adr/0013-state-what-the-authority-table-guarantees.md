@@ -9,7 +9,7 @@ date: '2026-07-27'
 
 ## Context
 
-[ADR-0004](0004-derive-author-authority-from-a-criterion.md) replaced a name list with a criterion, because a list states the outcome without the reason and therefore does not extend itself — `prune-comments` and `prune-branches` fell straight through the old one. That decision was right and stands.
+[ADR-0004](/adr/0004-derive-author-authority-from-a-criterion) replaced a name list with a criterion, because a list states the outcome without the reason and therefore does not extend itself — `prune-comments` and `prune-branches` fell straight through the old one. That decision was right and stands.
 
 Its closing claim was not. It reads:
 

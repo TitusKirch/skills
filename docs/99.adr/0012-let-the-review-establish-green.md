@@ -9,7 +9,7 @@ date: '2026-07-27'
 
 ## Context
 
-[ADR-0001](0001-split-the-work-loop-in-two.md) splits the work loop so that a **different** agent, with fresh context, judges what an implementer built — no "it works because I wrote it".
+[ADR-0001](/adr/0001-split-the-work-loop-in-two) splits the work loop so that a **different** agent, with fresh context, judges what an implementer built — no "it works because I wrote it".
 
 `work-review` applied that to everything except the one fact a machine can settle. It required checks to be green (`a red or missing check is a review finding, not a pass`) while reading neither the root `verify` key nor anything that could produce a verdict of its own. The only source available to it was the forge's check list.
 
@@ -19,7 +19,7 @@ The gap widens on a shared branch. `work-implement` runs the gate **before** pus
 
 ## Decision
 
-`work-review` **establishes** green rather than inheriting it. It reads the root `verify` key like the other four gate-running skills ([ADR-0011](0011-mirror-the-check-command-contract.md)) and runs it against the pushed head in a **throwaway worktree**.
+`work-review` **establishes** green rather than inheriting it. It reads the root `verify` key like the other four gate-running skills ([ADR-0011](/adr/0011-mirror-the-check-command-contract)) and runs it against the pushed head in a **throwaway worktree**.
 
 Read-only is scoped to the **user's tree**, which was always what it meant — not to the machine, and not to running nothing. Forge checks stay a source where the base genuinely triggers them; they are corroboration, and an empty check list stays `unknown`, never green.
 

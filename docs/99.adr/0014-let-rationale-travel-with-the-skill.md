@@ -7,7 +7,7 @@ date: '2026-08-26'
 
 # ADR-0014 — Let rationale travel with the skill
 
-> **Superseded by** [ADR-0031](0031-keep-rationale-as-repo-memory.md)
+> **Superseded by** [ADR-0031](/adr/0031-keep-rationale-as-repo-memory)
 
 ## Context
 
@@ -15,7 +15,7 @@ Six skills end their `REFERENCE.md` with a `## Decisions` section — 35 KB in t
 
 That is ADR genre in a mechanics document, and `docs/99.adr/` is the house home for it. An architecture review reads the six sections as duplication of a structure that exists — this repo's own review said exactly that — and proposes moving them.
 
-The move does not work. `docs/` is not installed: `npx skills add` copies one skill folder, `pnpm skills:link` symlinks one skill folder. A skill pointing at `docs/99.adr/0007-…` resolves to nothing on the installed copy, which is the same failure [ADR-0003](0003-mirror-shared-content-into-each-skill.md) settled for the config contract. Mirroring is the answer there — but rationale differs from a contract in a way that matters: a contract is text the skill must **follow**, and mirroring keeps every copy identical. Rationale is text the agent should **understand**, and it is specific to one skill, so there is nothing to share.
+The move does not work. `docs/` is not installed: `npx skills add` copies one skill folder, `pnpm skills:link` symlinks one skill folder. A skill pointing at `docs/99.adr/0007-…` resolves to nothing on the installed copy, which is the same failure [ADR-0003](/adr/0003-mirror-shared-content-into-each-skill) settled for the config contract. Mirroring is the answer there — but rationale differs from a contract in a way that matters: a contract is text the skill must **follow**, and mirroring keeps every copy identical. Rationale is text the agent should **understand**, and it is specific to one skill, so there is nothing to share.
 
 ## Decision
 
@@ -31,6 +31,6 @@ Rejected: **moving the sections to `docs/99.adr/`**, which strips the reasoning 
 
 The six sections stay, and the next architecture review will flag them again. This record is the answer to that flag; a reviewer who finds it does not need to re-derive the reasoning.
 
-`REFERENCE.md` therefore holds two genres — mechanics and rationale — which the [layout](../../skills/README.md) describes as separate files (`REFERENCE.md`, `DESIGN.md`). Only `work-implement` has a `DESIGN.md`; the other six keep rationale as a closing section. That inconsistency is real and deliberately left: splitting a file is a structural refactor touching mirrored-block boundaries, and it buys nothing an agent can use.
+`REFERENCE.md` therefore holds two genres — mechanics and rationale — which the [layout](https://github.com/TitusKirch/skills/blob/main/skills/README.md) describes as separate files (`REFERENCE.md`, `DESIGN.md`). Only `work-implement` has a `DESIGN.md`; the other six keep rationale as a closing section. That inconsistency is real and deliberately left: splitting a file is a structural refactor touching mirrored-block boundaries, and it buys nothing an agent can use.
 
 The size cost is stated rather than hidden: 35 KB of rationale across six skills, none of it in the unconditional load path.

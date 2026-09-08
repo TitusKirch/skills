@@ -9,7 +9,7 @@ date: '2026-08-26'
 
 ## Context
 
-`tldr` summarises what just happened into a fixed section order over one scope. Its shape was settled in a `grilling` pass on the issue that specified it, rather than inferred. Relocated from the skill's `REFERENCE.md` under [ADR-0031](0031-keep-rationale-as-repo-memory.md); every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
+`tldr` summarises what just happened into a fixed section order over one scope. Its shape was settled in a `grilling` pass on the issue that specified it, rather than inferred. Relocated from the skill's `REFERENCE.md` under [ADR-0031](/adr/0031-keep-rationale-as-repo-memory); every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
 
 ## Decision
 
