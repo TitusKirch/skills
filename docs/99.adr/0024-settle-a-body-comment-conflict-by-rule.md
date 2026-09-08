@@ -9,7 +9,7 @@ date: '2026-08-02'
 
 ## Context
 
-The work loops carried a rule for a label disagreeing with a body ([label vs body precedence](../../skills/work/work-implement/REFERENCE.md)) and a rule for two labels disagreeing with each other (`needsTriage` beside a lifecycle label). They carried none for the pair that actually occurs most: the **issue body** disagreeing with a **comment**, both written by the same authorized author.
+The work loops carried a rule for a label disagreeing with a body ([label vs body precedence](https://github.com/TitusKirch/skills/blob/main/skills/work/work-implement/REFERENCE.md)) and a rule for two labels disagreeing with each other (`needsTriage` beside a lifecycle label). They carried none for the pair that actually occurs most: the **issue body** disagreeing with a **comment**, both written by the same authorized author.
 
 Neither side wins on authority there, and both are text the loops read as instruction. So the implementer surfaced the conflict — correctly, per the author-authority rule's _surface it, never silently obey_ — worked the body, and the reviewer, meeting two owner decisions with nothing to prefer either by, escalated to `ai: needs human`.
 

@@ -18,6 +18,7 @@
     "./skills/repo/release",
     "./skills/repo/update-deps",
     "./skills/repo/write-gitignore",
+    "./skills/work/decide",
     "./skills/work/handoff",
     "./skills/work/issue",
     "./skills/work/refine-issue",

@@ -43,4 +43,4 @@ The decision above stands; two of the facts it prices have moved, and this adden
 
 **The claim in the Context has changed wording.** It quotes "installable in Claude Code, Cursor, Windsurf and friends"; the README now reads Claude Code, Codex, Cursor and OpenCode (18c35c2). The reasoning is unaffected — every extension still spends something real — but the audience it is spent on is the one named there now, and OpenCode is the client that ignores unknown fields and loads the skill anyway.
 
-Where the per-field detail lives: [ADR-0015](0015-tier-an-extension-by-the-clients-that-define-it.md) keys the re-tiering on a field → clients matrix and names `validate-skills`' `REFERENCE.md` as its single home. This addendum **refines, it does not supersede** — a reversal would have been a new record.
+Where the per-field detail lives: [ADR-0015](/adr/0015-tier-an-extension-by-the-clients-that-define-it) keys the re-tiering on a field → clients matrix and names `validate-skills`' `REFERENCE.md` as its single home. This addendum **refines, it does not supersede** — a reversal would have been a new record.

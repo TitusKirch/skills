@@ -9,7 +9,7 @@ date: '2026-08-26'
 
 ## Context
 
-`handoff` hands in-progress work from one agent or session to another through a document under `.agents/handoffs/`. The issue that specified it left most of its shape open and asked for research into an existing convention. Relocated from the skill's `REFERENCE.md` under [ADR-0031](0031-keep-rationale-as-repo-memory.md); every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
+`handoff` hands in-progress work from one agent or session to another through a document under `.agents/handoffs/`. The issue that specified it left most of its shape open and asked for research into an existing convention. Relocated from the skill's `REFERENCE.md` under [ADR-0031](/adr/0031-keep-rationale-as-repo-memory); every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
 
 ## Decision
 

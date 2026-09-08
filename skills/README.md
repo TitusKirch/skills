@@ -105,6 +105,7 @@ Resolution per setting: **config → native/detected → built-in default** — 
 - [`work-implement-queue`](work/work-implement/REFERENCE.md#config) — shares `work-implement`'s `work.*` config
 - [`work-review`](work/work-review/REFERENCE.md#config) — `language`, `verify`, `work.*`, `work.review.*`
 - [`work-review-queue`](work/work-review/REFERENCE.md#config) — shares `work-review`'s config
+- [`decide`](work/decide/REFERENCE.md#config) — `language`, `grillWith` (owns no section of its own)
 
 `tituskirch-skills-config` also carries the mirrored config block and resolver, but as the config's **author** rather than a consumer — it manages the file rather than reading it, so it sits outside this reader list.
 

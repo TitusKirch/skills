@@ -9,7 +9,7 @@ date: '2026-08-26'
 
 ## Context
 
-`prune-branches` reports a repo's stale branches and deletes only what a human confirms. The issue that specified it settled its shape; what it left open, and what followed from it, was settled in the implementation pass recorded here. Relocated from the skill's `REFERENCE.md` under [ADR-0031](0031-keep-rationale-as-repo-memory.md); every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
+`prune-branches` reports a repo's stale branches and deletes only what a human confirms. The issue that specified it settled its shape; what it left open, and what followed from it, was settled in the implementation pass recorded here. Relocated from the skill's `REFERENCE.md` under [ADR-0031](/adr/0031-keep-rationale-as-repo-memory); every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
 
 ## Decision
 

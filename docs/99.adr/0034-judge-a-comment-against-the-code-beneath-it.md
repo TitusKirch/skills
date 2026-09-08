@@ -9,7 +9,7 @@ date: '2026-08-26'
 
 ## Context
 
-`prune-comments` finds comments made redundant by the code beneath them and reports them as removal candidates. The issue that specified it left three questions open — the category and name, the default scope, and how far the language catalogue has to reach. Relocated from the skill's `REFERENCE.md` under [ADR-0031](0031-keep-rationale-as-repo-memory.md); every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
+`prune-comments` finds comments made redundant by the code beneath them and reports them as removal candidates. The issue that specified it left three questions open — the category and name, the default scope, and how far the language catalogue has to reach. Relocated from the skill's `REFERENCE.md` under [ADR-0031](/adr/0031-keep-rationale-as-repo-memory); every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
 
 ## Decision
 

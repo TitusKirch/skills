@@ -696,10 +696,11 @@ describe('the GitLab issue tracker', () => {
   });
 });
 
-// grillWith names the interview skill the drafting skills drive, at the root
-// because two of them drive it (issue and refine-issue) and an interview style is
-// a property of the repo. It names a *skill*, not a mode, so a round-based engine
-// docks by having its name typed here — no schema change, no release.
+// grillWith names the interview skill this repo's skills drive when they put a
+// question to a human, at the root because several of them do (issue, refine-issue
+// and decide) and an interview style is a property of the repo. It names a *skill*,
+// not a mode, so a round-based engine docks by having its name typed here — no
+// schema change, no release.
 describe('the interview engine', () => {
   test('a skill name is what the key takes', () => {
     accepts({ grillWith: 'grilling' }, 'the default engine, named explicitly');

@@ -150,6 +150,7 @@ const PLAN_CARRIERS = [
   'repo/release',
   'repo/update-deps',
   'repo/write-gitignore',
+  'work/decide',
   'work/issue',
   'work/refine-issue',
   'work/tldr',
@@ -255,7 +256,7 @@ describe('the generated config block is self-contained', () => {
   test('it is present in the skills that read config, and nowhere else by accident', () => {
     assert.equal(
       withConfigBlock.length,
-      18,
+      19,
       `found: ${withConfigBlock.join(', ')}`
     );
   });
@@ -441,6 +442,11 @@ const authorityClass: Record<
     tier: 'none',
     reason:
       "the branch's own commits and the repo's PR template — no third-party text"
+  },
+  'work/decide': {
+    tier: 'none',
+    reason:
+      "the session's own named decisions and the artifact they belong to — it is steered by the human's answers, not by text it reads"
   },
   'work/tldr': {
     tier: 'none',

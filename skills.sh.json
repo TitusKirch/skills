@@ -18,6 +18,7 @@
       "title": "Tracked work",
       "description": "Issues, the two AI work loops (implement and review), handing work between sessions, and summarising one.",
       "skills": [
+        "decide",
         "handoff",
         "issue",
         "refine-issue",

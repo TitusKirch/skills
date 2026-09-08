@@ -7,11 +7,11 @@ date: '2026-08-26'
 
 # ADR-0031 — Keep rationale as repo memory
 
-Supersedes [ADR-0014](0014-let-rationale-travel-with-the-skill.md).
+Supersedes [ADR-0014](/adr/0014-let-rationale-travel-with-the-skill).
 
 ## Context
 
-[ADR-0014](0014-let-rationale-travel-with-the-skill.md) kept each skill's `## Decisions` section inside its own `REFERENCE.md`, on the grounds that "an agent that knows _why_ a rule exists is the one that does not route around it". That is a **bet on agent behaviour, and it was never measured**. Since it was written the sections have grown from six to seven and from 35 KB to **57.5 KB** — `update-deps` 19.8 KB, `merge-deps` 10.6 KB, `release` 8.1 KB, `prune-branches` 7.3 KB, `prune-comments` 4.9 KB, `handoff` 4.0 KB, `tldr` 2.7 KB.
+[ADR-0014](/adr/0014-let-rationale-travel-with-the-skill) kept each skill's `## Decisions` section inside its own `REFERENCE.md`, on the grounds that "an agent that knows _why_ a rule exists is the one that does not route around it". That is a **bet on agent behaviour, and it was never measured**. Since it was written the sections have grown from six to seven and from 35 KB to **57.5 KB** — `update-deps` 19.8 KB, `merge-deps` 10.6 KB, `release` 8.1 KB, `prune-branches` 7.3 KB, `prune-comments` 4.9 KB, `handoff` 4.0 KB, `tldr` 2.7 KB.
 
 The counter-argument ADR-0014 did not consider is a genre one. Those sections are written as **Context / Decision / Rejected / Consequences** — the form of a record kept **for a human**, complete with the alternatives that lost. An agent reading "Rejected: X" learns nothing about its own behaviour that a positively phrased rule in the mechanics would not say better and shorter. Reading the seven sections against the mechanics beside them bears that out: almost every behaviour-steering claim in them was already stated as a rule elsewhere in the same file, and the section repeated it with the rejected alternatives attached.
 
@@ -27,7 +27,7 @@ Prior art outside: [`mattpocock/skills`](https://github.com/mattpocock/skills) s
 
 **No skill points at its record.** A pointer would resolve to nothing on an installed copy — ADR-0014's objection, still correct — and it is not needed, because after the fold the installed copy holds every statement that steers behaviour.
 
-**One record per skill, not one per bullet.** These sections settle a skill's shape across a dozen linked questions in one pass, and splitting them into sixty records would bury a log this size to say nothing new. [ADR-0021](0021-state-when-a-decision-earns-an-adr.md) already makes size a permission rather than a ceiling, and the through-line of each pass is what the record is titled for.
+**One record per skill, not one per bullet.** These sections settle a skill's shape across a dozen linked questions in one pass, and splitting them into sixty records would bury a log this size to say nothing new. [ADR-0021](/adr/0021-state-when-a-decision-earns-an-adr) already makes size a permission rather than a ceiling, and the through-line of each pass is what the record is titled for.
 
 **`docs/index.md`'s boundary moves with this, and says so.** It read "this tree is only what spans more than one skill", which a per-skill record makes false. The tree now holds two things — what spans more than one skill, and the record of what was decided, a single skill's own shape included.
 

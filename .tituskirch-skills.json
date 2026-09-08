@@ -20,6 +20,7 @@
     "scopeVocab": [
       "atomic-commit",
       "compact-readme",
+      "decide",
       "handoff",
       "issue",
       "merge-deps",
@@ -78,6 +79,7 @@
   },
   "docs": {
     "preset": "package",
+    "render": "duxt",
     "instructions": "Skills are self-documenting in place (SKILL.md / REFERENCE.md / DESIGN.md per skill); reserve docs/ for cross-cutting guides and ADRs — concise and example-first."
   },
   "work": {

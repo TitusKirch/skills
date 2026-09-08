@@ -9,7 +9,7 @@ date: '2026-07-30'
 
 ## Context
 
-The AI work loop ends at a verdict, not at a merge. [ADR-0001](0001-split-the-work-loop-in-two.md) put a review loop after the implement loop and made its accept verdict terminal for the queue, and `work-implement`'s REFERENCE says what that terminality does and does not mean:
+The AI work loop ends at a verdict, not at a merge. [ADR-0001](/adr/0001-split-the-work-loop-in-two) put a review loop after the implement loop and made its accept verdict terminal for the queue, and `work-implement`'s REFERENCE says what that terminality does and does not mean:
 
 > **`done` = AI-reviewed and accepted** (low-risk), or accepted by a human via `needs human`. It does **not** mean "merged": GitHub's `Closes #<n>` and Linear's integration fire only on a **default-branch** merge, which a non-default `pr.base` (e.g. `dev`) never triggers — so shipping is the rollup merge's business, not the queue's.
 
@@ -46,4 +46,4 @@ The `release` skill gains its first tracker write. It stays narrow: one workflow
 
 The gap that remains is a repo on a non-default `pr.base` that never runs the `release` skill. Nothing observes its default branch, so nothing writes `states.done` — which is why leaving the key unmapped is documented as the right answer there, rather than treated as an omission.
 
-Two skills that had no coupling now share a contract: `work-review` writes the state `release` finishes. It is stated in both REFERENCEs and in the schema, which is the same mirroring [ADR-0003](0003-mirror-shared-content-into-each-skill.md) accepts for shared content — a fact restated where each reader will look, at the cost of having to move together.
+Two skills that had no coupling now share a contract: `work-review` writes the state `release` finishes. It is stated in both REFERENCEs and in the schema, which is the same mirroring [ADR-0003](/adr/0003-mirror-shared-content-into-each-skill) accepts for shared content — a fact restated where each reader will look, at the cost of having to move together.

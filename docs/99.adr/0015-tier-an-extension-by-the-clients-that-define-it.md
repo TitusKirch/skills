@@ -9,11 +9,11 @@ date: '2026-07-29'
 
 ## Context
 
-[ADR-0007](0007-permit-claude-code-frontmatter-extensions.md) permitted Claude Code frontmatter extensions at a stated cost and closed on the consequence that made this record necessary:
+[ADR-0007](/adr/0007-permit-claude-code-frontmatter-extensions) permitted Claude Code frontmatter extensions at a stated cost and closed on the consequence that made this record necessary:
 
 > The re-tiering depends on a list of known extension names. That list must be complete before a new extension is adopted, or the repo's own validator will call a deliberate field malformed.
 
-It was not complete. `validate-skills` named six keys where Claude Code documents seventeen fields, so `argument-hint` — the obvious next adoption, since several skills take arguments and none advertises it — would have been reported as a spec violation the day it was added, and the CI gate built on that list ([ADR-0012](0012-let-the-review-establish-green.md)'s green) would have gone red for a deliberate choice.
+It was not complete. `validate-skills` named six keys where Claude Code documents seventeen fields, so `argument-hint` — the obvious next adoption, since several skills take arguments and none advertises it — would have been reported as a spec violation the day it was added, and the CI gate built on that list ([ADR-0012](/adr/0012-let-the-review-establish-green)'s green) would have gone red for a deliberate choice.
 
 Completing the list would have fixed that and left a second defect standing, which only showed up once the other clients were read. **A one-client list does not merely under-report; it mis-reports.** Cursor defines `paths` and `disable-model-invocation` in its own `SKILL.md` frontmatter, with the same names and the same semantics Claude Code gives them. Filing those as "Claude Code extension, will not load elsewhere" — ADR-0007's cost framing — states something untrue about two fields, and an author reading that verdict trades away portability they never lost.
 
@@ -28,7 +28,7 @@ The re-tiering rule is keyed on a **matrix of field → the clients that define 
 - **A Codex sidecar is in no violation tier.** Present, it is reported as a fact; absent, as a client not targeted. Never as a fault.
 - **Non-portability is reported as a range**, not a verdict: a conformant validator **rejects** the skill, OpenCode **ignores** the field and loads it anyway, the defining clients **honour** it.
 
-Two corrections to ADR-0007 that this record carries, in the manner of [ADR-0013](0013-state-what-the-authority-table-guarantees.md) — the decision stands, its stated reasoning is amended:
+Two corrections to ADR-0007 that this record carries, in the manner of [ADR-0013](/adr/0013-state-what-the-authority-table-guarantees) — the decision stands, its stated reasoning is amended:
 
 - Its **cost framing** — "Claude-only", "will not load elsewhere" — is right for the Claude-only rows and wrong for `paths` and `disable-model-invocation`, which Cursor shares. The trade is per field, not per client.
 - Its **count** is off by one. It reads "seventeen fields, two of them standard, the other fifteen are not", which files `allowed-tools` among the extensions; `allowed-tools` is one of the standard six (Experimental, but on `skills-ref`'s allowlist), so Claude Code contributes **fourteen** re-tiered keys. Cursor's legacy `globs` is the fifteenth row, which is why the matrix has fifteen and the coincidence is not the ADR's fifteen.

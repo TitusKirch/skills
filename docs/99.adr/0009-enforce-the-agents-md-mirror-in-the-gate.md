@@ -9,7 +9,7 @@ date: '2026-07-27'
 
 ## Context
 
-[ADR-0002](0002-keep-agents-md-byte-identical.md) keeps `CLAUDE.md` and `AGENTS.md` as two real files, byte-identical, and names its own weakness in the same breath: the copy is a manual step, drift is invisible in review — one reflowed line is enough — and nothing failed when the two disagreed.
+[ADR-0002](/adr/0002-keep-agents-md-byte-identical) keeps `CLAUDE.md` and `AGENTS.md` as two real files, byte-identical, and names its own weakness in the same breath: the copy is a manual step, drift is invisible in review — one reflowed line is enough — and nothing failed when the two disagreed.
 
 What makes that weakness bite here is the path a change takes. CI runs `on: pull_request` only, and the AI work loop is configured `branch:dev`, committing to the integration branch with no PR. On that path `pnpm verify` is the sole automated check between an edit and the release branch. An invariant enforced only by review is, on the path where drift is most likely, enforced by nothing.
 

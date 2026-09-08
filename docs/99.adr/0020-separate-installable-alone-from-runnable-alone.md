@@ -9,11 +9,11 @@ date: '2026-07-31'
 
 ## Context
 
-[ADR-0003](0003-mirror-shared-content-into-each-skill.md) mirrors shared content into every skill because a skill is installable alone — `npx skills add` copies one folder, `pnpm skills:link` symlinks one folder — so a link out of that folder resolves to nothing on the installed copy. It closes with a second rejection:
+[ADR-0003](/adr/0003-mirror-shared-content-into-each-skill) mirrors shared content into every skill because a skill is installable alone — `npx skills add` copies one folder, `pnpm skills:link` symlinks one folder — so a link out of that folder resolves to nothing on the installed copy. It closes with a second rejection:
 
 > Rejected: **a runtime dependency between skills**, which would make an installed skill require a sibling it may not have.
 
-Two skills have exactly that dependency, and say so in their own text. `work-implement-queue` states that `work-implement` is required, that the loop implements nothing itself, and that a missing worker stops the run **before the lock is taken** — before any issue is leased, any label moved, any state changed. `work-review-queue` says the same of `work-review`, and both repeat it as a guardrail. This is not an oversight but [ADR-0001](0001-split-the-work-loop-in-two.md)'s two-loop split working as designed: the queue skill is deliberately thin and the worker skill does the work.
+Two skills have exactly that dependency, and say so in their own text. `work-implement-queue` states that `work-implement` is required, that the loop implements nothing itself, and that a missing worker stops the run **before the lock is taken** — before any issue is leased, any label moved, any state changed. `work-review-queue` says the same of `work-review`, and both repeat it as a guardrail. This is not an oversight but [ADR-0001](/adr/0001-split-the-work-loop-in-two)'s two-loop split working as designed: the queue skill is deliberately thin and the worker skill does the work.
 
 The two claims are less a contradiction than a gap. ADR-0003 rejected a runtime dependency **introduced in order to avoid duplication** — a dependency minted to dedupe. The queue skills' dependency is functional and predates the question: they were never able to do the job themselves, and removing it would mean duplicating a worker skill wholesale. ADR-0003 simply does not describe a skill that installs fine and cannot **run** without a named sibling, so its rule reaches them by default.
 
@@ -33,7 +33,7 @@ The split this implies is already written into the files. `work-implement`'s `RE
 
 **A mirrored copy belongs where the mechanic is owned.** The dependent may read the owner's copy, which makes ownership the question to ask of each block rather than size — the single-flight lock is the **queue's** mechanic (it acquires the lock in step 1 and releases it in the final step), the config contract is delegated to the worker in the queue's own step 1. Which copies move as a result is follow-on work; this record is what licenses it.
 
-**[ADR-0003](0003-mirror-shared-content-into-each-skill.md) stands as written, narrowed rather than superseded.** Its rejection was of a dependency created to avoid duplication, and that still holds; it is unchanged for the seventeen skills that declare no sibling.
+**[ADR-0003](/adr/0003-mirror-shared-content-into-each-skill) stands as written, narrowed rather than superseded.** Its rejection was of a dependency created to avoid duplication, and that still holds; it is unchanged for the seventeen skills that declare no sibling.
 
 **`test/isolation.test.ts` keeps enforcing that nothing a skill ships points out of its folder.** Assuming a sibling's content at runtime is not the same as linking to it, and only the latter is what that test exists to prevent.
 
