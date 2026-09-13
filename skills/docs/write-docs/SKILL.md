@@ -30,7 +30,7 @@ The TitusKirch **docs format** — one opinionated, stack-agnostic convention fo
 | `docs/` exists + "document feature X"       | **route/add** |
 | "update / align / migrate / reconcile docs" | **reconcile** |
 
-Optional verb shortcuts: `/write-docs init`, `/write-docs add <topic>`, `/write-docs reconcile`. Otherwise infer from state and the request. **Always: plan → confirm → apply.**
+Optional command shortcuts in clients that expose them: `write-docs init`, `write-docs add <topic>`, `write-docs reconcile`. Otherwise infer from state and the request. **Always: plan → confirm → apply.**
 
 **Proactive trigger** — don't wait to be asked. Once a feature has passed all its reviews and reached final approval (signed off or merged), engage this skill yourself and run the **route/add** job for that feature. Trigger on _final approval_, not on _implementation finished_ — code still facing review is too early, and a feature that gets reworked shouldn't be documented twice. The write still follows plan → confirm → apply. An ADR has its own proactive moment, on its own trigger: [when a decision earns one](#when-a-decision-earns-an-adr).
 

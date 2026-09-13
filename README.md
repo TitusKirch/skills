@@ -25,10 +25,10 @@ That's it. Every skill in this bundle is now discoverable inside your agent — 
 
 The `skills.sh` CLI is the path for users — the four package-manager forms are the hook above. Set `DISABLE_TELEMETRY=1` to opt out of its anonymous install-count telemetry.
 
-Then invoke a skill by name or trigger phrase:
+Then describe the job in prose, optionally naming the skill:
 
 ```text
-/write-readme draft a README for my new Laravel package
+Use write-readme to draft a README for my new Laravel package.
 ```
 
 Your agent picks the right one from the `description:` field in each `SKILL.md` — write that field tight and it routes correctly.
@@ -49,7 +49,13 @@ pnpm skills:unlink      # removes only the symlinks pointing back into this repo
 
 Both destinations, every run: `~/.claude/skills/` is the only user-scope path Claude Code reads, and `~/.agents/skills/` is the vendor-neutral one Codex, Cursor, OpenCode and Gemini CLI read — Codex reads nothing else this repo links to. `skills:unlink` clears both.
 
-Restart your agent (Claude Code: `/reload-plugins`). Because the skills live as symlinks, edits in the working copy are picked up live.
+OpenCode reads both compatibility paths but requires a name to be unique across its discovery locations. Start OpenCode after linking with `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1` so it reads this bundle only from `~/.agents/skills/`:
+
+```bash
+OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1 opencode
+```
+
+Restart your agent after linking (Claude Code: `/reload-plugins`; OpenCode: quit and relaunch). Because the skills live as symlinks, edits in the working copy are picked up live.
 
 ### Install a single skill by hand
 
@@ -59,6 +65,12 @@ Copy one skill folder into:
 - **Project scope** — `.claude/skills/<skill-name>/` or `.agents/skills/<skill-name>/` — committed alongside the consuming project.
 
 </details>
+
+### OpenCode
+
+OpenCode loads skills through its native `skill` tool; installing a skill does **not** create a slash command. Use a prose request like the one above, or define an explicit command under `.opencode/commands/` when a shortcut is useful.
+
+The two work queues need an agent that cannot ask questions while it runs unattended. Each queue ships an opt-in template: copy [`work-implement-queue`'s](skills/work/work-implement-queue/templates/opencode-agent.md) or [`work-review-queue`'s](skills/work/work-review-queue/templates/opencode-agent.md) template into the consuming repo as `.opencode/agents/<queue-name>.md`, then restart OpenCode. Run one drain with `opencode run --auto --agent <queue-name> "Run the queue once."`; schedule later drains externally. OpenCode has no native `/loop` command.
 
 ## ✨ Features
 
