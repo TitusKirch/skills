@@ -56,7 +56,7 @@ Four rules govern what may go in one:
 - **Arrays and scalars replace; they do not merge.** A profile setting `commit.scopeVocab` replaces the whole list. Where the intent is "the base plus one more", the base is the wrong place for the shared part.
 - **Profiles do not nest**, and a profile may not contain `profiles` or `$schema`.
 
-**Selection is explicit.** `TITUSKIRCH_SKILLS_PROFILE` names the profile; failing that, `CI` holding a truthy value selects `ci`. An unset or unknown name resolves to the base config unchanged — so a typo degrades to the base rather than to something arbitrary. When writing a profile, say which variable the context sets, because a profile nothing selects is dead config.
+**Selection is explicit.** `TITUSKIRCH_SKILLS_PROFILE` names the profile; failing that, `CI` holding a truthy value selects `ci`. An unset name, or a detected `ci` the config does not define, resolves to the base config unchanged. An explicitly named profile that does not exist fails the resolver (exit `11`) — a typo or a renamed profile would otherwise drop its overlay silently, and an overlay that isolates work (worktrees, PRs) is exactly what must not vanish unnoticed. **Renaming a profile is therefore a breaking change for whatever launches it**: update every scheduler and launcher that sets the old name in the same change. When writing a profile, say which variable the context sets, because a profile nothing selects is dead config.
 
 **In reconcile & check**, treat profiles as first-class: a profile referencing a branch, label or template that no longer exists is the same drift as in the base, and an overlay whose every value now equals the base is worth reporting as removable.
 
@@ -98,13 +98,13 @@ resolved=$(sh "$skill/templates/resolve-config.sh"); status=$?
 case $status in
 0)  [ -n "$resolved" ] || resolved='{}' ;;   # ran fine; empty means the repo has no config
 10) resolved= ;;                           # no jq — read the file yourself, see below
-*)  echo "resolve-config failed ($status)" >&2; exit 1 ;;
+*)  echo "resolve-config failed ($status)" >&2; exit 1 ;;   # 11: unknown profile named
 esac
 ```
 
-**A failure here is never silent.** Any exit other than `0` or `10` means the resolver could not be found or could not run, and the only wrong response is to carry on with `{}` — that reports the repo's defaults as if they were its settings. Stop and say what failed.
+**A failure here is never silent.** Any exit other than `0` or `10` means the resolver could not be found, could not run, or was told to select a profile the config does not define, and the only wrong response is to carry on with `{}` — that reports the repo's defaults as if they were its settings. Stop and say what failed.
 
-The profile comes from `TITUSKIRCH_SKILLS_PROFILE`, falling back to `ci` when `CI` holds a truthy value, and to no profile otherwise. An unset or unknown name yields the base config unchanged.
+The profile comes from `TITUSKIRCH_SKILLS_PROFILE`, falling back to `ci` when `CI` holds a truthy value, and to no profile otherwise. An unset name, or a detected `ci` the config does not define, yields the base config unchanged. A `TITUSKIRCH_SKILLS_PROFILE` naming no defined profile exits `11` — a renamed profile stops the run rather than silently dropping its overlay.
 
 **The merge is a rule, not just a command.** Objects merge recursively at any depth, arrays and scalars are replaced rather than concatenated, an explicit `null` sets null rather than deleting a key, and `profiles` is dropped from the result. Any path that resolves the config by other means owes the same semantics.
 

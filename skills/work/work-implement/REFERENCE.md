@@ -169,13 +169,13 @@ resolved=$(sh "$skill/templates/resolve-config.sh"); status=$?
 case $status in
 0)  [ -n "$resolved" ] || resolved='{}' ;;   # ran fine; empty means the repo has no config
 10) resolved= ;;                           # no jq — read the file yourself, see below
-*)  echo "resolve-config failed ($status)" >&2; exit 1 ;;
+*)  echo "resolve-config failed ($status)" >&2; exit 1 ;;   # 11: unknown profile named
 esac
 ```
 
-**A failure here is never silent.** Any exit other than `0` or `10` means the resolver could not be found or could not run, and the only wrong response is to carry on with `{}` — that reports the repo's defaults as if they were its settings. Stop and say what failed.
+**A failure here is never silent.** Any exit other than `0` or `10` means the resolver could not be found, could not run, or was told to select a profile the config does not define, and the only wrong response is to carry on with `{}` — that reports the repo's defaults as if they were its settings. Stop and say what failed.
 
-The profile comes from `TITUSKIRCH_SKILLS_PROFILE`, falling back to `ci` when `CI` holds a truthy value, and to no profile otherwise. An unset or unknown name yields the base config unchanged.
+The profile comes from `TITUSKIRCH_SKILLS_PROFILE`, falling back to `ci` when `CI` holds a truthy value, and to no profile otherwise. An unset name, or a detected `ci` the config does not define, yields the base config unchanged. A `TITUSKIRCH_SKILLS_PROFILE` naming no defined profile exits `11` — a renamed profile stops the run rather than silently dropping its overlay.
 
 **The merge is a rule, not just a command.** Objects merge recursively at any depth, arrays and scalars are replaced rather than concatenated, an explicit `null` sets null rather than deleting a key, and `profiles` is dropped from the result. Any path that resolves the config by other means owes the same semantics.
 
@@ -416,9 +416,9 @@ The two loops want different **reasoning effort**, and **no skill sets it** — 
 
 Which levels exist at all depends on the model, so read these as _implement above review_ rather than as two fixed names.
 
-**Nothing here enforces them, and the drains are already shaped so a caller can.** The implement and review loops take **separate locks** and are meant to run concurrently ([the single-flight lock](#the-single-flight-lock)) — which means separate sessions — so setting each session's effort is the whole of it: `/effort` inside it, `--effort` on the command that starts it, `CLAUDE_CODE_EFFORT_LEVEL`, or the client's own settings. It is set **before** the drain starts, not per spawned worker. One session running both loops has one effort for both, and the implement figure is the one to keep.
+**Nothing here enforces them, and the drains are already shaped so a caller can.** The implement and review loops take **separate locks** and are meant to run concurrently ([the single-flight lock](#the-single-flight-lock)) — which means separate sessions — so set the client-specific reasoning control before the drain starts, not per worker. Claude Code offers `/effort`, `--effort` and `CLAUDE_CODE_EFFORT_LEVEL`; OpenCode exposes a provider-specific `--variant`. One session running both loops has one effort for both, and the implement figure is the one to keep.
 
-**Why this is prose and not frontmatter.** Claude Code's `effort` field is a permitted extension ([ADR-0007](https://github.com/TitusKirch/skills/blob/main/docs/99.adr/0007-permit-claude-code-frontmatter-extensions.md)) and would pin it — but a pin overrides the session **unconditionally**, so it would take the setting away from a human invoking `work-implement` directly, and the one override that outranks frontmatter (`CLAUDE_CODE_EFFORT_LEVEL`) is **session-global** and so cannot preserve the per-loop split a pin exists to create. Claude Code states both in one place — "the environment variable takes precedence over all other methods", and "frontmatter effort applies when that skill or subagent is active, overriding the session level but not the environment variable" ([Set the effort level](https://code.claude.com/docs/en/model-config#set-the-effort-level)) — so this is checkable against the client rather than asserted here. A pin on a **queue** skill would not reach the workers at all: it governs the drain's own run — resolve, reconcile, order, spawn, report — the Agent tool takes a per-spawn `model` and **no** `effort`, and inheritance into a spawned agent is undocumented. The **unit** skills are the only route that reaches a worker by documented behaviour, which is where a pin would have to go if this is ever reopened — with a measurement. Full reasoning: [ADR-0027](https://github.com/TitusKirch/skills/blob/main/docs/99.adr/0027-leave-reasoning-effort-to-the-caller.md).
+**Why this is prose and not frontmatter.** Claude Code's `effort` field is a permitted extension ([ADR-0007](https://github.com/TitusKirch/skills/blob/main/docs/99.adr/0007-permit-claude-code-frontmatter-extensions.md)) and would pin it — but a pin overrides the session **unconditionally**, so it would take the setting away from a human invoking `work-implement` directly, and the one override that outranks frontmatter (`CLAUDE_CODE_EFFORT_LEVEL`) is **session-global** and so cannot preserve the per-loop split a pin exists to create. Claude Code states both in one place — "the environment variable takes precedence over all other methods", and "frontmatter effort applies when that skill or subagent is active, overriding the session level but not the environment variable" ([Set the effort level](https://code.claude.com/docs/en/model-config#set-the-effort-level)) — so this is checkable against the client rather than asserted here. A pin on a **queue** skill would not reach the workers at all: it governs the drain's own run — resolve, reconcile, order, spawn, report — and Claude Code's Agent tool takes a per-spawn `model` and **no** `effort`. Other clients have their own worker controls; OpenCode's `task` is configured by its agent definition rather than this frontmatter. The **unit** skills are the only route that reaches a worker by documented behaviour, which is where a pin would have to go if this is ever reopened — with a measurement. Full reasoning: [ADR-0027](https://github.com/TitusKirch/skills/blob/main/docs/99.adr/0027-leave-reasoning-effort-to-the-caller.md).
 
 ## Catalog cache
 
@@ -751,7 +751,7 @@ The **window** is longer than any **legitimate gap between refreshes** — longe
 
 ## Queue state
 
-Every drain ends. **Why** it ended is what a repeating driver — `/loop`, a cron job, a human — needs next, and from outside all the endings look the same. So each queue skill's final step names the queue's state as exactly one of these, alongside the per-issue outcomes:
+Every drain ends. **Why** it ended is what a repeating driver — `/loop` where supported, a cron job, a human — needs next, and from outside all the endings look the same. So each queue skill's final step names the queue's state as exactly one of these, alongside the per-issue outcomes:
 
 | State            | Means                                                                              | What a repeating driver does           |
 | :--------------- | :--------------------------------------------------------------------------------- | :------------------------------------- |
@@ -759,7 +759,7 @@ Every drain ends. **Why** it ended is what a repeating driver — `/loop`, a cro
 | `backpressure`   | nothing eligible now, but the counterpart loop can still produce this loop's input | **wait, then re-check** (below)        |
 | `quiescent`      | nothing eligible, and nothing anywhere can still become eligible                   | **stop**                               |
 
-Without it the rule lives in whoever wrote the `/loop` prompt — retyped every run, worded differently each time, and silently wrong when it is not typed at all. The failure it prevents is the **false finish**: an implement drain stops because its own queue is empty while the review loop is mid-issue and about to hand an issue back as `changes-requested`. The more the two loops cooperate, the more often that happens.
+Without it the rule lives in whoever configured the repeating driver — retyped every run, worded differently each time, and silently wrong when it is not written down at all. The failure it prevents is the **false finish**: an implement drain stops because its own queue is empty while the review loop is mid-issue and about to hand an issue back as `changes-requested`. The more the two loops cooperate, the more often that happens.
 
 **Cap reached is not queue empty.** `work.cap` defaults to 10, so ending with eligible issues left is ordinary, not exceptional — that is `work remaining`, and treating it as an empty queue stalls a queue that has work in it right now. Settle the cap question **first**; only a genuinely empty selection can be one of the other two states.
 
@@ -860,7 +860,7 @@ Two numbers, two jobs — unify them and one of them breaks. The stale window is
 
 **`maxWait` bounds one wait, not the run's total waiting.** A drain that is right to keep waiting keeps waiting; what ends a wait that _should_ end is the [cascade](#the-bound-is-the-counterparts-heartbeat-not-a-round-count) — a frozen heartbeat, a frozen `updatedAt`, terminal states only — never this number. 600 s is the default because Claude Code truncates a `Bash` call there, which is the real bound on the `auto` snippet above; lower it to make `auto` behave more like `fixed`.
 
-**Naming the state is the whole mechanism.** The skill reports the state and the recommended action in prose and calls no driver API, so `/loop`, a cron job and a human can all act on the same report and no skill acquires a dependency on a client-specific loop mechanism.
+**Naming the state is the whole mechanism.** The skill reports the state and the recommended action in prose and calls no driver API, so `/loop` where supported, a cron job and a human can all act on the same report and no skill acquires a dependency on a client-specific loop mechanism.
 
 ## Branch strategy
 

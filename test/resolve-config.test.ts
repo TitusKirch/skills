@@ -60,15 +60,24 @@ describe('profile selection', () => {
     assert.deepEqual(out.commit, { scopeVocab: ['only-this'] });
   });
 
-  test('an unknown profile degrades to the base config, and says so', () => {
+  test('an explicitly named unknown profile fails with exit 11, and says so', () => {
     const box = open('with-profiles.json');
     const run = resolve(box, { TITUSKIRCH_SKILLS_PROFILE: 'typo' });
-    assert.equal(run.status, 0);
+    assert.equal(run.status, 11);
     assert.equal(
-      (parse(run.stdout).work as Record<string, unknown>).branch,
-      'branch:dev'
+      run.stdout,
+      '',
+      'no base config leaks out as if it were the overlay'
     );
-    assert.match(run.stderr, /no profile named 'typo'/);
+    assert.match(run.stderr, /names no profile 'typo'/);
+  });
+
+  test('a detected ci the config does not define degrades to the base, and says so', () => {
+    const box = open('minimal.json');
+    const run = resolve(box, { CI: 'true' });
+    assert.equal(run.status, 0);
+    assert.deepEqual(parse(run.stdout), { language: 'de' });
+    assert.match(run.stderr, /no profile named 'ci'/);
   });
 });
 
@@ -212,19 +221,27 @@ describe('the config block describes the resolver it ships beside', () => {
     assert.equal((out.work as Record<string, unknown>).branch, 'worktree');
   });
 
-  test('an unknown name yields the base config, as it says', () => {
+  test('a missing detected ci yields the base config, as it says', () => {
     assert.match(
       block,
-      /An unset or unknown name yields the base config unchanged/
+      /An unset name, or a detected `ci` the config does not define, yields the base config unchanged/
     );
 
-    const box = open('with-profiles.json');
-    const run = resolve(box, { TITUSKIRCH_SKILLS_PROFILE: 'typo' });
+    const run = resolve(open('minimal.json'), { CI: 'true' });
     assert.equal(run.status, 0);
-    assert.equal(
-      (parse(run.stdout).work as Record<string, unknown>).branch,
-      'branch:dev'
+    assert.deepEqual(parse(run.stdout), { language: 'de' });
+  });
+
+  test('the exit code it names is the one an unknown explicit profile produces', () => {
+    assert.match(
+      block,
+      /A `TITUSKIRCH_SKILLS_PROFILE` naming no defined profile exits `11`/
     );
+
+    const run = resolve(open('with-profiles.json'), {
+      TITUSKIRCH_SKILLS_PROFILE: 'typo'
+    });
+    assert.equal(run.status, 11);
   });
 
   test('the four-part merge rule it states is the merge performed', () => {

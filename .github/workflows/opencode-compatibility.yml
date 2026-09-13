@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: OpenCode compatibility
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'skills/**'
+      - 'scripts/gen-skills.ts'
+      - 'scripts/link-skills.sh'
+      - 'scripts/skills-lib.sh'
+      - 'test/helpers.ts'
+      - 'test/opencode-compatibility.test.ts'
+      - 'package.json'
+      - '.github/workflows/opencode-compatibility.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  opencode:
+    name: OpenCode 1.18.30
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # opencode-ai fetches its platform binary in postinstall, which pnpm skips unless
+      # the package is explicitly allowed to build.
+      - name: Install the pinned OpenCode CLI
+        run: corepack enable && pnpm config set global-bin-dir "$HOME/.local/bin" && pnpm add --global --allow-build=opencode-ai opencode-ai@1.18.30 && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Verify linked skill discovery and queue permissions
+        env:
+          OPENCODE_REQUIRED: 'true'
+        run: pnpm opencode:check

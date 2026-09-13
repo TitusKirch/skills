@@ -2,7 +2,7 @@
 name: work-review-queue
 metadata:
   summary: Drains the awaiting-review queue — reviews each pushed issue with a fresh agent, routing to done/changes/needs-human.
-description: Drains a repo's queue of issues awaiting AI review across GitHub (gh), GitLab (glab), Linear (MCP) or local issue files — selects every issue in review, then reviews each with a fresh, independent agent by delegating to work-review, routing each to done, changes-requested (back to the implement loop), needs-human, or blocked. Starts by reconciling issues whose PR a human merged or closed out-of-band. Honours a per-run cap, single-flight-locked with a lock separate from the implement loop's, so review and implement drains run concurrently. Use when the user wants to review, drain, or auto-review the pushed AI work, run the review loop, says things like "review the queue", "reviewe die Issues", "drain the review queue", or runs it under /loop.
+description: Drains a repo's queue of issues awaiting AI review across GitHub (gh), GitLab (glab), Linear (MCP) or local issue files — selects every issue in review, then reviews each with a fresh, independent agent by delegating to work-review, routing each to done, changes-requested (back to the implement loop), needs-human, or blocked. Starts by reconciling issues whose PR a human merged or closed out-of-band. Honours a per-run cap, single-flight-locked with a lock separate from the implement loop's, so review and implement drains run concurrently. Use when the user wants to review, drain, or auto-review the pushed AI work, run the review loop, says things like "review the queue", "reviewe die Issues", "drain the review queue", or starts a repeating driver.
 allowed-tools:
   - Bash
   - Read
@@ -15,9 +15,11 @@ disallowed-tools:
 
 # work-review-queue
 
-Drain the repo's queue of issues **awaiting review** — every issue in `reviewRequested` — and give each a verdict by delegating to `work-review`. The **review half** of the two-loop workflow: it consumes what `work-implement-queue` pushed, and each issue leaves as `done`, `changes-requested` (back to the implement loop), `needs human`, or `blocked`. Each issue is reviewed by a **fresh worker** — a different agent than the one that built it. Run it under `/loop work-review-queue` for continuous operation, alongside the implement loop.
+Drain the repo's queue of issues **awaiting review** — every issue in `reviewRequested` — and give each a verdict by delegating to `work-review`. The **review half** of the two-loop workflow: it consumes what `work-implement-queue` pushed, and each issue leaves as `done`, `changes-requested` (back to the implement loop), `needs human`, or `blocked`. Each issue is reviewed by a **fresh worker** — a different agent than the one that built it. Run it through a repeating driver for continuous operation, alongside the implement loop.
 
 **Opted out?** If the repo config sets `work` to `false`, all `work-*` skills are **disabled** — stop and tell the user they are turned off in `.tituskirch-skills.json`. Check `.work == false` on the resolved config before acquiring the lock or building the queue — step 1 resolves it, right after the required-worker check that has to come first. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
+
+**OpenCode unattended run.** OpenCode ignores this skill's Claude Code-only `disallowed-tools` field, so **do not run it unattended** unless the effective OpenCode agent permission is `question: deny`. Copy this skill's [`templates/opencode-agent.md`](templates/opencode-agent.md) to `.opencode/agents/work-review-queue.md` in the consuming repo, restart OpenCode, then use `opencode run --auto --agent work-review-queue "Run the review queue once."`. The template denies questions and permits only the `general` subagent through OpenCode's `task` tool, so each issue still reaches a fresh worker. OpenCode has no native `/loop`; a scheduler or a human starts each later drain.
 
 ## Workflow
 
@@ -47,7 +49,7 @@ The **selection query** (`work-review`'s REFERENCE) → every issue in `reviewRe
 
 ### 4. Announce the batch — then drain
 
-Issues in `reviewRequested` were pushed by the implement loop **for exactly this** — so the review drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, then drain (unattended under `/loop`). **Plan-only triggers** ("just show me", "dry run", "nur den Plan", "don't run") still stop after the plan.
+Issues in `reviewRequested` were pushed by the implement loop **for exactly this** — so the review drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, then drain (unattended only in a runner that cannot ask questions). **Plan-only triggers** ("just show me", "dry run", "nur den Plan", "don't run") still stop after the plan.
 
 ### 5. Drain
 
@@ -55,7 +57,7 @@ For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-revie
 
 **Per-issue lease.** When `work.labels.reviewing` is configured, each worker **claims** its issue — flip `reviewRequested → reviewing` + assign — **before** reviewing, and the verdict clears the lease; on `github` and `linear` this is the tracker-global claim that makes the drain safe **across clones** (a second clone's review-drain sees the `reviewing` label and skips), which the per-checkout lock cannot provide. **On `local` it is not** — the store lives inside the checkout, so a second clone sees nothing and both drains can write competing verdicts, exactly as with the lease off; the lease is worth having **within** a checkout only. Read **The `reviewing` lease** in `work-review`'s REFERENCE before enabling `labels.reviewing` on `local` — its recommendation is to leave it off. With `labels.reviewing` off, workers review straight off `reviewRequested` as before — the drain relies on its lock alone.
 
-**A reviewer's reasoning effort is the session's, and this skill does not set it.** The Agent tool takes a per-spawn `model` and no `effort`, so nothing here chooses what a reviewer reasons at — the session that started the drain does, unless the worker's own skill or subagent frontmatter pins one, which none of these skills do. Review is judgement over a diff with little output and holds up **below** what implementing wants, so a review drain is the cheaper of the two to run — a saving a caller takes by starting this loop's session at a lower effort, which the separate lock already lets them do. Recommendation per loop, and why it is not pinned in frontmatter: **Worker effort** in `work-implement`'s REFERENCE.
+**A reviewer's reasoning effort is the caller's, and this skill does not set it.** The host's fresh-worker mechanism owns the model and reasoning settings; in OpenCode that mechanism is `task`, while Claude Code uses its Agent tool. Review is judgement over a diff with little output and holds up **below** what implementing wants, so a review drain is the cheaper of the two to run — a saving a caller takes by starting this loop's session at a lower effort, which the separate lock already lets them do. Recommendation per loop, and why it is not pinned in frontmatter: **Worker effort** in `work-implement`'s REFERENCE.
 
 **Heartbeat the lock each iteration.** The lock is held for the whole batch, which no single shell process spans, so the drain **re-stamps** the review lock's `refreshed` timestamp once per iteration (one cheap command) — that is what keeps a **live** drain from being misread as a crashed one by the **heartbeat-timestamp** stale rule (**The single-flight lock** in `work-review`'s REFERENCE). The lock is released **explicitly** at step 6, not by a shell-lifetime trap.
 
@@ -68,10 +70,10 @@ Release the lock. **Open with the lead** — how many issues were reviewed, the 
 Summarise each issue and its verdict, what the reconcile closed out. Name specifically:
 
 - **`changes-requested`** — back in the implement queue; the next implement-drain re-works them.
-- **`needs human`** — the drain's **actual ask**: each wants a human verdict (via `/work-review <n>`) to reach `done` or go back for changes.
+- **`needs human`** — the drain's **actual ask**: each wants a human verdict (via a direct `work-review <n>` run) to reach `done` or go back for changes.
 - **`blocked`** — need a human call.
 
-**Then name the queue's state**, so a repeating driver (`/loop`, cron, a human) knows whether to run again, wait, or stop — instead of that rule living in whoever typed the loop prompt. **Query the tracker again first**: work that became reviewable while the last issue was being reviewed is already there, and waiting on input that exists wastes an interval. Then decide **in this order**:
+**Then name the queue's state**, so a repeating driver (`/loop` where supported, cron, a human) knows whether to run again, wait, or stop — instead of that rule living in whoever configured the driver. **Query the tracker again first**: work that became reviewable while the last issue was being reviewed is already there, and waiting on input that exists wastes an interval. Then decide **in this order**:
 
 1. **Stopped on `work.cap` with issues still in `reviewRequested` → `work remaining`.** Run again **immediately**, never wait: a cap-ended drain is not an empty queue.
 2. **Nothing to review, but issues sit in `ready`/`changesRequested`/`working` → `backpressure`.** An implementation produces `reviewRequested`, which is this loop's input. **Wait, then re-check.** The **implement** lock's `refreshed` heartbeat advancing means keep waiting; frozen past the stale window means the implement drain crashed → **stop and report**. That lock **absent** is **not** by itself a reason to stop — it also means a counterpart between cap-ended runs, or one on another host — so fall back to the waited-on issues' `updatedAt`: fresh → keep waiting; frozen past the stale window → stop, naming how many wait unattended.

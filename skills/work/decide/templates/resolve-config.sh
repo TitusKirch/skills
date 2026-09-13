@@ -9,11 +9,14 @@
 # Usage:  sh resolve-config.sh [path/to/.tituskirch-skills.json]
 #
 # Selects the profile from TITUSKIRCH_SKILLS_PROFILE, falling back to "ci" when
-# CI holds a truthy value. An unset or unknown name yields the base config.
+# CI holds a truthy value. An unset name, or a detected "ci" the config does not
+# define, yields the base config. A name set explicitly but not defined is an error:
+# a launcher still naming a renamed profile must stop, not run on the base config.
 #
 # Exit codes:
 #   0  resolved config on stdout, or no output because there is no config file
 #  10  jq is unavailable — read the file directly and merge by the rules below
+#  11  TITUSKIRCH_SKILLS_PROFILE names a profile the config does not define
 #
 # 10 rather than a low number because a shell reports its own failures there:
 # `sh missing-file.sh` exits 2, so a mistyped path would otherwise be
@@ -44,6 +47,10 @@ profile="${TITUSKIRCH_SKILLS_PROFILE:-$detected}"
 
 if [ -n "$profile" ] &&
   ! jq -e --arg p "$profile" '(.profiles // {}) | has($p)' "$config" >/dev/null; then
+  if [ -n "${TITUSKIRCH_SKILLS_PROFILE:-}" ]; then
+    echo "resolve-config: TITUSKIRCH_SKILLS_PROFILE names no profile '$profile'" >&2
+    exit 11
+  fi
   echo "resolve-config: no profile named '$profile'; using the base config" >&2
 fi
 

@@ -183,7 +183,7 @@
       "additionalProperties": {
         "$ref": "#/$defs/profile"
       },
-      "description": "Named execution-context overlays. Selected by the TITUSKIRCH_SKILLS_PROFILE environment variable, falling back to \"ci\" when CI is set to a truthy value, and to no profile otherwise. The selected profile is deep-merged onto the base config and the profiles key is dropped from the result: objects merge recursively, arrays and scalars are replaced rather than concatenated, and an explicit null sets null rather than deleting a key. An unknown or unset profile name resolves to the base config unchanged. Profiles do not nest."
+      "description": "Named execution-context overlays. Selected by the TITUSKIRCH_SKILLS_PROFILE environment variable, falling back to \"ci\" when CI is set to a truthy value, and to no profile otherwise. The selected profile is deep-merged onto the base config and the profiles key is dropped from the result: objects merge recursively, arrays and scalars are replaced rather than concatenated, and an explicit null sets null rather than deleting a key. An unset name, or a CI-detected \"ci\" the config does not define, resolves to the base config unchanged; an explicit TITUSKIRCH_SKILLS_PROFILE naming no defined profile is an error (resolver exit 11). Profiles do not nest."
     }
   },
   "$defs": {

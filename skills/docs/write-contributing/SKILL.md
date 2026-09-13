@@ -44,7 +44,7 @@ What each statement is derived **from** is the derivation table in [REFERENCE.md
 | It exists + "update / fix / align / reconcile it"              | **reconcile** |
 | It exists + "document X in it" (a new contributor-facing step) | **add**       |
 
-Verb shortcuts: `/write-contributing init`, `/write-contributing add <step>`, `/write-contributing reconcile`. Otherwise infer from repo state and the request. **Always: plan → confirm → apply.**
+Optional command shortcuts in clients that expose them: `write-contributing init`, `write-contributing add <step>`, `write-contributing reconcile`. Otherwise infer from repo state and the request. **Always: plan → confirm → apply.**
 
 **Plan-only triggers** — "just show me", "dry run", "plan only", "nur den Plan", "nicht schreiben": print the plan and the derivation table, write nothing.
 

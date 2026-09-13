@@ -44,6 +44,7 @@
     "skills:sync": "node scripts/gen-skills.ts",
     "skills:check": "node scripts/gen-skills.ts --check",
     "skills:conformance": "bash scripts/check-conformance.sh",
+    "opencode:check": "node --test test/opencode-compatibility.test.ts",
     "prepare": "husky"
   },
   "devDependencies": {

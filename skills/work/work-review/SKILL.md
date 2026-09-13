@@ -26,7 +26,7 @@ Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/
 
 ### 2. Resolve the target issue
 
-- **Explicit** — an id/number/key (`/work-review 42`, `ENG-123`).
+- **Explicit** — an id/number/key (for example `work-review 42` or `ENG-123`).
 - **Self-select** — none given → the [selection query](REFERENCE.md#selection-query): the single highest-priority issue in `reviewRequested`. None → say so and stop.
 
 ### 3. Read the state → pick the action
