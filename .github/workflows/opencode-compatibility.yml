@@ -10,8 +10,10 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'skills/**'
+      - 'scripts/gen-skills.ts'
       - 'scripts/link-skills.sh'
       - 'scripts/skills-lib.sh'
+      - 'test/helpers.ts'
       - 'test/opencode-compatibility.test.ts'
       - 'package.json'
       - '.github/workflows/opencode-compatibility.yml'
