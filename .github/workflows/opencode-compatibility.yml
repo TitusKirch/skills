@@ -37,8 +37,10 @@ jobs:
         with:
           node-version: 24
 
+      # opencode-ai fetches its platform binary in postinstall, which pnpm skips unless
+      # the package is explicitly allowed to build.
       - name: Install the pinned OpenCode CLI
-        run: corepack enable && pnpm config set global-bin-dir "$HOME/.local/bin" && pnpm add --global opencode-ai@1.18.30 && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        run: corepack enable && pnpm config set global-bin-dir "$HOME/.local/bin" && pnpm add --global --allow-build=opencode-ai opencode-ai@1.18.30 && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Verify linked skill discovery and queue permissions
         env:
