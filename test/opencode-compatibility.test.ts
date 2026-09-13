@@ -6,13 +6,14 @@ import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
+  closeSync,
   cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readFileSync,
-  rmSync,
-  writeFileSync
+  rmSync
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -22,6 +23,7 @@ import { discoverSkills, paths } from '../scripts/gen-skills.ts';
 const OPENCODE_VERSION = '1.18.30';
 const OPENCODE = process.env.OPENCODE_BIN ?? 'opencode';
 const REQUIRED = process.env.OPENCODE_REQUIRED === 'true';
+const QUEUES = ['work-implement-queue', 'work-review-queue'];
 const homes: string[] = [];
 
 after(() =>
@@ -35,20 +37,29 @@ interface Run {
   missing: boolean;
 }
 
+// stdout goes to a file, not a pipe: OpenCode exits before a pipe drains, which cuts
+// `debug skill` — every skill's full content — off mid-JSON at roughly 145 KB.
 function run(
   args: string[],
   env: NodeJS.ProcessEnv = process.env,
   cwd = ROOT
 ): Run {
-  const result = spawnSync(OPENCODE, args, {
-    cwd,
-    encoding: 'utf8',
-    env,
-    maxBuffer: 10 * 1024 * 1024
-  });
+  const out = join(home(), 'stdout');
+  const fd = openSync(out, 'w');
+  let result;
+  try {
+    result = spawnSync(OPENCODE, args, {
+      cwd,
+      encoding: 'utf8',
+      env,
+      stdio: ['ignore', fd, 'pipe']
+    });
+  } finally {
+    closeSync(fd);
+  }
   return {
     status: result.status ?? -1,
-    stdout: result.stdout ?? '',
+    stdout: readFileSync(out, 'utf8'),
     stderr: result.stderr ?? '',
     missing:
       (result.error as NodeJS.ErrnoException | undefined)?.code === 'ENOENT'
@@ -61,6 +72,8 @@ function home(): string {
   return dir;
 }
 
+// The README's OpenCode setup, exactly: skills:link, then this variable, so the
+// linked `~/.agents/skills/` is OpenCode's one source for the bundle.
 function envFor(home: string): NodeJS.ProcessEnv {
   return {
     ...process.env,
@@ -72,7 +85,7 @@ function envFor(home: string): NodeJS.ProcessEnv {
   };
 }
 
-function link(home: string, env: NodeJS.ProcessEnv): void {
+function link(env: NodeJS.ProcessEnv): void {
   const result = spawnSync('bash', [join(ROOT, 'scripts', 'link-skills.sh')], {
     cwd: ROOT,
     encoding: 'utf8',
@@ -81,26 +94,15 @@ function link(home: string, env: NodeJS.ProcessEnv): void {
   assert.equal(result.status, 0, result.stderr);
 }
 
-function projectWithPublishedFrontmatter(): string {
+// A bare repo with no skills of its own, so every skill OpenCode reports can only
+// have come from the linked user-scope install.
+function emptyProject(): string {
   const project = home();
   const git = spawnSync('git', ['init', '--quiet'], {
     cwd: project,
     encoding: 'utf8'
   });
   assert.equal(git.status, 0, git.stderr);
-
-  for (const skill of discoverSkills(paths(ROOT))) {
-    const raw = readFileSync(
-      join(ROOT, 'skills', skill.path, 'SKILL.md'),
-      'utf8'
-    );
-    const frontmatter = raw.match(/^---\n[\s\S]*?\n---\n/);
-    assert.ok(frontmatter, `${skill.name} should have frontmatter`);
-    const destination = join(project, '.opencode', 'skills', skill.name);
-    mkdirSync(destination, { recursive: true });
-    // The CLI consumes the frontmatter while keeping the debug payload bounded.
-    writeFileSync(join(destination, 'SKILL.md'), frontmatter[0]);
-  }
   return project;
 }
 
@@ -126,7 +128,13 @@ function action(
     .at(-1)?.action;
 }
 
-test('OpenCode 1.18.30 accepts published frontmatter and enforces queue permissions', (t) => {
+function agent(name: string, env: NodeJS.ProcessEnv, cwd: string): Agent {
+  const configured = run(['--pure', 'debug', 'agent', name], env, cwd);
+  assert.equal(configured.status, 0, configured.stderr);
+  return JSON.parse(configured.stdout) as Agent;
+}
+
+test('OpenCode 1.18.30 loads the linked skills and enforces queue permissions', (t) => {
   const version = run(['--version']);
   if (version.missing) {
     if (REQUIRED)
@@ -146,36 +154,10 @@ test('OpenCode 1.18.30 accepts published frontmatter and enforces queue permissi
 
   const isolatedHome = home();
   const env = envFor(isolatedHome);
-  link(isolatedHome, env);
+  link(env);
+  const linked = join(isolatedHome, '.agents', 'skills');
 
-  const project = projectWithPublishedFrontmatter();
-  for (const skill of discoverSkills(paths(ROOT))) {
-    assert.ok(
-      existsSync(
-        join(isolatedHome, '.agents', 'skills', skill.name, 'SKILL.md')
-      ),
-      `${skill.name} should be linked into the agent-compatible directory`
-    );
-  }
-
-  const agents = join(project, '.opencode', 'agents');
-  mkdirSync(agents, { recursive: true });
-  for (const name of ['work-implement-queue', 'work-review-queue']) {
-    const template = join(
-      isolatedHome,
-      '.agents',
-      'skills',
-      name,
-      'templates',
-      'opencode-agent.md'
-    );
-    assert.ok(
-      existsSync(template),
-      `${name} should install its OpenCode agent template`
-    );
-    cpSync(template, join(agents, `${name}.md`));
-  }
-
+  const project = emptyProject();
   const skills = run(['--pure', 'debug', 'skill'], env, project);
   assert.equal(skills.status, 0, skills.stderr);
   const loaded = JSON.parse(skills.stdout) as Array<{
@@ -192,17 +174,36 @@ test('OpenCode 1.18.30 accepts published frontmatter and enforces queue permissi
     );
     assert.equal(
       entries[0]?.location,
-      join(project, '.opencode', 'skills', skill.name, 'SKILL.md')
+      join(linked, skill.name, 'SKILL.md'),
+      `${skill.name} should load from the linked ~/.agents/skills`
     );
   }
 
-  for (const name of ['work-implement-queue', 'work-review-queue']) {
-    const configured = run(['--pure', 'debug', 'agent', name], env, project);
-    assert.equal(configured.status, 0, configured.stderr);
-    const agent = JSON.parse(configured.stdout) as Agent;
-    assert.equal(action(agent, 'question', '*'), 'deny');
-    assert.equal(action(agent, 'skill', '*'), 'allow');
-    assert.equal(action(agent, 'task', '*'), 'deny');
-    assert.equal(action(agent, 'task', 'general'), 'allow');
+  const agents = join(project, '.opencode', 'agents');
+  mkdirSync(agents, { recursive: true });
+  for (const name of QUEUES) {
+    const template = join(linked, name, 'templates', 'opencode-agent.md');
+    assert.ok(
+      existsSync(template),
+      `${name} should install its OpenCode agent template`
+    );
+    cpSync(template, join(agents, `${name}.md`));
   }
+
+  for (const name of QUEUES) {
+    const queue = agent(name, env, project);
+    assert.equal(action(queue, 'question', '*'), 'deny');
+    assert.equal(action(queue, 'skill', '*'), 'allow');
+    assert.equal(action(queue, 'task', '*'), 'deny');
+    assert.equal(action(queue, 'task', 'general'), 'allow');
+  }
+
+  // The queue's own `question: deny` does not reach the workers it spawns: `task`
+  // runs `general` under that agent's permissions. An unattended drain only holds if
+  // the worker cannot ask either, so pin the default the templates rely on.
+  assert.equal(
+    action(agent('general', env, project), 'question', '*'),
+    'deny',
+    'the general worker must not be able to ask a question'
+  );
 });
