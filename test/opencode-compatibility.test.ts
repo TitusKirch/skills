@@ -9,10 +9,11 @@ import {
   closeSync,
   cpSync,
   existsSync,
+  fstatSync,
   mkdirSync,
   mkdtempSync,
   openSync,
-  readFileSync,
+  readSync,
   rmSync
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -44,9 +45,11 @@ function run(
   env: NodeJS.ProcessEnv = process.env,
   cwd = ROOT
 ): Run {
-  const out = join(home(), 'stdout');
-  const fd = openSync(out, 'w');
+  // Read back through the descriptor the child wrote to, never the path again, so
+  // the file cannot be swapped between the write and the read.
+  const fd = openSync(join(home(), 'stdout'), 'w+');
   let result;
+  let stdout;
   try {
     result = spawnSync(OPENCODE, args, {
       cwd,
@@ -54,12 +57,19 @@ function run(
       env,
       stdio: ['ignore', fd, 'pipe']
     });
+    const buffer = Buffer.alloc(fstatSync(fd).size);
+    for (let read = 0; read < buffer.length;) {
+      const n = readSync(fd, buffer, read, buffer.length - read, read);
+      if (n === 0) break;
+      read += n;
+    }
+    stdout = buffer.toString('utf8');
   } finally {
     closeSync(fd);
   }
   return {
     status: result.status ?? -1,
-    stdout: readFileSync(out, 'utf8'),
+    stdout,
     stderr: result.stderr ?? '',
     missing:
       (result.error as NodeJS.ErrnoException | undefined)?.code === 'ENOENT'
