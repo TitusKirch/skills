@@ -47,13 +47,13 @@ resolved=$(sh "$skill/templates/resolve-config.sh"); status=$?
 case $status in
 0)  [ -n "$resolved" ] || resolved='{}' ;;   # ran fine; empty means the repo has no config
 10) resolved= ;;                           # no jq — read the file yourself, see below
-*)  echo "resolve-config failed ($status)" >&2; exit 1 ;;
+*)  echo "resolve-config failed ($status)" >&2; exit 1 ;;   # 11: unknown profile named
 esac
 ```
 
-**A failure here is never silent.** Any exit other than `0` or `10` means the resolver could not be found or could not run, and the only wrong response is to carry on with `{}` — that reports the repo's defaults as if they were its settings. Stop and say what failed.
+**A failure here is never silent.** Any exit other than `0` or `10` means the resolver could not be found, could not run, or was told to select a profile the config does not define, and the only wrong response is to carry on with `{}` — that reports the repo's defaults as if they were its settings. Stop and say what failed.
 
-The profile comes from `TITUSKIRCH_SKILLS_PROFILE`, falling back to `ci` when `CI` holds a truthy value, and to no profile otherwise. An unset or unknown name yields the base config unchanged.
+The profile comes from `TITUSKIRCH_SKILLS_PROFILE`, falling back to `ci` when `CI` holds a truthy value, and to no profile otherwise. An unset name, or a detected `ci` the config does not define, yields the base config unchanged. A `TITUSKIRCH_SKILLS_PROFILE` naming no defined profile exits `11` — a renamed profile stops the run rather than silently dropping its overlay.
 
 **The merge is a rule, not just a command.** Objects merge recursively at any depth, arrays and scalars are replaced rather than concatenated, an explicit `null` sets null rather than deleting a key, and `profiles` is dropped from the result. Any path that resolves the config by other means owes the same semantics.
 

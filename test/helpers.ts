@@ -128,7 +128,7 @@ export interface Run {
  * Run the resolver the way a skill would: from inside the repo, by absolute path.
  *
  * spawnSync, not execFileSync — the latter discards stderr on success, which would
- * hide the warning an unknown profile is supposed to print while still exiting 0.
+ * hide the warning a missing detected `ci` profile is supposed to print while still exiting 0.
  */
 export function resolve(
   box: Sandbox,
