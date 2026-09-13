@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.26.0](https://github.com/TitusKirch/skills/compare/v0.25.0...v0.26.0) (2026-09-13)
+
+
+### Features
+
+* **skills:** support OpenCode work queues ([a33c89f](https://github.com/TitusKirch/skills/commit/a33c89f3ac72bd9c90ca9cba1c5261fe0b8888fe))
+
+
+### Bug Fixes
+
+* **ci:** let the global OpenCode install run its postinstall ([969c864](https://github.com/TitusKirch/skills/commit/969c864604a9edf6fe4e097f64731bc26a19c5cc))
+* **ci:** trigger the OpenCode check on the modules its test imports ([1efca4e](https://github.com/TitusKirch/skills/commit/1efca4e4a1d000481bab76f4f37cd9d3d90726c2))
+* **skills:** correct the codex policy match examples ([fc2534b](https://github.com/TitusKirch/skills/commit/fc2534b18ad9f2fb9840aa7fc3ba19c5556919dd))
+* **skills:** fail on an explicitly named profile the config lacks ([597f29b](https://github.com/TitusKirch/skills/commit/597f29b9d92b3c7d673f7fe2072e001efc922b3e))
+
 ## [0.25.0](https://github.com/TitusKirch/skills/compare/v0.24.0...v0.25.0) (2026-09-08)
 
 
