@@ -13,6 +13,7 @@ on:
       - 'scripts/gen-skills.ts'
       - 'scripts/link-skills.sh'
       - 'scripts/skills-lib.sh'
+      - 'scripts/toolchain-versions.json'
       - 'test/helpers.ts'
       - 'test/opencode-compatibility.test.ts'
       - 'package.json'
@@ -27,7 +28,7 @@ permissions:
 
 jobs:
   opencode:
-    name: OpenCode 1.18.35
+    name: OpenCode
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     steps:
@@ -39,10 +40,19 @@ jobs:
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
 
+      - name: Read the pinned OpenCode version
+        run: |
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const { opencode } = JSON.parse(readFileSync("scripts/toolchain-versions.json", "utf8"));
+            if (!/^\d+\.\d+\.\d+$/.test(opencode)) throw new Error("OpenCode must be a stable exact version");
+            console.log(`OPENCODE_VERSION=${opencode}`);
+          ' >> "$GITHUB_ENV"
+
       # opencode-ai fetches its platform binary in postinstall, which pnpm skips unless
       # the package is explicitly allowed to build.
       - name: Install the pinned OpenCode CLI
-        run: pnpm config set global-bin-dir "$HOME/.local/bin" && pnpm add --global --allow-build=opencode-ai opencode-ai@1.18.35 && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        run: pnpm config set global-bin-dir "$HOME/.local/bin" && pnpm add --global --allow-build=opencode-ai "opencode-ai@$OPENCODE_VERSION" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Verify linked skill discovery and queue permissions
         env:
