@@ -1,6 +1,10 @@
 # pnpm settings. Moved here from .npmrc: pnpm 10+ reads only auth/registry
 # settings from .npmrc — every other setting must live in this file.
 
+# Eval and test fixtures may contain manifests but are not workspace packages.
+packages:
+  - '.'
+
 # Automatically install missing peer dependencies when possible.
 autoInstallPeers: true
 

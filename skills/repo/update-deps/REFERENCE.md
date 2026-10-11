@@ -100,7 +100,7 @@ and only one of them licenses going on.
 
 ## Detection
 
-Lockfile-driven, with `packageManager` as the override — except for the two ecosystems that have no lockfile at all:
+Lockfile-driven, with `packageManager` as the override — except for the ecosystems whose manifests are the detection:
 
 | Signal                                                              | Ecosystem        | Manager                                       |
 | :------------------------------------------------------------------ | :--------------- | :-------------------------------------------- |
@@ -132,6 +132,22 @@ Lockfile-driven, with `packageManager` as the override — except for the two ec
 - **The GitLab CI signal is one file plus whatever it includes, and the `forge` key does not gate it.** `.gitlab-ci.yml` at the repo root is the signal; every file it pulls in with `include: local:` is part of the same pipeline definition and is read with it, transitively, wherever the repo keeps them (`.gitlab/ci/` is the common home). **A repo with no `.gitlab-ci.yml` has no GitLab CI ecosystem whatever `forge` says, and a GitHub-hosted repo that carries one does have it** — mirrored pipelines are ordinary, and the reference decides the resolver, not the repo's forge. What detection **cannot** see is a project configured server-side to run a CI file under another name or in another project: where the root file is absent but the repo carries a `.gitlab/` tree, report that as possible-and-unread rather than as no ecosystem.
 - **Several ecosystems at once** → each is its own run, plan and report section. Never let one ecosystem's range leak into another's.
 
+## Runtime and CLI toolchains
+
+**Inventory is broader than an updater's table.** Read `.nvmrc`, `.node-version`, `package.json` runtime fields (`engines`, `devEngines` where present), CI setup inputs and pinned CLI installs in the workflows and scripts they call. A literal `opencode-ai@1.18.30`, `skills-ref==0.1.1`, or a version read from a JSON manifest is a dependency even without a project lockfile. Include shell-held container references such as `IMAGE='python:3.12-slim'` with the container inventory. Ignore documentation examples and inert eval fixtures. A computed value that cannot be resolved from data is **unread**, with its file and consumer named; never execute repository scripts just to discover versions.
+
+Record **tool → owning file → consumers → current version/style → authorization → candidate → gate verdict**. Follow the owning version file once and update that value, rather than replacing every consumer with a new literal. Check the consumers after the write. Node's CI execution version and `engines.node`'s compatibility floor serve different purposes: do not raise the floor merely to match CI, and preserve the operator when an authorized compatibility change requires it.
+
+**Runtime changes need their own scope.** A request for major _packages_ inventories Node but does not silently upgrade it. An explicit request to upgrade Node/runtimes, or all dependencies **and toolchains**, authorizes that scope; an exact CLI install is held unless the user permits moving pins. Previously granted session authorization still applies. Report runtimes and CLI tools separately from project-package counts, even when nothing moves.
+
+**Use the tool's release source and the repo's policy.** Resolve Node from its official release index (`https://nodejs.org/dist/index.json`) and CLI packages from their actual registry or signed release source. Select stable releases within the requested range, retaining an existing major-only or exact style. npm CLI pins inherit the repo's `minimumReleaseAge`: compare registry publication times even when taze cannot see the install line. Compare gated and ungated targets and name withheld versions. Report **not applicable** when that tool's ecosystem has no age gate; do not claim the npm gate protects a PyPI install or a container tag.
+
+**taze may own more than `package.json`.** Inspect the installed `taze --help` before any write. Versions with `.nvmrc`/`.node-version` and Actions support check those manifests by default. On the Node write, use `--no-github-actions` to leave Actions to the forge-resolution branch; add `--no-node-version` when runtimes are held. That flag also disables supported `package.json` runtime-field updates. Older taze versions lacking those flags leave these targets to explicit resolution and edits. `--all` changes reporting, not scope. A cache-refresh `--force` fetch is not an installation bypass.
+
+**Verify the candidate, not a different global installation.** Use the existing version manager to run the gate under the chosen Node runtime; installing a missing host runtime or resolver needs explicit authorization. For an authorized CLI update, install the exact candidate in a disposable directory with the repo's package manager, carrying its release-age and registry settings. Enable any required integration probe and point it at that binary: a skipped test or a probe against the previous global version does not verify the update. Keep the user's default runtime and global CLI unless changing those was also requested. Report a toolchain check that could not run as **unverified**.
+
+**Minor then major is two runs.** Present and verify the minor plan, hand off its actual changes to `atomic-commit` if the user requested commits, then make a fresh major plan against that committed tree. Hand off each nonempty phase separately. An empty phase is reported as such and creates no empty commit. This skill itself still never commits or pushes; those actions remain with the requested sibling workflow.
+
 ## Range → command
 
 **Only taze has real range granularity.** Every native Node updater collapses to "within the declared range" or "latest", with nothing in between:
@@ -148,19 +164,23 @@ Lockfile-driven, with `packageManager` as the override — except for the two ec
 
 ³ **Container images are the second exception** — there is no command at all, because no updater owns the ecosystem. `patch` and `minor` move within the same major track (`16.2 → 16.4`), `major` is a base-image change (`node:22 → node:24`) needing the explicit ask like any other major, and the run performs both by resolving the tag itself and editing the manifest line. Which references are in scope at all — floating tags, digest pins, variant suffixes and `ARG` interpolation are each excluded, for different reasons — is the container tag model (`ecosystems/container-images.md`).
 
-⁴ **GitHub Actions is the third**, and it resolves against a repository's **git tags** rather than a registry. `patch` and `minor` move a fully-qualified tag inside its major (`actions/checkout@v4.2.1 → @v4.3.0`), carrying the **SHA pin and its version comment together** where the ref is pinned that way. `major` crosses majors (`@v4 → @v5`) and is the only range that touches a **floating** ref — a major tag or a branch — each reported separately as breaking. Which references are in scope at all — a `docker://` ref and a local `./` ref are both out, for different reasons — is the action ref model (`ecosystems/github-actions.md`).
+⁴ **GitHub Actions is the third**, and it resolves against a repository's **git tags** rather than a registry. `patch` and `minor` move a fully-qualified tag inside its major (`actions/checkout@v4.2.1 → @v4.3.0`), carrying the **SHA pin and its version comment together** where the ref is pinned that way. `major` crosses majors (`@v4 → @v5`) and is the only range that moves a floating **major-tag** ref, reported separately as breaking. Branch refs remain held; changing their pinning policy is outside an update. Which references are in scope at all — a `docker://` ref and a local `./` ref are both out, for different reasons — is the action ref model (`ecosystems/github-actions.md`).
 
 ⁵ **GitLab CI is the fourth, and the only one that borrows two models at once.** An `include:` fragment's `ref:` resolves against the referenced project's git tags exactly as footnote 4's action ref does, only through `glab api` and against the instance **this repo** resolves to; a `component:`'s version resolves through the CI/CD Catalog, which is the one new resolution path in the ecosystem. `patch` and `minor` stay inside the major, `major` crosses one and is reported separately as breaking. The `image:` and `services:` tags in the same file are **not** in this column — they are container references and follow footnote 3. Everything else, including what a floating `ref:` and a `@~latest` component get: the GitLab CI model (`ecosystems/gitlab-ci.md`).
 
-Useful taze flags (`taze --help` is the authority; all verified against `taze@19.14.1`):
+Useful taze flags (`taze --help` is the authority; verified against `taze@21.3.0`; only use flags the installed version exposes):
 
 | Flag                       | Use                                                            |
 | :------------------------- | :------------------------------------------------------------- |
-| `-w, --write`              | write to `package.json` — **the only writing flag**            |
+| `-w, --write`              | write enabled manifests — **scope them before writing**        |
 | `-r, --recursive`          | monorepo — every workspace `package.json`                      |
 | `-n, --include <deps>`     | scope to one package or a pattern                              |
 | `-x, --exclude <deps>`     | skip packages; overrides `--include`                           |
 | `-l, --include-locked`     | bring **exact pins** into scope — see [pins](#exact-pins)      |
+| `--no-node-version`        | disable runtime manifest updates when Node is held             |
+| `--no-github-actions`      | leave action writes to the forge-resolution branch             |
+| `--all, -a`                | include current packages in the report; does not widen scope   |
+| `--force, -f`              | refresh taze metadata only; never an install-policy bypass     |
 | `-I, --interactive`        | pick per package                                               |
 | `--maturity-period [days]` | override the release-age gate — **read-only diagnostics only** |
 

@@ -1,0 +1,7 @@
+{
+  "verify": "pnpm verify",
+  "commit": {
+    "language": "en",
+    "scopes": false
+  }
+}

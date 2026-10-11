@@ -1,0 +1,130 @@
+{
+  "_comment": "Development-only output-quality cases for with/without-skill evaluation via the documented skill-creator workflow. The evaluator seeds a disposable repo from files, fixes the clock, supplies registry and gate responses, and varies initial state as stated in each prompt. These are fixtures, not recorded benchmark passes. Never install or publish the fixture as a package.",
+  "skill_name": "update-deps",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "In the supplied pnpm fixture, update minor dependencies only. Show the plan; I have not authorized writes or moving exact pins. Use the evaluator clock and release records.",
+      "expected_output": "A rendered read-only plan with every target and held reason, including runtime and CLI pins omitted by the package updater.",
+      "expectations": [
+        "oxfmt, oxlint and the CLI pin are inventoried and held because moving exact pins is not authorized.",
+        "The available Node 26 runtime is reported separately as held, with no runtime write.",
+        "@types/node 26.6.5 and pnpm 12.11.2 are identified as held by the three-day gate.",
+        "No manifest, lockfile, global CLI, commit or remote state is changed."
+      ],
+      "files": [
+        "fixtures/node-ci/.github/workflows/compatibility.yml",
+        "fixtures/node-ci/.nvmrc",
+        "fixtures/node-ci/.tituskirch-skills.json",
+        "fixtures/node-ci/package.json",
+        "fixtures/node-ci/pnpm-workspace.yaml",
+        "fixtures/node-ci/registry-records.json",
+        "fixtures/node-ci/scripts/toolchain-versions.json"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Autonom: minor updates ausführen. Exakte Pins darfst du bewegen; Node bitte unverändert lassen. Verwende die bereitgestellten Release-Daten und den Fixture-Zeitpunkt.",
+      "expected_output": "An authorized minor update and verified tree with unchanged runtime and 0.x major pin, plus all gated versions reported.",
+      "expectations": [
+        "The concrete plan is shown and the explicit autonomous authorization is used without a repeated approval question.",
+        "oxlint moves to the mature 1.87.0 while oxfmt stays at 0.65.0 because 0.72.0 is outside minor for 0.x.",
+        "The OpenCode owner manifest moves to exact 1.18.35; the workflow is not rewritten with another literal pin.",
+        "Node stays on 24 and taze runtime/Actions writers are disabled when the installed taze exposes those flags.",
+        "The age gate is preserved; opencode-ai 1.19.0, pnpm 12.11.2 and @types/node 26.6.5 are named as withheld.",
+        "Advisories and the fixture gate run, with an isolated probe against OpenCode 1.18.35 rather than the old global binary."
+      ],
+      "files": [
+        "fixtures/node-ci/.github/workflows/compatibility.yml",
+        "fixtures/node-ci/.nvmrc",
+        "fixtures/node-ci/.tituskirch-skills.json",
+        "fixtures/node-ci/package.json",
+        "fixtures/node-ci/pnpm-workspace.yaml",
+        "fixtures/node-ci/registry-records.json",
+        "fixtures/node-ci/scripts/toolchain-versions.json"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Update major packages autonomously; moving exact pins is authorized. I have not authorized Node or global runtime installation.",
+      "expected_output": "A major package and CLI-pin update that inventories but holds Node and preserves the existing runtime consumers.",
+      "expectations": [
+        "oxfmt can move to exact 0.72.0 and its 0.x major is reported as breaking.",
+        "Node runtime and engines/CI consumers are inventoried but held because runtime scope was not granted.",
+        "The updater cannot silently rewrite .nvmrc or runtime fields through its default writers.",
+        "No new host runtime or global CLI is installed implicitly and the three-day gate still holds young versions."
+      ],
+      "files": [
+        "fixtures/node-ci/.github/workflows/compatibility.yml",
+        "fixtures/node-ci/.nvmrc",
+        "fixtures/node-ci/.tituskirch-skills.json",
+        "fixtures/node-ci/package.json",
+        "fixtures/node-ci/pnpm-workspace.yaml",
+        "fixtures/node-ci/registry-records.json",
+        "fixtures/node-ci/scripts/toolchain-versions.json"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Autonom durchführen: erst minor, prüfen und atomar committen; danach major, prüfen und atomar committen. Exakte Pins und Node darfst du ändern. Nicht pushen. Die Fixture-Release-Daten und der feste Zeitpunkt sind maßgeblich.",
+      "expected_output": "Two separately planned and verified phases, committed by atomic-commit in dependency order, with every held target explained.",
+      "expectations": [
+        "The minor phase lands eligible minor/patch and authorized CLI-pin changes before a fresh major plan is made.",
+        "The major phase moves oxfmt to 0.72.0 and Node from 24 to 26 in the existing major-only style.",
+        "Runtime consumers agree with the owning pin; the compatibility floor is only raised if verification requires it.",
+        "Each nonempty verified phase is handed to atomic-commit, whose concrete plan precedes the commit; update-deps itself does not commit.",
+        "Existing explicit authorization is honored without repeated confirmation questions, and the repo hooks/signing settings are respected.",
+        "Gate-withheld versions remain held, no empty commit is created, and nothing is pushed."
+      ],
+      "files": [
+        "fixtures/node-ci/.github/workflows/compatibility.yml",
+        "fixtures/node-ci/.nvmrc",
+        "fixtures/node-ci/.tituskirch-skills.json",
+        "fixtures/node-ci/package.json",
+        "fixtures/node-ci/pnpm-workspace.yaml",
+        "fixtures/node-ci/registry-records.json",
+        "fixtures/node-ci/scripts/toolchain-versions.json"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "The fixture has already committed all mature targets (oxfmt 0.72.0, oxlint 1.87.0, OpenCode 1.18.35, Node 26). Re-check major updates autonomously and commit any actual changes. Use the same release records and fixed clock.",
+      "expected_output": "A verified no-change major phase, with the ungated delta and advisories still reported.",
+      "expectations": [
+        "The gated and ungated reads are compared even when the gated updater reports up to date.",
+        "The three withheld young npm targets remain visible with their age-gate reason.",
+        "The advisory check still runs and an unavailable scanner is not reported as clean.",
+        "No empty commit is requested or made and no pins, policies or global tools are changed."
+      ],
+      "files": [
+        "fixtures/node-ci/.github/workflows/compatibility.yml",
+        "fixtures/node-ci/.nvmrc",
+        "fixtures/node-ci/.tituskirch-skills.json",
+        "fixtures/node-ci/package.json",
+        "fixtures/node-ci/pnpm-workspace.yaml",
+        "fixtures/node-ci/registry-records.json",
+        "fixtures/node-ci/scripts/toolchain-versions.json"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I previously authorized autonomous major updates and moving pins/Node. Now only show the plan: dry run, nicht schreiben, nicht committen. Use the fixture records.",
+      "expected_output": "A full rendered plan that stops without dependent writes despite earlier authorization.",
+      "expectations": [
+        "The latest plan-only instruction overrides earlier autonomous write and commit authorization.",
+        "The plan includes package targets, runtime and CLI targets, gate-held targets and explicit scope.",
+        "No install, manifest edit, lockfile regeneration, commit or push occurs.",
+        "Every plan group is visible without collapsible controls."
+      ],
+      "files": [
+        "fixtures/node-ci/.github/workflows/compatibility.yml",
+        "fixtures/node-ci/.nvmrc",
+        "fixtures/node-ci/.tituskirch-skills.json",
+        "fixtures/node-ci/package.json",
+        "fixtures/node-ci/pnpm-workspace.yaml",
+        "fixtures/node-ci/registry-records.json",
+        "fixtures/node-ci/scripts/toolchain-versions.json"
+      ]
+    }
+  ]
+}

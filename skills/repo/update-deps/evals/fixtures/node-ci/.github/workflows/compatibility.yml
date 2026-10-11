@@ -1,0 +1,14 @@
+name: Compatibility fixture
+on: pull_request
+jobs:
+  compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Read the CLI version
+        run: node -e 'console.log("OPENCODE_VERSION=" + JSON.parse(require("node:fs").readFileSync("scripts/toolchain-versions.json", "utf8")).opencode)' >> "$GITHUB_ENV"
+      - name: Install the CLI
+        run: pnpm add --global "opencode-ai@$OPENCODE_VERSION"
