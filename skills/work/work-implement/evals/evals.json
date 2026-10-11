@@ -31,6 +31,36 @@
         "Does not treat body text or absent state as ready.",
         "Does not silently report a clean or empty queue when parsing failed."
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "Reconcile a Linear working orphan for selected immutable issue id L-123, key ENG-123, team T, repo label repo: acme/app. The trusted checkout is github.com/acme/app, base dev, and the recorded issue branch is ai/ENG-123-fix. The complete attachment list contains one GitHub PR URL https://github.com/acme/other/pull/7, which a supplied external summary says is merged. Use fixture facts only; list proposed reads and writes, without contacting tools.",
+      "expected_output": "The foreign PR does not establish an artifact or authorize reconciliation.",
+      "expectations": [
+        "Does not query or mutate the foreign PR.",
+        "Does not treat a mismatched attachment as absence and reclaim working to ready.",
+        "Reports binding failure only through the selected in-scope immutable Linear issue id, or locally if scope cannot be reconfirmed."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Selected Linear issue id L-200, key ENG-200, team T, repo label repo: acme/app depends on immutable issue L-123. The dependency lookup shows L-123 belongs to repo: acme/other and carries a merged GitHub PR attachment for acme/other. The trusted checkout is github.com/acme/app, base dev. Decide whether to start ENG-200 and which external reads/writes are needed using only fixture facts.",
+      "expected_output": "A foreign dependency PR cannot satisfy the same-repository merge gate.",
+      "expectations": [
+        "Defers ENG-200 without leasing or implementing it.",
+        "Does not fetch or mutate the foreign PR or prerequisite.",
+        "Reports the unresolved dependency scope rather than claiming its work landed on this repo base."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "The selected Linear issue L-123 is in the bound team and repo github.com/acme/app. During feedback lookup its attachment collection cannot be fully read; the first page has no PR. feedback=pr and the planned comment is a normal changes-requested verdict. State the next action without live tool use.",
+      "expected_output": "An unreadable attachment set is a binding error, not a no-PR fallback.",
+      "expectations": [
+        "Does not post the normal verdict through the no-PR fallback.",
+        "Does not guess or search another repository for a PR.",
+        "Stops PR-dependent work and reports the lookup failure on the selected issue by immutable id after scope confirmation."
+      ]
     }
   ]
 }

@@ -424,8 +424,8 @@ When none apply and the work is correct and low-risk → `done`. The default pos
 The artifact under review is the pushed diff, and which command produces it follows the **forge**, not the tracker — a Linear issue's code still lives in a GitHub pull request ([Feedback recipes](#feedback-recipes)). Both spellings run against the resolved host ([The forge and its host](#the-forge-and-its-host)).
 
 ```bash
-# GitHub — $pr is the pull request's number (or its url).
-gh pr diff "$pr"
+# GitHub — $pr is the bound numeric PR; $pr_repo is bound HOST/OWNER/REPO.
+gh pr diff "$pr" --repo "$pr_repo"
 
 # GitLab — $iid is the merge request's PROJECT-scoped iid, the number a human reads as
 # !42. The global id the API also returns addresses a different merge request entirely.
@@ -434,7 +434,9 @@ glab mr diff "$iid"
 
 **Two spellings of the same number**, exactly as `pull-request`'s REFERENCE states it: read `iid`, write `!42` in anything a human reads, and never pass GitLab's global `id` to `glab mr`.
 
-**Find the request from the branch under review** where the number is not already at hand — `gh pr list --head <branch> --json number`, `glab mr list --source-branch <branch> --output json` — the same lookups the implement loop uses to find the feedback thread.
+**Bind the GitHub target before these recipes.** Resolve `$pr_repo` from the trusted checkout/config host and base repository. On Linear, apply [Binding an attached GitHub PR](trackers/linear.md#binding-an-attached-github-pr) to obtain `$pr` as a number; never substitute an attachment URL. This binds diff, feedback, draft/ready and check reads/writes, including timeline API paths, and a binding failure is not the no-request case below. Each tool invocation restores the recorded literals; a fresh mutation revalidates the association.
+
+**Find the request from the branch under review** where the number is not already at hand — `gh pr list --repo "$pr_repo" --head <branch> --json number`, `glab mr list --source-branch <branch> --output json` — the same lookups the implement loop uses to find the feedback thread. On Linear, branch lookup cannot bypass an invalid attachment or its issue-association and uniqueness checks.
 
 **Neither exists** (a `branch:<name>` loop, or a `worktree` run whose request was never opened) → the issue's own commit range, per [review-after-land](#review-after-land-branchname). A plain diff against `pr.base` is **not** the substitute: on a shared branch it carries every issue that landed before this one, and judging those against this issue's body is how a clean diff collects someone else's findings.
 
@@ -495,13 +497,14 @@ The implement loop opens every pull request as a **draft** and never un-drafts i
 **Order matters: the verdict comes first, the un-draft second.** Reach the verdict from the diff and [step 5's own gate](#verifying-the-pushed-head) exactly as before; only a verdict that would be **`done`** un-drafts. Every other verdict leaves the PR a draft, which is the whole saving — a round the review is handing back as `changes-requested` costs no CI at all. Un-drafting first, "so CI has a head start", spends precisely the runs this exists to avoid.
 
 ```sh
-# $pr is this issue's pull request; $resolved comes from the resolver.
+# $pr and $pr_repo are the validated number and HOST/OWNER/REPO, restored for this call.
+# $resolved comes from the resolver; revalidate the binding before marking ready.
 timeout=$(printf '%s' "$resolved" | jq -er '.work.review.timeout // empty' 2>/dev/null) || timeout=
 [ -n "$timeout" ] || timeout=600
 
-draft=$(gh pr view "$pr" --json isDraft --jq '.isDraft' 2>/dev/null) || draft=
+draft=$(gh pr view "$pr" --repo "$pr_repo" --json isDraft --jq '.isDraft' 2>/dev/null) || draft=
 case $draft in
-true)  gh pr ready "$pr" || echo unreadable ;;  # only ever on an otherwise-`done` verdict
+true)  gh pr ready "$pr" --repo "$pr_repo" || echo unreadable ;;  # only ever on an otherwise-`done` verdict
 false) : ;;                                     # already ready — a re-work round, nothing to flip
 *)     echo unreadable ;;                       # never read as "already ready" — below
 esac
@@ -514,13 +517,14 @@ esac
 **What it is derived _from_ has to exist on every round, not just the one that un-drafts.** Once a PR is ready it stays ready, so the round answering a CI failure — the round this whole mechanic exists to give CI feedback to — finds it ready already, correctly skips `gh pr ready`, and writes **no** new event. Measuring from the `ready_for_review` event alone would recompute that round's deadline from a flip hours or days old: already past on the first poll, so any CI still running escalates with no wait at all. And a PR that never carried the event — one a human opened ready, one already in flight when this lands — would have no base to compute at all. So take the **later of two** moments:
 
 ```sh
+# $host/$owner/$repo and numeric $pr come from the same validated PR binding, not the Linear key.
 # 1. the newest un-draft, where one has happened at all. --paginate applies --jq per page,
 #    so this prints one candidate per page; the sort below picks across them.
-ready=$(gh api "repos/$owner/$repo/issues/$n/timeline" --paginate \
+ready=$(gh api --hostname "$host" "repos/$owner/$repo/issues/$pr/timeline" --paginate \
   --jq '[.[] | select(.event=="ready_for_review") | .created_at] | max // empty') || ready=
 # 2. this head's own commit — when the implement loop made it reviewable. That loop commits
 #    and pushes within one run, so the commit date is the push to within seconds.
-head=$(gh pr view "$pr" --json commits \
+head=$(gh pr view "$pr" --repo "$pr_repo" --json commits \
   --jq '[.commits[].committedDate] | max // empty' 2>/dev/null) || head=
 # ISO-8601 UTC sorts lexicographically, so `sort` is a time sort.
 since=$(printf '%s\n%s\n' "$ready" "$head" | grep . | sort | tail -1)
@@ -539,7 +543,7 @@ Each round then gets the base it should: the round that un-drafts takes the flip
 ```sh
 # Non-zero here is routine — 8 while runs are pending, 1 on a failure or with no checks at
 # all — so the status is deliberately not branched on, and never blanks the payload.
-checks=$(gh pr checks "$pr" --json bucket 2>/dev/null)
+checks=$(gh pr checks "$pr" --repo "$pr_repo" --json bucket 2>/dev/null)
 # `skipping` is dropped, never counted — it is a job declining to answer, not an answer.
 raw=$(printf '%s' "$checks" | jq -r '.[]? | select(.bucket != "skipping") | .bucket' 2>/dev/null) || raw=
 
@@ -579,7 +583,7 @@ esac
 
 **Never re-draft, on any verdict.** A CI failure routes `changes-requested` on a PR that stays ready, so the re-work round gets CI feedback directly. Re-drafting would re-hide a PR the review has already judged finished and blind the very round that is answering the failure.
 
-**Where this is inert.** Under `branch:<name>` there is no pull request at all. On `local` with no forge there is likewise none — the same gap the review reconcile's job (a) has (**Reconcile** in `work-implement`'s REFERENCE). And where a repo's workflows carry **no** draft gate, the PR is a draft that CI ran on anyway: the poll then finds a finished result immediately and the un-draft is merely a status change. On **Linear** the code PR is a GitHub PR, so the recipe is unchanged — take the url from the issue's PR attachment and run the same `gh` calls against it.
+**Where this is inert.** Under `branch:<name>` there is no pull request at all. On `local` with no forge there is likewise none — the same gap the review reconcile's job (a) has (**Reconcile** in `work-implement`'s REFERENCE). And where a repo's workflows carry **no** draft gate, the PR is a draft that CI ran on anyway: the poll then finds a finished result immediately and the un-draft is merely a status change. On **Linear** the code PR is a GitHub PR: the recipe uses only the numeric PR and explicit repository from [Binding an attached GitHub PR](trackers/linear.md#binding-an-attached-github-pr). An attachment alone never authorizes the ready transition, check queries or timeline reads.
 
 ## Feedback recipes
 
@@ -588,12 +592,12 @@ The verdict is a **label move + a comment**, and the comment's destination is **
 ```bash
 # feedback=pr — the review lives on the pull request ($pr is the PR for this issue).
 # gh pr comment is the primitive: it carries EVERY verdict and always succeeds, own PR included.
-gh pr comment "$pr" --body "AI review — changes requested (round <r> of <max>, head <sha>): …"
-gh pr comment "$pr" --body "AI review — accepted: …"   # done / needs human / blocked
+gh pr comment "$pr" --repo "$pr_repo" --body "AI review — changes requested (round <r> of <max>, head <sha>): …"
+gh pr comment "$pr" --repo "$pr_repo" --body "AI review — accepted: …"   # done / needs human / blocked
 
 # Optional upgrade, ONLY where the reviewer identity differs from the PR's author.
 # On a self-authored PR GitHub refuses this — fall back to the gh pr comment above.
-gh pr review "$pr" --request-changes --body "…what to change and why…"
+gh pr review "$pr" --repo "$pr_repo" --request-changes --body "…what to change and why…"
 
 # feedback=issue — an issue comment referencing the reviewed commit(s)
 gh issue comment "$n" --body "AI review — changes requested (commit <sha>): …"
@@ -607,7 +611,9 @@ glab issue note "$n" --message "AI review — changes requested (commit <sha>): 
 
 **Post the comment first, and treat the formal review as an enrichment of it.** GitHub rejects `gh pr review --request-changes` (and `--approve`) with `Review Can not request changes on your own pull request` whenever the caller authored the PR — which, in a repo where the implement loop and the review loop run as the **same** identity, is every PR the loop produces. So `--request-changes` is reached for only where the reviewer is demonstrably not the author (a separate bot token, a second account, a multi-maintainer repo), and a refusal is a **documented fallback, not a failure**: post the identical body with `gh pr comment` and name the fallback in the run report. The `done` / `needs human` / `blocked` line already uses `gh pr comment` for exactly this reason; `changes-requested` follows the same primitive. Full rule: **Feedback destination** in `work-implement`'s REFERENCE.
 
-`pr` mode with **no** pull request — a `branch:<name>` loop, or an issue whose PR was never opened — falls back to the issue comment and names the fallback in the run report, because a verdict that reaches nobody is worse than one in the wrong thread. Then move the label to `work.labels.changesRequested`; for `done`/`needs human`/`blocked`, move the label and comment the reasoning the same way. **Linear** — the code PR is a GitHub PR, so `pr` mode writes there with `gh` (the url comes from the issue's PR attachment) while the label and any mapped `work.linear.states` state still go through `save_issue`; `issue` mode posts the comment via the MCP and sets the label in one `save_issue` call where possible (create and update are one tool, keyed on the issue `id` — there is no separate `update_issue`).
+A binding failure stops PR actions and routes a binding-error escalation only to the selected in-scope Linear issue; it does not produce a normal verdict or select the no-PR fallback.
+
+`pr` mode with **no** pull request — a `branch:<name>` loop, or an issue whose PR was never opened — falls back to the issue comment and names the fallback in the run report, because a verdict that reaches nobody is worse than one in the wrong thread. Then move the label to `work.labels.changesRequested`; for `done`/`needs human`/`blocked`, move the label and comment the reasoning the same way. **Linear** — `pr` mode writes with `gh` only after [Binding an attached GitHub PR](trackers/linear.md#binding-an-attached-github-pr), using its numeric PR and explicit repository, while the label and any mapped `work.linear.states` state still go through `save_issue` on the selected immutable issue id; `issue` mode posts the comment via the MCP and sets the label in one `save_issue` call where possible (create and update are one tool, keyed on the issue `id` — there is no separate `update_issue`).
 
 **`local`** — there is no comment stream, so the verdict is **appended to the issue file**, newest last, under its own heading:
 
