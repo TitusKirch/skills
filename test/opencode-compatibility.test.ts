@@ -21,7 +21,7 @@ import { join } from 'node:path';
 import { ROOT } from './helpers.ts';
 import { discoverSkills, paths } from '../scripts/gen-skills.ts';
 
-const OPENCODE_VERSION = '1.18.30';
+const OPENCODE_VERSION = '1.18.35';
 const OPENCODE = process.env.OPENCODE_BIN ?? 'opencode';
 const REQUIRED = process.env.OPENCODE_REQUIRED === 'true';
 const QUEUES = ['work-implement-queue', 'work-review-queue'];
@@ -144,7 +144,7 @@ function agent(name: string, env: NodeJS.ProcessEnv, cwd: string): Agent {
   return JSON.parse(configured.stdout) as Agent;
 }
 
-test('OpenCode 1.18.30 loads the linked skills and enforces queue permissions', (t) => {
+test('OpenCode 1.18.35 loads the linked skills and enforces queue permissions', (t) => {
   const version = run(['--version']);
   if (version.missing) {
     if (REQUIRED)

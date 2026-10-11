@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   opencode:
-    name: OpenCode 1.18.30
+    name: OpenCode 1.18.35
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     steps:
@@ -42,7 +42,7 @@ jobs:
       # opencode-ai fetches its platform binary in postinstall, which pnpm skips unless
       # the package is explicitly allowed to build.
       - name: Install the pinned OpenCode CLI
-        run: pnpm config set global-bin-dir "$HOME/.local/bin" && pnpm add --global --allow-build=opencode-ai opencode-ai@1.18.30 && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        run: pnpm config set global-bin-dir "$HOME/.local/bin" && pnpm add --global --allow-build=opencode-ai opencode-ai@1.18.35 && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Verify linked skill discovery and queue permissions
         env:
