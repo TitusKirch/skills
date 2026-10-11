@@ -52,7 +52,7 @@ Otherwise, for the chosen edge (its own `head` and `base`), by `release.promote`
 | `"create"`          | No such automation — the skill may open the PR itself, via `pull-request` with the edge's `base` and `head` (**optional**: absent, open the same PR with `gh` directly). **The only PR this skill ever opens, in any mode.** |
 
 - **Undrafting is what starts CI.** Where the repo's checks skip drafts (`if: github.event.pull_request.draft == false` + a `ready_for_review` trigger), the draft rollup PR has run **nothing**. Undraft first (`gh pr ready <n>`), _then_ wait for the checks that undrafting triggers — never read a draft's empty check list as "green".
-- **Checks green, then merge with a merge commit** — `gh pr merge <n> --merge`, never `--squash`. The individual `feat:`/`fix:` commits must stay visible or release-please cannot compute the bump. Fixed, not a preference — and it holds at **every** edge, which is what keeps a multi-stage chain's release artifacts conflict-free ([why](REFERENCE.md#promotion-chains)). A `base` whose ruleset forbids `merge` breaks release-please itself — **report that and stop**; it is a repo misconfiguration, not something to squash around.
+- **Checks green, then merge with a merge commit** — `gh pr merge <n> --merge --match-head-commit <assessed-sha>`, never `--squash`. Record the full head before gathering the promotion evidence, recheck its identity afterwards and show it in the confirmation plan. A changed head requires new validation and confirmation ([binding the head](REFERENCE.md#gh-recipes)). The individual `feat:`/`fix:` commits must stay visible or release-please cannot compute the bump. Fixed, not a preference — and it holds at **every** edge, which is what keeps a multi-stage chain's release artifacts conflict-free ([why](REFERENCE.md#promotion-chains)). A `base` whose ruleset forbids `merge` breaks release-please itself — **report that and stop**; it is a repo misconfiguration, not something to squash around.
 - **Then mark what shipped** — when this edge's `base` **is** the repo's default branch, the merge is the moment the promoted work reaches it, so the issues it carries become shipped. On **Linear** that is the one moment `work.linear.states.done` is written, by this skill and nothing else; on GitHub, and wherever the config leaves a precondition unmet — a mapping absent, a candidate filter that does not resolve — the step is **inert**, and inert is the only safe degradation: a query missing a filter selects more issues, not fewer, and this step ends in a write. It is bookkeeping for a merge the human already confirmed, so it is **listed in that merge's plan** rather than confirmed again — and a failure here is **reported, never retried into the merge**. Mechanics, and which issues qualify: [Marking shipped](REFERENCE.md#marking-shipped).
 
 ### 3. Wait for the release PR
@@ -63,7 +63,7 @@ Already open before step 2? Expected — release-please updates its existing PR 
 
 ### 4. Validate (gather facts — the human decides)
 
-Never merge on a heuristic. Collect and show:
+Never merge on a heuristic. Record the PR’s full head SHA and target identity before collecting evidence; re-read them afterwards and stop if they changed. The diff and checks must describe that head. Show the recorded SHA with the plan and confirmation ([recipe](REFERENCE.md#gh-recipes)). Collect and show:
 
 - **It is release-please's PR** — `release-please--*` head, `autorelease: pending`, authored by the release app. Anything else → not this skill's PR; stop.
 - **Checks** — `gh pr checks <n>`; every required check green.
@@ -78,6 +78,8 @@ After confirmation, merge it with a method the **release branch actually allows*
 
 - **Squash if allowed** — release-please's own convention, and right here for the mirror-image reason a merge commit is right in step 2: the release PR is one generated `chore(main): release …` commit and nothing downstream reads its history.
 - **Otherwise a merge commit.** A release branch that is also a **promotion target** is typically pinned to `merge` — the ruleset that keeps a promotion's individual commits visible binds every PR into that branch, release-please's included. Squashing there is not a preference the skill can hold; it is a merge the forge rejects.
+
+Both methods pass `--match-head-commit` with the full SHA from the confirmed assessment. Restore it from the run record in the current command; never query the latest head to populate the guard. Missing identity, an unsupported guard or a mismatch stops this run. A changed head needs fresh validation and confirmation, not a retry with a replacement SHA.
 
 Either way release-please then tags the release, and the workflow deletes the merged `release-please--*` branch.
 

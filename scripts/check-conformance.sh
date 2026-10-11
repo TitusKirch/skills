@@ -125,7 +125,8 @@ err="$(mktemp)"
 trap 'rm -f "$raw" "$err"' EXIT
 
 docker_rc=0
-docker run --rm -v "$REPO:/repo:ro" -w /tmp "$IMAGE" \
+docker run --rm --pull=always --cap-drop=ALL --security-opt no-new-privileges:true \
+  -v "$REPO:/repo:ro" -w /tmp "$IMAGE" \
   sh -c "$CONTAINER_SCRIPT" conformance "$VALIDATOR" "$VALIDATOR_MODULE" "${skill_dirs[@]}" \
   >"$raw" 2>"$err" || docker_rc=$?
 

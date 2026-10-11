@@ -17,18 +17,13 @@ Step 3 reads "the body **and** the comments". Here there is no comment stream: *
 `state` holds the config key (`ready`, `working`, …), never the `work.labels.*` string, and the `issue` skill never writes it on create — so a freshly filed issue carries **no `state:` line at all**. Step 3's inputs read:
 
 - **no lifecycle label** — no `state:` line, or one holding an empty value or `null`. The normal input, and on this tracker the shape a newly filed issue already has.
-- **anything in the lifecycle** — `state` matched against the config **keys** with the quote-tolerant matcher from **The file**, written out in full at its use rather than called from a shell helper the next process will not have.
+- **anything in the lifecycle** — the parsed top-level frontmatter `state` matched against the config **keys**, accepting bare or paired single/double quotes. Body text never supplies a state.
 
 `work.labels.needsTriage` names a **label**, and the only place a label lives in this file is the free-form `labels` array — a different field from `state`. So the pairing **Report output** prints as one command with two flags is here one edit touching **two lines**. Off by default here as everywhere: unset means no marker to read and none to report.
 
 ## Candidates, duplicates, already-solved
 
-**Candidates** — the negative label search in **Finding the candidates** inverts to `grep -L` over the store: every issue file naming **no** lifecycle key.
-
-```sh
-# Build the alternation from the resolved work.labels.* KEYS, dropping any that are false.
-grep -LE "^state:[[:space:]]*['\"]?(ready|working|reviewRequested|reviewing|changesRequested|needsHuman|done|blocked)['\"]?[[:space:]]*$" "$store"/*.md 2>/dev/null
-```
+**Candidates** — read only the opening YAML frontmatter of every issue in the absolute, existence-checked store. The first line must be `---` and a closing delimiter must exist. Parse the top-level `state` scalar, accepting bare, single-quoted and double-quoted values. An absent, empty or null state has no lifecycle; otherwise exclude states whose resolved `work.labels.*` mechanic is enabled. Missing/unclosed frontmatter, duplicate state keys, malformed scalars and unknown lifecycle keys are errors to report, not candidates. Use an available parser or a bounded inline parser, never whole-file `grep -L`: a code example in the body must not exclude an otherwise untriaged issue.
 
 Newest-first is `number` descending — the file tracker's stand-in for creation order, and stable where a directory listing is not.
 

@@ -27,9 +27,8 @@ after(() => boxes.forEach((b) => b.cleanup()));
  * rule, and a second walk in this file would answer it slightly differently — it
  * counted any directory, where the generator requires a SKILL.md in a known category.
  */
-function allSkills(): string[] {
-  return discoverSkills(paths(ROOT)).map((s) => s.path);
-}
+const skillPaths = discoverSkills(paths(ROOT)).map((s) => s.path);
+const allSkills = () => [...skillPaths];
 
 /** Markdown files a skill ships. */
 function docsOf(skillDir: string): string[] {
@@ -37,6 +36,15 @@ function docsOf(skillDir: string): string[] {
     .filter((f) => f.endsWith('.md'))
     .map((f) => join(skillDir, f));
 }
+
+// The published tree is immutable during this suite; fixture trees stay separate.
+const documents = new Map(
+  skillPaths.flatMap((path) =>
+    docsOf(join(ROOT, 'skills', path)).map(
+      (file) => [file, readFileSync(file, 'utf8')] as const
+    )
+  )
+);
 
 /**
  * Relative markdown link targets in `file`, ignoring pure anchors and URLs.
@@ -47,7 +55,7 @@ function docsOf(skillDir: string): string[] {
  * Treating those as links reported five false positives on the first run.
  */
 function relativeLinks(file: string): string[] {
-  const body = readFileSync(file, 'utf8')
+  const body = (documents.get(file) ?? readFileSync(file, 'utf8'))
     .replace(/```[\s\S]*?```/g, '')
     .replace(/`[^`\n]*`/g, '');
   return [...body.matchAll(/\]\(([^)]+)\)/g)]
@@ -60,17 +68,14 @@ function relativeLinks(file: string): string[] {
 
 /** Skills whose shipped markdown contains `tag` (an opening block marker). */
 function skillsWithTag(tag: string): string[] {
-  return allSkills().filter((p) =>
-    docsOf(join(ROOT, 'skills', p)).some((f) =>
-      readFileSync(f, 'utf8').includes(tag)
-    )
-  );
+  return allSkills().filter((p) => shippedText(p).includes(tag));
 }
 
 /** Everything a skill's own markdown says, as one string. */
 const shippedText = (path: string) =>
-  docsOf(join(ROOT, 'skills', path))
-    .map((f) => readFileSync(f, 'utf8'))
+  [...documents]
+    .filter(([file]) => dirname(file) === join(ROOT, 'skills', path))
+    .map(([, text]) => text)
     .join('\n');
 
 /**

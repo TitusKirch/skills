@@ -25,7 +25,7 @@ Skip that rule and the failure is **silent**, which is the shape this driver is 
 1. the drain leases `state: 'working'` in the store;
 2. the worker's worktree, branched off `pr.base` beforehand, still reads `state: 'ready'`;
 3. the worker advances to `reviewRequested` in whichever copy its cwd happens to land in — into the worktree, it either commits lifecycle churn onto the PR branch or dirties the tree and trips the clean-tree assert (**Lease & race rules** in `REFERENCE.md`); into the store, the PR branch still carries a stale `ready`;
-4. the review drain greps the store, sees no `reviewRequested`, and the issue is **invisible to the review queue** — indistinguishable from a drained one.
+4. the review drain reads the store, sees no `reviewRequested`, and the issue is **invisible to the review queue** — indistinguishable from a drained one.
 
 Two consequences follow from there being exactly one writable copy:
 
@@ -37,7 +37,7 @@ Two consequences follow from there being exactly one writable copy:
 1. the drain writes `state: 'working'` in the store while the tree is on `pr.base`;
 2. the tree hops onto `ai/0042-…`, and the store — same path, same tree — is now that branch's copy;
 3. the worker advances to `reviewRequested`; the write commits onto the **PR branch**, or dirties the tree;
-4. the tree hops back to `pr.base`, the review drain greps the store and sees no `reviewRequested` — **invisible to the review queue**, indistinguishable from a drained one. Step 4 of the walkthrough above, reached without breaking a single rule.
+4. the tree hops back to `pr.base`, the review drain reads the store and sees no `reviewRequested` — **invisible to the review queue**, indistinguishable from a drained one. Step 4 of the walkthrough above, reached without breaking a single rule.
 
 **So the store is written only while the tracker's tree is on `pr.base`.** The transition before the hop is written before it, the transition after the work is written after the hop back — never from the issue branch. This is a **rule about ordering, not about paths**, which is why the `$main` resolution above does not catch it, and it holds in every configuration: under `branch:<name>` the shared branch **is** `pr.base`, and under `parallel: true` the drain never leaves it, so the assert below is free there and load-bearing only in the hopping cell.
 
@@ -86,18 +86,11 @@ parent: null
 - **`assignee`** is what the reconcile's guard (**Reconcile** in `REFERENCE.md`) reads. It is only as distinct as the runner's own git identity, and nothing here proves it is per-runner — so the default-to-shared rule applies unchanged: take the **age-gated** path, never a bare-assignee reclaim.
 - **`labels`** is free-form and carries no lifecycle meaning; the loop never writes it.
 - **Nothing is ever deleted.** `done` and `blocked` are states, not removals — a skill never deletes or moves an issue file. Archiving is the repo's own business.
-- **Reading is quote-tolerant; writing is canonical.** The file is advertised as human-readable and hand-editable, and `state: ready` is as valid a YAML scalar as `state: 'ready'` — so a matcher that accepts only the quoted form drops a hand-written issue out of **every** queue, silently, exactly the way the empty-directory trap does. Every read therefore tolerates optional quotes and trailing space; every write emits the single-quoted form, so a file the loop has touched is canonical without a hand-written one being rejected:
+- **Read state only from opening frontmatter.** The first line must be `---`; the next delimiter closes the metadata. Parse the top-level `state` field only inside that block. A body example, nested field or later YAML fence never supplies state. Missing or unclosed frontmatter, duplicate `state` keys, malformed scalars and unknown lifecycle values are errors to report, not an empty queue or permission to proceed.
+- **Reading is quote-tolerant; writing is canonical.** Bare, single-quoted and double-quoted scalars denote the same lifecycle key; accept trailing whitespace and paired quotes. An absent field, empty value or YAML `null` means no lifecycle state, never `ready`. Writes emit the single-quoted form. Use an available YAML parser or a bounded parser for this documented scalar format; do not replace parsing with whole-file `grep`.
+- **Selection is not a claim.** Re-read that same frontmatter state at the worker's mandatory state decision and immediately before a transition. Every reader — implementation, review, refinement and resume — uses this boundary. A helper defined in an earlier shell call is unavailable in the next: include the parser in the command that uses it, or parse through the current tool directly. Never treat a failed parse as an empty matcher.
 
-  ```sh
-  # the one matcher — ONE regex, written out in full at each of its three uses
-  # (this loop's Eligible, work-review's selection, the transition guard below).
-  # $key is a config key; ERE, so quote it for grep -E:
-  "^state:[[:space:]]*['\"]?$key['\"]?[[:space:]]*$"
-  ```
-
-  **Inline it; never wrap it in a shell helper.** A `state_re()` function is the obvious deduplication and is wrong here for the reason stated twice already: **each command runs in its own process**, so a function defined in one command does not exist in the next. `$(state_re state ready)` then expands to the **empty string**, and `grep -qE ""` matches **any non-empty line** — the matcher does not fail, it matches everything, so the guard below passes unconditionally and the queries select the whole directory. Same failure shape as the empty `--label` **Selection query** in `REFERENCE.md` warns about, and the reason three written-out copies are cheaper than one definition that has to travel.
-
-  This is the opposite call from the `## AI review — round N` heading, whose exact wording **is** load-bearing because `work-review`'s round count parses it — and which says so where it is defined.
+The `## AI review — round N` heading is different: it is deliberately body content that the review loop counts. Restricting lifecycle reads to frontmatter does not move that history into metadata.
 
 ## Resolving the store, and the empty-directory trap
 
@@ -118,37 +111,20 @@ The check is that `$store` **exists**. A missing directory under `tracker: local
 
 ## Eligible
 
-```sh
-# the implement loop's two inputs, by config key; drop a key whose mechanic is off.
-# Quotes are optional in the file (see "The file"), so the match tolerates them.
-grep -lE "^state:[[:space:]]*['\"]?(ready|changesRequested)['\"]?[[:space:]]*$" "$store"/*.md 2>/dev/null
-```
+Read each issue's opening frontmatter from the absolute, existence-checked `$store`. Select only `ready` or `changesRequested`, dropping a state whose resolved label mechanic is `false`. A body containing either word or a literal `state:` line has no effect. A parser failure names the file and stops selection; it must not be reported as a drained queue.
 
 Order the matches by `priority` (above), then by `number` — the file tracker's stand-in for creation order, and stable in a way a filesystem listing is not.
 
 ## Writing a transition
 
-Every lifecycle move is one rewritten frontmatter line, written to a sibling temp file and **`mv`-ed over the issue** — so a crash leaves either the old file or the new one, never a half-written issue. Read-then-write in **one** command: these skills run each command in its own process, so a state read on one line is a stale fact by the next.
+Every lifecycle move reads, validates and writes **one parsed snapshot in one command**. Keep the main-tree assertion and the single-flight lock in force, then:
 
-```sh
-# $f is "$store/NNNN-slug.md" — always under the tracker's tree, never the current
-# worktree's copy. $from/$to are config keys, $who the runner identity.
-awk -v to="$to" -v who="$who" '
-  NR == 1 && $0 == "---" { fm = 1; print; next }
-  fm && $0 == "---"      { fm = 0; print; next }
-  fm && /^state:/        { print "state: \047" to "\047"; next }
-  fm && /^assignee:/     { print "assignee: " (who == "" ? "null" : "\047" who "\047"); next }
-                         { print }
-' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
-```
+1. Read the issue once; require a complete opening frontmatter block and at most one top-level `state` field. Parse the scalar using the read rules above.
+2. Compare the parsed state with the expected `$from` lifecycle key. A missing, malformed, duplicate or different state aborts **before any write**. `$from` and `$to` must be known lifecycle keys; neither comes from issue prose.
+3. Change only the frontmatter `state` and `assignee` in that snapshot, serializing strings with valid YAML quoting. Preserve the body byte-for-byte, including any body `state:` examples and review headings. Do not re-read the file with a second, weaker matcher to decide what to overwrite.
+4. Write the complete result to a sibling temporary file, then rename it over the issue only after parsing, the expected-state check and serialization all succeed. A failure leaves the original untouched and is reported.
 
-The write emits the **canonical quoted** form while the `/^state:/` match accepts whatever the file holds — the read-tolerant / write-canonical rule from [The file](#the-file), which is also why the guard below cannot be quote-strict. Guard it with the `$from` state in the **same** command, with the matcher [written out](#the-file) rather than called from a helper the next process will not have:
-
-```sh
-grep -qE "^state:[[:space:]]*['\"]?$from['\"]?[[:space:]]*$" "$f" || exit 1
-```
-
-so a run that lost the race stops instead of overwriting — and so the guard cannot fail **open**, which an unresolved helper would make it do silently. **This is no more a compare-and-swap than the label flip is** — as everywhere else in this file, **The single-flight lock** in `REFERENCE.md` is what makes multi-consumer safe within a checkout, and the reconcile's guard is what covers the clones it cannot see.
+The parser and guard belong in the **same invocation as the write**, not in an earlier shell process whose variables have disappeared. A successful queue selection is not a substitute for this guard. **This is no cross-clone compare-and-swap:** the single-flight lock in `REFERENCE.md` coordinates consumers sharing a checkout; the reconcile's assignee/age guard has its separately documented scope.
 
 ## Referencing the issue from git
 

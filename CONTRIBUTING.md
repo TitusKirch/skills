@@ -17,8 +17,8 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 Requirements:
 
-- Node **24+**
-- **pnpm 11**
+- Node **26+**
+- **pnpm 12** (the version pinned in `package.json`)
 
 Clone and install:
 
@@ -47,7 +47,11 @@ pnpm install   # wires husky hooks
 
 CI runs the same commands, one step per command, so a single run reports every failure rather than stopping at the first. A test (`test/ci-gate.test.ts`) asserts CI's step list still matches what `verify` composes, so keeping `pnpm verify` green locally is keeping CI green.
 
-**One check sits outside that gate.** `pnpm skills:conformance` validates every skill against the [Agent Skills specification](https://agentskills.io/specification) with the standard's own validator, pinned and run in a container — so it needs Docker, which is exactly why `pnpm verify` does not reach it and stays runnable with nothing but pnpm. A separate workflow runs it on any pull request that touches `skills/`. It re-tiers the Claude Code frontmatter extensions this repo deliberately uses ([ADR-0007](docs/99.adr/0007-permit-claude-code-frontmatter-extensions.md)) rather than failing on them, so a green run still reports them as non-portable.
+**Checks that need container tooling sit outside that gate.** `pnpm skills:conformance` validates every skill against the [Agent Skills specification](https://agentskills.io/specification) with the standard's own validator, pinned and run in a container — so it needs Docker, which is exactly why `pnpm verify` does not reach it and stays runnable with nothing but pnpm. A separate workflow runs it on any pull request that touches `skills/`. It re-tiers the Claude Code frontmatter extensions this repo deliberately uses ([ADR-0007](docs/99.adr/0007-permit-claude-code-frontmatter-extensions.md)) rather than failing on them, so a green run still reports them as non-portable.
+
+`pnpm containers:audit` needs Docker and Trivy. It scans the current Python image from the registry, builds the VHS template with refreshed system packages, and scans the resulting renderer. It prints finding counts and paths to JSON reports in a temporary directory; an optional directory argument keeps them where you choose. Exit 0 means no advisories, 1 means advisories were found, and 2 means a check could not run. These are image-package findings, independent of the skill-conformance verdict.
+
+OpenCode's exact version lives in `scripts/toolchain-versions.json`; the workflow and integration test both read it. To require the real CLI probe locally, set `OPENCODE_REQUIRED=true` and point `OPENCODE_BIN` at that version's executable when running `pnpm verify`.
 
 ## Branching & PRs
 

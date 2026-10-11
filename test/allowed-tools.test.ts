@@ -432,11 +432,6 @@ const UNDEMONSTRATED: Record<string, { why: string; detail: string }> = {
     detail:
       'the body is built from `git log` and `git diff` over the branch; no recipe reads a PR diff'
   },
-  'repo/release Bash(gh pr view:*)': {
-    why: 'undemonstrated',
-    detail:
-      'the release PR is read with `gh pr list --base` and `gh pr checks`; the one diff recipe spells `gh pr diff`, which this list does not grant at all'
-  },
   'work/handoff Bash(git rev-parse:*)': {
     why: 'undemonstrated',
     detail:

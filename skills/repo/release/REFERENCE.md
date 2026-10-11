@@ -115,8 +115,14 @@ The reference shape is a workflow on push to `head` that opens a **draft** `base
 ```bash
 gh pr list --base "$base" --head "$head" --state open --json number,isDraft,author,title
 gh pr ready "$n"                 # starts CI where checks skip drafts
-gh pr checks "$n" --watch        # bounded by release.timeout
-gh pr merge "$n" --merge         # merge commit — never squash
+# Capture the full head before collecting this promotion's evidence; record it in the plan.
+assessed_head=$(gh pr view "$n" --json headRefOid --jq '.headRefOid') || exit 1
+test -n "$assessed_head" || exit 1
+gh pr checks "$n" --watch || exit 1   # bounded by release.timeout
+test "$(gh pr view "$n" --json headRefOid --jq '.headRefOid')" = "$assessed_head" || exit 1
+# After validating this head and obtaining confirmation for its recorded SHA:
+test -n "$assessed_head" || exit 1
+gh pr merge "$n" --merge --match-head-commit "$assessed_head"   # never squash
 ```
 
 ### `"create"`
@@ -225,12 +231,18 @@ gh pr list --base "$base" --state open \
 git log "$(git describe --tags --abbrev=0)..origin/$base" --pretty='%s'
 ```
 
-**Validate the release PR:**
+**Bind validation and confirmation to one head**, for both a promotion PR and the release PR. Record the resolved host/repository, request number, base/head branches and full `headRefOid` before gathering the diff, bump, changelog and check evidence. Re-read that identity after gathering evidence; if it changed, discard the assessment and stop. Show the recorded SHA in the confirmation plan. A check or diff fetched for another head does not satisfy this assessment.
 
 ```bash
-gh pr checks "$n"
-gh pr diff "$n" -- .release-please-manifest.json CHANGELOG.md
+assessed_head=$(gh pr view "$n" --json headRefOid --jq '.headRefOid') || exit 1
+test -n "$assessed_head" || exit 1
+gh pr checks "$n" \
+  && gh pr diff "$n" \
+  && test "$(gh pr view "$n" --json headRefOid --jq '.headRefOid')" = "$assessed_head" \
+  && printf 'assessed-head=%s\n' "$assessed_head"
 ```
+
+Inspect the manifest and changelog in that diff and apply the checklist below; printing a SHA is not a green assessment on its own. Persist the full SHA with the assessment in this run's record. When confirmation arrives in a later tool call, restore `$assessed_head` from that record's literal value, not from a fresh current-head query. Immediately before merging, recheck the resolved host/repository, request number and base/head branches against the recorded identity. Missing identity, a changed target, an unsupported CLI flag or a head mismatch means stop and report. A new head needs new validation and human confirmation; never retry with a substituted SHA, omit the guard or use `--admin` to bypass it. A resumed run starts a new assessment.
 
 **Merge it** — with a method the release branch allows, read from the forge rather than assumed:
 
@@ -241,8 +253,10 @@ methods=$(gh api "repos/{owner}/{repo}/rules/branches/$base" \
 ```
 
 ```bash
-gh pr merge "$n" --squash        # preferred — release-please's own convention
-gh pr merge "$n" --merge         # when the branch is pinned to merge commits
+test -n "$assessed_head" || exit 1
+# Choose exactly one permitted method; both bind to the confirmed assessment.
+gh pr merge "$n" --squash --match-head-commit "$assessed_head"
+gh pr merge "$n" --merge --match-head-commit "$assessed_head"
 ```
 
 `rules/branches/<branch>` returns the **effective** rules for that branch — every ruleset that applies, already resolved — so it answers for `~DEFAULT_BRANCH` targeting and overlapping rulesets alike, which a raw `rulesets` listing does not. Why a release branch commonly answers `["merge"]`: [SKILL.md](SKILL.md#5-merge-then-report).
