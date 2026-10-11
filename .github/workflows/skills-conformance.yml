@@ -39,7 +39,7 @@ jobs:
       # on no Python of its own, which is the whole point of the Docker choice.
       - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
 
       # The script, not `pnpm skills:conformance`, only so the job needs no pnpm
       # setup for a run that installs nothing — the pnpm script is a one-line alias

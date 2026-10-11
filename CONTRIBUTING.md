@@ -17,8 +17,8 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 Requirements:
 
-- Node **24+**
-- **pnpm 11**
+- Node **26+**
+- **pnpm 12** (the version pinned in `package.json`)
 
 Clone and install:
 
