@@ -1,0 +1,36 @@
+{
+  "_comment": "Development-only behavioral cases. Run with and without the skill in disposable fixtures and compare outcomes; these expectations are not captured passing results. All forge responses and lifecycle facts are supplied by the evaluator, all mutations are recording stubs, and no live tools or credentials are used.",
+  "skill_name": "work-implement",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Select the next eligible local issue. The main tree is on pr.base and the lock is held. Issue 0041 has frontmatter state: blocked and a body code example containing state: ready. Issue 0042 has frontmatter state: \"ready\". Use only the supplied fixture facts; report the selected issue and intended first state change, without implementing or contacting a forge.",
+      "expected_output": "Only 0042 is selected; body text cannot authorize 0041.",
+      "expectations": [
+        "Selects 0042 and leaves 0041 untouched.",
+        "Reads only opening frontmatter and accepts paired double quotes.",
+        "Rechecks expected frontmatter state before proposing ready to working."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "A ready issue was selected, but before claiming it its opening frontmatter changes to done; the body still includes state: ready. Describe the claim outcome and file effects without doing work.",
+      "expected_output": "The claim aborts without a tracker write.",
+      "expectations": [
+        "Does not rely on the earlier queue result.",
+        "Rejects the changed expected state before writing.",
+        "Preserves the original issue and body."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Select local issues from four files: one has two top-level state keys (blocked and ready); one has no closing frontmatter delimiter; one has complete frontmatter without state but a body state: ready example; one has complete frontmatter state: ready. Report parsing and eligibility without mutations.",
+      "expected_output": "Malformed files are reported; missing state is not readiness.",
+      "expectations": [
+        "Reports duplicate keys and unclosed frontmatter as errors.",
+        "Does not treat body text or absent state as ready.",
+        "Does not silently report a clean or empty queue when parsing failed."
+      ]
+    }
+  ]
+}

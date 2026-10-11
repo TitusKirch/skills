@@ -1,0 +1,16 @@
+{
+  "_comment": "Development-only behavioral cases. Run with and without the skill in disposable fixtures and compare outcomes; these expectations are not captured passing results. All forge responses and lifecycle facts are supplied by the evaluator, all mutations are recording stubs, and no live tools or credentials are used.",
+  "skill_name": "refine-issue",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Find local refinement candidates with all lifecycle mechanics enabled. Issue 0041 has complete opening frontmatter without state and a body example state: ready. Issue 0042 has frontmatter state: ready. Issue 0043 has duplicate frontmatter state keys. Report classification only; do not refine or write.",
+      "expected_output": "The body example does not exclude 0041; 0042 is lifecycle-owned; 0043 is an error.",
+      "expectations": [
+        "Treats 0041 as lacking lifecycle state.",
+        "Excludes 0042 from refinement.",
+        "Reports duplicate state on 0043 instead of silently including it."
+      ]
+    }
+  ]
+}

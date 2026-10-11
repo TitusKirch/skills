@@ -1,0 +1,16 @@
+{
+  "_comment": "Development-only behavioral cases. Run with and without the skill in disposable fixtures and compare outcomes; these expectations are not captured passing results. All forge responses and lifecycle facts are supplied by the evaluator, all mutations are recording stubs, and no live tools or credentials are used.",
+  "skill_name": "work-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Select a local issue awaiting review. Issue 0041 has opening frontmatter state: done and body text state: reviewRequested. Issue 0042 has opening frontmatter state: 'reviewRequested'. Use these facts only and report selection and the intended lease; perform no review or writes.",
+      "expected_output": "Only 0042 is selected for a frontmatter-guarded review lease.",
+      "expectations": [
+        "Ignores 0041 body state.",
+        "Accepts single-quoted frontmatter.",
+        "Requires a fresh expected-state check before reviewing lease."
+      ]
+    }
+  ]
+}

@@ -304,17 +304,11 @@ test -n "$review" && gh issue list --state open --label "$review" --json number,
 
 **Never pass `--label "$review"` unguarded.** With `labels.reviewRequested: false` the label mechanic is off and the PR's existence is the signal — select on that instead; do **not** fall through to a label query with an empty value.
 
-**`local`** — the queue is a `grep` over the issue directory, matching the **config key** in each file's `state` field rather than a label string:
+**`local`** — read the opening YAML frontmatter of each issue in the absolute, existence-checked `$store` in the main working tree. Select the top-level `state` value `reviewRequested`, never a body match or a lifecycle label string. Bare, single-quoted and double-quoted scalars are equivalent; an absent, empty or null state is not eligible. Missing/unclosed frontmatter, duplicate state keys, malformed scalars and unknown lifecycle keys are errors to report, not an empty queue. When `labels.reviewRequested` is `false`, use the configured alternative signal rather than selecting that disabled state.
 
-```sh
-# $store is the ABSOLUTE store path — the main working tree's issue directory, resolved
-# as in work-implement's trackers/local.md. Never a bare "$dir":
-# it is repo-relative and each of these commands runs in its own process with no
-# guaranteed cwd. Quotes are optional in the file, so the match tolerates them.
-grep -lE "^state:[[:space:]]*['\"]?reviewRequested['\"]?[[:space:]]*$" "$store"/*.md 2>/dev/null
-```
+At the worker's mandatory state read and lease transition, parse the same frontmatter boundary again. A body example containing `state: reviewRequested` cannot supply readiness. Parse and check the expected state in the same invocation as a transition, using one snapshot and preserving all body bytes; do not carry a parser helper or shell variable across tool calls. The main-tree assertion and lock still apply. Layout, store anchoring and the transition contract are stated in `work-implement`'s local tracker recipe; this selection does not depend on running a helper from that skill.
 
-The empty-result trap is the same shape and worse: a missing directory globs to nothing and reads exactly like a drained queue, so assert `$store` exists before selecting. Layout, fields, the anchoring and the transition write: `work-implement`'s `trackers/local.md`.
+A missing store is a setup error, never a drained queue. Check it exists before enumerating files.
 
 ## The `reviewing` lease
 
