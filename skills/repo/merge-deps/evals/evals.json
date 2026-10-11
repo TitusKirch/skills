@@ -1,0 +1,36 @@
+{
+  "_comment": "Development-only behavioral cases. Run with and without the skill in disposable fixtures and compare outcomes; these expectations are not captured passing results. All forge responses and lifecycle facts are supplied by the evaluator, all mutations are recording stubs, and no live tools or credentials are used.",
+  "skill_name": "merge-deps",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Assess an authorized Dependabot patch PR #42 using only these recorded facts. Full SHA A is 1111111111111111111111111111111111111111; its detached worktree passed the configured gate and was removed. The assessment and plan name A. Before merging, the PR advances to B=2222222222222222222222222222222222222222. mergeDeps.merge is patch and confirmation policy is major. Show the intended merge invocation or hold decision; do not contact a forge or execute commands.",
+      "expected_output": "The update is held or the guarded merge is rejected; B is never substituted into A’s assessment.",
+      "expectations": [
+        "Preserves full A after worktree cleanup.",
+        "Uses --match-head-commit A if showing a merge command.",
+        "Does not refresh expected SHA to B or omit the guard.",
+        "Requires full reassessment including bump tier before a later merge."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Assess an authorized Renovate MR !42 on GitLab from recorded facts only. SHA A=1111111111111111111111111111111111111111 passed local verification. The project is fast-forward-only and the MR now requires rebasing. Show the next action without sending anything.",
+      "expected_output": "Hand back for bot rebase and reassess the resulting head; no merge-time rebase.",
+      "expectations": [
+        "Does not combine merge with --rebase after A’s assessment.",
+        "Requires --sha with the newly assessed literal for a later merge.",
+        "Keeps bot authorship and configured confirmation gates."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "A prior run says dependency PR #42 was green, but has no full assessed SHA; the worktree is gone. The current head and checks look green. Show what merge-deps does next, without external calls.",
+      "expected_output": "A missing run-bound assessment cannot authorize a merge.",
+      "expectations": [
+        "Does not use a current-head query as a replacement for the missing assessed SHA.",
+        "Reassesses the current request before any merge."
+      ]
+    }
+  ]
+}

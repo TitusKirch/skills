@@ -351,13 +351,15 @@ git fetch origin "pull/$n/head" \
 # $install comes from the head's own lockfile — see "Running the repo's checks".
 # It is part of the gate: if it fails, the PR is red, and that is the finding.
 ( cd "$(git rev-parse --git-common-dir)/tituskirch-skills/merge-deps/$n" \
-    && eval "$install" && eval "$verify" )   # exit status is the gate
+    && assessed_head=$(git rev-parse --verify HEAD) \
+    && eval "$install" && eval "$verify" \
+    && printf 'verified-head=%s\n' "$assessed_head" )   # emitted only after a green gate
 git worktree remove "$(git rev-parse --git-common-dir)/tituskirch-skills/merge-deps/$n"
 ```
 
 **The head is checked out detached, so there is no branch to clean up.** Fetching it into a local `merge-deps-$n` branch would leave one behind that only `git branch -D` removes — `-d` refuses it, because a PR head is unmerged by construction — and `-D` is exactly what a repo's `.claude/settings.json` denies. With no branch there is nothing to delete, and the `--force` on the removal goes with it: the tree holds only what the install wrote, which is gitignored and which `git worktree remove` therefore does not count. A refusal here means the head left untracked, non-ignored files behind, which is a finding about the PR rather than an obstacle to force past.
 
-**The fetch and the checkout are one command, and that is what replaces the branch's stability.** A named branch could not be moved by anything else; `FETCH_HEAD` is rewritten by **any** other fetch in the repository, and this skill drains many PRs unattended in a repo a person may also be using. Left across two commands the recipe would verify whatever the last fetch happened to leave there and then **merge the PR it believed it verified** — a wrong merge rather than a failed run. Joining them closes that window without a branch to delete: one process fetches, resolves `FETCH_HEAD` and checks the commit out, so no step of this skill can interleave. Another process in the same repository still can — the window is microseconds rather than minutes, not zero. **Splitting the line back apart reopens it**, and a shell variable is no substitute — these skills run each command in its own short-lived process, so a `head_sha=` captured in one call is gone by the next. What this does **not** cover is the PR moving between the gate and the merge; that race predates this recipe and belongs to the merge step.
+**The fetch and the checkout are one command, and that is what replaces the branch's stability.** A named branch could not be moved by anything else; `FETCH_HEAD` is rewritten by **any** other fetch in the repository, and this skill drains many PRs unattended in a repo a person may also be using. Left across two commands the recipe would verify whatever the last fetch happened to leave there and then **merge the PR it believed it verified** — a wrong merge rather than a failed run. Joining them closes that window without a branch to delete: one process fetches, resolves `FETCH_HEAD` and checks the commit out, so no step of this skill can interleave. Another process in the same repository still can — the window is microseconds rather than minutes, not zero. **Splitting the line back apart reopens it**, and a shell variable is no substitute — these skills run each command in its own short-lived process, so a `head_sha=` captured in one call is gone by the next. The later gate-to-merge window is closed separately by the expected-head condition below; joining the fetch and checkout is not a substitute for that condition.
 
 **The tree's path is derived for the same reason, and this is the sharper case.** A `tmp=$(mktemp -d)` cannot be carried to the next command either, and `mktemp` returns a random name nothing can reconstruct — so every later command addresses an **empty** path. That does not fail in any way a run would notice: `git worktree add --detach "" …` trips an internal git assertion (`BUG: builtin/worktree.c:275`), and `cd ""` **succeeds and stays put**, so the install and the gate run in the user's own tree — precisely what the heading above promises they will not. Deriving the path from the PR number instead means any command can recompute it and none has to remember it, the same reason the shared caches live under `$(git rev-parse --git-common-dir)/tituskirch-skills/`. `mktemp -d` stays workable only if every command touching the tree is joined into the one that created it.
 
@@ -367,6 +369,10 @@ git worktree remove "$(git rev-parse --git-common-dir)/tituskirch-skills/merge-d
 
 **The tree lives under `tituskirch-skills/merge-deps/`, not `…/work/`.** Nothing collided there, but `work/` is the directory the **single-flight lock spec** claims for the `work-*` loops, and this is a `repo/` skill — a namespace that says which skill owns it costs nothing and stops a later reader from inferring that this drain is part of the work lifecycle. `$n` is the PR number, so one subdirectory per PR.
 
+**Keep the assessed identity after removing the worktree.** Record the full commit from the successful `verified-head` result alongside the resolved forge host, repository, request number and target branch in this run's assessment. The diff, bump classification and check evidence must describe that same head; if the forge head changes while collecting them, hold the request. A failed gate produces no valid assessment. The SHA is source identity, not proof that checks passed: derive it from the worktree and the gate's exit status, never from a marker printed by dependency/test output alone.
+
+**Bind every merge to that recorded SHA.** The forge supports this through [GitHub’s `--match-head-commit`](https://cli.github.com/manual/gh_pr_merge) and [GitLab’s `--sha`](https://docs.gitlab.com/cli/mr/merge/). In each later shell call, populate `$assessed_head` from the full literal in the assessment record; shell variables from the verification call do not survive. Never refill it by querying the request's current head. Show the SHA in the plan and bind any required confirmation to that assessment. Recheck the resolved host/repository, request number and target branch before merging; a retargeted request requires a fresh assessment too. Missing identity, an unsupported CLI flag or a head mismatch means **hold and report**. A replacement head requires a fresh assessment, classification and, where required, new confirmation; do not retry by changing the expected SHA or dropping the guard. Resumed runs re-assess rather than reusing another run's record.
+
 **Merge — directly, with the method the PR's own base allows:**
 
 ```bash
@@ -375,7 +381,9 @@ methods=$(gh api "repos/{owner}/{repo}/rules/branches/$base" \
   --jq '[.[] | select(.type == "pull_request") | .parameters.allowed_merge_methods] | add')
 # ["squash"] → --squash   ["merge"] → --merge   empty/null → unrestricted, prefer --squash
 
-gh pr merge "$n" --squash --delete-branch
+# $assessed_head is the full SHA recorded by this run's successful assessment.
+test -n "$assessed_head" || exit 1
+gh pr merge "$n" --squash --delete-branch --match-head-commit "$assessed_head"
 ```
 
 `rules/branches/<branch>` returns the **effective** rules for that branch, every applicable ruleset already resolved — the same read `release` performs, and the reason neither skill carries a hardcoded method. Read it **per PR**: [the queue is mixed across bases](#the-two-bases), and `allowed_merge_methods` binds a branch.
@@ -439,13 +447,15 @@ git fetch origin "refs/merge-requests/$n/head" \
 
 ```bash
 glab api "projects/:id" --jq '{merge_method, squash_option, remove_source_branch_after_merge}'
-# merge_method: "merge" → a merge commit · "rebase_merge" → semi-linear · "ff" → --rebase required
+# merge_method: "merge" → merge commit · "rebase_merge" → semi-linear · "ff" → head must already fast-forward
 # squash_option: "always"/"default_on" → --squash · "never" → never pass it · "default_off" → caller's choice
 
-glab mr merge "$n" --squash --remove-source-branch --yes
+# Restore the assessed SHA from this run's record, never from the MR's current head.
+test -n "$assessed_head" || exit 1
+glab mr merge "$n" --squash --remove-source-branch --yes --sha "$assessed_head"
 ```
 
-- **`ff` is the one that bites.** A fast-forward-only project **rejects** a merge commit, so an MR behind its target has to be rebased before it can land at all — pass `--rebase`, or hand it back ([below](#cascading-rebase)) if the rebase would have to regenerate a lockfile.
+- **`ff` is the one that bites.** A fast-forward-only project **rejects** a merge commit, so an MR behind its target has to be rebased before it can land at all — hand it back ([below](#cascading-rebase)), then assess the resulting head from scratch. Do not use merge-time `--rebase`: rebasing changes the commit that the gate and approval covered.
 - **`squash_option: "never"` means never pass `--squash`**, not "prefer not to": GitLab refuses the merge rather than ignoring the flag.
 - **`--remove-source-branch` is `--delete-branch`'s counterpart**, and `remove_source_branch_after_merge` on the project may already do it — passing it anyway is harmless and keeps the close-out this skill's.
 
