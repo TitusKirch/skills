@@ -60,6 +60,8 @@ Per selected request, gather facts. **Never merge on a heuristic.**
 
 **No `mergeDeps.verify` configured _and_ the base's checks don't cover the change → hold and report.** The skill has no basis to call it safe, and says so rather than merging.
 
+**Verification must not inherit operator authority.** A detached worktree supplies source, not a sandbox. Run installation and checks only inside the OS-enforced runner specified in [Running the repo's checks](REFERENCE.md#running-the-repos-checks), with no operator credentials and scratch-only writes. If that boundary or its dependency inputs are unavailable, hold the request as unverified; never fall back to native execution.
+
 ### 4. Merge — directly, with the forge's own CLI
 
 Gated by `mergeDeps.merge` ([modes](REFERENCE.md#merge-modes)); default `false` — **report-only** — so merging is opt-in. Once opted in, `mergeDeps.confirm` ([when it asks](REFERENCE.md#confirmation)) decides which merges still wait for a human: a **major always does**; the low-risk tier the mode allows (patch / minor / grouped) rides the opt-in unless `confirm` is `"always"`.
