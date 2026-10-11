@@ -10,7 +10,13 @@
 
 import { test, describe, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  readFileSync,
+  existsSync,
+  writeFileSync,
+  rmSync
+} from 'node:fs';
 import { join } from 'node:path';
 import { registry, type Registry } from './helpers.ts';
 import {
@@ -330,6 +336,46 @@ describe('discovery', () => {
     assert.deepEqual(
       groups.map((g) => g.category),
       ['repo', 'work']
+    );
+  });
+});
+
+describe('optional files do not hide read failures', () => {
+  for (const relative of [
+    'skills/repo/alpha/REFERENCE.md',
+    'skills/repo/README.md',
+    'skills/repo/alpha/templates/resolve-config.sh'
+  ]) {
+    test(`${relative}: an existing unreadable file fails the run`, () => {
+      const { root } = open();
+      main(['--write'], root);
+      const file = join(root, relative);
+      rmSync(file, { force: true });
+      mkdirSync(file);
+      assert.throws(() => main(['--check'], root), {
+        code: 'EISDIR',
+        path: file
+      });
+    });
+  }
+
+  test('a new run sees a document changed after the previous run', () => {
+    const { root } = open();
+    main(['--write'], root);
+    const file = join(root, 'skills/repo/alpha/SKILL.md');
+    writeFileSync(
+      file,
+      readFileSync(file, 'utf8').replace(
+        'summary: carries the config block',
+        'summary: changed summary'
+      )
+    );
+    assert.equal(main(['--check'], root).code, 1);
+    main(['--write'], root);
+    assert.equal(main(['--check'], root).code, 0);
+    assert.match(
+      readFileSync(join(root, 'README.md'), 'utf8'),
+      /changed summary/
     );
   });
 });

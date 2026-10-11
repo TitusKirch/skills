@@ -29,6 +29,35 @@ import process from 'node:process';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+function readText(file: string): string {
+  try {
+    return readFileSync(file, 'utf8');
+  } catch (err) {
+    const error = err as NodeJS.ErrnoException;
+    error.path ??= file;
+    error.message = `${file}: ${error.message}`;
+    throw error;
+  }
+}
+
+// A snapshot belongs to one run: discovery and mirroring see the same documents,
+// while the next run sees edits made since then. Only an absent file is optional.
+class Documents {
+  private contents = new Map<string, string | undefined>();
+
+  read(file: string): string | undefined {
+    if (!this.contents.has(file)) {
+      try {
+        this.contents.set(file, readText(file));
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+        this.contents.set(file, undefined);
+      }
+    }
+    return this.contents.get(file);
+  }
+}
+
 // Every path the generator touches, derived from one root. The root is an argument
 // rather than a module constant because the artifacts are what needs checking, and
 // checking them means letting a run produce them: a test points the whole generator
@@ -80,64 +109,6 @@ const NOTE =
 const CONFIG_OPEN = '<skills-config>';
 const CONFIG_OPEN_RE = /<skills-config\b[^>]*>/;
 const CONFIG_END = '</skills-config>';
-
-// The author-authority rule is the second thing mirrored into skills. It follows the
-// config block's mechanic — one source, drift-checked — but in two variants keyed by what
-// text a skill acts on: the full rule for skills acting on text from an identifiable
-// author, a reduced form for skills reading author-less third-party text. Matched by exact
-// literal tag (with the closing `>`), so `<skills-authority>` never accidentally captures
-// `<skills-authority-reduced>`.
-const AUTHORITY_FULL_OPEN = '<skills-authority>';
-const AUTHORITY_FULL_END = '</skills-authority>';
-const AUTHORITY_REDUCED_OPEN = '<skills-authority-reduced>';
-const AUTHORITY_REDUCED_END = '</skills-authority-reduced>';
-
-// The check command is the third mirrored contract, and the one with the most to lose from
-// drift: how a skill reaches for `verify` decides whether it runs the repo's gate or a guess
-// at it. Two variants keyed by the tree the command runs in — base for the working tree,
-// isolated for someone else's head, where nothing is installed. Same exact-literal matching
-// as above, so `<skills-verify>` never captures `<skills-verify-isolated>`.
-const VERIFY_BASE_OPEN = '<skills-verify>';
-const VERIFY_BASE_END = '</skills-verify>';
-const VERIFY_ISOLATED_OPEN = '<skills-verify-isolated>';
-const VERIFY_ISOLATED_END = '</skills-verify-isolated>';
-
-// The fourth mirrored contract, and the only one that does not reach every skill using the
-// mechanic: it goes to the two work-loop *units*, not to the two queues that take the lock.
-// A queue cannot run without its worker — it names it and checks for it before any state
-// change — so it names the worker's REFERENCE for the spec rather than carrying a second
-// copy in a `SKILL.md` that has no REFERENCE to keep it out of the load path. What the
-// mirroring still prevents is what the queues did before it existed: cite a *path* an
-// installed copy does not have, and then write the load-bearing half out again anyway, in
-// two wordings that had already diverged by a clause. Naming a skill is not citing a path.
-const WORKLOCK_OPEN = '<skills-worklock>';
-const WORKLOCK_END = '</skills-worklock>';
-
-// The fifth mirrored contract, and the first about the skill's *output* — the one below is
-// its other half: a plan is read once, in a terminal, so it has to render there. The four
-// contracts above are about what a skill reads or runs; this one is about what arrives in
-// front of the human deciding. It was mirrored rather than written per skill because the
-// failure it prevents is silent — a plan folded into `<details>` prints its summary and
-// nothing else — and every plan-presenting skill is one wording away from re-inventing it.
-const PLAN_OPEN = '<skills-plan>';
-const PLAN_END = '</skills-plan>';
-
-// The sixth, and the other half of the one above: the plan block says a report may hide
-// nothing, this one says what it opens with. They govern the same message from opposite
-// ends, which is why the roster here is a subset of that one rather than a list of its own
-// kind — a skill leads with a result only where it ends by reporting one. Split into two
-// blocks rather than folded into the plan body because the criteria differ: everything a
-// skill puts in front of a human has to render, while only the account a run *ends* with
-// has a result to lead with.
-const TLDR_OPEN = '<skills-tldr>';
-const TLDR_END = '</skills-tldr>';
-
-// The seventh, and the only one about where a skill is *pointing*: which forge drives the repo
-// and which host that forge lives on. It is mirrored rather than left per skill because the
-// host half fails silently — every skill assumed one instance, and a self-hosted GitLab or a
-// GitHub Enterprise repo is served the public host by a run that never noticed it guessed.
-const FORGE_OPEN = '<skills-forge>';
-const FORGE_END = '</skills-forge>';
 
 // The Agent Skills spec caps `description` at 1024 characters, and that cap is a cliff:
 // a skill one character over is non-conformant, and nothing about writing a description
@@ -243,7 +214,7 @@ const CATEGORIES: Record<Category, { title: string; description: string }> = {
   }
 };
 
-export function discoverSkills(p: Paths): Skill[] {
+export function discoverSkills(p: Paths, documents = new Documents()): Skill[] {
   const categories = readdirSync(p.skills, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name);
@@ -264,20 +235,8 @@ export function discoverSkills(p: Paths): Skill[] {
         .map((entry) => entry.name)
         .sort()
         .map((dir): Skill | null => {
-          let raw;
-          try {
-            raw = readFileSync(
-              join(p.skills, category, dir, 'SKILL.md'),
-              'utf8'
-            );
-          } catch (err) {
-            // No SKILL.md means the directory is not a skill — skip it. Any other
-            // read failure is not that, and swallowing it would drop the skill from
-            // all eleven artifacts in one silent `--write`, reporting success while
-            // deleting a published skill's row, entry and grouping.
-            if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
-            throw err;
-          }
+          const raw = documents.read(join(p.skills, category, dir, 'SKILL.md'));
+          if (raw === undefined) return null;
           const fm = parseFrontmatter(raw);
           const summary = fm['metadata.summary'];
           return {
@@ -351,7 +310,7 @@ export function expectedTableTokens(groups: Group[]): string[] {
 }
 
 export function syncReadme(p: Paths, groups: Group[], check: boolean): boolean {
-  const content = readFileSync(p.readme, 'utf8');
+  const content = readText(p.readme);
   const from = content.indexOf(START);
   const to = content.indexOf(END);
   if (from === -1 || to === -1) {
@@ -396,8 +355,9 @@ export function syncCategoryReadmes(
     const expected = renderCategoryReadme(group);
     let current = '';
     try {
-      current = readFileSync(file, 'utf8');
-    } catch {
+      current = readText(file);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
       current = '';
     }
     if (norm(current) !== norm(expected)) {
@@ -418,10 +378,7 @@ function syncJsonKey(
   expected: unknown,
   check: boolean
 ): boolean {
-  const data = JSON.parse(readFileSync(file, 'utf8')) as Record<
-    string,
-    unknown
-  >;
+  const data = JSON.parse(readText(file)) as Record<string, unknown>;
   const drift = JSON.stringify(data[key] ?? []) !== JSON.stringify(expected);
   if (drift && !check) {
     data[key] = expected;
@@ -472,101 +429,72 @@ export function syncPlugin(p: Paths, skills: Skill[], check: boolean): boolean {
 // still run the script. Keying it on the block alone would freeze their copy at whatever
 // was last committed, drift-checked by nothing.
 const RESOLVER_PATH = 'templates/resolve-config.sh';
-export function configBody(p: Paths): string {
-  const raw = readFileSync(p.configBlock, 'utf8');
-  const marker = '<!-- config:body -->';
-  const at = raw.indexOf(marker);
-  if (at === -1) {
-    throw new Error(`${p.configBlock}: missing ${marker}`);
+// Split one canonical source into ordered sections. All contracts share the same
+// marker validation; only verify composes its base and install sections.
+function sections(file: string, names: string[]): string[] {
+  const raw = readText(file);
+  const markers = names.map((name) => `<!-- ${name} -->`);
+  const offsets = markers.map((marker) => raw.indexOf(marker));
+  for (const [index, offset] of offsets.entries()) {
+    if (
+      offset === -1 ||
+      (index > 0 && offset <= (offsets[index - 1] as number))
+    ) {
+      throw new Error(`${file}: missing or misordered ${markers.join(' / ')}`);
+    }
   }
-  return raw.slice(at + marker.length).trim();
+  return offsets.map((offset, index) =>
+    raw
+      .slice(offset + (markers[index] as string).length, offsets[index + 1])
+      .trim()
+  );
 }
 
-// The authority source holds both variants, split by markers: the full body runs from
-// `<!-- authority:full -->` to `<!-- authority:reduced -->`, the reduced body from there
-// to the end. Each is trimmed and mirrored verbatim into its own tag.
-export function authorityBody(p: Paths, variant: 'full' | 'reduced'): string {
-  const raw = readFileSync(p.authorityBlock, 'utf8');
-  const fullMarker = '<!-- authority:full -->';
-  const reducedMarker = '<!-- authority:reduced -->';
-  const fullAt = raw.indexOf(fullMarker);
-  const reducedAt = raw.indexOf(reducedMarker);
-  if (fullAt === -1 || reducedAt === -1 || reducedAt < fullAt) {
-    throw new Error(
-      `${p.authorityBlock}: missing or misordered ${fullMarker} / ${reducedMarker}`
-    );
-  }
-  return variant === 'full'
-    ? raw.slice(fullAt + fullMarker.length, reducedAt).trim()
-    : raw.slice(reducedAt + reducedMarker.length).trim();
+interface Contract {
+  label: string;
+  variants: { open: string; end: string; body: string }[];
 }
 
-// The verify source runs base body → `<!-- verify:isolated -->` → install section. Unlike the
-// authority variants, which are alternatives, `isolated` is base *plus* the install section:
-// composed here rather than written out twice, so the half both variants share cannot drift
-// against itself inside its own source file.
-export function verifyBody(p: Paths, variant: 'base' | 'isolated'): string {
-  const raw = readFileSync(p.verifyBlock, 'utf8');
-  const baseMarker = '<!-- verify:base -->';
-  const isolatedMarker = '<!-- verify:isolated -->';
-  const baseAt = raw.indexOf(baseMarker);
-  const isolatedAt = raw.indexOf(isolatedMarker);
-  if (baseAt === -1 || isolatedAt === -1 || isolatedAt < baseAt) {
-    throw new Error(
-      `${p.verifyBlock}: missing or misordered ${baseMarker} / ${isolatedMarker}`
-    );
-  }
-  const base = raw.slice(baseAt + baseMarker.length, isolatedAt).trim();
-  if (variant === 'base') return base;
-  return `${base}\n\n${raw.slice(isolatedAt + isolatedMarker.length).trim()}`;
+function variant(tag: string, body: string) {
+  return { open: `<skills-${tag}>`, end: `</skills-${tag}>`, body };
 }
 
-// The worklock source has one body and no variants: both loops need the same spec, and
-// which lock path a given loop takes is the one thing each skill states for itself.
-export function worklockBody(p: Paths): string {
-  const raw = readFileSync(p.worklockBlock, 'utf8');
-  const marker = '<!-- worklock:body -->';
-  const at = raw.indexOf(marker);
-  if (at === -1) {
-    throw new Error(`${p.worklockBlock}: missing ${marker}`);
-  }
-  return raw.slice(at + marker.length).trim();
-}
-
-// One body, no variants: which forge a repo uses and which host it lives on are resolved the
-// same way whether the answer is then used to open a merge request or to list issues. What
-// each skill states for itself is the commands it drives once the pair is known.
-export function forgeBody(p: Paths): string {
-  const raw = readFileSync(p.forgeBlock, 'utf8');
-  const marker = '<!-- forge:body -->';
-  const at = raw.indexOf(marker);
-  if (at === -1) {
-    throw new Error(`${p.forgeBlock}: missing ${marker}`);
-  }
-  return raw.slice(at + marker.length).trim();
-}
-
-// One body, no variants either: a terminal renders the same for every skill, so what a plan
-// may look like does not vary with what the skill is planning.
-export function planBody(p: Paths): string {
-  const raw = readFileSync(p.planBlock, 'utf8');
-  const marker = '<!-- plan:body -->';
-  const at = raw.indexOf(marker);
-  if (at === -1) {
-    throw new Error(`${p.planBlock}: missing ${marker}`);
-  }
-  return raw.slice(at + marker.length).trim();
-}
-
-// One body, no variants: what a report leads with does not vary with what it reports on.
-export function tldrBody(p: Paths): string {
-  const raw = readFileSync(p.tldrBlock, 'utf8');
-  const marker = '<!-- tldr:body -->';
-  const at = raw.indexOf(marker);
-  if (at === -1) {
-    throw new Error(`${p.tldrBlock}: missing ${marker}`);
-  }
-  return raw.slice(at + marker.length).trim();
+function contracts(p: Paths): Contract[] {
+  const [full, reduced] = sections(p.authorityBlock, [
+    'authority:full',
+    'authority:reduced'
+  ]);
+  const [base, install] = sections(p.verifyBlock, [
+    'verify:base',
+    'verify:isolated'
+  ]);
+  return [
+    {
+      label: 'authority',
+      variants: [
+        variant('authority', full as string),
+        variant('authority-reduced', reduced as string)
+      ]
+    },
+    {
+      label: 'verify',
+      variants: [
+        variant('verify', base as string),
+        variant('verify-isolated', `${base}\n\n${install}`)
+      ]
+    },
+    ...(
+      [
+        ['worklock', p.worklockBlock],
+        ['plan', p.planBlock],
+        ['tldr', p.tldrBlock],
+        ['forge', p.forgeBlock]
+      ] as const
+    ).map(([label, file]) => ({
+      label,
+      variants: [variant(label, sections(file, [`${label}:body`])[0] as string)]
+    }))
+  ];
 }
 
 // The mirrored block opens with a level-3 heading, so it belongs under "## Config".
@@ -587,14 +515,17 @@ export function assertPlacement(
   }
 }
 
-export function syncConfigContract(
+function syncContracts(
   p: Paths,
   skills: Skill[],
-  check: boolean
+  check: boolean,
+  documents: Documents
 ): string[] {
   const stale: string[] = [];
-  const expected = `${CONFIG_OPEN}\n\n${configBody(p)}\n\n${CONFIG_END}`;
-  const resolver = readFileSync(p.resolver, 'utf8');
+  const config = sections(p.configBlock, ['config:body'])[0] as string;
+  const expectedConfig = `${CONFIG_OPEN}\n\n${config}\n\n${CONFIG_END}`;
+  const resolver = readText(p.resolver);
+  const mirrored = contracts(p);
 
   for (const skill of skills) {
     const dir = join(p.skills, skill.path);
@@ -602,40 +533,45 @@ export function syncConfigContract(
 
     for (const name of ['SKILL.md', 'REFERENCE.md']) {
       const file = join(dir, name);
-      let current;
-      try {
-        current = readFileSync(file, 'utf8');
-      } catch {
-        continue;
-      }
+      const original = documents.read(file);
+      if (original === undefined) continue;
+      let current = original;
       const opening = current.match(CONFIG_OPEN_RE);
-      const to = current.indexOf(CONFIG_END);
-      let next = current;
-      if (opening && to !== -1) {
+      const end = current.indexOf(CONFIG_END);
+      if (opening && end !== -1) {
         const from = opening.index as number;
         assertPlacement(current, from, `skills/${skill.path}/${name}`);
-        next =
+        const next =
           current.slice(0, from) +
-          expected +
-          current.slice(to + CONFIG_END.length);
-        if (norm(next) !== norm(current)) {
+          expectedConfig +
+          current.slice(end + CONFIG_END.length);
+        if (norm(next) !== norm(current))
           stale.push(`skills/${skill.path}/${name} config block`);
-          if (!check) writeFileSync(file, next);
+        current = next;
+      }
+
+      for (const contract of mirrored) {
+        for (const v of contract.variants) {
+          const from = current.indexOf(v.open);
+          const to = current.indexOf(v.end);
+          if (from === -1 || to === -1) continue;
+          const next =
+            current.slice(0, from) +
+            `${v.open}\n\n${v.body}\n\n${v.end}` +
+            current.slice(to + v.end.length);
+          if (norm(next) !== norm(current))
+            stale.push(`skills/${skill.path}/${name} ${contract.label} block`);
+          current = next;
         }
       }
-      // Read off the rewritten text, not what was on disk: the mention a block host
-      // relies on comes from the block body this run just wrote, so checking `current`
-      // would ship no resolver on the run that introduces the block.
-      if (next.includes(RESOLVER_PATH)) shipsResolver = true;
+
+      if (!check && norm(current) !== norm(original))
+        writeFileSync(file, current);
+      // A newly mirrored config block may introduce the resolver mention in this run.
+      if (current.includes(RESOLVER_PATH)) shipsResolver = true;
     }
 
     const target = join(dir, 'templates', 'resolve-config.sh');
-
-    // The mention is the whole trigger, in both directions. A skill that stops naming the
-    // script keeps a copy nothing points at — drift-checked by nothing, and one more file
-    // an installed skill ships without reason — so the sync removes it rather than only
-    // ever adding. Without this the roster can only grow, and the "and to nobody else"
-    // half of the contract holds by accident.
     if (!shipsResolver) {
       if (existsSync(target)) {
         stale.push(`skills/${skill.path}/templates/resolve-config.sh (orphan)`);
@@ -644,13 +580,7 @@ export function syncConfigContract(
       continue;
     }
 
-    let currentResolver = '';
-    try {
-      currentResolver = readFileSync(target, 'utf8');
-    } catch {
-      currentResolver = '';
-    }
-    if (currentResolver !== resolver) {
+    if (documents.read(target) !== resolver) {
       stale.push(`skills/${skill.path}/templates/resolve-config.sh`);
       if (!check) {
         mkdirSync(join(dir, 'templates'), { recursive: true });
@@ -661,62 +591,7 @@ export function syncConfigContract(
   return stale;
 }
 
-// Mirror a tagged block into every skill carrying its tag: one source, drift-checked, the
-// mechanic behind both the author-authority rule and the check-command contract. A skill opts
-// in by carrying the tag, and each body is a `## ` section — self-delimiting, so unlike the
-// config block no placement check is needed. Every body that reads `$resolved` — the full
-// authority variant and both verify variants — sits in a skill that hosts the config block, so
-// the resolver it reads that variable from is already shipped by syncConfigContract.
-//
-// Generic rather than one function per contract: the third copy of this loop is where the
-// contracts would start disagreeing about what counts as drift.
-export function syncTaggedBlock(
-  p: Paths,
-  skills: Skill[],
-  check: boolean,
-  label: string,
-  variants: { open: string; end: string; body: string }[]
-): string[] {
-  const stale: string[] = [];
-
-  for (const skill of skills) {
-    const dir = join(p.skills, skill.path);
-    for (const name of ['SKILL.md', 'REFERENCE.md']) {
-      const file = join(dir, name);
-      let current = '';
-      try {
-        current = readFileSync(file, 'utf8');
-      } catch {
-        continue;
-      }
-      for (const variant of variants) {
-        const from = current.indexOf(variant.open);
-        const to = current.indexOf(variant.end);
-        if (from === -1 || to === -1) continue;
-        const next =
-          current.slice(0, from) +
-          `${variant.open}\n\n${variant.body}\n\n${variant.end}` +
-          current.slice(to + variant.end.length);
-        if (norm(next) !== norm(current)) {
-          stale.push(`skills/${skill.path}/${name} ${label} block`);
-          if (!check) writeFileSync(file, next);
-        }
-        current = next;
-      }
-    }
-  }
-  return stale;
-}
-
-// Two frontmatter faults nothing else catches, both silent on the way in.
-//
-// Length: `description` must stay inside the house budget above — no formatter, linter or
-// test measures it otherwise, so a description can drift past the spec cap and still show
-// a green board.
-//
-// Punctuation: skills.sh parses real YAML, so an unquoted `summary`/`description` must not
-// contain ": " (colon+space) or " #" (space+hash), or its parser drops the whole skill —
-// and our loose frontmatter regex above would not otherwise catch it.
+// Description limits and YAML punctuation are stricter than our discovery parser.
 export function lintFrontmatter(skills: Skill[]): string[] {
   const problems: string[] = [];
   for (const skill of skills) {
@@ -764,7 +639,8 @@ export function main(argv: string[], root: string = ROOT): RunResult {
   }
 
   const p = paths(root);
-  const skills = discoverSkills(p);
+  const documents = new Documents();
+  const skills = discoverSkills(p, documents);
 
   if (mode === '--paths') {
     const lines = skills.map((skill) => `skills/${skill.path}/SKILL.md\n`);
@@ -788,55 +664,7 @@ export function main(argv: string[], root: string = ROOT): RunResult {
   if (syncPlugin(p, skills, check)) stale.push('plugin.json skills array');
   if (syncSkillsSh(p, groups, check)) stale.push('skills.sh.json groupings');
   stale.push(...syncCategoryReadmes(p, groups, check));
-  stale.push(...syncConfigContract(p, skills, check));
-  stale.push(
-    ...syncTaggedBlock(p, skills, check, 'authority', [
-      {
-        open: AUTHORITY_FULL_OPEN,
-        end: AUTHORITY_FULL_END,
-        body: authorityBody(p, 'full')
-      },
-      {
-        open: AUTHORITY_REDUCED_OPEN,
-        end: AUTHORITY_REDUCED_END,
-        body: authorityBody(p, 'reduced')
-      }
-    ])
-  );
-  stale.push(
-    ...syncTaggedBlock(p, skills, check, 'verify', [
-      {
-        open: VERIFY_BASE_OPEN,
-        end: VERIFY_BASE_END,
-        body: verifyBody(p, 'base')
-      },
-      {
-        open: VERIFY_ISOLATED_OPEN,
-        end: VERIFY_ISOLATED_END,
-        body: verifyBody(p, 'isolated')
-      }
-    ])
-  );
-  stale.push(
-    ...syncTaggedBlock(p, skills, check, 'worklock', [
-      { open: WORKLOCK_OPEN, end: WORKLOCK_END, body: worklockBody(p) }
-    ])
-  );
-  stale.push(
-    ...syncTaggedBlock(p, skills, check, 'plan', [
-      { open: PLAN_OPEN, end: PLAN_END, body: planBody(p) }
-    ])
-  );
-  stale.push(
-    ...syncTaggedBlock(p, skills, check, 'tldr', [
-      { open: TLDR_OPEN, end: TLDR_END, body: tldrBody(p) }
-    ])
-  );
-  stale.push(
-    ...syncTaggedBlock(p, skills, check, 'forge', [
-      { open: FORGE_OPEN, end: FORGE_END, body: forgeBody(p) }
-    ])
-  );
+  stale.push(...syncContracts(p, skills, check, documents));
 
   if (check && stale.length) {
     return {
