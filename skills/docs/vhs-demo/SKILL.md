@@ -21,7 +21,7 @@ Generate a terminal-demo GIF from a [Charm VHS](https://github.com/charmbracelet
 
 ## Why Docker
 
-VHS normally wants a real TTY (and on macOS, Homebrew + sometimes a screen recorder). The official `ghcr.io/charmbracelet/vhs` image renders fully headless, so it works in WSL/root environments with no Homebrew, no TTY, no OBS. Everything below assumes Docker is the only host dependency.
+VHS normally wants a real TTY (and on macOS, Homebrew + sometimes a screen recorder). The template builds a headless renderer on a digest-pinned Node/Debian base, installs current Chromium/ffmpeg packages and checksum-verified Bun, builds checksum-pinned VHS source with a patched Go toolchain and network dependency, and builds ttyd against current system libraries. It works in WSL/root environments with no Homebrew, no TTY, no OBS. Docker is the only host dependency; supported targets are `linux/amd64` and `linux/arm64`.
 
 ## Naming convention (enforce exactly)
 
@@ -36,21 +36,22 @@ VHS normally wants a real TTY (and on macOS, Homebrew + sometimes a screen recor
 3. **Build the CLI** so the tape runs the built artifact, not the sources: run the repo's build (e.g. `pnpm build` / `bun run build`).
 4. **Build the image** (once, or after editing the Dockerfile):
    ```bash
-   docker build -f .github/assets/vhs.Dockerfile -t <repo>-vhs .
+   docker build --pull --no-cache -f .github/assets/vhs.Dockerfile -t <repo>-vhs .
    ```
 5. **Render** (after every tape change):
    ```bash
-   docker run --rm -v "$PWD:/vhs" <repo>-vhs .github/assets/demo.tape
+   docker run --rm --cap-drop=ALL --security-opt no-new-privileges:true \
+     -v "$PWD:/vhs" <repo>-vhs .github/assets/demo.tape
    ```
 6. **Verify** the GIF (dimensions, duration ≈ sum of sleeps, file size) — see [Verification](#verification).
 7. **Wire the README** reference and commit the tape, the Dockerfile, and the regenerated GIF together.
 
 ## Does the CLI need Bun?
 
-The official VHS image has **no Bun**. If the CLI is a Bun tool (uses `opentui`, `bun:ffi`, or is started with `bun …`), the render will fail with "bun: command not found". Fix = the derived image in the template that installs Bun (`curl | bash` from bun.sh, with `/root/.bun/bin` on `PATH`).
+The template includes a **version-pinned Bun layer** for CLIs using `opentui`, `bun:ffi`, or `bun …`. The archive is checked against its pinned SHA-256 before installation; the amd64 build uses Bun's baseline binary. A Bun version change must update both architecture checksums together. No downloaded installer script is executed.
 
 - **Bun CLI** → keep the Bun layer in `templates/vhs.Dockerfile`.
-- **Node CLI** (plain citty, run with `node …`) → delete the Bun layer; the base image already has Node.
+- **Node CLI** (plain citty, run with `node …`) → delete the Bun layer; the image already has Node. npm/npx are removed from the renderer; install dependencies and build the CLI on the host before rendering.
 
 ## Resolution & render quality
 
@@ -113,7 +114,7 @@ For multiple demos, embed each under the relevant section with its descriptive n
 
 Quick start covers the first run; afterwards only the cadence differs:
 
-- **Image** — rebuild only when the Dockerfile changes.
+- **Image** — rebuild after Dockerfile changes and before recording a new demo with `--pull --no-cache`, so the apt layers actually refresh Debian security packages. `--pull` alone does not invalidate cached layers on a digest-pinned base. Keep the Node/Go base digests, source commits, dependency pins, release versions and checksums together when updating; scan the built image with `trivy image <repo>-vhs` or the repo's existing container scanner. A scanner finding is reported separately from a successful render.
 - **Every demo change** — run the repo's build (e.g. `pnpm build` / `bun run build`) → re-render → [verify](#verification).
 - **Commit** the tape, Dockerfile, and regenerated GIF together — the tape is the source of truth.
 

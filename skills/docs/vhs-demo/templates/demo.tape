@@ -1,8 +1,9 @@
 # <repo> README demo — rendered with VHS (https://github.com/charmbracelet/vhs)
 #
 # Regenerate (no local install needed, Docker only):
-#   docker build -f .github/assets/vhs.Dockerfile -t <repo>-vhs .
-#   docker run --rm -v "$PWD:/vhs" <repo>-vhs .github/assets/demo.tape
+#   docker build --pull --no-cache -f .github/assets/vhs.Dockerfile -t <repo>-vhs .
+#   docker run --rm --cap-drop=ALL --security-opt no-new-privileges:true \
+#     -v "$PWD:/vhs" <repo>-vhs .github/assets/demo.tape
 #
 # The tape is the source of truth — edit the choreography below, re-run, commit
 # the new GIF. Never hand-edit the GIF.
