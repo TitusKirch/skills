@@ -32,6 +32,8 @@ jobs:
     if: github.event.pull_request.draft == false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       # Node, not pnpm: the script discovers skills through `gen-skills.ts --paths`,
       # which imports only node builtins, so no install is needed. The validator
