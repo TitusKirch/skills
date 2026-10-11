@@ -1,0 +1,26 @@
+{
+  "_comment": "Development-only behavioral cases. Run with and without the skill in disposable fixtures and compare outcomes; these expectations are not captured passing results. All forge responses and lifecycle facts are supplied by the evaluator, all mutations are recording stubs, and no live tools or credentials are used.",
+  "skill_name": "release",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "The human approved promotion PR #10 at A=1111111111111111111111111111111111111111 after its checks and diff were reviewed. While confirmation was pending it moved to B=2222222222222222222222222222222222222222. Show the promotion merge attempt or stop decision from these facts only; execute nothing.",
+      "expected_output": "A changed head stops promotion and needs fresh validation and confirmation.",
+      "expectations": [
+        "Uses --merge and --match-head-commit A if showing a command.",
+        "Does not substitute B or reuse approval for B.",
+        "Requires new validation and confirmation."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "A release-please PR passed required checks and bump/changelog review at A=1111111111111111111111111111111111111111. The human confirmed A; the head has not changed and squash is allowed. Show one merge command for a later tool invocation, without executing it.",
+      "expected_output": "The command restores the recorded full A and passes the expected-head guard.",
+      "expectations": [
+        "Uses --squash --match-head-commit with full A.",
+        "Does not query latest head to populate the guard.",
+        "Chooses one permitted merge method, not both."
+      ]
+    }
+  ]
+}
