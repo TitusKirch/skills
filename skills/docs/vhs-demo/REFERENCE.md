@@ -67,3 +67,25 @@ Key choices it demonstrates:
 - **`Set Framerate 24`** — the opentui matrix repaint couldn't hold 50fps at 1080p; capping fixed the "GIF too fast, duration too short" symptom.
 - **`Backspace@25ms 40`** before typing a new value into a pre-filled edit popover.
 - **No quit key** — the demo ends on `Sleep 1.5s` holding the matrix view; VHS kills the process for a clean final frame instead of filming the shell teardown.
+
+## Docs destination example
+
+Reuse the shared `.github/assets/vhs.Dockerfile`; keep the docs capture pair at the selected destination:
+
+```text
+.github/assets/vhs.Dockerfile
+docs/
+  _assets/
+    quickstart.tape     # Output docs/_assets/quickstart.gif
+    quickstart.gif      # regenerated artifact
+  2.guides/
+    1.quickstart.md
+  de-DE/2.guides/
+    1.quickstart.md
+```
+
+Default page reference: `![Quickstart demo](../_assets/quickstart.gif)`.
+Locale page reference to the same image: `![Terminaldemo](../../_assets/quickstart.gif)`.
+README reference to reuse it: `![Quickstart demo](docs/_assets/quickstart.gif)`.
+
+Render from the repo root with `docker run --rm --cap-drop=ALL --security-opt no-new-privileges:true -v "$PWD:/vhs" <repo>-vhs docs/_assets/quickstart.tape`. Probe `docs/_assets/quickstart.gif` and compare dimensions/duration to that tape. `_assets/` contributes no navigation section. Duxt publishes the GIF and resolves the authored paths for the selected source/version, leaving the tape and Dockerfile private. If a language-dependent demo needs a variant, explicitly produce the paired files under `docs/_assets/<locale>/` and reference the verified variant; never copy or synthesize it in a translation sweep.

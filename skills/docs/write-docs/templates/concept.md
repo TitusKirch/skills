@@ -9,7 +9,7 @@ description: '{One line — the model this page explains.}'
 
 ## How it works
 
-{The model — components, flow, responsibilities. A diagram or a short flow helps.}
+{The model — components, flow, responsibilities. A Mermaid diagram or a short flow helps; translate visible labels. Generated images follow the media contract: committed capture source, verified artifact in docs/_assets/, descriptive alt text.}
 
 ## Why it's built this way
 

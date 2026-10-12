@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-12",
+  "issue": "https://github.com/TitusKirch/skills/issues/286",
+  "records": [
+    {
+      "file": "report.json",
+      "original_relative_path": "report.json",
+      "original_sha256": "8f1bc63bbd89e039d34ad9d605cbe6dd21c898a7a1128592017f359a359f3e7c",
+      "canonical_json_sha256": "75713ff5248af5b796f6b62a19f8896354125df51b7e82ae1c9df33ef85b33c8"
+    },
+    {
+      "file": "raw.json",
+      "original_relative_path": "results/raw.json",
+      "original_sha256": "69a083843e2b93e1bd8f241de1198660b5d99f4a3ea7efaa327d1f2c4978625b",
+      "canonical_json_sha256": "d1803de094ca8b1b13f02b8b64b00bc1ed54c38960136027f438d8fee2e03efa"
+    },
+    {
+      "file": "shared-raw.json",
+      "original_relative_path": "results/shared-raw.json",
+      "original_sha256": "1b6f78e5aecdad3c8bb3e503eb5ef699cb95fc88d5d6ec9972e3835b1c13ead0",
+      "canonical_json_sha256": "d96258cda0c8c11a0bde6332690a96e4ee24da71cb3ac42ae22d7bf279784b67"
+    },
+    {
+      "file": "image-checks.json",
+      "original_relative_path": "results/image-checks.json",
+      "original_sha256": "4d16cf7ef128ec2d797465646c9f74d9624c4835c38e9bb97dd49e6699763cfb",
+      "canonical_json_sha256": "c01bc3882998668eb40aee9d443d938fad8be8e87fb2a4716eeca054afaee56b"
+    },
+    {
+      "file": "consumer-capture.json",
+      "original_relative_path": "consumer/report.json",
+      "original_sha256": "0ae0f1fd1c426608ab744b541e076a247bd2eba56da676d9ec65ebd6d165147e",
+      "canonical_json_sha256": "df98d87ced46cc3b7b349456d658d377522dfe6ff50d6189f2d5dadf57f5a6be"
+    },
+    {
+      "file": "excluded-live-failures.json",
+      "original_relative_path": "live-exploratory-results/failures.json",
+      "original_sha256": "58170995d2bf470c2bf388bcf8e5681332b44185ed996ea98eb5c1adac017610",
+      "canonical_json_sha256": "b1d2cd1af34055b1d31cd2ef0a7687fc80e3729c558a5c46b382f9b254db65df"
+    }
+  ],
+  "fixture": {
+    "file": "duxt.har",
+    "included": false,
+    "bytes": 31232458,
+    "sha256": "90029f029114bd88eea3dded0b65025ad51149f65de4db3739cd20361f729c79"
+  },
+  "validation": {
+    "recomputed_timing_statistics": true,
+    "validated_pngs": 220,
+    "validated_consumer_pngs": 3,
+    "original_replay_fixture_hash_verified": true
+  },
+  "omissions": [
+    "HAR response bodies",
+    "PNG binaries",
+    "browser binaries",
+    "compiled Rust binaries",
+    "complete exploratory logs"
+  ],
+  "limitations": "Evidence supports recalculation and adapter reconstruction. The exact original replay cannot be rerun from this repository alone because its HAR fixture and browser binaries are omitted.",
+  "canonical_json_hash": "SHA-256 of UTF-8 json.dumps(value, sort_keys=True, separators=(comma, colon), ensure_ascii=False), with no trailing newline."
+}

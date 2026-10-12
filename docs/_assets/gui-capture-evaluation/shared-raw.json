@@ -1,0 +1,962 @@
+[
+  {
+    "tool": "chromiumoxide",
+    "round": 0,
+    "connection": {
+      "connect_ms": 56.135988999999995,
+      "tool": "chromiumoxide"
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "index": 0,
+        "path": "/bench/results/shared-0-chromiumoxide-0.png",
+        "screenshot_ms": 74.586417,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122844,
+        "index": 1,
+        "path": "/bench/results/shared-0-chromiumoxide-1.png",
+        "screenshot_ms": 70.651753,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122844,
+        "index": 2,
+        "path": "/bench/results/shared-0-chromiumoxide-2.png",
+        "screenshot_ms": 146.843288,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122844,
+        "index": 3,
+        "path": "/bench/results/shared-0-chromiumoxide-3.png",
+        "screenshot_ms": 85.84379799999999,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122844,
+        "index": 4,
+        "path": "/bench/results/shared-0-chromiumoxide-4.png",
+        "screenshot_ms": 79.92307699999999,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122844,
+        "index": 5,
+        "path": "/bench/results/shared-0-chromiumoxide-5.png",
+        "screenshot_ms": 83.073973,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122844,
+        "index": 6,
+        "path": "/bench/results/shared-0-chromiumoxide-6.png",
+        "screenshot_ms": 73.46027600000001,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122844,
+        "index": 7,
+        "path": "/bench/results/shared-0-chromiumoxide-7.png",
+        "screenshot_ms": 104.813473,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122844,
+        "index": 8,
+        "path": "/bench/results/shared-0-chromiumoxide-8.png",
+        "screenshot_ms": 90.841252,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122844,
+        "index": 9,
+        "path": "/bench/results/shared-0-chromiumoxide-9.png",
+        "screenshot_ms": 95.791099,
+        "tool": "chromiumoxide"
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "round": 0,
+    "connection": {
+      "tool": "puppeteer",
+      "connect_ms": 193.831206
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "screenshot_ms": 81.56430499999999,
+        "path": "/bench/results/shared-0-puppeteer-0.png",
+        "bytes": 122844
+      },
+      {
+        "tool": "puppeteer",
+        "index": 1,
+        "screenshot_ms": 90.381869,
+        "path": "/bench/results/shared-0-puppeteer-1.png",
+        "bytes": 122844
+      },
+      {
+        "tool": "puppeteer",
+        "index": 2,
+        "screenshot_ms": 95.51917299999997,
+        "path": "/bench/results/shared-0-puppeteer-2.png",
+        "bytes": 122844
+      },
+      {
+        "tool": "puppeteer",
+        "index": 3,
+        "screenshot_ms": 92.48936399999997,
+        "path": "/bench/results/shared-0-puppeteer-3.png",
+        "bytes": 122844
+      },
+      {
+        "tool": "puppeteer",
+        "index": 4,
+        "screenshot_ms": 81.50225899999998,
+        "path": "/bench/results/shared-0-puppeteer-4.png",
+        "bytes": 122844
+      },
+      {
+        "tool": "puppeteer",
+        "index": 5,
+        "screenshot_ms": 94.83780100000001,
+        "path": "/bench/results/shared-0-puppeteer-5.png",
+        "bytes": 122844
+      },
+      {
+        "tool": "puppeteer",
+        "index": 6,
+        "screenshot_ms": 78.27180899999996,
+        "path": "/bench/results/shared-0-puppeteer-6.png",
+        "bytes": 122844
+      },
+      {
+        "tool": "puppeteer",
+        "index": 7,
+        "screenshot_ms": 85.71489699999995,
+        "path": "/bench/results/shared-0-puppeteer-7.png",
+        "bytes": 122844
+      },
+      {
+        "tool": "puppeteer",
+        "index": 8,
+        "screenshot_ms": 93.56854999999996,
+        "path": "/bench/results/shared-0-puppeteer-8.png",
+        "bytes": 122844
+      },
+      {
+        "tool": "puppeteer",
+        "index": 9,
+        "screenshot_ms": 94.309348,
+        "path": "/bench/results/shared-0-puppeteer-9.png",
+        "bytes": 122844
+      }
+    ]
+  },
+  {
+    "tool": "playwright",
+    "round": 0,
+    "connection": {
+      "tool": "playwright",
+      "connect_ms": 474.54786199999995
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "screenshot_ms": 131.41571900000002,
+        "path": "/bench/results/shared-0-playwright-0.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 1,
+        "screenshot_ms": 89.48421400000007,
+        "path": "/bench/results/shared-0-playwright-1.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 2,
+        "screenshot_ms": 103.08222999999998,
+        "path": "/bench/results/shared-0-playwright-2.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 3,
+        "screenshot_ms": 115.130584,
+        "path": "/bench/results/shared-0-playwright-3.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 4,
+        "screenshot_ms": 99.87719399999992,
+        "path": "/bench/results/shared-0-playwright-4.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 5,
+        "screenshot_ms": 99.26916800000004,
+        "path": "/bench/results/shared-0-playwright-5.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 6,
+        "screenshot_ms": 102.59758699999998,
+        "path": "/bench/results/shared-0-playwright-6.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 7,
+        "screenshot_ms": 108.85508600000003,
+        "path": "/bench/results/shared-0-playwright-7.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 8,
+        "screenshot_ms": 88.81220100000019,
+        "path": "/bench/results/shared-0-playwright-8.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 9,
+        "screenshot_ms": 95.22807899999998,
+        "path": "/bench/results/shared-0-playwright-9.png",
+        "bytes": 122842
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "round": 0,
+    "connection": {
+      "connect_ms": 1268.606806,
+      "tool": "headless_chrome"
+    },
+    "samples": [
+      {
+        "bytes": 122840,
+        "index": 0,
+        "path": "/bench/results/shared-0-headless_chrome-0.png",
+        "screenshot_ms": 184.994755,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 1,
+        "path": "/bench/results/shared-0-headless_chrome-1.png",
+        "screenshot_ms": 178.988976,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 2,
+        "path": "/bench/results/shared-0-headless_chrome-2.png",
+        "screenshot_ms": 180.847711,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 3,
+        "path": "/bench/results/shared-0-headless_chrome-3.png",
+        "screenshot_ms": 190.516922,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 4,
+        "path": "/bench/results/shared-0-headless_chrome-4.png",
+        "screenshot_ms": 194.001327,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 5,
+        "path": "/bench/results/shared-0-headless_chrome-5.png",
+        "screenshot_ms": 187.45177199999998,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 6,
+        "path": "/bench/results/shared-0-headless_chrome-6.png",
+        "screenshot_ms": 177.750991,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 7,
+        "path": "/bench/results/shared-0-headless_chrome-7.png",
+        "screenshot_ms": 176.052463,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 8,
+        "path": "/bench/results/shared-0-headless_chrome-8.png",
+        "screenshot_ms": 170.394029,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 9,
+        "path": "/bench/results/shared-0-headless_chrome-9.png",
+        "screenshot_ms": 171.932823,
+        "tool": "headless_chrome"
+      }
+    ]
+  },
+  {
+    "tool": "chromiumoxide",
+    "round": 1,
+    "connection": {
+      "connect_ms": 55.443816,
+      "tool": "chromiumoxide"
+    },
+    "samples": [
+      {
+        "bytes": 122840,
+        "index": 0,
+        "path": "/bench/results/shared-1-chromiumoxide-0.png",
+        "screenshot_ms": 71.968394,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 1,
+        "path": "/bench/results/shared-1-chromiumoxide-1.png",
+        "screenshot_ms": 72.552048,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 2,
+        "path": "/bench/results/shared-1-chromiumoxide-2.png",
+        "screenshot_ms": 72.334125,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 3,
+        "path": "/bench/results/shared-1-chromiumoxide-3.png",
+        "screenshot_ms": 69.39589000000001,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 4,
+        "path": "/bench/results/shared-1-chromiumoxide-4.png",
+        "screenshot_ms": 69.39062,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 5,
+        "path": "/bench/results/shared-1-chromiumoxide-5.png",
+        "screenshot_ms": 76.19945799999999,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 6,
+        "path": "/bench/results/shared-1-chromiumoxide-6.png",
+        "screenshot_ms": 66.502268,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 7,
+        "path": "/bench/results/shared-1-chromiumoxide-7.png",
+        "screenshot_ms": 66.67835199999999,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 8,
+        "path": "/bench/results/shared-1-chromiumoxide-8.png",
+        "screenshot_ms": 67.592051,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 9,
+        "path": "/bench/results/shared-1-chromiumoxide-9.png",
+        "screenshot_ms": 74.744704,
+        "tool": "chromiumoxide"
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "round": 1,
+    "connection": {
+      "tool": "puppeteer",
+      "connect_ms": 174.04136499999998
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "screenshot_ms": 68.18110600000003,
+        "path": "/bench/results/shared-1-puppeteer-0.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 1,
+        "screenshot_ms": 72.93807999999996,
+        "path": "/bench/results/shared-1-puppeteer-1.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 2,
+        "screenshot_ms": 82.577247,
+        "path": "/bench/results/shared-1-puppeteer-2.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 3,
+        "screenshot_ms": 76.32400999999999,
+        "path": "/bench/results/shared-1-puppeteer-3.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 4,
+        "screenshot_ms": 84.09209600000003,
+        "path": "/bench/results/shared-1-puppeteer-4.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 5,
+        "screenshot_ms": 83.43422399999997,
+        "path": "/bench/results/shared-1-puppeteer-5.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 6,
+        "screenshot_ms": 83.28389800000002,
+        "path": "/bench/results/shared-1-puppeteer-6.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 7,
+        "screenshot_ms": 72.70070300000009,
+        "path": "/bench/results/shared-1-puppeteer-7.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 8,
+        "screenshot_ms": 79.10858099999996,
+        "path": "/bench/results/shared-1-puppeteer-8.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 9,
+        "screenshot_ms": 76.785165,
+        "path": "/bench/results/shared-1-puppeteer-9.png",
+        "bytes": 122840
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "round": 1,
+    "connection": {
+      "connect_ms": 1266.732736,
+      "tool": "headless_chrome"
+    },
+    "samples": [
+      {
+        "bytes": 122840,
+        "index": 0,
+        "path": "/bench/results/shared-1-headless_chrome-0.png",
+        "screenshot_ms": 191.396172,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 1,
+        "path": "/bench/results/shared-1-headless_chrome-1.png",
+        "screenshot_ms": 189.041295,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 2,
+        "path": "/bench/results/shared-1-headless_chrome-2.png",
+        "screenshot_ms": 170.112919,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 3,
+        "path": "/bench/results/shared-1-headless_chrome-3.png",
+        "screenshot_ms": 312.000102,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 4,
+        "path": "/bench/results/shared-1-headless_chrome-4.png",
+        "screenshot_ms": 197.725751,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 5,
+        "path": "/bench/results/shared-1-headless_chrome-5.png",
+        "screenshot_ms": 187.46021,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 6,
+        "path": "/bench/results/shared-1-headless_chrome-6.png",
+        "screenshot_ms": 184.97324400000002,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 7,
+        "path": "/bench/results/shared-1-headless_chrome-7.png",
+        "screenshot_ms": 182.82522500000002,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 8,
+        "path": "/bench/results/shared-1-headless_chrome-8.png",
+        "screenshot_ms": 174.52218299999998,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 9,
+        "path": "/bench/results/shared-1-headless_chrome-9.png",
+        "screenshot_ms": 206.102525,
+        "tool": "headless_chrome"
+      }
+    ]
+  },
+  {
+    "tool": "playwright",
+    "round": 1,
+    "connection": {
+      "tool": "playwright",
+      "connect_ms": 403.316776
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "screenshot_ms": 120.34655199999992,
+        "path": "/bench/results/shared-1-playwright-0.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 1,
+        "screenshot_ms": 82.3118169999999,
+        "path": "/bench/results/shared-1-playwright-1.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 2,
+        "screenshot_ms": 82.11007999999993,
+        "path": "/bench/results/shared-1-playwright-2.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 3,
+        "screenshot_ms": 101.63940400000001,
+        "path": "/bench/results/shared-1-playwright-3.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 4,
+        "screenshot_ms": 95.899631,
+        "path": "/bench/results/shared-1-playwright-4.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 5,
+        "screenshot_ms": 89.86118700000009,
+        "path": "/bench/results/shared-1-playwright-5.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 6,
+        "screenshot_ms": 86.63302699999997,
+        "path": "/bench/results/shared-1-playwright-6.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 7,
+        "screenshot_ms": 87.89835599999992,
+        "path": "/bench/results/shared-1-playwright-7.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 8,
+        "screenshot_ms": 88.65625100000011,
+        "path": "/bench/results/shared-1-playwright-8.png",
+        "bytes": 122842
+      },
+      {
+        "tool": "playwright",
+        "index": 9,
+        "screenshot_ms": 92.72550999999999,
+        "path": "/bench/results/shared-1-playwright-9.png",
+        "bytes": 122842
+      }
+    ]
+  },
+  {
+    "tool": "chromiumoxide",
+    "round": 2,
+    "connection": {
+      "connect_ms": 53.720614,
+      "tool": "chromiumoxide"
+    },
+    "samples": [
+      {
+        "bytes": 122840,
+        "index": 0,
+        "path": "/bench/results/shared-2-chromiumoxide-0.png",
+        "screenshot_ms": 67.820837,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 1,
+        "path": "/bench/results/shared-2-chromiumoxide-1.png",
+        "screenshot_ms": 68.599535,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 2,
+        "path": "/bench/results/shared-2-chromiumoxide-2.png",
+        "screenshot_ms": 68.281874,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 3,
+        "path": "/bench/results/shared-2-chromiumoxide-3.png",
+        "screenshot_ms": 69.358378,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 4,
+        "path": "/bench/results/shared-2-chromiumoxide-4.png",
+        "screenshot_ms": 73.687562,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 5,
+        "path": "/bench/results/shared-2-chromiumoxide-5.png",
+        "screenshot_ms": 72.622574,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 6,
+        "path": "/bench/results/shared-2-chromiumoxide-6.png",
+        "screenshot_ms": 66.70309300000001,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 7,
+        "path": "/bench/results/shared-2-chromiumoxide-7.png",
+        "screenshot_ms": 67.026375,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 8,
+        "path": "/bench/results/shared-2-chromiumoxide-8.png",
+        "screenshot_ms": 75.863878,
+        "tool": "chromiumoxide"
+      },
+      {
+        "bytes": 122840,
+        "index": 9,
+        "path": "/bench/results/shared-2-chromiumoxide-9.png",
+        "screenshot_ms": 72.83944100000001,
+        "tool": "chromiumoxide"
+      }
+    ]
+  },
+  {
+    "tool": "playwright",
+    "round": 2,
+    "connection": {
+      "tool": "playwright",
+      "connect_ms": 397.30222799999996
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "screenshot_ms": 123.85467600000004,
+        "path": "/bench/results/shared-2-playwright-0.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "playwright",
+        "index": 1,
+        "screenshot_ms": 89.544668,
+        "path": "/bench/results/shared-2-playwright-1.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "playwright",
+        "index": 2,
+        "screenshot_ms": 83.23346000000004,
+        "path": "/bench/results/shared-2-playwright-2.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "playwright",
+        "index": 3,
+        "screenshot_ms": 81.82224699999995,
+        "path": "/bench/results/shared-2-playwright-3.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "playwright",
+        "index": 4,
+        "screenshot_ms": 85.38809300000003,
+        "path": "/bench/results/shared-2-playwright-4.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "playwright",
+        "index": 5,
+        "screenshot_ms": 86.818893,
+        "path": "/bench/results/shared-2-playwright-5.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "playwright",
+        "index": 6,
+        "screenshot_ms": 91.95137599999998,
+        "path": "/bench/results/shared-2-playwright-6.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "playwright",
+        "index": 7,
+        "screenshot_ms": 81.46696799999995,
+        "path": "/bench/results/shared-2-playwright-7.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "playwright",
+        "index": 8,
+        "screenshot_ms": 88.04493000000002,
+        "path": "/bench/results/shared-2-playwright-8.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "playwright",
+        "index": 9,
+        "screenshot_ms": 101.58439499999986,
+        "path": "/bench/results/shared-2-playwright-9.png",
+        "bytes": 122840
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "round": 2,
+    "connection": {
+      "tool": "puppeteer",
+      "connect_ms": 178.328614
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "screenshot_ms": 69.95500699999997,
+        "path": "/bench/results/shared-2-puppeteer-0.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 1,
+        "screenshot_ms": 75.16940399999999,
+        "path": "/bench/results/shared-2-puppeteer-1.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 2,
+        "screenshot_ms": 68.11589499999997,
+        "path": "/bench/results/shared-2-puppeteer-2.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 3,
+        "screenshot_ms": 72.00498399999998,
+        "path": "/bench/results/shared-2-puppeteer-3.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 4,
+        "screenshot_ms": 72.45388200000002,
+        "path": "/bench/results/shared-2-puppeteer-4.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 5,
+        "screenshot_ms": 65.45135700000003,
+        "path": "/bench/results/shared-2-puppeteer-5.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 6,
+        "screenshot_ms": 64.9162409999999,
+        "path": "/bench/results/shared-2-puppeteer-6.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 7,
+        "screenshot_ms": 62.864374,
+        "path": "/bench/results/shared-2-puppeteer-7.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 8,
+        "screenshot_ms": 67.984914,
+        "path": "/bench/results/shared-2-puppeteer-8.png",
+        "bytes": 122840
+      },
+      {
+        "tool": "puppeteer",
+        "index": 9,
+        "screenshot_ms": 67.91009099999997,
+        "path": "/bench/results/shared-2-puppeteer-9.png",
+        "bytes": 122840
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "round": 2,
+    "connection": {
+      "connect_ms": 1269.087753,
+      "tool": "headless_chrome"
+    },
+    "samples": [
+      {
+        "bytes": 122840,
+        "index": 0,
+        "path": "/bench/results/shared-2-headless_chrome-0.png",
+        "screenshot_ms": 179.852751,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 1,
+        "path": "/bench/results/shared-2-headless_chrome-1.png",
+        "screenshot_ms": 189.610606,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 2,
+        "path": "/bench/results/shared-2-headless_chrome-2.png",
+        "screenshot_ms": 182.73318899999998,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 3,
+        "path": "/bench/results/shared-2-headless_chrome-3.png",
+        "screenshot_ms": 174.854074,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 4,
+        "path": "/bench/results/shared-2-headless_chrome-4.png",
+        "screenshot_ms": 171.053857,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 5,
+        "path": "/bench/results/shared-2-headless_chrome-5.png",
+        "screenshot_ms": 185.491503,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 6,
+        "path": "/bench/results/shared-2-headless_chrome-6.png",
+        "screenshot_ms": 173.820929,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 7,
+        "path": "/bench/results/shared-2-headless_chrome-7.png",
+        "screenshot_ms": 166.611987,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 8,
+        "path": "/bench/results/shared-2-headless_chrome-8.png",
+        "screenshot_ms": 173.482881,
+        "tool": "headless_chrome"
+      },
+      {
+        "bytes": 122840,
+        "index": 9,
+        "path": "/bench/results/shared-2-headless_chrome-9.png",
+        "screenshot_ms": 172.366352,
+        "tool": "headless_chrome"
+      }
+    ]
+  }
+]
