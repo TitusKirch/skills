@@ -1,0 +1,7 @@
+[versions]
+gson = "2.14.0"
+shadow = "9.6.1"
+paper = "26.2.build.123-stable"
+[libraries]
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+paper = { module = "io.papermc.paper:paper-api", version.ref = "paper" }

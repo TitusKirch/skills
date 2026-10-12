@@ -1,0 +1,10 @@
+{
+  "name": "web",
+  "scripts": {
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "common": "workspace:*",
+    "lodash": "catalog:"
+  }
+}

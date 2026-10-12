@@ -125,6 +125,145 @@
         "fixtures/node-ci/registry-records.json",
         "fixtures/node-ci/scripts/toolchain-versions.json"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "In this mixed repository, autonomously update Java minor dependencies. Leave JDK, wrappers and server versions unchanged. Use the supplied metadata and stubbed build tools.",
+      "expected_output": "A catalog-owned Java plan and update with included-build coverage.",
+      "expectations": [
+        "Gson and Shadow move through their catalog owners; ordinary Java version literals do not need npm exact-pin permission.",
+        "Foojay in settings and the imported build-logic catalog are inventoried; no plugin is installed to invent dependencyUpdates.",
+        "Paper stays on the existing server track; the RC is not chosen; JDK 25 and wrapper 9.7.1 stay unchanged.",
+        "Separate build-logic resolution and actual Java gate coverage are checked; pnpm age policy is not claimed for Maven artifacts."
+      ],
+      "files": [
+        "fixtures/mixed-monorepo/package.json",
+        "fixtures/mixed-monorepo/pnpm-workspace.yaml",
+        "fixtures/mixed-monorepo/packages/web/package.json",
+        "fixtures/mixed-monorepo/packages/common/package.json",
+        "fixtures/mixed-monorepo/packages/minecraft/package.json",
+        "fixtures/mixed-monorepo/packages/minecraft/settings.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/gradle/libs.versions.toml",
+        "fixtures/mixed-monorepo/packages/minecraft/build-logic/settings.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/build-logic/build.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/build-logic/src/main/kotlin/java-conventions.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/gradle/wrapper/gradle-wrapper.properties",
+        "fixtures/mixed-monorepo/services/core/composer.json",
+        "fixtures/mixed-monorepo/services/core/composer.lock",
+        "fixtures/mixed-monorepo/go.work",
+        "fixtures/mixed-monorepo/tools/one/go.mod",
+        "fixtures/mixed-monorepo/tools/two/go.mod",
+        "fixtures/mixed-monorepo/tools/bots/Cargo.toml",
+        "fixtures/mixed-monorepo/tools/bots/Cargo.lock",
+        "fixtures/mixed-monorepo/skills-lock.json",
+        "fixtures/mixed-monorepo/.agents/skills/reviewed-skill/SKILL.md",
+        "fixtures/mixed-monorepo/.agents/skills/edited-skill/SKILL.md",
+        "fixtures/mixed-monorepo/registry-records.json"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Plan dependency updates across this monorepo. Do not write. Account for every ecosystem and where each command runs.",
+      "expected_output": "A complete ownership and verification map.",
+      "expectations": [
+        "The pnpm catalog owns lodash and workspace links remain internal; inert eval fixtures are excluded.",
+        "Java, nested Composer, Cargo, both Go members and local skills are inventoried despite the root package manager.",
+        "No single root install is claimed to resolve Composer/Cargo/Go/Gradle or skills locks.",
+        "Missing Turbo coverage is reported; local skills remain held pending explicit skill-refresh scope."
+      ],
+      "files": [
+        "fixtures/mixed-monorepo/package.json",
+        "fixtures/mixed-monorepo/pnpm-workspace.yaml",
+        "fixtures/mixed-monorepo/packages/web/package.json",
+        "fixtures/mixed-monorepo/packages/common/package.json",
+        "fixtures/mixed-monorepo/packages/minecraft/package.json",
+        "fixtures/mixed-monorepo/packages/minecraft/settings.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/gradle/libs.versions.toml",
+        "fixtures/mixed-monorepo/packages/minecraft/build-logic/settings.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/build-logic/build.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/build-logic/src/main/kotlin/java-conventions.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/gradle/wrapper/gradle-wrapper.properties",
+        "fixtures/mixed-monorepo/services/core/composer.json",
+        "fixtures/mixed-monorepo/services/core/composer.lock",
+        "fixtures/mixed-monorepo/go.work",
+        "fixtures/mixed-monorepo/tools/one/go.mod",
+        "fixtures/mixed-monorepo/tools/two/go.mod",
+        "fixtures/mixed-monorepo/tools/bots/Cargo.toml",
+        "fixtures/mixed-monorepo/tools/bots/Cargo.lock",
+        "fixtures/mixed-monorepo/skills-lock.json",
+        "fixtures/mixed-monorepo/.agents/skills/reviewed-skill/SKILL.md",
+        "fixtures/mixed-monorepo/.agents/skills/edited-skill/SKILL.md",
+        "fixtures/mixed-monorepo/registry-records.json"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Autonomously update the skills installed in this repository only. The evaluator also seeds a changed global skill and a local customization as shown in the records.",
+      "expected_output": "Only reviewed project content is refreshed with a generated project lock.",
+      "expectations": [
+        "Check and update use verified -p scope from the installation root; globals are never selected or modified.",
+        "edited-skill is held because installed content differs from its upstream baseline; only reviewed-skill is passed to the updater.",
+        "No semver classification or npm content-age protection is invented for the skill revision.",
+        "Canonical destinations, existing aliases, CLI-written hashes and actual content diff are verified."
+      ],
+      "files": [
+        "fixtures/mixed-monorepo/package.json",
+        "fixtures/mixed-monorepo/pnpm-workspace.yaml",
+        "fixtures/mixed-monorepo/packages/web/package.json",
+        "fixtures/mixed-monorepo/packages/common/package.json",
+        "fixtures/mixed-monorepo/packages/minecraft/package.json",
+        "fixtures/mixed-monorepo/packages/minecraft/settings.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/gradle/libs.versions.toml",
+        "fixtures/mixed-monorepo/packages/minecraft/build-logic/settings.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/build-logic/build.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/build-logic/src/main/kotlin/java-conventions.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/gradle/wrapper/gradle-wrapper.properties",
+        "fixtures/mixed-monorepo/services/core/composer.json",
+        "fixtures/mixed-monorepo/services/core/composer.lock",
+        "fixtures/mixed-monorepo/go.work",
+        "fixtures/mixed-monorepo/tools/one/go.mod",
+        "fixtures/mixed-monorepo/tools/two/go.mod",
+        "fixtures/mixed-monorepo/tools/bots/Cargo.toml",
+        "fixtures/mixed-monorepo/tools/bots/Cargo.lock",
+        "fixtures/mixed-monorepo/skills-lock.json",
+        "fixtures/mixed-monorepo/.agents/skills/reviewed-skill/SKILL.md",
+        "fixtures/mixed-monorepo/.agents/skills/edited-skill/SKILL.md",
+        "fixtures/mixed-monorepo/registry-records.json"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Update repository-local skills autonomously, but this fixture has an older CLI whose help lacks project scope and whose update reads only the home lock. Do not upgrade the CLI.",
+      "expected_output": "A held project update without touching global installations.",
+      "expectations": [
+        "The CLI limitation is reported as unavailable for project scope.",
+        "No unscoped check/update, unknown -p attempt or global fallback runs.",
+        "No resolver installation, upstream re-add, lock rewrite or global modification occurs."
+      ],
+      "files": [
+        "fixtures/mixed-monorepo/package.json",
+        "fixtures/mixed-monorepo/pnpm-workspace.yaml",
+        "fixtures/mixed-monorepo/packages/web/package.json",
+        "fixtures/mixed-monorepo/packages/common/package.json",
+        "fixtures/mixed-monorepo/packages/minecraft/package.json",
+        "fixtures/mixed-monorepo/packages/minecraft/settings.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/gradle/libs.versions.toml",
+        "fixtures/mixed-monorepo/packages/minecraft/build-logic/settings.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/build-logic/build.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/build-logic/src/main/kotlin/java-conventions.gradle.kts",
+        "fixtures/mixed-monorepo/packages/minecraft/gradle/wrapper/gradle-wrapper.properties",
+        "fixtures/mixed-monorepo/services/core/composer.json",
+        "fixtures/mixed-monorepo/services/core/composer.lock",
+        "fixtures/mixed-monorepo/go.work",
+        "fixtures/mixed-monorepo/tools/one/go.mod",
+        "fixtures/mixed-monorepo/tools/two/go.mod",
+        "fixtures/mixed-monorepo/tools/bots/Cargo.toml",
+        "fixtures/mixed-monorepo/tools/bots/Cargo.lock",
+        "fixtures/mixed-monorepo/skills-lock.json",
+        "fixtures/mixed-monorepo/.agents/skills/reviewed-skill/SKILL.md",
+        "fixtures/mixed-monorepo/.agents/skills/edited-skill/SKILL.md",
+        "fixtures/mixed-monorepo/registry-records.json"
+      ]
     }
   ]
 }

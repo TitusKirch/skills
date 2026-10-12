@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "reviewed-skill": {
+      "source": "example/skills",
+      "sourceType": "github",
+      "computedHash": "baseline-reviewed"
+    },
+    "edited-skill": {
+      "source": "example/skills",
+      "sourceType": "github",
+      "computedHash": "baseline-edited"
+    }
+  }
+}

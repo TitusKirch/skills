@@ -1,0 +1,31 @@
+{
+  "_comment": "Synthetic deterministic evaluator data, not assertions about real upstream releases. Supply wrappers, runtime, lock resolution and scanners as stubs; never fetch/install these artifacts.",
+  "java": {
+    "com.google.code.gson:gson": ["2.14.0", "2.14.1", "2.15.0", "3.0.0-RC1"],
+    "com.gradleup.shadow:shadow-gradle-plugin": ["9.6.1", "9.7.0"],
+    "io.papermc.paper:paper-api": [
+      "26.2.build.123-stable",
+      "27.1.build.1-stable"
+    ]
+  },
+  "skills": {
+    "reviewed-skill": {
+      "baseline": "Original tracked content.",
+      "candidateHash": "candidate-reviewed",
+      "candidate": "Reviewed new content."
+    },
+    "edited-skill": {
+      "baseline": "Original tracked content.",
+      "candidateHash": "candidate-edited"
+    }
+  },
+  "globalSkill": {
+    "name": "global-only",
+    "changed": true
+  },
+  "cliCapabilities": ["check -p", "update [skills...] -p -y"],
+  "gateCoverage": {
+    "turbo": ["web", "minecraft"],
+    "omitted": ["services/core", "tools/bots", "tools/one", "tools/two"]
+  }
+}

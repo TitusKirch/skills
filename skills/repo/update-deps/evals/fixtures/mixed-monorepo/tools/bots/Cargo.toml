@@ -1,0 +1,5 @@
+[package]
+name = "bots"
+version = "0.1.0"
+[dependencies]
+serde = "1"
