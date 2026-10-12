@@ -5,7 +5,7 @@
 **Agent skills by Titus Kirch — installable via [skills.sh](https://skills.sh) in [Claude Code](https://code.claude.com/docs/en/overview), [Codex](https://github.com/openai/codex), [Cursor](https://cursor.com/docs), [OpenCode](https://opencode.ai) and friends**
 
 [![skills.sh](https://skills.sh/b/TitusKirch/skills)](https://skills.sh/TitusKirch/skills)
-[![Tests](https://img.shields.io/github/actions/workflow/status/TitusKirch/skills/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/TitusKirch/skills/actions/workflows/ci.yml)
+[![Tests](https://github.com/TitusKirch/skills/actions/workflows/ci.yml/badge.svg?event=pull_request)](https://github.com/TitusKirch/skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/TitusKirch/skills?style=flat-square&color=10b981)](LICENSE)
 
 </div>
