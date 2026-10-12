@@ -1,0 +1,6 @@
+{
+  "name": "minecraft",
+  "scripts": {
+    "check": "./gradlew check"
+  }
+}

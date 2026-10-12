@@ -1,6 +1,6 @@
 # update-deps — Reference
 
-Mechanics for the [`update-deps`](SKILL.md) skill. Scope is **Node** (npm / pnpm / bun), **PHP** (Composer), **Rust** (Cargo), **Go** (modules), **container images** (Dockerfile / Compose), **GitHub Actions references** (workflows) and **GitLab CI** (`.gitlab-ci.yml`), monorepos included. The updater is **detected from the repo**, never configured: the lockfile and `packageManager` already say which one the repo runs, and a key naming a different one could only contradict it. The last three are the ecosystems with no updater to detect, so the skill resolves and writes those itself — through a registry for images (`ecosystems/container-images.md`), through `gh api` for action refs (`ecosystems/github-actions.md`), through `glab api` for CI includes and components (`ecosystems/gitlab-ci.md`).
+Mechanics for the [`update-deps`](SKILL.md) skill. Scope is **Node** (npm / pnpm / bun), **PHP** (Composer), **Rust** (Cargo), **Go** (modules), **Java** (Gradle / Maven), **project-local skills.sh skills**, **container images** (Dockerfile / Compose), **GitHub Actions references** (workflows) and **GitLab CI** (`.gitlab-ci.yml`), monorepos included. The updater is **detected from the repo**, never configured: the lockfile and `packageManager` already say which one the repo runs, and a key naming a different one could only contradict it. The last three are the ecosystems with no updater to detect, so the skill resolves and writes those itself — through a registry for images (`ecosystems/container-images.md`), through `gh api` for action refs (`ecosystems/github-actions.md`), through `glab api` for CI includes and components (`ecosystems/gitlab-ci.md`).
 
 ## Config
 
@@ -148,20 +148,22 @@ skill supplies no implicit host-side launcher.
 
 Lockfile-driven, with `packageManager` as the override — except for the ecosystems whose manifests are the detection:
 
-| Signal                                                              | Ecosystem        | Manager                                       |
-| :------------------------------------------------------------------ | :--------------- | :-------------------------------------------- |
-| `pnpm-lock.yaml`                                                    | Node             | pnpm                                          |
-| `bun.lock` / `bun.lockb`                                            | Node             | bun                                           |
-| `package-lock.json`                                                 | Node             | npm                                           |
-| `composer.lock` / `composer.json`                                   | PHP              | Composer                                      |
-| `Cargo.lock` / `Cargo.toml`                                         | Rust             | Cargo                                         |
-| `go.mod` / `go.sum`                                                 | Go               | `go`                                          |
-| `Dockerfile`, `*.Dockerfile`, `Containerfile`                       | Container images | **none** — the skill resolves and writes¹     |
-| `compose.yaml` / `compose.yml` / `docker-compose.yml` (+ overrides) | Container images | **none** — the skill resolves and writes¹     |
-| `.github/workflows/*.yml` / `*.yaml`                                | GitHub Actions   | **none** — the skill resolves via `gh api`²   |
-| `action.yml` / `action.yaml` _(composite action)_                   | GitHub Actions   | **none** — the skill resolves via `gh api`²   |
-| `.gitlab-ci.yml` → `image:` / `services:`                           | Container images | **none** — routed to the container model³     |
-| `.gitlab-ci.yml` → `include:` / `component:`                        | GitLab CI        | **none** — the skill resolves via `glab api`³ |
+| Signal                                                              | Ecosystem        | Manager                                                               |
+| :------------------------------------------------------------------ | :--------------- | :-------------------------------------------------------------------- |
+| `settings.gradle(.kts)`, `build.gradle(.kts)` or `pom.xml`          | Java             | Gradle / Maven wrapper; [model](ecosystems/java.md)                   |
+| `skills-lock.json`, project installed skill directories             | Project skills   | skills.sh CLI in project scope; [model](ecosystems/project-skills.md) |
+| `pnpm-lock.yaml`                                                    | Node             | pnpm                                                                  |
+| `bun.lock` / `bun.lockb`                                            | Node             | bun                                                                   |
+| `package-lock.json`                                                 | Node             | npm                                                                   |
+| `composer.lock` / `composer.json`                                   | PHP              | Composer                                                              |
+| `Cargo.lock` / `Cargo.toml`                                         | Rust             | Cargo                                                                 |
+| `go.mod` / `go.sum`                                                 | Go               | `go`                                                                  |
+| `Dockerfile`, `*.Dockerfile`, `Containerfile`                       | Container images | **none** — the skill resolves and writes¹                             |
+| `compose.yaml` / `compose.yml` / `docker-compose.yml` (+ overrides) | Container images | **none** — the skill resolves and writes¹                             |
+| `.github/workflows/*.yml` / `*.yaml`                                | GitHub Actions   | **none** — the skill resolves via `gh api`²                           |
+| `action.yml` / `action.yaml` _(composite action)_                   | GitHub Actions   | **none** — the skill resolves via `gh api`²                           |
+| `.gitlab-ci.yml` → `image:` / `services:`                           | Container images | **none** — routed to the container model³                             |
+| `.gitlab-ci.yml` → `include:` / `component:`                        | GitLab CI        | **none** — the skill resolves via `glab api`³                         |
 
 ¹ No manager to drive, because no updater owns this ecosystem. What stands in for one — the registry v2 API, `crane`, `skopeo` or `docker` — and what happens when none is present: the container tag model (`ecosystems/container-images.md`).
 
@@ -196,7 +198,9 @@ Record **tool → owning file → consumers → current version/style → author
 
 ## Range → command
 
-**Only taze has real range granularity.** Every native Node updater collapses to "within the declared range" or "latest", with nothing in between:
+Java resolves the requested range explicitly before editing declarations; skills.sh content uses a separately authorized revision refresh, not a semver range. See their ecosystem files.
+
+**Among the Node updaters, only taze has real range granularity.** Every native Node updater collapses to "within the declared range" or "latest", with nothing in between:
 
 | Range               | taze (preferred) | pnpm / npm             | bun                   | Composer                        | Cargo                          | Go                      | Container images        | GitHub Actions          | GitLab CI               |
 | :------------------ | :--------------- | :--------------------- | :-------------------- | :------------------------------ | :----------------------------- | :---------------------- | :---------------------- | :---------------------- | :---------------------- |
@@ -219,7 +223,7 @@ Useful taze flags (`taze --help` is the authority; verified against `taze@21.3.0
 | Flag                       | Use                                                            |
 | :------------------------- | :------------------------------------------------------------- |
 | `-w, --write`              | write enabled manifests — **scope them before writing**        |
-| `-r, --recursive`          | monorepo — every workspace `package.json`                      |
+| `-r, --recursive`          | recursive discovery — reconcile with workspace membership      |
 | `-n, --include <deps>`     | scope to one package or a pattern                              |
 | `-x, --exclude <deps>`     | skip packages; overrides `--include`                           |
 | `-l, --include-locked`     | bring **exact pins** into scope — see [pins](#exact-pins)      |
@@ -291,15 +295,25 @@ A dependency declared without an operator (`oxfmt: 0.57.0`) is **locked**. Two c
 
 ## Monorepos
 
+**Build an ownership map before running recursively.** Start with repository files (`rg --files --hidden`, respecting ignore rules), then follow workspace declarations, local CI includes and build settings. Exclude dependencies, caches and generated output (`node_modules`, `vendor`, `.gradle`, `build`, `target`, `dist`), inert eval/test fixtures, vendored examples, submodules and nested Git repositories unless explicitly in scope. A nested workspace owned by this repo is a separate resolution root, not automatically a foreign repository. Do not follow symlinks outside the repo.
+
+Record **ecosystem → members → version owner → command cwd → lockfiles → gate**. Include a manifest at the workspace root even when it is not a member. Reconcile recursive updater output with this map: discovery is not proof that the updater visited every owner. Multiple independent workspaces/managers can coexist, and a Node package can wrap another ecosystem without owning its lockfile.
+
 - **pnpm** — `packages:` in `pnpm-workspace.yaml`. **npm / bun** — `workspaces` in `package.json`. **Composer** — path repositories. **Cargo** — `[workspace]` in `Cargo.toml`; `cargo update` at the workspace root resolves the whole member tree into one `Cargo.lock`. **Go** — `go.work`; each member keeps its **own** `go.mod`, so an update is per-module and there is no single lock to resolve at the root.
-- **taze `-r`** walks every workspace `package.json`. Note `--ignore-other-workspaces` defaults to **true** — a nested package with its own `.git`/`pnpm-workspace.yaml` is a different repo and is skipped, which is the correct default.
+- **Node recursion is tool-specific.** Resolve pnpm `packages:` globs and exclusions, npm/bun `workspaces`, and updater exclusions. `taze -r` is a filesystem walk, not proof of workspace membership; inspect its preview and path controls before writing. `--ignore-other-workspaces` can skip nested workspace roots: run each in-scope independent root explicitly instead of disabling the boundary globally. Native pnpm needs recursive selection for members and explicit root coverage; npm needs its workspace/root selectors. Check installed help and compare the actual package list with the map.
+- **Shared version owners** — pnpm `catalog` / named `catalogs`, overrides, npm overrides, Cargo `[workspace.dependencies]`, Gradle catalogs/platforms and Maven parent properties own versions their consumers reference. Update the owner once, preserving `catalog:`, `workspace:`, `file:`, `link:`, path and project references; never replace internal links with registry versions. Overrides/resolutions are policy pins, so report and hold them unless changing them is authorized. Check whether the installed updater supports catalogs; if not, resolve and edit the catalog explicitly through the same gate.
+- **Java** — Gradle `include` members share a build, but `includeBuild` / `buildSrc` own separate dependency resolution; they may import the same catalog. Maven `<modules>` defines the reactor, while parent inheritance/BOMs define version ownership; they are not necessarily the same tree. Read [Java](ecosystems/java.md).
+- **Local skills** — one run per `skills-lock.json` installation root, including explicitly owned nested projects. Root `skills update -p` does not traverse workspace members. Deduplicate aliases to one canonical installation; never follow a link into a home/global skill directory. Read [Project skills](ecosystems/project-skills.md).
 - **Container images have no workspace concept** — there is nothing declaring which Dockerfiles belong to the repo, so every `Dockerfile` and Compose file under it is read wherever it sits, and they resolve together as one ecosystem (`ecosystems/container-images.md`). A monorepo with one Dockerfile per app is the ordinary case, not a special one.
 - **GitHub Actions has no workspace concept either, and one fixed location.** GitHub reads workflows only from `.github/workflows/` at the **repo root**, so a monorepo's packages do not each get one — a single workflow set drives every package, and a composite `action.yml` is found wherever it sits.
 - **GitLab CI has one entry point and an arbitrary tree beneath it.** `.gitlab-ci.yml` sits at the repo root, but `include: local:` lets a monorepo split its pipeline across as many files as it has packages — commonly one per app under `.gitlab/ci/`. The **entry point** is fixed and the rest is discovered by following the includes, so there is no per-package manifest to enumerate and no workspace declaration to read.
-- **Keep a shared dependency on one version across packages** — a version skew introduced by an update is a finding, not an outcome. A **shared base image** is the same rule: three apps on `FROM node:22` that come out on two different tags is a skew, however green each one is alone, and a `.gitlab-ci.yml` `image:` on a different tag from the `Dockerfile` beside it is that same skew inside one repo. So is a **shared action**: `actions/checkout` left on two different refs across a repo's workflows is a skew whichever ref is newer, and it is the ordinary way a workflow set drifts. A **shared CI fragment or component** included at two different refs from two pipeline files is the GitLab spelling of it.
-- **Resolve the lockfile once, at the root**, with one install after all manifests are written.
+- **Preserve intentional version differences.** Compare before/after consumers of each shared owner and report newly introduced skew, including shared images and CI refs. Independent applications may deliberately use different majors; do not flatten them to one version merely because they share a repo.
+- **Resolve once per resolution root after its edits**, never once for the whole monorepo: shared Node/Cargo lock at that workspace root, Composer lock at each application root, `go mod tidy` per Go member (`go.work` is not a shared lock), Gradle locks per participating build/configuration, skills lock per installation root. Maven ordinarily has no lock. Do not run concurrent writers against the same lock or shared catalog.
+- **Verify coverage, not just exit status.** Follow Turbo/Nx/root scripts to the member checks they invoke. Run the root gate, plus affected builds it does not cover (including Gradle build logic where applicable). Missing runtimes or skipped task coverage remains unverified; an unrelated green Node lint does not verify Java or PHP.
 
 ## Security
+
+For Java, run the repo’s configured scanner (for example OWASP Dependency-Check); absent means **unavailable**, not clean. For skills.sh content there is no standard package-advisory command: report **not available for this ecosystem** and review the incoming content/provenance separately.
 
 Run **every time**, independent of the range, and before declaring the run clean:
 

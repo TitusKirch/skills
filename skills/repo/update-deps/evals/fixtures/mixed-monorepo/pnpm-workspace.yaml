@@ -1,0 +1,7 @@
+packages:
+  - packages/*
+  - services/*
+  - '!**/evals/**'
+minimumReleaseAge: 4320
+catalog:
+  lodash: ^4.17.21

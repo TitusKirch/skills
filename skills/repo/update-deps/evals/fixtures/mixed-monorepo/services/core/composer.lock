@@ -1,0 +1,8 @@
+{
+  "packages": [
+    {
+      "name": "example/framework",
+      "version": "1.2.0"
+    }
+  ]
+}
