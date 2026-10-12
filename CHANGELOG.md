@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.28.0](https://github.com/TitusKirch/skills/compare/v0.27.0...v0.28.0) (2026-10-12)
+
+
+### Features
+
+* **vhs-demo:** support docs media destinations ([c8a1c52](https://github.com/TitusKirch/skills/commit/c8a1c52f1a0e408dd723bb8c68a1458722205e86)), closes [#285](https://github.com/TitusKirch/skills/issues/285)
+* **write-docs:** define reproducible media contract ([ef9f8ee](https://github.com/TitusKirch/skills/commit/ef9f8eebc0ce10f1eba9344f6165658cef4564ec)), closes [#285](https://github.com/TitusKirch/skills/issues/285)
+
 ## [0.27.0](https://github.com/TitusKirch/skills/compare/v0.26.0...v0.27.0) (2026-10-12)
 
 
