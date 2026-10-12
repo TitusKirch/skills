@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.27.0](https://github.com/TitusKirch/skills/compare/v0.26.0...v0.27.0) (2026-10-12)
+
+
+### Features
+
+* **update-deps:** cover runtimes and pinned ci tools ([864ea63](https://github.com/TitusKirch/skills/commit/864ea63d9cd8e73ca1c1533387eb0a8fb0540b1d))
+* **update-deps:** support java and project skills in monorepos ([5184862](https://github.com/TitusKirch/skills/commit/5184862c8be5d353e4a29ba9274be7005ca1a6f2))
+
+
+### Bug Fixes
+
+* **merge-deps:** bind merges to the verified commit ([490e54f](https://github.com/TitusKirch/skills/commit/490e54f9a4181e926d00217a53561ef1b29c07f5))
+* **release:** bind merges to the approved commit ([e6339b5](https://github.com/TitusKirch/skills/commit/e6339b527dbd36d63fcee71e29a3108c8109e320))
+* **skills:** bind linear actions to the selected repository ([1b40119](https://github.com/TitusKirch/skills/commit/1b40119d012753a8031310219a811d4527975508))
+* **skills:** isolate verification from operator credentials ([dacaf3e](https://github.com/TitusKirch/skills/commit/dacaf3e0ff38dc832813030558900dd1b7747d57))
+* **skills:** restrict local tracker state reads to frontmatter ([705ba5b](https://github.com/TitusKirch/skills/commit/705ba5beae648168d98d036b907b2d39ed9323c8))
+* **skills:** use the native pull request CI badge ([1db1a3d](https://github.com/TitusKirch/skills/commit/1db1a3d123bed79aca4b572c15e4ef65796c55ba))
+* **vhs-demo:** harden the headless renderer ([09e3f71](https://github.com/TitusKirch/skills/commit/09e3f712bdd02a59cb4cc21bad0dc340ec061ff0))
+* **work-implement-queue:** remove a worker's worktree once its work is pushed ([89ac27b](https://github.com/TitusKirch/skills/commit/89ac27b964f91a48a089cbd51135cb70e625d34e))
+
 ## [0.26.0](https://github.com/TitusKirch/skills/compare/v0.25.0...v0.26.0) (2026-09-13)
 
 
