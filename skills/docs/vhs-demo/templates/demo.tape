@@ -8,7 +8,9 @@
 # The tape is the source of truth — edit the choreography below, re-run, commit
 # the new GIF. Never hand-edit the GIF.
 
-# Output MUST be a relative path — VHS rejects absolute paths like /vhs/...
+# Output MUST be repo-relative — VHS rejects absolute paths like /vhs/...
+# README default below; for docs set docs/_assets/<name>.gif.
+# Keep the tape alongside its GIF with the same base name; honor caller targets.
 Output .github/assets/demo.gif
 
 Set FontSize 20
