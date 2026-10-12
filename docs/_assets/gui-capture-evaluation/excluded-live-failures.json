@@ -1,0 +1,24 @@
+[
+  {
+    "tool": "chromiumoxide",
+    "mode": "reused-browser",
+    "prefix": "warm-0",
+    "attempt": 1,
+    "requested_captures": 5,
+    "completed_captures": 0,
+    "kind": "hydration timeout after 60 seconds",
+    "stderr": "Error: JavascriptException(ExceptionDetails { exception_id: 2, text: \"Uncaught (in promise) Error: Timed out waiting for hydration and Introduction\", line_number: 7, column_number: 45, script_id: Some(ScriptId(\"13\")), url: None, stack_trace: Some(StackTrace { description: None, call_frames: [CallFrame { function_name: \"\", script_id: ScriptId(\"13\"), url: \"\", line_number: 6, column_number: 44 }], parent: None, parent_id: None }), exception: Some(RemoteObject { type: Object, subtype: Some(Error), class_name: Some(\"Error\"), value: None, unserializable_value: None, description: Some(\"Error: Timed out waiting for hydration and Introduction\\n    at <anonymous>:7:45\"), deep_serialized_value: None, object_id: Some(RemoteObjectId(\"-6902183747241002553.3.2\")), preview: None, custom_preview: None }), execution_context_id: None, exception_meta_data: None })\n",
+    "note": "Recorded separately from successful timing samples. Cause not established. Original unsuccessful log preserved."
+  },
+  {
+    "tool": "headless_chrome",
+    "mode": "reused-browser",
+    "prefix": "warm-1",
+    "attempt": 1,
+    "requested_captures": 5,
+    "completed_captures": 0,
+    "kind": "hydration timeout after 60 seconds",
+    "stderr": "Error: \"Readiness failed: Some(ExceptionDetails { exception_id: 2, text: \\\"Uncaught (in promise) Error: Timed out waiting for hydration and Introduction: {\\\\\\\"url\\\\\\\":\\\\\\\"http://localhost:3286/getting-started\\\\\\\",\\\\\\\"readyState\\\\\\\":\\\\\\\"complete\\\\\\\",\\\\\\\"heading\\\\\\\":\\\\\\\"Introduction\\\\\\\",\\\\\\\"nuxt\\\\\\\":false}\\\", line_number: 0, column_number: 0, script_id: None, url: None, stack_trace: None, exception: Some(RemoteObject { Type: Object, subtype: Some(Error), class_name: Some(\\\"Error\\\"), value: None, unserializable_value: None, description: Some(\\\"Error: Timed out waiting for hydration and Introduction: {\\\\\\\"url\\\\\\\":\\\\\\\"http://localhost:3286/getting-started\\\\\\\",\\\\\\\"readyState\\\\\\\":\\\\\\\"complete\\\\\\\",\\\\\\\"heading\\\\\\\":\\\\\\\"Introduction\\\\\\\",\\\\\\\"nuxt\\\\\\\":false}\\\\n    at <anonymous>:7:45\\\"), deep_serialized_value: None, object_id: Some(\\\"-4758596861882160855.2.1\\\"), preview: None, custom_preview: None }), execution_context_id: None })\"\n",
+    "note": "SSR heading and document complete; Nuxt app property absent. Cause not established."
+  }
+]

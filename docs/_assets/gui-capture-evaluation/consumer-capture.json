@@ -1,0 +1,59 @@
+{
+  "url": "http://127.0.0.1:3286/getting-started",
+  "browser": "153.0.8010.12",
+  "captureStyle": "#nuxt-devtools-container { display: none !important; }",
+  "runs": [
+    {
+      "name": "desktop-1",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "bytes": 122603,
+      "sha256": "0778a7b7720029479bf356370db7cffa5ce0177f094e50159101dc63c65062aa",
+      "state": {
+        "title": "Introduction · duxt",
+        "theme": "light",
+        "loadedFonts": "loaded",
+        "horizontalOverflow": 0,
+        "brokenImages": []
+      },
+      "errors": []
+    },
+    {
+      "name": "desktop-2",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "bytes": 122603,
+      "sha256": "0778a7b7720029479bf356370db7cffa5ce0177f094e50159101dc63c65062aa",
+      "state": {
+        "title": "Introduction · duxt",
+        "theme": "light",
+        "loadedFonts": "loaded",
+        "horizontalOverflow": 0,
+        "brokenImages": []
+      },
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "bytes": 56573,
+      "sha256": "3197913cf8588a65ccf5af0fb58dcdfb68de9349072a58b340dfc928daed22e9",
+      "state": {
+        "title": "Introduction · duxt",
+        "theme": "light",
+        "loadedFonts": "loaded",
+        "horizontalOverflow": 0,
+        "brokenImages": []
+      },
+      "errors": []
+    }
+  ],
+  "identicalDesktopCaptures": true
+}

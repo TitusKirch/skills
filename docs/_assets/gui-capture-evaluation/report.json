@@ -1,0 +1,267 @@
+{
+  "environment": {
+    "date": "2026-10-12",
+    "url": "http://localhost:3286/getting-started",
+    "browser": "Google Chrome for Testing 153.0.8010.12",
+    "browser_path_host": "/root/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome",
+    "container_os": "Debian 13.6",
+    "container_image": "sha256:de7e1021a6d2228d26d7eb7d9f59e96af3aa56417460be2fbe9a8af70dabc7fb",
+    "container_cpus": 4,
+    "shm": "1 GiB",
+    "viewport": [1440, 1000],
+    "device_scale_factor": 1,
+    "timezone": "UTC",
+    "locale": "en-GB",
+    "theme": "light",
+    "reduced_motion": "reduce",
+    "versions": {
+      "playwright-core": "1.64.0",
+      "puppeteer-core": "25.13.0",
+      "chromiumoxide": "0.9.1",
+      "headless_chrome": "1.0.22",
+      "node": "24.15.0",
+      "rust": "1.96.0"
+    },
+    "duxt_commit": "e15cdc436d248e10011e44b2770207b8ceaf39e2",
+    "setup_seconds": {
+      "js_install": 6.15,
+      "rust_fetch": 22.89,
+      "rust_release_build_combined": 436.37,
+      "docker_image_build": 43.08
+    },
+    "caveats": [
+      "Shared workstation; CPU and I/O load were not exclusive.",
+      "Fresh browser means fresh process/profile, not flushed OS/browser-binary or server caches.",
+      "Fresh process wall time includes Docker exec overhead but excludes Docker container startup; same running container is used for every tool.",
+      "Each warm batch uses a fresh browser, then discards its first capture; four remaining captures are measured.",
+      "Native APIs use different navigation/default browser flags; readiness contract and PNG output are identical.",
+      "Node packages partly reused the existing pnpm cache; Cargo partly reused existing source cache. Install/build timings are not a clean-cache head-to-head comparison.",
+      "Rust drivers are optimized release builds; initial combined dependency build includes both crates.",
+      "Live dev-server results were excluded from the main comparison because concurrent source edits triggered content rebuilds and failed dynamic imports. Original timing/failure logs remain in live-exploratory-results/.",
+      "The main comparison replays recorded HTTP responses on local container loopback, with deterministic cache headers; it measures browser automation/rendering, not production network or server performance.",
+      "The live exploratory run had hydration timeouts in chromiumoxide and headless_chrome; server logs also showed dynamic module import failures. No library-specific cause was established."
+    ],
+    "benchmark_target": "Frozen HAR replay of the fully hydrated real Duxt getting-started page, served on loopback inside the same network-isolated container.",
+    "fixture_entries": 718,
+    "container_network": "none",
+    "fixture_sha256": "90029f029114bd88eea3dded0b65025ad51149f65de4db3739cd20361f729c79",
+    "docker_vm_cpus": 16,
+    "docker_vm_memory_bytes": 42061066240,
+    "discarded_live_exploratory_failures": "live-exploratory-results/failures.json"
+  },
+  "summary": {
+    "playwright": {
+      "fresh_browser_process": {
+        "n": 8,
+        "median_ms": 5555.733834997227,
+        "min_ms": 4517.588089001947,
+        "max_ms": 8349.799852992874,
+        "p95_ms": 8349.799852992874
+      },
+      "launch": {
+        "n": 8,
+        "median_ms": 682.6792310000001,
+        "min_ms": 540.6754540000001,
+        "max_ms": 1029.254898,
+        "p95_ms": 1029.254898
+      },
+      "warm_capture": {
+        "n": 12,
+        "median_ms": 6898.850681,
+        "min_ms": 4603.725015999999,
+        "max_ms": 9320.681745999998,
+        "p95_ms": 9320.681745999998
+      },
+      "warm_page_ready": {
+        "n": 12,
+        "median_ms": 6733.130145499999,
+        "min_ms": 4425.664929,
+        "max_ms": 9131.941630999998,
+        "p95_ms": 9131.941630999998
+      },
+      "warm_screenshot": {
+        "n": 12,
+        "median_ms": 180.66327550000096,
+        "min_ms": 112.18059400000129,
+        "max_ms": 391.16744200000176,
+        "p95_ms": 391.16744200000176
+      },
+      "image_sha256s": [
+        "6ba34cff304f240959ca4465b5893bbd500cf3bde07d47620cd6cf1ab64b94d0",
+        "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a",
+        "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      ]
+    },
+    "puppeteer": {
+      "fresh_browser_process": {
+        "n": 8,
+        "median_ms": 5618.494780996116,
+        "min_ms": 4604.783925999072,
+        "max_ms": 7078.5991640004795,
+        "p95_ms": 7078.5991640004795
+      },
+      "launch": {
+        "n": 8,
+        "median_ms": 580.16921,
+        "min_ms": 448.482442,
+        "max_ms": 831.855608,
+        "p95_ms": 831.855608
+      },
+      "warm_capture": {
+        "n": 12,
+        "median_ms": 3526.1882989999995,
+        "min_ms": 2975.437874,
+        "max_ms": 7103.065808000001,
+        "p95_ms": 7103.065808000001
+      },
+      "warm_page_ready": {
+        "n": 12,
+        "median_ms": 3420.630879999999,
+        "min_ms": 2857.866529,
+        "max_ms": 6833.203522999998,
+        "p95_ms": 6833.203522999998
+      },
+      "warm_screenshot": {
+        "n": 12,
+        "median_ms": 114.13018800000009,
+        "min_ms": 97.46738000000187,
+        "max_ms": 293.11380199999985,
+        "p95_ms": 293.11380199999985
+      },
+      "image_sha256s": [
+        "6ba34cff304f240959ca4465b5893bbd500cf3bde07d47620cd6cf1ab64b94d0",
+        "b8640138d625449b13dfdecb137cdd1b57056abbb7b5baf6d76adfc2001ea654",
+        "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a",
+        "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      ]
+    },
+    "chromiumoxide": {
+      "fresh_browser_process": {
+        "n": 8,
+        "median_ms": 5346.172488490993,
+        "min_ms": 4750.0796069944045,
+        "max_ms": 9038.876730002812,
+        "p95_ms": 9038.876730002812
+      },
+      "launch": {
+        "n": 8,
+        "median_ms": 289.301624,
+        "min_ms": 179.00718500000002,
+        "max_ms": 379.074077,
+        "p95_ms": 379.074077
+      },
+      "warm_capture": {
+        "n": 12,
+        "median_ms": 6501.407353,
+        "min_ms": 4499.925157,
+        "max_ms": 20599.59202,
+        "p95_ms": 20599.59202
+      },
+      "warm_page_ready": {
+        "n": 12,
+        "median_ms": 6153.324455,
+        "min_ms": 4319.889996999999,
+        "max_ms": 20256.162378,
+        "p95_ms": 20256.162378
+      },
+      "warm_screenshot": {
+        "n": 12,
+        "median_ms": 210.93586050000067,
+        "min_ms": 118.6455390000001,
+        "max_ms": 481.1510250000001,
+        "p95_ms": 481.1510250000001
+      },
+      "image_sha256s": [
+        "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a",
+        "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      ]
+    },
+    "headless_chrome": {
+      "fresh_browser_process": {
+        "n": 8,
+        "median_ms": 7218.700912002532,
+        "min_ms": 5759.4206370122265,
+        "max_ms": 8431.747776005068,
+        "p95_ms": 8431.747776005068
+      },
+      "launch": {
+        "n": 8,
+        "median_ms": 403.6498365,
+        "min_ms": 325.05755400000004,
+        "max_ms": 611.142082,
+        "p95_ms": 611.142082
+      },
+      "warm_capture": {
+        "n": 12,
+        "median_ms": 6707.141862500001,
+        "min_ms": 4783.251016,
+        "max_ms": 8984.971737,
+        "p95_ms": 8984.971737
+      },
+      "warm_page_ready": {
+        "n": 12,
+        "median_ms": 6453.291182,
+        "min_ms": 4597.638664,
+        "max_ms": 8678.256249,
+        "p95_ms": 8678.256249
+      },
+      "warm_screenshot": {
+        "n": 12,
+        "median_ms": 203.76491900000065,
+        "min_ms": 180.2920860000013,
+        "max_ms": 544.5274090000003,
+        "p95_ms": 544.5274090000003
+      },
+      "image_sha256s": [
+        "6ba34cff304f240959ca4465b5893bbd500cf3bde07d47620cd6cf1ab64b94d0",
+        "b8640138d625449b13dfdecb137cdd1b57056abbb7b5baf6d76adfc2001ea654",
+        "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a",
+        "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      ]
+    }
+  },
+  "shared_ready_page_screenshot": {
+    "playwright": {
+      "n": 24,
+      "median_ms": 90.90628150000003,
+      "min_ms": 81.46696799999995,
+      "max_ms": 115.130584,
+      "p95_ms": 108.85508600000003
+    },
+    "puppeteer": {
+      "n": 24,
+      "median_ms": 78.69019499999996,
+      "min_ms": 62.864374,
+      "max_ms": 95.51917299999997,
+      "p95_ms": 94.83780100000001
+    },
+    "chromiumoxide": {
+      "n": 24,
+      "median_ms": 73.14985850000001,
+      "min_ms": 66.502268,
+      "max_ms": 146.843288,
+      "p95_ms": 104.813473
+    },
+    "headless_chrome": {
+      "n": 24,
+      "median_ms": 179.299351,
+      "min_ms": 166.611987,
+      "max_ms": 312.000102,
+      "p95_ms": 206.102525
+    }
+  },
+  "failures": [],
+  "image_validation": {
+    "images": 220,
+    "byte_identical_to_baseline": 76,
+    "pixel_identical_to_baseline": 76,
+    "max_changed_pixels": 30,
+    "max_changed_percent": 0.0020833333333333333,
+    "checks": "results/image-checks.json"
+  },
+  "raw_results": "results/raw.json"
+}

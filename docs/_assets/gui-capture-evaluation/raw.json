@@ -1,0 +1,2946 @@
+[
+  {
+    "tool": "playwright",
+    "mode": "warmup",
+    "prefix": "warmup",
+    "process_wall_ms": 8693.223116002628,
+    "summary": {
+      "summary": true,
+      "tool": "playwright",
+      "count": 2,
+      "launch_ms": 671.765222,
+      "total_ms": 8493.544513,
+      "browserVersion": "153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "launch_ms": 671.765222,
+        "page_ready_ms": 3847.012463,
+        "screenshot_ms": 82.50568699999985,
+        "write_ms": 1.5613769999999931,
+        "capture_ms": 3931.079527,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warmup-playwright-0.png"
+      },
+      {
+        "tool": "playwright",
+        "index": 1,
+        "launch_ms": 671.765222,
+        "page_ready_ms": 3545.7976449999996,
+        "screenshot_ms": 105.92892200000097,
+        "write_ms": 0.8668679999991582,
+        "capture_ms": 3652.5934349999998,
+        "bytes": 122847,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warmup-playwright-1.png"
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "mode": "warmup",
+    "prefix": "warmup",
+    "process_wall_ms": 8250.943696999457,
+    "summary": {
+      "summary": true,
+      "tool": "puppeteer",
+      "count": 2,
+      "launch_ms": 516.1117390000001,
+      "total_ms": 8064.662627000001,
+      "browserVersion": "Chrome/153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "launch_ms": 516.1117390000001,
+        "page_ready_ms": 3766.3570180000006,
+        "screenshot_ms": 123.8019489999997,
+        "write_ms": 2.0186009999997623,
+        "capture_ms": 3892.177568,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warmup-puppeteer-0.png"
+      },
+      {
+        "tool": "puppeteer",
+        "index": 1,
+        "launch_ms": 516.1117390000001,
+        "page_ready_ms": 3202.6090780000004,
+        "screenshot_ms": 103.95223399999941,
+        "write_ms": 0.7110450000000128,
+        "capture_ms": 3307.272357,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warmup-puppeteer-1.png"
+      }
+    ]
+  },
+  {
+    "tool": "chromiumoxide",
+    "mode": "warmup",
+    "prefix": "warmup",
+    "process_wall_ms": 8608.43627199938,
+    "summary": {
+      "count": 2,
+      "launch_ms": 320.221448,
+      "summary": true,
+      "tool": "chromiumoxide",
+      "total_ms": 8457.42334
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 3984.330693,
+        "index": 0,
+        "launch_ms": 320.221448,
+        "page_ready_ms": 3874.525432,
+        "path": "/bench/results/warmup-chromiumoxide-0.png",
+        "screenshot_ms": 109.69563500000004,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.10962599999993472,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      },
+      {
+        "bytes": 122847,
+        "capture_ms": 3876.542556,
+        "index": 1,
+        "launch_ms": 320.221448,
+        "page_ready_ms": 3742.696928,
+        "path": "/bench/results/warmup-chromiumoxide-1.png",
+        "screenshot_ms": 133.55538100000012,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.29024699999990844,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a"
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "mode": "warmup",
+    "prefix": "warmup",
+    "process_wall_ms": 11593.183962002513,
+    "summary": {
+      "count": 2,
+      "launch_ms": 342.748895,
+      "summary": true,
+      "tool": "headless_chrome",
+      "total_ms": 11435.46033
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 5781.863145,
+        "index": 0,
+        "launch_ms": 342.748895,
+        "page_ready_ms": 5469.287478,
+        "path": "/bench/results/warmup-headless_chrome-0.png",
+        "screenshot_ms": 312.41999099999975,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.15567600000031234,
+        "sha256": "b8640138d625449b13dfdecb137cdd1b57056abbb7b5baf6d76adfc2001ea654"
+      },
+      {
+        "bytes": 122847,
+        "capture_ms": 5082.323867,
+        "index": 1,
+        "launch_ms": 342.748895,
+        "page_ready_ms": 4889.866024,
+        "path": "/bench/results/warmup-headless_chrome-1.png",
+        "screenshot_ms": 192.274496,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.18334700000013981,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      }
+    ]
+  },
+  {
+    "tool": "chromiumoxide",
+    "mode": "fresh-browser",
+    "prefix": "cold-0",
+    "process_wall_ms": 5128.342571988469,
+    "summary": {
+      "count": 1,
+      "launch_ms": 350.012911,
+      "summary": true,
+      "tool": "chromiumoxide",
+      "total_ms": 4963.614291
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 4380.362311,
+        "index": 0,
+        "launch_ms": 350.012911,
+        "page_ready_ms": 4225.455073,
+        "path": "/bench/results/cold-0-chromiumoxide-0.png",
+        "screenshot_ms": 154.73066899999958,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.1765690000001996,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "mode": "fresh-browser",
+    "prefix": "cold-0",
+    "process_wall_ms": 7078.5991640004795,
+    "summary": {
+      "summary": true,
+      "tool": "puppeteer",
+      "count": 1,
+      "launch_ms": 725.333532,
+      "total_ms": 6866.277269,
+      "browserVersion": "Chrome/153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "launch_ms": 725.333532,
+        "page_ready_ms": 5377.438086,
+        "screenshot_ms": 242.3305989999999,
+        "write_ms": 2.124468999999408,
+        "capture_ms": 5621.893153999999,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-0-puppeteer-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "playwright",
+    "mode": "fresh-browser",
+    "prefix": "cold-0",
+    "process_wall_ms": 7152.440944002592,
+    "summary": {
+      "summary": true,
+      "tool": "playwright",
+      "count": 1,
+      "launch_ms": 723.041862,
+      "total_ms": 6818.801395,
+      "browserVersion": "153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "launch_ms": 723.041862,
+        "page_ready_ms": 5679.668530999999,
+        "screenshot_ms": 134.18890900000042,
+        "write_ms": 1.3290960000003906,
+        "capture_ms": 5815.186536,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-0-playwright-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "mode": "fresh-browser",
+    "prefix": "cold-0",
+    "process_wall_ms": 8431.747776005068,
+    "summary": {
+      "count": 1,
+      "launch_ms": 611.142082,
+      "summary": true,
+      "tool": "headless_chrome",
+      "total_ms": 8237.154723
+    },
+    "samples": [
+      {
+        "bytes": 122847,
+        "capture_ms": 7405.270239,
+        "index": 0,
+        "launch_ms": 611.142082,
+        "page_ready_ms": 7098.989758,
+        "path": "/bench/results/cold-0-headless_chrome-0.png",
+        "screenshot_ms": 306.0274820000004,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.25299900000027264,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a"
+      }
+    ]
+  },
+  {
+    "tool": "chromiumoxide",
+    "mode": "fresh-browser",
+    "prefix": "cold-1",
+    "process_wall_ms": 9038.876730002812,
+    "summary": {
+      "count": 1,
+      "launch_ms": 379.074077,
+      "summary": true,
+      "tool": "chromiumoxide",
+      "total_ms": 8806.019128999998
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 7578.050241999999,
+        "index": 0,
+        "launch_ms": 379.074077,
+        "page_ready_ms": 7165.597984,
+        "path": "/bench/results/cold-1-chromiumoxide-0.png",
+        "screenshot_ms": 412.1043380000001,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.34791999999924883,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "mode": "fresh-browser",
+    "prefix": "cold-1",
+    "process_wall_ms": 6197.503264003899,
+    "summary": {
+      "summary": true,
+      "tool": "puppeteer",
+      "count": 1,
+      "launch_ms": 831.855608,
+      "total_ms": 5793.787285,
+      "browserVersion": "Chrome/153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "launch_ms": 831.855608,
+        "page_ready_ms": 4538.078646,
+        "screenshot_ms": 110.86152399999992,
+        "write_ms": 1.3389649999999165,
+        "capture_ms": 4650.279135,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-1-puppeteer-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "mode": "fresh-browser",
+    "prefix": "cold-1",
+    "process_wall_ms": 8215.675278988783,
+    "summary": {
+      "count": 1,
+      "launch_ms": 484.493583,
+      "summary": true,
+      "tool": "headless_chrome",
+      "total_ms": 8014.37194
+    },
+    "samples": [
+      {
+        "bytes": 122847,
+        "capture_ms": 7305.450659,
+        "index": 0,
+        "launch_ms": 484.493583,
+        "page_ready_ms": 6995.475944,
+        "path": "/bench/results/cold-1-headless_chrome-0.png",
+        "screenshot_ms": 309.58064600000034,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.39406899999994494,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a"
+      }
+    ]
+  },
+  {
+    "tool": "playwright",
+    "mode": "fresh-browser",
+    "prefix": "cold-1",
+    "process_wall_ms": 6096.44171599939,
+    "summary": {
+      "summary": true,
+      "tool": "playwright",
+      "count": 1,
+      "launch_ms": 714.7979220000001,
+      "total_ms": 5770.9741650000005,
+      "browserVersion": "153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "launch_ms": 714.7979220000001,
+        "page_ready_ms": 4694.549701000001,
+        "screenshot_ms": 115.94500599999992,
+        "write_ms": 1.7248209999997925,
+        "capture_ms": 4812.2195280000005,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-1-playwright-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "chromiumoxide",
+    "mode": "fresh-browser",
+    "prefix": "cold-2",
+    "process_wall_ms": 5564.002404993516,
+    "summary": {
+      "count": 1,
+      "launch_ms": 224.72883,
+      "summary": true,
+      "tool": "chromiumoxide",
+      "total_ms": 5352.5962
+    },
+    "samples": [
+      {
+        "bytes": 122847,
+        "capture_ms": 4744.2954,
+        "index": 0,
+        "launch_ms": 224.72883,
+        "page_ready_ms": 4582.254839,
+        "path": "/bench/results/cold-2-chromiumoxide-0.png",
+        "screenshot_ms": 161.81417799999963,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.22638300000016898,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a"
+      }
+    ]
+  },
+  {
+    "tool": "playwright",
+    "mode": "fresh-browser",
+    "prefix": "cold-2",
+    "process_wall_ms": 5015.025953995064,
+    "summary": {
+      "summary": true,
+      "tool": "playwright",
+      "count": 1,
+      "launch_ms": 659.2833310000001,
+      "total_ms": 4811.681904,
+      "browserVersion": "153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "launch_ms": 659.2833310000001,
+        "page_ready_ms": 3843.205826,
+        "screenshot_ms": 101.34901199999968,
+        "write_ms": 1.3445130000000063,
+        "capture_ms": 3945.8993509999996,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-2-playwright-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "mode": "fresh-browser",
+    "prefix": "cold-2",
+    "process_wall_ms": 4952.188681010739,
+    "summary": {
+      "summary": true,
+      "tool": "puppeteer",
+      "count": 1,
+      "launch_ms": 590.272072,
+      "total_ms": 4719.611596999999,
+      "browserVersion": "Chrome/153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "launch_ms": 590.272072,
+        "page_ready_ms": 3763.114639,
+        "screenshot_ms": 115.38881800000036,
+        "write_ms": 1.4240749999999025,
+        "capture_ms": 3879.927532,
+        "bytes": 122847,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-2-puppeteer-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "mode": "fresh-browser",
+    "prefix": "cold-2",
+    "process_wall_ms": 7043.683506999514,
+    "summary": {
+      "count": 1,
+      "launch_ms": 532.369428,
+      "summary": true,
+      "tool": "headless_chrome",
+      "total_ms": 6893.689968000001
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 6178.2915889999995,
+        "index": 0,
+        "launch_ms": 532.369428,
+        "page_ready_ms": 5998.291505,
+        "path": "/bench/results/cold-2-headless_chrome-0.png",
+        "screenshot_ms": 179.88669000000027,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.11339399999906163,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "mode": "fresh-browser",
+    "prefix": "cold-3",
+    "process_wall_ms": 4604.783925999072,
+    "summary": {
+      "summary": true,
+      "tool": "puppeteer",
+      "count": 1,
+      "launch_ms": 482.007801,
+      "total_ms": 4411.431643000001,
+      "browserVersion": "Chrome/153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "launch_ms": 482.007801,
+        "page_ready_ms": 3539.911782,
+        "screenshot_ms": 104.52436300000045,
+        "write_ms": 1.2012459999996281,
+        "capture_ms": 3645.637391,
+        "bytes": 122844,
+        "sha256": "b8640138d625449b13dfdecb137cdd1b57056abbb7b5baf6d76adfc2001ea654",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-3-puppeteer-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "playwright",
+    "mode": "fresh-browser",
+    "prefix": "cold-3",
+    "process_wall_ms": 4715.9582230087835,
+    "summary": {
+      "summary": true,
+      "tool": "playwright",
+      "count": 1,
+      "launch_ms": 618.0898870000001,
+      "total_ms": 4498.7135530000005,
+      "browserVersion": "153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "launch_ms": 618.0898870000001,
+        "page_ready_ms": 3539.1429040000003,
+        "screenshot_ms": 126.60570199999984,
+        "write_ms": 2.0316890000003696,
+        "capture_ms": 3667.7802950000005,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-3-playwright-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "mode": "fresh-browser",
+    "prefix": "cold-3",
+    "process_wall_ms": 6404.43532000063,
+    "summary": {
+      "count": 1,
+      "launch_ms": 331.39192899999995,
+      "summary": true,
+      "tool": "headless_chrome",
+      "total_ms": 6254.570263
+    },
+    "samples": [
+      {
+        "bytes": 122847,
+        "capture_ms": 5613.716362,
+        "index": 0,
+        "launch_ms": 331.39192899999995,
+        "page_ready_ms": 5408.431718,
+        "path": "/bench/results/cold-3-headless_chrome-0.png",
+        "screenshot_ms": 205.11178500000005,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.17285900000024412,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      }
+    ]
+  },
+  {
+    "tool": "chromiumoxide",
+    "mode": "fresh-browser",
+    "prefix": "cold-3",
+    "process_wall_ms": 4953.536867004004,
+    "summary": {
+      "count": 1,
+      "launch_ms": 376.481837,
+      "summary": true,
+      "tool": "chromiumoxide",
+      "total_ms": 4733.146946
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 4172.054595,
+        "index": 0,
+        "launch_ms": 376.481837,
+        "page_ready_ms": 4018.6726549999994,
+        "path": "/bench/results/cold-3-chromiumoxide-0.png",
+        "screenshot_ms": 153.19780300000093,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.18413699999928212,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "mode": "fresh-browser",
+    "prefix": "cold-4",
+    "process_wall_ms": 5759.4206370122265,
+    "summary": {
+      "count": 1,
+      "launch_ms": 352.141626,
+      "summary": true,
+      "tool": "headless_chrome",
+      "total_ms": 5618.334928
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 5049.628006,
+        "index": 0,
+        "launch_ms": 352.141626,
+        "page_ready_ms": 4867.613504999999,
+        "path": "/bench/results/cold-4-headless_chrome-0.png",
+        "screenshot_ms": 181.80750500000067,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.20699599999989005,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      }
+    ]
+  },
+  {
+    "tool": "playwright",
+    "mode": "fresh-browser",
+    "prefix": "cold-4",
+    "process_wall_ms": 4517.588089001947,
+    "summary": {
+      "summary": true,
+      "tool": "playwright",
+      "count": 1,
+      "launch_ms": 563.182462,
+      "total_ms": 4305.4002789999995,
+      "browserVersion": "153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "launch_ms": 563.182462,
+        "page_ready_ms": 3412.0452290000003,
+        "screenshot_ms": 116.8423300000004,
+        "write_ms": 1.1697859999994762,
+        "capture_ms": 3530.057345,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-4-playwright-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "mode": "fresh-browser",
+    "prefix": "cold-4",
+    "process_wall_ms": 5013.141586998245,
+    "summary": {
+      "summary": true,
+      "tool": "puppeteer",
+      "count": 1,
+      "launch_ms": 448.482442,
+      "total_ms": 4819.699294,
+      "browserVersion": "Chrome/153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "launch_ms": 448.482442,
+        "page_ready_ms": 3918.487183,
+        "screenshot_ms": 113.17277600000034,
+        "write_ms": 2.2355360000001383,
+        "capture_ms": 4033.8954950000007,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-4-puppeteer-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "chromiumoxide",
+    "mode": "fresh-browser",
+    "prefix": "cold-4",
+    "process_wall_ms": 4750.0796069944045,
+    "summary": {
+      "count": 1,
+      "launch_ms": 179.00718500000002,
+      "summary": true,
+      "tool": "chromiumoxide",
+      "total_ms": 4601.0491010000005
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 4156.216923999999,
+        "index": 0,
+        "launch_ms": 179.00718500000002,
+        "page_ready_ms": 4026.789765,
+        "path": "/bench/results/cold-4-chromiumoxide-0.png",
+        "screenshot_ms": 129.29716400000007,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.12999499999932596,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      }
+    ]
+  },
+  {
+    "tool": "chromiumoxide",
+    "mode": "fresh-browser",
+    "prefix": "cold-5",
+    "process_wall_ms": 5011.703674012097,
+    "summary": {
+      "count": 1,
+      "launch_ms": 194.566025,
+      "summary": true,
+      "tool": "chromiumoxide",
+      "total_ms": 4867.350551
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 4371.452676,
+        "index": 0,
+        "launch_ms": 194.566025,
+        "page_ready_ms": 4187.002477,
+        "path": "/bench/results/cold-5-chromiumoxide-0.png",
+        "screenshot_ms": 184.30083400000058,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.14936499999930675,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "mode": "fresh-browser",
+    "prefix": "cold-5",
+    "process_wall_ms": 5846.583571008523,
+    "summary": {
+      "count": 1,
+      "launch_ms": 325.05755400000004,
+      "summary": true,
+      "tool": "headless_chrome",
+      "total_ms": 5692.5549120000005
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 5193.416623,
+        "index": 0,
+        "launch_ms": 325.05755400000004,
+        "page_ready_ms": 5006.567171000001,
+        "path": "/bench/results/cold-5-headless_chrome-0.png",
+        "screenshot_ms": 186.71615799999927,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.13329400000020541,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      }
+    ]
+  },
+  {
+    "tool": "playwright",
+    "mode": "fresh-browser",
+    "prefix": "cold-5",
+    "process_wall_ms": 4711.718919003033,
+    "summary": {
+      "summary": true,
+      "tool": "playwright",
+      "count": 1,
+      "launch_ms": 540.6754540000001,
+      "total_ms": 4523.235339,
+      "browserVersion": "153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "launch_ms": 540.6754540000001,
+        "page_ready_ms": 3625.8087070000006,
+        "screenshot_ms": 90.87301599999955,
+        "write_ms": 1.6530220000004192,
+        "capture_ms": 3718.3347450000006,
+        "bytes": 122847,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-5-playwright-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "mode": "fresh-browser",
+    "prefix": "cold-5",
+    "process_wall_ms": 6467.380571993999,
+    "summary": {
+      "summary": true,
+      "tool": "puppeteer",
+      "count": 1,
+      "launch_ms": 558.832192,
+      "total_ms": 6249.552372,
+      "browserVersion": "Chrome/153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "launch_ms": 558.832192,
+        "page_ready_ms": 5218.329658000001,
+        "screenshot_ms": 123.82560699999976,
+        "write_ms": 3.6467469999997775,
+        "capture_ms": 5345.802012,
+        "bytes": 122847,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-5-puppeteer-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "mode": "fresh-browser",
+    "prefix": "cold-6",
+    "process_wall_ms": 5157.129528990481,
+    "summary": {
+      "summary": true,
+      "tool": "puppeteer",
+      "count": 1,
+      "launch_ms": 570.0663480000001,
+      "total_ms": 4939.8285670000005,
+      "browserVersion": "Chrome/153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "launch_ms": 570.0663480000001,
+        "page_ready_ms": 3960.58263,
+        "screenshot_ms": 123.13275800000065,
+        "write_ms": 3.5206579999994574,
+        "capture_ms": 4087.236046,
+        "bytes": 122847,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-6-puppeteer-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "chromiumoxide",
+    "mode": "fresh-browser",
+    "prefix": "cold-6",
+    "process_wall_ms": 5730.008839003858,
+    "summary": {
+      "count": 1,
+      "launch_ms": 228.590337,
+      "summary": true,
+      "tool": "chromiumoxide",
+      "total_ms": 5574.745309
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 5115.895952,
+        "index": 0,
+        "launch_ms": 228.590337,
+        "page_ready_ms": 4976.303311,
+        "path": "/bench/results/cold-6-chromiumoxide-0.png",
+        "screenshot_ms": 139.33802800000012,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.25461300000006304,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "mode": "fresh-browser",
+    "prefix": "cold-6",
+    "process_wall_ms": 7707.9892229958205,
+    "summary": {
+      "count": 1,
+      "launch_ms": 339.351943,
+      "summary": true,
+      "tool": "headless_chrome",
+      "total_ms": 7559.077924
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 6855.895051,
+        "index": 0,
+        "launch_ms": 339.351943,
+        "page_ready_ms": 6536.338021,
+        "path": "/bench/results/cold-6-headless_chrome-0.png",
+        "screenshot_ms": 319.36091000000033,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.1961200000005192,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      }
+    ]
+  },
+  {
+    "tool": "playwright",
+    "mode": "fresh-browser",
+    "prefix": "cold-6",
+    "process_wall_ms": 8349.799852992874,
+    "summary": {
+      "summary": true,
+      "tool": "playwright",
+      "count": 1,
+      "launch_ms": 1029.254898,
+      "total_ms": 8052.179702,
+      "browserVersion": "153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "launch_ms": 1029.254898,
+        "page_ready_ms": 6444.549829,
+        "screenshot_ms": 187.98388400000022,
+        "write_ms": 2.6776810000001205,
+        "capture_ms": 6635.211394,
+        "bytes": 122847,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-6-playwright-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "chromiumoxide",
+    "mode": "fresh-browser",
+    "prefix": "cold-7",
+    "process_wall_ms": 8903.16569499555,
+    "summary": {
+      "count": 1,
+      "launch_ms": 369.590653,
+      "summary": true,
+      "tool": "chromiumoxide",
+      "total_ms": 8680.702328000001
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 7943.168727,
+        "index": 0,
+        "launch_ms": 369.590653,
+        "page_ready_ms": 7726.615653,
+        "path": "/bench/results/cold-7-chromiumoxide-0.png",
+        "screenshot_ms": 216.38889199999994,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.16418200000043726,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "mode": "fresh-browser",
+    "prefix": "cold-7",
+    "process_wall_ms": 7393.7183170055505,
+    "summary": {
+      "count": 1,
+      "launch_ms": 455.158047,
+      "summary": true,
+      "tool": "headless_chrome",
+      "total_ms": 7172.486384
+    },
+    "samples": [
+      {
+        "bytes": 122849,
+        "capture_ms": 6505.1755,
+        "index": 0,
+        "launch_ms": 455.158047,
+        "page_ready_ms": 6188.037496,
+        "path": "/bench/results/cold-7-headless_chrome-0.png",
+        "screenshot_ms": 316.99634200000037,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.14166199999999662,
+        "sha256": "6ba34cff304f240959ca4465b5893bbd500cf3bde07d47620cd6cf1ab64b94d0"
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "mode": "fresh-browser",
+    "prefix": "cold-7",
+    "process_wall_ms": 6079.860033001751,
+    "summary": {
+      "summary": true,
+      "tool": "puppeteer",
+      "count": 1,
+      "launch_ms": 688.203242,
+      "total_ms": 5830.213358,
+      "browserVersion": "Chrome/153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "launch_ms": 688.203242,
+        "page_ready_ms": 4591.22256,
+        "screenshot_ms": 160.2624249999999,
+        "write_ms": 8.113348999999289,
+        "capture_ms": 4759.598333999999,
+        "bytes": 122849,
+        "sha256": "6ba34cff304f240959ca4465b5893bbd500cf3bde07d47620cd6cf1ab64b94d0",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-7-puppeteer-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "playwright",
+    "mode": "fresh-browser",
+    "prefix": "cold-7",
+    "process_wall_ms": 6333.418048001477,
+    "summary": {
+      "summary": true,
+      "tool": "playwright",
+      "count": 1,
+      "launch_ms": 706.0751309999999,
+      "total_ms": 6097.71109,
+      "browserVersion": "153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "launch_ms": 706.0751309999999,
+        "page_ready_ms": 4986.859578,
+        "screenshot_ms": 130.26990999999998,
+        "write_ms": 1.3475589999998192,
+        "capture_ms": 5118.477047,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/cold-7-playwright-0.png"
+      }
+    ]
+  },
+  {
+    "tool": "chromiumoxide",
+    "mode": "reused-browser",
+    "prefix": "warm-0",
+    "process_wall_ms": 30962.25518999563,
+    "summary": {
+      "count": 5,
+      "launch_ms": 308.18392700000004,
+      "summary": true,
+      "tool": "chromiumoxide",
+      "total_ms": 30790.947245000003
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 6322.315199000001,
+        "index": 0,
+        "launch_ms": 308.18392700000004,
+        "page_ready_ms": 6177.918646,
+        "path": "/bench/results/warm-0-chromiumoxide-0.png",
+        "screenshot_ms": 144.18891899999926,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.2076340000012351,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      },
+      {
+        "bytes": 122844,
+        "capture_ms": 6476.037985999999,
+        "index": 1,
+        "launch_ms": 308.18392700000004,
+        "page_ready_ms": 6261.4552889999995,
+        "path": "/bench/results/warm-0-chromiumoxide-1.png",
+        "screenshot_ms": 214.33898000000045,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.24371699999937846,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      },
+      {
+        "bytes": 122844,
+        "capture_ms": 5087.452231,
+        "index": 2,
+        "launch_ms": 308.18392700000004,
+        "page_ready_ms": 4909.984764,
+        "path": "/bench/results/warm-0-chromiumoxide-2.png",
+        "screenshot_ms": 175.70924800000012,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 1.758219000000281,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      },
+      {
+        "bytes": 122847,
+        "capture_ms": 5329.68478,
+        "index": 3,
+        "launch_ms": 308.18392700000004,
+        "page_ready_ms": 5121.927454,
+        "path": "/bench/results/warm-0-chromiumoxide-3.png",
+        "screenshot_ms": 207.5327410000009,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.22458499999902415,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a"
+      },
+      {
+        "bytes": 122847,
+        "capture_ms": 6778.293138999999,
+        "index": 4,
+        "launch_ms": 308.18392700000004,
+        "page_ready_ms": 6531.237202,
+        "path": "/bench/results/warm-0-chromiumoxide-4.png",
+        "screenshot_ms": 245.45882099999926,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 1.5971159999999145,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "mode": "reused-browser",
+    "prefix": "warm-0",
+    "process_wall_ms": 38883.21184499364,
+    "summary": {
+      "count": 5,
+      "launch_ms": 707.221766,
+      "summary": true,
+      "tool": "headless_chrome",
+      "total_ms": 38653.560368
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 10341.277328,
+        "index": 0,
+        "launch_ms": 707.221766,
+        "page_ready_ms": 10010.730828,
+        "path": "/bench/results/warm-0-headless_chrome-0.png",
+        "screenshot_ms": 330.38703799999894,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.15946200000144017,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      },
+      {
+        "bytes": 122844,
+        "capture_ms": 6529.508912,
+        "index": 1,
+        "launch_ms": 707.221766,
+        "page_ready_ms": 6329.757226,
+        "path": "/bench/results/warm-0-headless_chrome-1.png",
+        "screenshot_ms": 199.58465400000114,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.1670319999993808,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      },
+      {
+        "bytes": 122844,
+        "capture_ms": 6928.157571,
+        "index": 2,
+        "launch_ms": 707.221766,
+        "page_ready_ms": 6731.270085,
+        "path": "/bench/results/warm-0-headless_chrome-2.png",
+        "screenshot_ms": 196.62624799999958,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.2612380000000485,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      },
+      {
+        "bytes": 122844,
+        "capture_ms": 6494.53498,
+        "index": 3,
+        "launch_ms": 707.221766,
+        "page_ready_ms": 6186.856881,
+        "path": "/bench/results/warm-0-headless_chrome-3.png",
+        "screenshot_ms": 307.03156000000035,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.6465390000003026,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      },
+      {
+        "bytes": 122844,
+        "capture_ms": 6884.774813,
+        "index": 4,
+        "launch_ms": 707.221766,
+        "page_ready_ms": 6576.825138,
+        "path": "/bench/results/warm-0-headless_chrome-4.png",
+        "screenshot_ms": 307.7196079999994,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.23006700000041747,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      }
+    ]
+  },
+  {
+    "tool": "playwright",
+    "mode": "reused-browser",
+    "prefix": "warm-0",
+    "process_wall_ms": 39960.0222040026,
+    "summary": {
+      "summary": true,
+      "tool": "playwright",
+      "count": 5,
+      "launch_ms": 894.75143,
+      "total_ms": 39539.663572,
+      "browserVersion": "153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "launch_ms": 894.75143,
+        "page_ready_ms": 4283.513957,
+        "screenshot_ms": 251.41962199999944,
+        "write_ms": 18.87570600000072,
+        "capture_ms": 4553.809285,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-0-playwright-0.png"
+      },
+      {
+        "tool": "playwright",
+        "index": 1,
+        "launch_ms": 894.75143,
+        "page_ready_ms": 5724.5180900000005,
+        "screenshot_ms": 148.74023300000044,
+        "write_ms": 0.4671349999989616,
+        "capture_ms": 5873.725458,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-0-playwright-1.png"
+      },
+      {
+        "tool": "playwright",
+        "index": 2,
+        "launch_ms": 894.75143,
+        "page_ready_ms": 8646.42979,
+        "screenshot_ms": 391.16744200000176,
+        "write_ms": 108.65346099999806,
+        "capture_ms": 9146.250693,
+        "bytes": 122847,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-0-playwright-2.png"
+      },
+      {
+        "tool": "playwright",
+        "index": 3,
+        "launch_ms": 894.75143,
+        "page_ready_ms": 9131.941630999998,
+        "screenshot_ms": 184.19315700000152,
+        "write_ms": 4.546957999998995,
+        "capture_ms": 9320.681745999998,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-0-playwright-3.png"
+      },
+      {
+        "tool": "playwright",
+        "index": 4,
+        "launch_ms": 894.75143,
+        "page_ready_ms": 8237.754791000003,
+        "screenshot_ms": 326.00728399999934,
+        "write_ms": 108.03607499999634,
+        "capture_ms": 8671.798149999999,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-0-playwright-4.png"
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "mode": "reused-browser",
+    "prefix": "warm-0",
+    "process_wall_ms": 23904.471728994395,
+    "summary": {
+      "summary": true,
+      "tool": "puppeteer",
+      "count": 5,
+      "launch_ms": 1534.888173,
+      "total_ms": 23507.956027,
+      "browserVersion": "Chrome/153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "launch_ms": 1534.888173,
+        "page_ready_ms": 6752.281933,
+        "screenshot_ms": 151.38683300000048,
+        "write_ms": 2.8060979999991105,
+        "capture_ms": 6906.474864,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-0-puppeteer-0.png"
+      },
+      {
+        "tool": "puppeteer",
+        "index": 1,
+        "launch_ms": 1534.888173,
+        "page_ready_ms": 4250.678261999999,
+        "screenshot_ms": 159.4049730000006,
+        "write_ms": 1.0632449999993696,
+        "capture_ms": 4411.146479999999,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-0-puppeteer-1.png"
+      },
+      {
+        "tool": "puppeteer",
+        "index": 2,
+        "launch_ms": 1534.888173,
+        "page_ready_ms": 3490.642925,
+        "screenshot_ms": 100.56941200000074,
+        "write_ms": 0.8039019999996526,
+        "capture_ms": 3592.0162390000005,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-0-puppeteer-2.png"
+      },
+      {
+        "tool": "puppeteer",
+        "index": 3,
+        "launch_ms": 1534.888173,
+        "page_ready_ms": 3123.1977739999966,
+        "screenshot_ms": 107.99957800000266,
+        "write_ms": 0.8441299999976764,
+        "capture_ms": 3232.041481999997,
+        "bytes": 122847,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-0-puppeteer-3.png"
+      },
+      {
+        "tool": "puppeteer",
+        "index": 4,
+        "launch_ms": 1534.888173,
+        "page_ready_ms": 3350.6188349999975,
+        "screenshot_ms": 108.95888200000263,
+        "write_ms": 0.7826419999983045,
+        "capture_ms": 3460.3603589999984,
+        "bytes": 122847,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-0-puppeteer-4.png"
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "mode": "reused-browser",
+    "prefix": "warm-1",
+    "process_wall_ms": 27056.10340301064,
+    "summary": {
+      "count": 5,
+      "launch_ms": 414.96979,
+      "summary": true,
+      "tool": "headless_chrome",
+      "total_ms": 26914.893242000002
+    },
+    "samples": [
+      {
+        "bytes": 122847,
+        "capture_ms": 5496.889056,
+        "index": 0,
+        "launch_ms": 414.96979,
+        "page_ready_ms": 5306.634859,
+        "path": "/bench/results/warm-1-headless_chrome-0.png",
+        "screenshot_ms": 189.9458450000002,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.3083520000000135,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      },
+      {
+        "bytes": 122847,
+        "capture_ms": 5047.583291999999,
+        "index": 1,
+        "launch_ms": 414.96979,
+        "page_ready_ms": 4855.471756,
+        "path": "/bench/results/warm-1-headless_chrome-1.png",
+        "screenshot_ms": 191.96174500000052,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.14979099999891332,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      },
+      {
+        "bytes": 122844,
+        "capture_ms": 5322.350334000001,
+        "index": 2,
+        "launch_ms": 414.96979,
+        "page_ready_ms": 5139.351523,
+        "path": "/bench/results/warm-1-headless_chrome-2.png",
+        "screenshot_ms": 182.82968900000014,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.16912200000024313,
+        "sha256": "b8640138d625449b13dfdecb137cdd1b57056abbb7b5baf6d76adfc2001ea654"
+      },
+      {
+        "bytes": 122844,
+        "capture_ms": 4783.251016,
+        "index": 3,
+        "launch_ms": 414.96979,
+        "page_ready_ms": 4597.638664,
+        "path": "/bench/results/warm-1-headless_chrome-3.png",
+        "screenshot_ms": 185.4301970000006,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.18215499999951135,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      },
+      {
+        "bytes": 122847,
+        "capture_ms": 5272.395703,
+        "index": 4,
+        "launch_ms": 414.96979,
+        "page_ready_ms": 5091.907660999999,
+        "path": "/bench/results/warm-1-headless_chrome-4.png",
+        "screenshot_ms": 180.2920860000013,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.19595599999956903,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "mode": "reused-browser",
+    "prefix": "warm-1",
+    "process_wall_ms": 17284.522343994468,
+    "summary": {
+      "summary": true,
+      "tool": "puppeteer",
+      "count": 5,
+      "launch_ms": 610.122921,
+      "total_ms": 17075.511466,
+      "browserVersion": "Chrome/153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "launch_ms": 610.122921,
+        "page_ready_ms": 3544.8482350000004,
+        "screenshot_ms": 113.86186399999951,
+        "write_ms": 1.5151430000005348,
+        "capture_ms": 3660.2252420000004,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-1-puppeteer-0.png"
+      },
+      {
+        "tool": "puppeteer",
+        "index": 1,
+        "launch_ms": 610.122921,
+        "page_ready_ms": 3114.3035870000003,
+        "screenshot_ms": 110.19844600000033,
+        "write_ms": 0.5780659999991258,
+        "capture_ms": 3225.080099,
+        "bytes": 122847,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-1-puppeteer-1.png"
+      },
+      {
+        "tool": "puppeteer",
+        "index": 2,
+        "launch_ms": 610.122921,
+        "page_ready_ms": 2857.866529,
+        "screenshot_ms": 116.27153100000032,
+        "write_ms": 1.2998139999999694,
+        "capture_ms": 2975.437874,
+        "bytes": 122847,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-1-puppeteer-2.png"
+      },
+      {
+        "tool": "puppeteer",
+        "index": 3,
+        "launch_ms": 610.122921,
+        "page_ready_ms": 2983.2934110000006,
+        "screenshot_ms": 111.98884499999986,
+        "write_ms": 0.6797050000004674,
+        "capture_ms": 3095.961961000001,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-1-puppeteer-3.png"
+      },
+      {
+        "tool": "puppeteer",
+        "index": 4,
+        "launch_ms": 610.122921,
+        "page_ready_ms": 3032.346675999999,
+        "screenshot_ms": 97.46738000000187,
+        "write_ms": 0.7673169999980018,
+        "capture_ms": 3130.581372999999,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-1-puppeteer-4.png"
+      }
+    ]
+  },
+  {
+    "tool": "chromiumoxide",
+    "mode": "reused-browser",
+    "prefix": "warm-1",
+    "process_wall_ms": 26144.947519991547,
+    "summary": {
+      "count": 5,
+      "launch_ms": 196.01803900000002,
+      "summary": true,
+      "tool": "chromiumoxide",
+      "total_ms": 25989.045394
+    },
+    "samples": [
+      {
+        "bytes": 122844,
+        "capture_ms": 4539.71737,
+        "index": 0,
+        "launch_ms": 196.01803900000002,
+        "page_ready_ms": 4421.677454,
+        "path": "/bench/results/warm-1-chromiumoxide-0.png",
+        "screenshot_ms": 117.8996959999995,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.1402200000011362,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      },
+      {
+        "bytes": 122844,
+        "capture_ms": 4921.915001,
+        "index": 1,
+        "launch_ms": 196.01803900000002,
+        "page_ready_ms": 4802.82838,
+        "path": "/bench/results/warm-1-chromiumoxide-1.png",
+        "screenshot_ms": 118.6455390000001,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.44108200000027864,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      },
+      {
+        "bytes": 122847,
+        "capture_ms": 4539.450145,
+        "index": 2,
+        "launch_ms": 196.01803900000002,
+        "page_ready_ms": 4417.832383,
+        "path": "/bench/results/warm-1-chromiumoxide-2.png",
+        "screenshot_ms": 121.43547899999976,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.18228300000009767,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a"
+      },
+      {
+        "bytes": 122844,
+        "capture_ms": 4499.925157,
+        "index": 3,
+        "launch_ms": 196.01803900000002,
+        "page_ready_ms": 4319.889996999999,
+        "path": "/bench/results/warm-1-chromiumoxide-3.png",
+        "screenshot_ms": 179.85453700000107,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.18062299999928655,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      },
+      {
+        "bytes": 122847,
+        "capture_ms": 6526.77672,
+        "index": 4,
+        "launch_ms": 196.01803900000002,
+        "page_ready_ms": 6045.193621,
+        "path": "/bench/results/warm-1-chromiumoxide-4.png",
+        "screenshot_ms": 481.1510250000001,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.4320739999993748,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      }
+    ]
+  },
+  {
+    "tool": "playwright",
+    "mode": "reused-browser",
+    "prefix": "warm-1",
+    "process_wall_ms": 29053.871962998528,
+    "summary": {
+      "summary": true,
+      "tool": "playwright",
+      "count": 5,
+      "launch_ms": 962.581869,
+      "total_ms": 28804.161901,
+      "browserVersion": "153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "launch_ms": 962.581869,
+        "page_ready_ms": 5135.825207,
+        "screenshot_ms": 369.4126920000008,
+        "write_ms": 1.7228559999994104,
+        "capture_ms": 5506.960755,
+        "bytes": 122847,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-1-playwright-0.png"
+      },
+      {
+        "tool": "playwright",
+        "index": 1,
+        "launch_ms": 962.581869,
+        "page_ready_ms": 4425.664929,
+        "screenshot_ms": 177.1333940000004,
+        "write_ms": 0.9266929999994318,
+        "capture_ms": 4603.725015999999,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-1-playwright-1.png"
+      },
+      {
+        "tool": "playwright",
+        "index": 2,
+        "launch_ms": 962.581869,
+        "page_ready_ms": 5126.538935999999,
+        "screenshot_ms": 138.60308700000132,
+        "write_ms": 0.5382079999981215,
+        "capture_ms": 5265.6802309999985,
+        "bytes": 122847,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-1-playwright-2.png"
+      },
+      {
+        "tool": "playwright",
+        "index": 3,
+        "launch_ms": 962.581869,
+        "page_ready_ms": 5885.274847000001,
+        "screenshot_ms": 112.18059400000129,
+        "write_ms": 0.9368460000005143,
+        "capture_ms": 5998.392287000002,
+        "bytes": 122847,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-1-playwright-3.png"
+      },
+      {
+        "tool": "playwright",
+        "index": 4,
+        "launch_ms": 962.581869,
+        "page_ready_ms": 5692.105450999999,
+        "screenshot_ms": 334.1900540000024,
+        "write_ms": 0.6556359999995038,
+        "capture_ms": 6026.951141000001,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-1-playwright-4.png"
+      }
+    ]
+  },
+  {
+    "tool": "headless_chrome",
+    "mode": "reused-browser",
+    "prefix": "warm-2",
+    "process_wall_ms": 47432.13793300674,
+    "summary": {
+      "count": 5,
+      "launch_ms": 763.215781,
+      "summary": true,
+      "tool": "headless_chrome",
+      "total_ms": 46704.569717
+    },
+    "samples": [
+      {
+        "bytes": 122847,
+        "capture_ms": 9540.938417,
+        "index": 0,
+        "launch_ms": 763.215781,
+        "page_ready_ms": 9204.91268,
+        "path": "/bench/results/warm-2-headless_chrome-0.png",
+        "screenshot_ms": 335.5797960000018,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.445940999998129,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      },
+      {
+        "bytes": 122844,
+        "capture_ms": 8454.983871999999,
+        "index": 1,
+        "launch_ms": 763.215781,
+        "page_ready_ms": 8246.464307,
+        "path": "/bench/results/warm-2-headless_chrome-1.png",
+        "screenshot_ms": 207.94518400000015,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.5743809999985388,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      },
+      {
+        "bytes": 122847,
+        "capture_ms": 8698.409276999999,
+        "index": 2,
+        "launch_ms": 763.215781,
+        "page_ready_ms": 8153.691965,
+        "path": "/bench/results/warm-2-headless_chrome-2.png",
+        "screenshot_ms": 544.5274090000003,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.18990299999859417,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      },
+      {
+        "bytes": 122844,
+        "capture_ms": 8984.971737,
+        "index": 3,
+        "launch_ms": 763.215781,
+        "page_ready_ms": 8678.256249,
+        "path": "/bench/results/warm-2-headless_chrome-3.png",
+        "screenshot_ms": 305.62206200000037,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 1.0934259999994538,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      },
+      {
+        "bytes": 122844,
+        "capture_ms": 8821.67331,
+        "index": 4,
+        "launch_ms": 763.215781,
+        "page_ready_ms": 8517.543845,
+        "path": "/bench/results/warm-2-headless_chrome-4.png",
+        "screenshot_ms": 303.85979699999916,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "headless_chrome",
+        "write_ms": 0.26966800000082003,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      }
+    ]
+  },
+  {
+    "tool": "puppeteer",
+    "mode": "reused-browser",
+    "prefix": "warm-2",
+    "process_wall_ms": 38925.72671099333,
+    "summary": {
+      "summary": true,
+      "tool": "puppeteer",
+      "count": 5,
+      "launch_ms": 1805.782,
+      "total_ms": 37568.544543,
+      "browserVersion": "Chrome/153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "puppeteer",
+        "index": 0,
+        "launch_ms": 1805.782,
+        "page_ready_ms": 9615.704432999999,
+        "screenshot_ms": 236.96958000000086,
+        "write_ms": 6.392788999999539,
+        "capture_ms": 9859.066802,
+        "bytes": 122847,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-2-puppeteer-0.png"
+      },
+      {
+        "tool": "puppeteer",
+        "index": 1,
+        "launch_ms": 1805.782,
+        "page_ready_ms": 6833.203522999998,
+        "screenshot_ms": 266.81342700000096,
+        "write_ms": 3.0488580000019283,
+        "capture_ms": 7103.065808000001,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-2-puppeteer-1.png"
+      },
+      {
+        "tool": "puppeteer",
+        "index": 2,
+        "launch_ms": 1805.782,
+        "page_ready_ms": 5921.513232999998,
+        "screenshot_ms": 293.11380199999985,
+        "write_ms": 0.8240670000013779,
+        "capture_ms": 6215.451101999999,
+        "bytes": 122847,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-2-puppeteer-2.png"
+      },
+      {
+        "tool": "puppeteer",
+        "index": 3,
+        "launch_ms": 1805.782,
+        "page_ready_ms": 5687.639736000001,
+        "screenshot_ms": 233.18310199999905,
+        "write_ms": 1.52948699999979,
+        "capture_ms": 5922.352325,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-2-puppeteer-3.png"
+      },
+      {
+        "tool": "puppeteer",
+        "index": 4,
+        "launch_ms": 1805.782,
+        "page_ready_ms": 5190.660781999999,
+        "screenshot_ms": 147.8694800000012,
+        "write_ms": 9.564345999999205,
+        "capture_ms": 5348.094607999999,
+        "bytes": 122847,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-2-puppeteer-4.png"
+      }
+    ]
+  },
+  {
+    "tool": "chromiumoxide",
+    "mode": "reused-browser",
+    "prefix": "warm-2",
+    "process_wall_ms": 71797.26435500197,
+    "summary": {
+      "count": 5,
+      "launch_ms": 418.144998,
+      "summary": true,
+      "tool": "chromiumoxide",
+      "total_ms": 70927.814308
+    },
+    "samples": [
+      {
+        "bytes": 122847,
+        "capture_ms": 15929.410896,
+        "index": 0,
+        "launch_ms": 418.144998,
+        "page_ready_ms": 14481.551079,
+        "path": "/bench/results/warm-2-chromiumoxide-0.png",
+        "screenshot_ms": 1394.082640999999,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 53.7771759999996,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      },
+      {
+        "bytes": 122847,
+        "capture_ms": 20599.59202,
+        "index": 1,
+        "launch_ms": 418.144998,
+        "page_ready_ms": 20256.162378,
+        "path": "/bench/results/warm-2-chromiumoxide-1.png",
+        "screenshot_ms": 336.3519180000003,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 7.077723999998852,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a"
+      },
+      {
+        "bytes": 122847,
+        "capture_ms": 12317.490560999999,
+        "index": 2,
+        "launch_ms": 418.144998,
+        "page_ready_ms": 12115.182618,
+        "path": "/bench/results/warm-2-chromiumoxide-2.png",
+        "screenshot_ms": 202.09436399999868,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.2135789999992994,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a"
+      },
+      {
+        "bytes": 122847,
+        "capture_ms": 10777.321222999999,
+        "index": 3,
+        "launch_ms": 418.144998,
+        "page_ready_ms": 10382.896378,
+        "path": "/bench/results/warm-2-chromiumoxide-3.png",
+        "screenshot_ms": 393.8608550000008,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.5639899999987392,
+        "sha256": "d29373f653b7fdcd85e4f32212a96a9b5809337c2806aea266e3a976f3ab8caa"
+      },
+      {
+        "bytes": 122844,
+        "capture_ms": 9646.633866,
+        "index": 4,
+        "launch_ms": 418.144998,
+        "page_ready_ms": 9427.392312,
+        "path": "/bench/results/warm-2-chromiumoxide-4.png",
+        "screenshot_ms": 219.04894799999965,
+        "state": {
+          "brokenImages": [],
+          "fonts": "loaded",
+          "heading": "Introduction",
+          "hydrated": true,
+          "overflow": 0,
+          "theme": "light",
+          "title": "Introduction \u00b7 duxt",
+          "viewport": [1440, 1000, 1]
+        },
+        "tool": "chromiumoxide",
+        "write_ms": 0.19260600000052364,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf"
+      }
+    ]
+  },
+  {
+    "tool": "playwright",
+    "mode": "reused-browser",
+    "prefix": "warm-2",
+    "process_wall_ms": 38976.048734999495,
+    "summary": {
+      "summary": true,
+      "tool": "playwright",
+      "count": 5,
+      "launch_ms": 1224.2999089999998,
+      "total_ms": 38032.552598,
+      "browserVersion": "153.0.8010.12"
+    },
+    "samples": [
+      {
+        "tool": "playwright",
+        "index": 0,
+        "launch_ms": 1224.2999089999998,
+        "page_ready_ms": 7161.698149000001,
+        "screenshot_ms": 365.05320799999936,
+        "write_ms": 94.80694199999925,
+        "capture_ms": 7621.558298999999,
+        "bytes": 122849,
+        "sha256": "6ba34cff304f240959ca4465b5893bbd500cf3bde07d47620cd6cf1ab64b94d0",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-2-playwright-0.png"
+      },
+      {
+        "tool": "playwright",
+        "index": 1,
+        "launch_ms": 1224.2999089999998,
+        "page_ready_ms": 7111.138965,
+        "screenshot_ms": 221.43757300000107,
+        "write_ms": 1.6683370000009745,
+        "capture_ms": 7334.244875000002,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-2-playwright-1.png"
+      },
+      {
+        "tool": "playwright",
+        "index": 2,
+        "launch_ms": 1224.2999089999998,
+        "page_ready_ms": 6544.204323999998,
+        "screenshot_ms": 162.5939279999984,
+        "write_ms": 0.7441070000022592,
+        "capture_ms": 6707.542358999999,
+        "bytes": 122847,
+        "sha256": "c48e753412e49d211fab04d3b483c4864120f353ba99fce0d29e2180fb9d3f8a",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-2-playwright-2.png"
+      },
+      {
+        "tool": "playwright",
+        "index": 3,
+        "launch_ms": 1224.2999089999998,
+        "page_ready_ms": 7076.558775000001,
+        "screenshot_ms": 244.1770170000018,
+        "write_ms": 1.35216699999728,
+        "capture_ms": 7322.087959,
+        "bytes": 122849,
+        "sha256": "6ba34cff304f240959ca4465b5893bbd500cf3bde07d47620cd6cf1ab64b94d0",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-2-playwright-3.png"
+      },
+      {
+        "tool": "playwright",
+        "index": 4,
+        "launch_ms": 1224.2999089999998,
+        "page_ready_ms": 6922.055967,
+        "screenshot_ms": 141.60893000000215,
+        "write_ms": 26.494105999998283,
+        "capture_ms": 7090.159003000001,
+        "bytes": 122844,
+        "sha256": "bf5afee952d142fe543533378b627cbedd720727dcc282683238cd6b8599d5bf",
+        "state": {
+          "title": "Introduction \u00b7 duxt",
+          "heading": "Introduction",
+          "viewport": [1440, 1000, 1],
+          "theme": "light",
+          "fonts": "loaded",
+          "hydrated": true,
+          "overflow": 0,
+          "brokenImages": []
+        },
+        "path": "/bench/results/warm-2-playwright-4.png"
+      }
+    ]
+  }
+]
