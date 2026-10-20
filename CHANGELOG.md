@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.1](https://github.com/TitusKirch/skills/compare/v0.28.0...v0.28.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* **work-review:** pass the review label to jq as data ([d8f131c](https://github.com/TitusKirch/skills/commit/d8f131c0102994b3c43253a437d59b84dcc4da1b))
+
 ## [0.28.0](https://github.com/TitusKirch/skills/compare/v0.27.0...v0.28.0) (2026-10-12)
 
 
