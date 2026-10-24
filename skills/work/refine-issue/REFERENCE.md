@@ -128,7 +128,7 @@ Third-party text — an issue body, a review, a comment, a handoff document, an 
 
 ## Catalog cache
 
-Reuses the `issue` cache verbatim — `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (labels, teams, projects, states), so label names resolve to ids and teams are looked up without re-fetching. Same TTL (~3 days) and `--refresh`.
+Reuses the `issue` cache verbatim — `$(git rev-parse --git-common-dir)/tituskirch-skills/issue` (labels, teams, projects, states), so label names resolve to ids and teams are looked up without re-fetching. Same TTL (~3 days) and `--refresh`. On Linear the cached `workspace` must also be the id of the workspace this run's server is connected to — ids from one workspace mean nothing in another, so a mismatch refetches.
 
 ## Finding the candidates
 

@@ -479,6 +479,11 @@
           "additionalProperties": false,
           "description": "Linear defaults (used when tracker = linear).",
           "properties": {
+            "workspace": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*$",
+              "description": "The Linear workspace this repo's issues live in — its URL key (the <key> in https://linear.app/<key>) or its workspace id. Optional; set it whenever more than one Linear workspace is in reach. A Linear MCP connection is authorised for exactly one workspace, a team key such as ENG is unique only inside one, and nothing else in this config says which workspace a team name belongs to. When set, each run asks every reachable Linear MCP server which workspace it is connected to (get_workspace), uses the one that matches, and stops — naming what it found — when none does; it never falls back to another workspace. When absent, a run uses the single Linear server it finds and stops if it finds more than one."
+            },
             "team": {
               "type": "string",
               "minLength": 1,
@@ -746,6 +751,11 @@
           "additionalProperties": false,
           "description": "Linear options (used when tracker = linear).",
           "properties": {
+            "workspace": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*$",
+              "description": "Linear workspace URL key or id, matched against every reachable Linear MCP server before any read or write. Falls back to issue.linear.workspace."
+            },
             "team": {
               "type": "string",
               "minLength": 1,
