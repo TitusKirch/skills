@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.29.0](https://github.com/TitusKirch/skills/compare/v0.28.1...v0.29.0) (2026-10-24)
+
+
+### Features
+
+* **issue:** pick the Linear server by its connected workspace ([2fefbcb](https://github.com/TitusKirch/skills/commit/2fefbcbe91e1ffcf00e7e6ad34863835846555cd))
+* **refine-issue:** pick the Linear server by its connected workspace ([6d9ffdb](https://github.com/TitusKirch/skills/commit/6d9ffdbb6a41da83ab290105392227c1c02b4007))
+* **skills:** add an optional linear.workspace config key ([7d7c1ae](https://github.com/TitusKirch/skills/commit/7d7c1ae377910b0176cde5b7a62eb878f1e7fb20))
+* **tituskirch-skills-config:** set up and check linear.workspace ([8e2d116](https://github.com/TitusKirch/skills/commit/8e2d1163596aa9128955a4fd0aea9219b7ccb5af))
+* **work-implement:** pick the Linear server by its connected workspace ([ae7248f](https://github.com/TitusKirch/skills/commit/ae7248fa4698cf301af2a3478010fe9bb6623d13))
+* **work-review:** pick the Linear server by its connected workspace ([19b820e](https://github.com/TitusKirch/skills/commit/19b820e4f1f55b0ac244f22eb67b707f7ad5a70f))
+
 ## [0.28.1](https://github.com/TitusKirch/skills/compare/v0.28.0...v0.28.1) (2026-10-20)
 
 
