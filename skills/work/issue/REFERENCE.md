@@ -197,13 +197,14 @@ Third-party text — an issue body, a review, a comment, a handoff document, an 
 Enumerable tracker data, fetched once and reused so the agent can pick labels/state/team contextually.
 
 - **Location** — `$(git rev-parse --git-common-dir)/tituskirch-skills/issue`. Owner-namespaced directory in the common git dir (shared across branches/worktrees, never tracked). Create it before writing (`mkdir -p`). **JSON** — this skill already depends on `jq`, and the catalogs are structured (unlike the flat `conventions` cache the commit/PR skills share).
-- **Validity** — reuse when younger than ~3 days **and** `tracker` is unchanged **and**, on Linear, the cached `team` still matches the configured one. Refetch when missing, stale, the tracker or team changed, or the user passes `--refresh` / `/issue --refresh`.
+- **Validity** — reuse when younger than ~3 days **and** `tracker` is unchanged **and**, on Linear, the cached `team` still matches the configured one **and** the cached `workspace` is the id of the workspace the run's Linear server is connected to (**Pick the server by workspace** in `trackers/linear.md`). Refetch when missing, stale, the tracker, team or workspace changed, or the user passes `--refresh` / `/issue --refresh`.
 - **Transparency** — label staleness in the plan header (`Catalogs (cached, 2d ago): …`).
 
 ```jsonc
 {
   "detected_at": 1718900000,
   "tracker": "github",
+  "workspace": null, // Linear — id of the workspace every id below belongs to; null on GitHub
   "team": null, // Linear — the team the catalog below was fetched for; null on GitHub
   "labels": [{ "name": "bug", "description": "…", "color": "d73a4a" }],
   "teams": [{ "id": "…", "name": "Engineering", "key": "ENG" }], // Linear — workspace-wide; id resolves issue.linear.team
