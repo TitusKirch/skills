@@ -874,3 +874,37 @@ describe('nothing about existing configs changed', () => {
     );
   });
 });
+
+// A Linear connection reaches exactly one workspace, so a repo in a second one
+// names it. The key is optional — one workspace stays a valid, unchanged config —
+// but it is a URL key or id, never a URL.
+describe('the Linear workspace key', () => {
+  const linearIssue = (linear: Record<string, unknown>) => ({
+    issue: { tracker: 'linear', linear: { team: 'ENG', ...linear } }
+  });
+
+  test('is optional and takes a URL key or a workspace id', () => {
+    accepts(linearIssue({}), 'no workspace — the single-workspace config');
+    accepts(linearIssue({ workspace: 'kirchdev' }), 'URL key');
+    accepts(
+      linearIssue({ workspace: '4516d9ad-68d0-4581-ac58-94983c76bb7c' }),
+      'workspace id'
+    );
+    accepts(
+      { work: { linear: { workspace: 'kirchdev' } } },
+      'work.linear takes it too'
+    );
+  });
+
+  test('is never a URL or empty', () => {
+    rejects(
+      linearIssue({ workspace: 'https://linear.app/kirchdev' }),
+      'a URL instead of its key'
+    );
+    rejects(linearIssue({ workspace: '' }), 'empty workspace');
+    rejects(
+      { work: { linear: { workspace: 'linear.app/kirchdev' } } },
+      'a path in work.linear'
+    );
+  });
+});
