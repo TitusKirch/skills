@@ -3,7 +3,7 @@ title: 'Architecture decisions'
 description: 'The decision log — every architecture decision recorded for this project.'
 ---
 
-A decision earns an ADR when it constrains work that comes later and its reasoning would otherwise be lost: a choice between real alternatives, a convention every skill has to follow, a trade-off that looks like a mistake until the reason is known. Records are append-only — a reversed decision is written as a new ADR that supersedes the old one, never as an edit to it. Superseding is reserved for that reversal: a record whose decision still stands but whose stated reasoning has been overtaken is **amended** instead, by a dated addendum appended to it that adds what was learned without altering what already stands. Status and date stay put — the addendum carries its own date, so the Date column below still means the day the status last changed.
+A decision earns an ADR when it is architectural, constrains work that comes later, and its reasoning would otherwise be lost: a choice between real alternatives, a convention every skill has to follow, a trade-off that looks like a mistake until the reason is known. Feature behaviour, parameters and rollout steps are not decisions this log records. Records aim for about 300 words and are append-only — a reversed or materially revised decision is written as a new ADR that supersedes the old one, never as an edit or an amendment to it. Amendments written before [ADR-0041](/adr/0041-give-adrs-their-own-skill-and-a-size-budget) stay where they are; no new ones are added.
 
 | ADR                                                                             | Decision                                                    | Status     | Date       |
 | :------------------------------------------------------------------------------ | :---------------------------------------------------------- | :--------- | :--------- |
@@ -47,3 +47,4 @@ A decision earns an ADR when it constrains work that comes later and its reasoni
 | [ADR-0038](/adr/0038-fix-the-tldr-frame-and-invoke-it-on-request)               | Fix the tldr frame and invoke it on request                 | accepted   | 2026-08-26 |
 | [ADR-0039](/adr/0039-choose-playwright-for-browser-capture)                     | Choose Playwright for browser capture                       | accepted   | 2026-10-12 |
 | [ADR-0040](/adr/0040-lock-the-issue-and-the-tree-not-the-loop)                  | Lock the issue and the tree, not the loop                   | accepted   | 2026-11-18 |
+| [ADR-0041](/adr/0041-give-adrs-their-own-skill-and-a-size-budget)               | Give ADRs their own skill and a size budget                 | accepted   | 2026-11-18 |
