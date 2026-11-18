@@ -78,6 +78,14 @@ printf '%s\n' "$maps/batch-01.tsv"
 
 Delete the directory once the migration's final check is clean.
 
+## Removed, not moved
+
+Most borrowed material in an overgrown record is borrowed **from a file that still owns it** — the validation schema the record transcribed, the test whose roster it listed, the mirrored block whose rule it restated, a skill's REFERENCE section. Moving those sentences to a new page would create a second copy of the owner, which is the drift the expiry test exists to prevent. So:
+
+- **Verify first.** Open the owning file and confirm it states what the sentences state. Where it states less, the difference is moved like any other material.
+- **Remove, then link.** The sentences leave the record, and the record gains one link to the owning file in their place — written once, on entry, the way a split cross-links.
+- **Name every one in the plan**, with the owning file and the section, and remove only on confirmation. A sentence whose owner cannot be found is moved, never dropped.
+
 ## The script
 
 [`templates/rewrite-adr-refs.sh`](templates/rewrite-adr-refs.sh) — POSIX `sh`, `sed -E` and `awk`, run from anywhere inside the repo:
