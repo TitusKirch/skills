@@ -46,7 +46,12 @@ The lifecycle label decides what this run does — this skill is a **state machi
 
 ### 4. Claim the issue (lease) — before any work
 
-Flip the label to `working` (`ready → working` or `changes-requested → working`) and assign the issue to the runner **first**, then start. The claim is the race-breaker: a second consumer sees it is no longer eligible and skips it. Honour the [single-flight lock](REFERENCE.md#lease--race-rules) — take it (direct run) or run under the drain's (queue). Already `working` with committed work → this is a **resume**, not a double-claim.
+**Lock first, then lease.** Take the **tree** lock of the tree this run edits (a sequential drain already holds it for you), then the **issue** lock for this issue — both by `mkdir`, never the drain lock, which a direct run neither takes nor waits on. That is what lets several agents each work a different issue at once ([locks](REFERENCE.md#lease--race-rules)):
+
+- **Issue lock held** → another worker is live on this issue. A named issue: **stop and report**. A self-selected one: take the next candidate.
+- **Tree lock held** → another run is editing this tree. **Stop before any tracker write**, name the issue the holder is on, and **offer to continue in a worktree of its own**. On a yes, make that worktree, install from the lockfile there, and carry on from the issue lock inside it; unattended, stop and report. **A busy tree** in [REFERENCE.md](REFERENCE.md#the-single-flight-lock).
+
+Then flip the label to `working` (`ready → working` or `changes-requested → working`) and assign the issue to the runner, then start. The claim is the race-breaker across clones: a second consumer sees it is no longer eligible and skips it. Re-stamp both locks at each step boundary, and release them only **after** the hand-off flip at step 8 (or the `blocked` exit), issue lock first. **Re-read the label once the issue lock is held**: a run that read `ready` at step 3 and then won the lock behind a worker that just finished must not lease an issue that has already moved on. Already `working` with committed work → this is a **resume**, not a double-claim.
 
 ### 5. Prepare the branch
 
@@ -87,7 +92,7 @@ The **push** is the moment the work becomes reviewable — it is the boundary be
 - **Open that PR as a _draft_, and leave it a draft** — every round, whether `pull-request` opened it (it opens ready by default, so ask it for a draft) or the forge CLI did. This skill **never marks a PR ready for review**: that flip means _the review believes this is finished_, which is not something the author of the change gets to say, and it is `work-review`'s to make. A re-work pushes onto whatever draft state the PR already carries and **leaves it exactly as found** — an already-ready PR stays ready, never goes back into draft. Why, and what a repo's workflows owe the mechanic: [the draft gate](REFERENCE.md#the-draft-gate). Under `branch:<name>` there is no PR and nothing here applies.
 - Record what [step 6's test discipline](REFERENCE.md#test-discipline-tdd) did — the seams read out of the body and the slices `tdd` drove, or that the change was prose-only or `tdd` absent — in the PR body (`worktree`) or an issue comment (`branch:<name>`). It **informs** the reviewer; it is never a verdict, and `work-review` still judges the diff against the requirements.
 - **A rebase conflict on a shared branch stops the run, it does not retry.** Under `branch:<name>` the push rebases onto the branch's new tip, and `push → rebase → retry` answers only the race — a rebase that halts on **conflicted files** collides again on the next attempt. Resolve it out of the two sides' **intents**, driving `resolving-merge-conflicts` when installed and handing in the sibling issue as the other side's primary source, then **re-run the checks** on the resolved tree. Intents that do not carry, or checks that come back red → **`blocked`**. Never resolve by guessing on a branch others land on: [REFERENCE.md](REFERENCE.md#rebase-conflicts).
-- Move the label `working → reviewRequested` — the handoff to `work-review`. Report the issue id / PR url.
+- Move the label `working → reviewRequested` — the handoff to `work-review`. Then release the issue lock and the tree lock (a drain's sequential tree lock stays with the drain). Report the issue id / PR url.
 - The skill **never merges**, never reviews, and **never sets `done`, `changes-requested` or `needs human`** — those are the review loop's and the human's outputs.
 
 Inside a `work-implement-queue` drain nobody waits on this worker — return `reviewRequested` and let the drain move on. The review loop picks the issue up next.
@@ -95,6 +100,7 @@ Inside a `work-implement-queue` drain nobody waits on this worker — return `re
 ## Guardrails
 
 - **Lease before work.** Never implement an issue you have not first flipped to `working`.
+- **Lock the issue and the tree, never the queue.** A worker takes its issue lock and its tree lock and leaves the drain lock to drains, so agents handed different issues never block each other. A held issue lock means hands off; a held tree lock means stop and offer a worktree, never edit a tree another run is in.
 - **Push before handoff.** Only flip to `reviewRequested` once the work is pushed and visible to a reviewer; local-only work stays `working`.
 - **Stateless & resumable.** Read state from the tracker + git every run; carry nothing between runs.
 - **Only this issue.** Never touch sibling issues, never merge, never close anything you were not asked to.
