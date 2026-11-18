@@ -104,7 +104,7 @@ Resumed work that is being parked again **updates the existing document** — sa
 - **Ids are permanent and never reused** — even though the files are not ([REFERENCE.md](REFERENCE.md#id-allocation)).
 - **Attribution-free.** No agent or model name, no `Generated with`/🤖 line, no session url, in the document, the commit, or anything this skill writes. The frontmatter has no author field on purpose — a handoff is a note to the next worker, not a signed artifact, and the next worker gains nothing from knowing which tool typed it.
 - **Secret-free.** The document is committed. Scan what you paste into `Context` — logs, env dumps and config excerpts are where secrets get in.
-- **A handoff is not an ADR.** Same `NNNN-title.md` shape, opposite lifecycle — an ADR (`write-docs`) is a permanent record that must never be deleted; a handoff is working state that is consumed and removed. Never file a decision as a handoff, and never let a handoff's deletion take a decision's record with it — if the work settled something architectural, that belongs in an ADR before the handoff goes ([REFERENCE.md](REFERENCE.md#relationship-to-the-siblings)).
+- **A handoff is not an ADR.** Same `NNNN-title.md` shape, opposite lifecycle — an ADR (`write-adr`) is a permanent record that must never be deleted; a handoff is working state that is consumed and removed. Never file a decision as a handoff, and never let a handoff's deletion take a decision's record with it — if the work settled something architectural, that belongs in an ADR before the handoff goes ([REFERENCE.md](REFERENCE.md#relationship-to-the-siblings)).
 
 ## Reference
 
