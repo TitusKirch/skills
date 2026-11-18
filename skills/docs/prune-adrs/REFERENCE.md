@@ -27,6 +27,22 @@ git log --follow --diff-filter=A --reverse --format=%as -- "$record" | head -n 1
 
 **A chain is measured in days.** Records that supersede one another within a few days are a decision still being worked out when it landed, and the classic `merge`. A supersede months later is a reversal, and both records stay.
 
+### Instruction files
+
+A log pruned while the project's own agent instructions still demand an ADR per change grows straight back. Read every instruction file the repo commits — `CLAUDE.md`, `AGENTS.md`, `.github/copilot-instructions.md`, `.cursor/rules/`, nested copies in subprojects — and flag a line that:
+
+| Flag                                                    | Proposed rewording                                                                               |
+| :------------------------------------------------------ | :----------------------------------------------------------------------------------------------- |
+| sends every reason, change or feature to `docs/99.adr/` | only architecture decisions go there, by `write-adr`'s threshold; the rest goes to pages         |
+| requires code comments to cite `ADR-NNNN`               | cite the page that explains the subject; an ADR only where the comment is about the architecture |
+| tells an agent to write or extend an ADR after a change | document the change as pages; offer an ADR only for an architectural decision                    |
+
+```sh
+git grep -n -i -E '(^|[^a-z])adrs?([^a-z0-9/-]|$)|decision record|99\.adr(/[^0-9]|[^/0-9]|$)' -- '*CLAUDE.md' '*AGENTS.md' '.github/copilot-instructions.md' '.cursor/rules/*'   # rules about ADRs, not citations of one record
+```
+
+Report each flag with file, line and the proposed wording, and change it **only on confirmation**, in the same diff as the batch. A file kept byte-identical with another (a `CLAUDE.md` mirrored to `AGENTS.md`) is changed in one and copied over the other, the way the repo already keeps them. A file a tool generates is reported, never edited. The `ADR-NNNN` tokens such a file cites are the script's, like any other reference; only the rule is a reading.
+
 ## The map
 
 One **batch map** per batch, tab-separated, one record per line, `#` comments and blank lines ignored:
@@ -41,12 +57,12 @@ One **batch map** per batch, tab-separated, one record per line, `#` comments an
 0412	drop
 ```
 
-| Action          | `target`                                                                                                                                             | `label`                                  |
-| :-------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------- |
-| `keep` / `trim` | —                                                                                                                                                    | —                                        |
-| `merge`         | the surviving record's 4-digit id — a record kept or trimmed, never one removed in any batch                                                         | —                                        |
-| `move`          | the page's link target: a repo path `docs/…md` (written relative to each linking file), or the site path the repo already links with (`/concepts/…`) | the text that replaces a bare `ADR-NNNN` |
-| `drop`          | —                                                                                                                                                    | —                                        |
+| Action                    | `target`                                                                                                                                                                             | `label`                                  |
+| :------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------- |
+| `keep` / `trim` / `split` | —                                                                                                                                                                                    | —                                        |
+| `merge`                   | the surviving record's 4-digit id — a record kept or trimmed, never one removed in any batch                                                                                         | —                                        |
+| `move`                    | the page's link target: a repo path — a docs page or a component's `DESIGN.md` (written relative to each linking file), or the site path the repo already links with (`/concepts/…`) | the text that replaces a bare `ADR-NNNN` |
+| `drop`                    | —                                                                                                                                                                                    | —                                        |
 
 **Use the link form the repo already uses.** A rendered site that links records as `/adr/NNNN-slug` links pages the same way, so its `move` targets are site paths; a portable tree links files, so its targets are `docs/` paths. Mixing them leaves a tree that half-renders.
 

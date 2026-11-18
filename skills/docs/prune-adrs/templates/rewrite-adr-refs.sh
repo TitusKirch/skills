@@ -15,13 +15,15 @@
 #
 # MAP is tab-separated, one record per line, `#` comments and blank lines ignored:
 #   <id> <TAB> <action> [<TAB> <target> [<TAB> <label>]]
-#   keep | trim       the record stays; no reference changes
+#   keep | trim | split
+#                     the record stays; no reference changes
 #   merge  <id>       references move to the surviving record <id>
 #   move   <href> <label>
 #                     references move to a page: a link target becomes <href>, a bare
-#                     `ADR-NNNN` becomes <label>. A <href> starting with `docs/` is a repo
-#                     path and is written relative to each linking file; any other <href>
-#                     (an absolute site path such as `/concepts/x`) is written as given
+#                     `ADR-NNNN` becomes <label>. A relative <href> is a repo path (a docs
+#                     page, a skill's DESIGN.md) and is written relative to each linking
+#                     file; an absolute <href> (a site path such as `/concepts/x`) is
+#                     written as given
 #   drop              allowed only for a record nothing else references
 #
 # Exit: 0 done / clean · 1 references to removed ids remain · 2 invalid usage or map.
@@ -75,18 +77,18 @@ while IFS="$(printf '\t')" read -r id action target label; do
   case $id in [0-9][0-9][0-9][0-9]) ;; *) fail "not a 4-digit id: '$id'"; continue ;; esac
   if [ "$mode" != check ] && [ -z "$(record "$id")" ]; then fail "$id: no record $log/$id-*.md"; fi
   case $action in
-  keep | trim) ;;
+  keep | trim | split) ;;
   merge)
     case $target in [0-9][0-9][0-9][0-9]) ;; *) fail "$id: merge needs a 4-digit target id"; continue ;; esac
     [ "$target" != "$id" ] || fail "$id: merges into itself"
     t_action=$(awk -F '\t' -v t="$target" '$1 == t { print $2 }' "$work/entries")
-    case $t_action in '' | keep | trim) ;; *) fail "$id: merge target $target is itself $t_action" ;; esac
+    case $t_action in '' | keep | trim | split) ;; *) fail "$id: merge target $target is itself $t_action" ;; esac
     [ -n "$(record "$target")" ] || fail "$id: merge target $target has no record"
     printf '%s\n' "$id" >> "$work/removed" ;;
   move)
     [ -n "$target" ] || fail "$id: move needs a target href"
     [ -n "$label" ] || fail "$id: move needs a label"
-    case $target in docs/*) [ "$mode" = check ] || [ -f "$target" ] || fail "$id: move target $target does not exist" ;; esac
+    case $target in /*) ;; *) [ "$mode" = check ] || [ -f "$target" ] || fail "$id: move target $target does not exist" ;; esac
     printf '%s\n' "$id" >> "$work/removed" ;;
   drop) printf '%s\n' "$id" >> "$work/removed" ;;
   *) fail "$id: unknown action '$action'" ;;
@@ -175,13 +177,13 @@ while IFS="$(printf '\t')" read -r id action target label; do
     } >> "$work/fixed.sed" ;;
   move)
     case $target in
-    docs/*) printf '%s\t%s\n' "$id" "$target" >> "$work/rel.list" ;;
-    *)
+    /*)
       href=$(esc "$target")
       {
         printf 's|]\\([^)]*adr/%s-[a-z0-9-]*(\\.md)?(#[^)]*)?\\)|](%s)|g\n' "$id" "$href"
         printf 's|]\\(%s-[a-z0-9-]*(\\.md)?(#[^)]*)?\\)|](%s)|g\n' "$id" "$href"
       } >> "$work/fixed.sed" ;;
+    *) printf '%s\t%s\n' "$id" "$target" >> "$work/rel.list" ;;
     esac
     lab=$(esc "$label")
     {

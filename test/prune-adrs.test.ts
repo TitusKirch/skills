@@ -177,6 +177,29 @@ describe('apply', () => {
   });
 });
 
+describe("a move into a component's own design notes", () => {
+  test('a relative target outside docs/ is a repo path too', () => {
+    const dir = repo({
+      ...FILES,
+      'skills/x/DESIGN.md': '# x — design\n'
+    });
+    const out = run(
+      dir,
+      '0003\tmove\tskills/x/DESIGN.md\tthe x design notes\n0001\tsplit\n',
+      '--apply'
+    );
+    assert.equal(out.status, 0, out.stdout + out.stderr);
+    assert.match(
+      read(dir, 'docs/2.concepts/other.md'),
+      /\[the x design notes\]\(\.\.\/\.\.\/skills\/x\/DESIGN\.md\)/
+    );
+    assert.ok(
+      existsSync(join(dir, 'docs/99.adr/0001-keep-a.md')),
+      'a split record stays'
+    );
+  });
+});
+
 describe('what the check refuses to call clean', () => {
   test('a survivor that would now cite itself', () => {
     const dir = repo({
