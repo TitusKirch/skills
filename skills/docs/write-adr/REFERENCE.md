@@ -88,6 +88,8 @@ Two sections attract borrowed material in particular:
 
 **Aim for about 300 words of body; over 500 needs a reason, stated in the plan.** Frontmatter does not count. The three H2s are required as _headings_, not as a word budget: any of them may be one sentence, "the consequences are the obvious ones" is a complete `Consequences` section, and a whole record may be a single paragraph.
 
+**The number sits at the strict end of what the practice recommends.** Nygard, who introduced the format, wrote that "the whole document should be one or two pages long". Zimmermann asks for "the bare minimum of essential information" — sometimes a slide with a few sentences, up to a few pages for a complex decision — and names the overgrown forms as anti-patterns: the **Mega-ADR**, the **Novel**, the **Blueprint in disguise**. One page is about 500 words, so the ceiling is one page and the aim well under it.
+
 **The budget exists because append-only makes length permanent.** A record that ran long can never be trimmed, and a log of long records is one nobody reads to the end, so the decisions that carry the system's shape drown among the ones that do not. An earlier version of this contract set no number in either direction, on the reasoning that content rules alone bound a record. In practice they did not: records grew into feature specifications, with parameters, endpoints and rollout steps a page should have held.
 
 **Over budget, move material before cutting reasoning.** In order:
@@ -255,51 +257,11 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 
 </skills-config>
 
-### Reading the config
-
-The config is `.tituskirch-skills.json` at the **consuming repo's** root — committed, optional, and shared by every TitusKirch skill. Absent means detection and built-in defaults, never an error. Its keys, types and defaults are defined by [`tituskirch-skills.schema.json`](https://raw.githubusercontent.com/TitusKirch/skills/main/tituskirch-skills.schema.json).
-
-**Resolve it before reading it.** A repo may define `profiles` — named overlays for an execution context, so a remote runner can open pull requests where a local session commits directly. [`templates/resolve-config.sh`](templates/resolve-config.sh) prints the resolved config, and every skill ships the same copy, so they all see the same values:
-
-```sh
-# Fill in this skill's own directory — the path this file was loaded from, not the
-# repo being worked on. It is a blank to fill, not a variable that is already set.
-skill=/absolute/path/to/this/skill
-
-resolved=$(sh "$skill/templates/resolve-config.sh"); status=$?
-case $status in
-0)  [ -n "$resolved" ] || resolved='{}' ;;   # ran fine; empty means the repo has no config
-10) resolved= ;;                           # no jq — read the file yourself, see below
-*)  echo "resolve-config failed ($status)" >&2; exit 1 ;;   # 11: unknown profile named
-esac
-```
-
-**A failure here is never silent.** Any exit other than `0` or `10` means the resolver could not be found, could not run, or was told to select a profile the config does not define, and the only wrong response is to carry on with `{}` — that reports the repo's defaults as if they were its settings. Stop and say what failed.
-
-The profile comes from `TITUSKIRCH_SKILLS_PROFILE`, falling back to `ci` when `CI` holds a truthy value, and to no profile otherwise. An unset name, or a detected `ci` the config does not define, yields the base config unchanged. A `TITUSKIRCH_SKILLS_PROFILE` naming no defined profile exits `11` — a renamed profile stops the run rather than silently dropping its overlay.
-
-**The merge is a rule, not just a command.** Objects merge recursively at any depth, arrays and scalars are replaced rather than concatenated, an explicit `null` sets null rather than deleting a key, and `profiles` is dropped from the result. Any path that resolves the config by other means owes the same semantics.
-
-**`jq` may not be installed.** It ships preinstalled on none of Windows, macOS or Linux, and `gh`'s built-in `--jq` is no substitute — that filters API responses, it cannot read a local file. `resolve-config.sh` exits `10` in that case. Do **not** fall through to defaults: `Read` the file, apply the merge rule above, and carry on with the repo's real values. Nothing else is needed — no Node, no Python.
-
-**Guard every read, resolve into a variable, then use it.** Never let a substitution reach a command flag directly — `jq -r` prints the literal string `null` for a missing key, and an empty value is silently ignored by some tools rather than matching nothing:
-
-```sh
-value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) || value=
-[ -n "$value" ] || value=<documented default>
-```
-
-**Tell "off" apart from "absent".** `// empty` collapses `false` and a missing key into the same empty string, which turns a deliberately disabled mechanic into its default. Where a key may be `false`, resolve it as `select(. != null) | tostring` and test for the string afterwards.
-
-**Snippets are POSIX `sh`.** No `[[ ]]`, no arrays, no `<<<`, and nothing that differs between GNU and BSD coreutils — the shell is whatever the user runs.
-
-</skills-config>
-
 ## Anti-patterns
 
 - ❌ A record for a feature — its behaviour, rules, parameters, endpoints or rollout — instead of a page that can be edited when the feature changes.
 - ❌ An ADR per finished feature, by default.
-- ❌ A record past 500 words with no reason stated in the plan, or past about 800 that was not proposed as two.
+- ❌ A record past 500 words with no reason stated in the plan, or past about 800 that was not proposed as two — the Mega-ADR, the Novel, the Blueprint in disguise.
 - ❌ A `## Amendments` section, a dated addendum, or any paragraph appended to a landed record.
 - ❌ A second record in the same change that refines the first instead of editing its draft.
 - ❌ An unprefixed `docs/adr/`, or any prefix other than `99`, for the ADR section.
