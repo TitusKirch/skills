@@ -34,6 +34,7 @@
       "description": "Generate and maintain project documentation, READMEs and terminal demos in the house style.",
       "skills": [
         "compact-readme",
+        "prune-adrs",
         "vhs-demo",
         "write-adr",
         "write-contributing",

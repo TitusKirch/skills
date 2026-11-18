@@ -28,6 +28,7 @@
     "./skills/work/work-review",
     "./skills/work/work-review-queue",
     "./skills/docs/compact-readme",
+    "./skills/docs/prune-adrs",
     "./skills/docs/vhs-demo",
     "./skills/docs/write-adr",
     "./skills/docs/write-contributing",

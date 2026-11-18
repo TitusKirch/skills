@@ -5,6 +5,7 @@
 Generate and maintain project documentation, READMEs and terminal demos in the house style.
 
 - **[compact-readme](./compact-readme/SKILL.md)** — Slims down an existing overstuffed README without losing information.
+- **[prune-adrs](./prune-adrs/SKILL.md)** — Migrates an overgrown decision log onto write-adr's rules, rewriting every reference by script.
 - **[vhs-demo](./vhs-demo/SKILL.md)** — Creates and maintains reproducible README or docs terminal-demo GIFs from VHS tapes.
 - **[write-adr](./write-adr/SKILL.md)** — Writes, supersedes and imports architecture decision records in docs/99.adr/ — short, rare, append-only.
 - **[write-contributing](./write-contributing/SKILL.md)** — Writes and reconciles CONTRIBUTING.md in the house style, deriving every repo fact from the file that owns it.
