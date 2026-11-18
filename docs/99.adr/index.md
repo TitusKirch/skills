@@ -48,3 +48,4 @@ A decision earns an ADR when it is architectural, constrains work that comes lat
 | [ADR-0039](/adr/0039-choose-playwright-for-browser-capture)                     | Choose Playwright for browser capture                       | accepted   | 2026-10-12 |
 | [ADR-0040](/adr/0040-lock-the-issue-and-the-tree-not-the-loop)                  | Lock the issue and the tree, not the loop                   | accepted   | 2026-11-18 |
 | [ADR-0041](/adr/0041-give-adrs-their-own-skill-and-a-size-budget)               | Give ADRs their own skill and a size budget                 | accepted   | 2026-11-18 |
+| [ADR-0042](/adr/0042-rewrite-adr-references-by-script-not-by-search)            | Rewrite ADR references by script, not by search             | accepted   | 2026-11-18 |
