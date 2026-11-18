@@ -1,0 +1,42 @@
+{
+  "_comment": "Output-quality cases for write-adr's three load-bearing behaviours: saying no to a feature, keeping a real record short, and superseding instead of amending. Each prompt carries the repo state it needs, so no fixture repo is required. Run each case with and without the skill (Anthropic's skill-creator) for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "write-adr",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We just merged the dragon egg feature for our Minecraft network: a placed egg is open to anyone for six hours, then secured for the claim it stands in; within 16 blocks of an open egg outsiders may build, and the area is restored five minutes after they leave. The core service stores placed_at and secured_claim_id, and the territory plugin asks it on every player hit. Write an ADR for this in docs/99.adr/.",
+      "expected_output": "No ADR is written. The run explains that this is feature behaviour with parameters and implementation detail, not an architecture decision, and names where it belongs instead — a concept or guide page through write-docs — at most noting a single architectural question (if any) as a borderline candidate for the human to decide.",
+      "expectations": [
+        "No file is created or proposed under docs/99.adr/.",
+        "The refusal names the threshold: the material is feature behaviour, parameters or implementation detail, not an architecture decision.",
+        "It names an editable docs page (concept or guide) as the destination, and does not write that page itself.",
+        "It does not offer to write the ADR 'just in case'."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Record this decision as an ADR: we are moving all player state writes behind the Laravel core service. Until now the Paper and Velocity plugins wrote to Postgres directly, which caused two lost-update incidents when a player switched servers mid-write. Alternatives were row-level locking in each plugin, or an event log every writer appends to. We chose a single writer because the plugins are replaced on every deploy and cannot be trusted to agree on a locking protocol; the cost is an extra network hop on every write and a hard dependency on the core being up. The log currently ends at ADR-0012 and docs/99.adr/index.md exists.",
+      "expected_output": "One plan, then on confirmation one record docs/99.adr/0013-<imperative-slug>.md with Context, Decision, Consequences and an Alternatives considered section, status accepted, plus its index.md row — body around 300 words and under 500, with the word count shown in the plan.",
+      "expectations": [
+        "The plan shows the record's word count, and the body is under 500 words.",
+        "The file is 0013 with a present-tense imperative slug, and the H1 reads 'ADR-0013 — ...'.",
+        "Frontmatter carries title, description, status: accepted and date — nothing else.",
+        "It has Context, Decision and Consequences sections, and the two rejected alternatives appear with the reason each lost.",
+        "The index.md row is part of the same change.",
+        "No sentence states the state of the world in the present tense ('currently', a version number)."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "ADR-0007 'Store sessions in Redis' was merged to main two months ago. We now learned that Redis eviction under memory pressure silently dropped sessions, so sessions move to Postgres with a TTL column; Redis stays only as a read cache. Please add an Amendments section to ADR-0007 with this.",
+      "expected_output": "The run declines to amend the landed record and proposes a new ADR that supersedes ADR-0007 instead: the new record states the decision and the eviction finding; ADR-0007 keeps its prose and only gains status superseded, an updated date and a 'Superseded by' pointer; both changes plus the index rows in one change.",
+      "expectations": [
+        "No '## Amendments' section or appended paragraph is added to ADR-0007.",
+        "A new record with the next free id is proposed, and it points back with 'Supersedes ADR-0007'.",
+        "ADR-0007's Context, Decision and Consequences stay unchanged; only status, date and a 'Superseded by' pointer change.",
+        "The index.md rows for both records are updated in the same change.",
+        "The new record stays under 500 words."
+      ]
+    }
+  ]
+}

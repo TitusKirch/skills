@@ -102,11 +102,11 @@ What is left past 500 words is a decision with genuinely many forces, or several
 
 ### Lifecycle — append-only
 
-**A record is a draft until the change adding it lands on the integration branch** (`pr.base`, else the default branch). Before that it is edited freely, and refining a decision means editing its draft, never opening a second record in the same change. Once it has landed it is **immutable**: the log records what was decided and when, so a superseded decision has to survive intact.
+**A record is a draft until the change adding it lands on the integration branch** (`pr.base`, else the default branch). It carries `status: accepted` from the first draft — the merge is the acceptance, so nobody has to flip the status afterwards, and a change that never merges takes its draft with it. `proposed` is for a record deliberately put up for decision on its own, never for a draft waiting on its change. Before landing it is edited freely, and refining a decision means editing its draft, never opening a second record in the same change. Once it has landed it is **immutable**: the log records what was decided and when, so a superseded decision has to survive intact.
 
 - **Overturning or materially revising a decision writes a new ADR.** The old one keeps its prose and only flips `status` to `superseded`, gains a `Superseded by ADR-NNNN` pointer under its H1, and updates `date`. The new ADR points back (`Supersedes ADR-NNNN`).
 - **No amendments.** An accepted record never grows: no `## Amendments` section, no dated addendum, no appended paragraph. An earlier version of this contract allowed a dated amendment where a decision held but a fact it priced had moved. Records then accumulated amendments until a single one ran to thousands of words, which is a living page wearing a record's id. What was learned while the decision still stands goes on the **concept page** that explains the subject today. If it changes the reasoning enough that the record now misleads, that is a supersede.
-- **A record that already carries amendments keeps them.** Append-only binds them too, so they are never removed, and the log simply gains no new ones.
+- **A record that already carries amendments keeps them** — append-only binds them too, and the log simply gains no new ones. The one exception is a deliberate migration with `prune-adrs`, which may move them to the concept page as part of trimming the record.
 - **Never** rewrite a landed ADR's Context/Decision/Consequences, delete an ADR, or renumber one. Typo and link fixes are the only in-place edits.
 - **A chain of supersedes inside a few days is a smell.** It means records landed while the decision was still being worked out. Say so in the plan, and prefer letting the next decision wait until it has settled.
 - The general page rules **do not apply**: no edit-in-place for a changed decision, no one-topic-per-page dedupe (several ADRs may touch the same topic — that is the log working, not duplication), and no prose reconcile.
@@ -115,12 +115,13 @@ What is left past 500 words is a decision with genuinely many forces, or several
 
 The **index** job keeps the table honest and nothing more:
 
-| Finding                                                                                                      | Action                   |
-| :----------------------------------------------------------------------------------------------------------- | :----------------------- |
-| a record with no row, a row with no record, a row whose status or date differs from the record's frontmatter | fix, in the plan         |
-| a broken link inside `99.adr/`                                                                               | fix, in the plan         |
-| a missing `title` / `description` on a record                                                                | propose a value, confirm |
-| an id gap, a non-imperative title, a missing `Alternatives considered`, an amendment, a record over budget   | **report only**          |
+| Finding                                                                                                      | Action                                                      |
+| :----------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------- |
+| a record with no row, a row with no record, a row whose status or date differs from the record's frontmatter | fix, in the plan                                            |
+| a broken link inside `99.adr/`                                                                               | fix, in the plan                                            |
+| a missing `title` / `description` on a record                                                                | propose a value, confirm                                    |
+| a record a later one overturns or narrows, with no `Supersedes` / `Superseded by` pointer between them       | **report only** — a human decides whether it is a supersede |
+| an id gap, a non-imperative title, a missing `Alternatives considered`, an amendment, a record over budget   | **report only**                                             |
 
 It **never** renumbers a record, normalizes `NNNN-title.md` to the house dot-schema, closes a numbering gap, renames a record, or touches body prose or `status` — ids are permanent, gaps are not deviations, and the body is append-only. Cleaning up a log that grew past its contract, or importing one written elsewhere, is a deliberate migration and `prune-adrs`' job, never an index fix.
 
