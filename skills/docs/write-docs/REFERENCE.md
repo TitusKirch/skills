@@ -91,7 +91,7 @@ docs/
 
 **A missing translation is legitimate.** A renderer resolves a missing page through a documented chain — the locale, its base language, a sibling region, a configured fallback, then the untranslated original — so the reader gets the nearest language rather than a 404. An untranslated page is therefore **not a defect to fix** and never blocks anything; it is simply a page the next sweep will write.
 
-**The ADR log's authority is the default-locale tree.** A translated ADR is a rendering of a record, not a record: [append-only](#lifecycle--append-only) binds the source file in `99.adr/`, so regenerating its translation is not an edit to an accepted record. Ids, filenames and `status` are copied from the source untouched, and a decision is never superseded from inside a locale tree.
+**The ADR log's authority is the default-locale tree.** A translated ADR is a rendering of a record, not a record: `write-adr`'s append-only rule binds the source file in `99.adr/`, so regenerating its translation is not an edit to an accepted record. Ids, filenames and `status` are copied from the source untouched, and a decision is never superseded from inside a locale tree.
 
 **A locale sourced from another repository is the consuming site's config, not this one's.** A renderer can pull a locale from a separate repo; this skill only ever writes inside this repo's `docs/`, so such a locale is out of its reach entirely — it is neither scaffolded, translated, nor reported on here.
 
@@ -202,7 +202,7 @@ The tree above is written to be read **as files** — on the forge, in an editor
 
 Nothing else moves. The mode changes the **form of a page**, never [what belongs in docs at all](SKILL.md#what-belongs-in-docs-at-all), the [section catalogue](#section-catalogue), the [presets](#presets), the numeric-prefix ordering, the [delta principle](SKILL.md#route--add--docs-exists), or the one-topic-per-page rule.
 
-**`99.adr/` keeps its own contract under the mode too.** That section already [overrides the general page contract](#architecture-decision-records), and the override is not lifted here: a record's H1 is part of its [file schema](#file-schema), and the log is [append-only](#lifecycle--append-only) — so a mode switched on later could never remove the H1 from the records already written, and the reconciler is forbidden from touching an accepted body to try. A second heading on a rendered ADR is cosmetic; a decision log split into a pre-mode and a post-mode shape is not.
+**`99.adr/` keeps its own contract under the mode too.** That section is [not this skill's](#architecture-decision-records), and `write-adr` states why the mode leaves it unchanged.
 
 ### The target, and why its contract is linked rather than copied
 
@@ -239,182 +239,28 @@ The **reconciler reads the same key**, which is the other half of the mode worki
 
 ## Architecture decision records
 
-An **ADR** records one architectural decision and the reasoning behind it. It is a **structurally distinct artifact** — its own filename schema, extra frontmatter and an append-only lifecycle. Everything here **overrides** the general page contract above.
+**The decision log is `write-adr`'s, not this skill's.** It lives in **`docs/99.adr/`**, and that is all this skill needs to know about it:
 
-This section is the artifact's contract — what an ADR looks like once there is one to write. **Whether a decision earns one at all** is the threshold in [SKILL.md](SKILL.md#when-a-decision-earns-an-adr), asked before routing.
+- **The `99` prefix is fixed**, identical in every repo, and the section is **pinned last** — a decision log is an appendix, not front-of-manual reading.
+- **It is never scaffolded**, and no preset includes it. It appears with the first record `write-adr` writes.
+- **Its pages follow their own contract** — `NNNN-title.md` filenames, `status` + `date` frontmatter, an append-only body — so none of the page rules in this file apply to them, and a reconcile never touches them in the default-locale tree.
+- **A translated ADR** is a rendering of a record, regenerated with its [locale tree](#locale-trees-are-regenerated-not-categorized): ids, filenames and `status` copied from the source untouched.
 
-### Section
-
-ADRs live in **`docs/99.adr/`** — a numbered house section like any other, never an unprefixed `docs/adr/`.
-
-- **The `99` prefix is fixed**, identical in every repo, so readers and tooling can rely on one path.
-- **Pinned last**, after every reading section: an ADR set is a decision log — an appendix, not front-of-manual reading. `99` also leaves the reading sections room to grow without ever renumbering the ADR section.
-- **Flat** — pages sit directly in the section. No subfolders, no subject grouping.
-- **Never scaffolded empty** — the section appears with the first ADR.
-
-### File schema
-
-`NNNN-title.md` — 4-digit zero-padded id, **hyphen**, kebab title (`0007-drop-the-legacy-queue.md`). The H1 is `ADR-{NNNN} — {title}`.
-
-- The id is a **permanent decision identifier**, taken once from the next free value. It is what cross-references point at (`superseded by ADR-0007`), so it is **never reused, renumbered or gap-filled**.
-- **The title is a present-tense imperative verb phrase** — `0012-let-the-review-establish-green`, not `0012-review-green-policy`. A decision is something a project _did_, so the filename says what was done; a noun phrase names the topic instead and reads like a concept page. The H1 and the `title` frontmatter carry the same phrase, capitalized (`Let the review establish green`).
-- This is deliberately **not** the house `N.kebab.md` dot-schema: that prefix is reading order and may be renumbered by the reconciler — a decision id may not. The hyphen keeps the two schemas impossible to confuse.
-- **`index.md` is the decision log** — a table of every ADR (id, decision, status, date), in id order. Update it in the same change that adds an ADR. Template: [`templates/adr-index.md`](templates/adr-index.md).
-
-### Frontmatter
-
-House `title` + `description` (so an ADR renders and indexes like any other page) plus the ADR fields:
-
-```yaml
----
-title: Drop the legacy queue
-description: Retire the hand-rolled queue in favour of the managed broker.
-status: accepted
-date: 2026-07-15
----
-```
-
-- **`status`** — `proposed` · `accepted` · `rejected` · `deprecated` · `superseded`.
-- **`date`** — ISO `YYYY-MM-DD`; the day the status last changed.
-- **Nothing else.** MADR's `decision-makers` / `consulted` / `informed` are a deliberate **no**: who decided is already recorded, timestamped and unforgeable, on the issue and pull request the ADR came out of, and a retyped list only goes stale beside it.
-
-### Body
-
-Context, decision and consequences are **body sections, not frontmatter** — they are prose, and prose belongs where it renders. Template: [`templates/adr.md`](templates/adr.md).
-
-| H2                        | Required     | Holds                                                             |
-| :------------------------ | :----------- | :---------------------------------------------------------------- |
-| `Context`                 | **yes**      | the forces at play, neutral — no verdict yet                      |
-| `Decision`                | **yes**      | what was decided, active voice                                    |
-| `Consequences`            | **yes**      | what becomes easier, what becomes harder, the trade-offs accepted |
-| `Alternatives considered` | **optional** | the options that lost, and why each lost                          |
-
-In that order, the optional one last.
-
-- **The three required sections are Nygard's** — cite him and no one else. MADR requires a **different** set (`Context and Problem Statement`, `Considered Options`, `Decision Outcome`, with `Consequences` merely optional), so naming it alongside would claim a backing this shape does not have.
-- **`Alternatives considered` is optional on purpose.** The reasoning it holds is what a later reader comes back for, and without a home it ends up buried mid-`Decision` or dropped entirely — but required is the one thing it must not be: the lifecycle below is append-only, so a section made mandatory today could never be added to the records already written, and it would freeze every one of them out of conformance permanently. An ADR whose alternatives are genuinely covered inside `Decision` omits the section rather than padding it.
-- **Optional is about writing it, not about editing it later.** Once the record is accepted this section is as immutable as the three above it — the [lifecycle](#lifecycle--append-only) governs the whole body, so an omitted `Alternatives considered` is not an invitation to add one to an accepted ADR afterwards.
-
-### What the body may hold
-
-The [lifecycle](#lifecycle--append-only) makes this a **content** rule rather than a length one: no sentence in an accepted record can ever be corrected, so **every sentence has to still be true years from now**.
-
-**The expiry test — a record may hold no sentence its author would later want to fix.** The tells are mechanical, and each marks a fact that belongs to a page which _may_ be edited when it moves:
-
-| Tell in the prose                                | What it actually is                                                                     |
-| :----------------------------------------------- | :-------------------------------------------------------------------------------------- |
-| _currently_ · _for now_ · _at present_ · _today_ | a state of the world, not a decision                                                    |
-| _is being_ removed / replaced / migrated         | work in flight, finished before the next reader arrives                                 |
-| a version, a release, a dependency's shape       | an implementation state, correct for exactly one release                                |
-| a claim about what some tickets contain          | their contents move; a pointer to the record's origin is fine, a summary of them is not |
-| a field list, an option table, a signature       | transcribed from code that stays correct on its own                                     |
-| any enumeration a later change will extend       | a convention, and conventions grow                                                      |
-
-Freezing a fact **on purpose** is legitimate — the state something was in on the day it was decided is often what makes the decision legible at all. Write it in the **past tense**, so the record dates its own claim instead of asserting it forever.
-
-Two sections attract borrowed material in particular:
-
-- **`Context` states the constraint, not the inventory.** It answers what _forced_ this decision, never what the project looked like at the time. A workaround that shipped with a bug is context — it proves the discipline did not hold; a tour of what the repo contained is not, and it is false within a release.
-- **`Consequences` are not conventions.** The moment a consequence prescribes how _future_ work is to be done, it is a rule, and it belongs in `conventions/` — where it is found without reading this record, and edited when it changes. What follows _from_ the decision stays; what is now _required of everyone_ moves out and is linked.
-
-**The [delta principle](SKILL.md#route--add--docs-exists) binds hardest here.** It forbids transcribing values, versions and option tables out of a file anywhere in the tree; in an append-only record the copy cannot even be corrected once that file moves on. Name the file and what is surprising about it — never its contents.
-
-**A record never instructs its own continuation.** "Extend this list here when you add one" describes a living page, which is the one thing the lifecycle forbids: the list belongs in `conventions/`, and the record decides only that it exists. The sole thing an accepted ADR may grow is a dated [amendment](#lifecycle--append-only).
-
-### Size
-
-**An ADR can be a single paragraph. The value is in recording that a decision was made and why — not in filling out sections.** The three H2s are required as _headings_, not as a word budget: any of them may be one sentence, and "the consequences are the obvious ones" is a complete `Consequences` section.
-
-This is a **permission, not a ceiling** — no word count in either direction. A decision with four rejected alternatives earns the words it takes to name them, and append-only means an over-long record cannot be trimmed later anyway. What bounds a record is therefore not its length but [what may go in it](#what-the-body-may-hold): a long record is a problem only when the words come from a page that should have stayed editable. The permission exists because the cost of a mandatory-looking section is paid at the moment of **writing**, where a record that feels like paperwork is a record that does not get made — and an unwritten ADR is the only failure mode this contract cannot recover from.
-
-### Lifecycle — append-only
-
-An ADR is **immutable once accepted**. The log records what was decided and when, so a superseded decision has to survive intact — that record is the whole value.
-
-- **Overturning a decision writes a new ADR.** The old one keeps its prose and only flips `status` to `superseded`, gains a `Superseded by ADR-NNNN` pointer under its H1, and updates `date`. The new ADR points back (`Supersedes ADR-NNNN`).
-- **Adding to a decision that still stands writes an amendment, in place.** Where the decision holds but a fact it priced has moved, append a dated entry under a trailing `## Amendments` H2 (`### YYYY-MM-DD — what changed`) — the one section an accepted ADR may grow. It adds, never edits: Context/Decision/Consequences stay byte-for-byte, `status` and `date` stay put, and the amendment's own heading carries its date, so the index's Date column keeps meaning "the day the status last changed". **Superseding is reserved for a reversal** — reaching for a new record to say "this still holds, but" costs the reader the pointer, since nothing on the old record says it was refined.
-- **Never** rewrite an accepted ADR's Context/Decision/Consequences, delete an ADR, or renumber one. Typo fixes, link fixes and an appended amendment are the only in-place edits.
-- The general page rules **do not apply**: no edit-in-place for a changed decision, no one-topic-per-page dedupe (several ADRs may touch the same topic — that is the log working, not duplication), and no prose reconcile.
-
-### Foreign ADRs — a decision log written elsewhere
-
-A repo may already hold ADRs that were written **somewhere else, in someone else's format** — another tool's `docs/adr/0001-slug.md` with no frontmatter and a two-sentence body, a migrated repo's log, a human contributor following a different convention. Such a file matches no category in [Reconcile rules](#reconcile-rules): it is not a numbering gap, not a missing `index.md`, not an unknown key on a page we own. It is a page the job never looks at, so the decision it records is **absent from the decision log** — the one failure a log must not have, because an incomplete log still reads as complete.
-
-The **reconcile** job therefore recognizes such a directory and offers to bring it into the contract.
-
-**Detection is a dedicated ADR directory, and nothing else.** Inside `docs/`, a directory whose whole content is decision records: `adr/`, `adrs/`, `decisions/`, `architecture-decisions/` and near variants of those names.
-
-- **Never match on filenames.** A page called `adr-caching.md` sitting in a section, or an `adr/` holding a mix of decisions and other material, is **report only** — filename matching starts collecting documents nobody meant as decision records, and a wrong import is far more expensive than a missed one. Unsure → report, don't import.
-- **A decision directory outside `docs/`** (a root-level `adr/`) is likewise **report only**: the reconcile blast radius stops at `docs/`, so name it in the report and leave the move to a human.
-
-**The import is one proposal, and nothing moves unasked.** Move, rename, index row and the missing values are presented **together** and applied only on confirmation. Splitting the move out as a mechanical first step saves nothing — `title` / `description` / `status` have to be asked for anyway — and buys a half-imported log, which is worse than an unimported one.
-
-#### The threshold governs adopted records too
-
-**Finding the directory is not the decision to admit it.** Admission is judged **per file**, against the same bar a record written here has to clear — [when a decision earns an ADR](SKILL.md#when-a-decision-earns-an-adr), as the target repo's own `99.adr/index.md` states it. A threshold that governs which decisions earn an ADR governs adopted ones no differently; nothing about arriving in another tool's format earns a record a place this log would not otherwise give it.
-
-**The gate belongs at the import step and nowhere later.** The log is [append-only](#lifecycle--append-only), so a record admitted wrongly can never be pruned — faithfully importing another tool's noise into a log that cannot be trimmed is a worse outcome than the blind spot the import exists to close. Ask it before the id is assigned, because after that there is no undo.
-
-Admission has **four** outcomes, all of them proposed in the same plan:
-
-| Outcome                                      | When                                                                                                                                                                                          |
-| :------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Import the record**                        | it clears the bar, and what it holds is what a record nobody may correct should hold                                                                                                          |
-| **[Split it](#splitting-a-record-on-entry)** | it holds a decision this log wants **and** material the [expiry test](#what-the-body-may-hold) rejects, and the two come apart without a sentence being rewritten                             |
-| **Route it as an ordinary docs page**        | the content is worth keeping but is not a decision this log records — it goes through the [routing matrix](SKILL.md#routing-matrix--what-you-changed--page-type--section) like any other page |
-| **Report it and leave it alone**             | there is nothing to keep, the call is genuinely the human's, or the decision will not come apart from the rest without prose being rewritten — named in the report, not moved, not imported   |
-
-**Borderline is the human's call.** Name it in the plan and let them answer; never resolve it by importing "just in case", since that is the direction with no way back. Nothing is deleted either way — a record the reconciler declines to import stays exactly where it is. The single deletion this job permits belongs to a confirmed [split](#splitting-a-record-on-entry), never to a record the threshold turned down.
-
-| The import supplies    | From                                                                                                                                               |
-| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Path + name            | `docs/99.adr/NNNN-title.md`, `NNNN` the next free id — one per admitted file, in the source directory's own order                                  |
-| `title`/`description`  | proposed from the H1 / first paragraph, confirmed like any other missing required field                                                            |
-| `status`               | proposed (`accepted` for a decision evidently in force, `proposed` while any required section is empty), confirmed — never silently defaulted      |
-| `date`                 | the file's **first commit** is the decision date: `git log --follow --diff-filter=A --reverse --format=%as -- <file>`, first line. No guess needed |
-| Body                   | the existing text **re-homed** under the required `Context` / `Decision` / `Consequences` H2s                                                      |
-| The decision log's row | `99.adr/index.md`, in the same change                                                                                                              |
-
-- **`date` is the decision's date, not the import's.** The field records when the `status` last changed, and a record entering the log unchanged last changed when it was written — so the first commit, never the day it moved.
-- **`--follow` is not optional here.** `git log` stops at a rename without it, and a foreign ADR directory has usually been moved at least once already — that is often how it ended up where the reconciler found it. Drop the flag and the one value this section claims needs no guess quietly becomes the date of a move.
-- **Untracked, or no commit for the file** → git has no answer; fall back to a date the file itself states, else propose today's and say which of the two it is.
-- **The title states the decision, not the source's topic.** A foreign H1 is characteristically a noun phrase (`ADR-0003: Caching strategy`); the imported filename and `title` restate it in this log's shape — the [file schema](#file-schema)'s naming rule applies to an adopted record exactly as to a written one. Entry is the **only** chance to get it right: the reconciler may never rename a record once it is in `99.adr/`.
-- **Re-homing is not rewriting.** The sentences are the author's and stay the author's — they move under the H2 they belong to, and a section the source never wrote is left empty rather than invented. Everything the reconciler cannot place goes in the plan for a human to place — and an empty required section decides the `status` the record enters at (next bullet).
-- **A record never lands `accepted` with a required section empty.** Immutability starts the moment the file enters `99.adr/`, so an empty `Context` / `Decision` / `Consequences` admitted at `accepted` is a hole append-only forbids ever filling. Either the human fills it **in the same plan, before the change is applied**, or the record lands `status: proposed` — the honest description of an incomplete one, and the status that leaves it free to be completed and accepted later. Empty **and** accepted is the one combination the import must not produce.
-- **Assigning an id does not break [append-only](#lifecycle--append-only).** The file was never accepted _in this log_, so the id is a **first assignment**, not a renumbering, and shaping it on entry is not an edit to an accepted record. From the moment it lands in `99.adr/` it is immutable like every other ADR.
-- **Idempotent** — an admitted record is gone from the source directory, so a second run has nothing left to propose for it; a split one is gone too, because both halves have landed. What the threshold declined is still there and is **reported** again, never re-proposed as an import; a directory emptied of everything admitted disappears from the job entirely.
-
-#### Splitting a record on entry
-
-**A foreign record is rarely all one thing**, and the one that most needs importing is usually the worst offender: a genuine decision, plus a naming convention telling the reader to extend a list, plus a version, plus a component that "is being removed". Every whole-file outcome is wrong for it — importing carries material the [expiry test](#what-the-body-may-hold) rejects into a log nobody may trim, routing loses the decision from the log, and leaving it alone is the blind spot the import exists to close.
-
-**So the record is split, and the split is one proposal.** The decision enters `99.adr/` as the record; what fails the expiry test goes through the [routing matrix](SKILL.md#routing-matrix--what-you-changed--page-type--section) as an ordinary page — in the **same** confirmed change, never as a follow-up, since a half-applied split leaves the log holding a record whose other half is nowhere. It rests on the same licence as the id assignment above: the file was never accepted _in this log_, so shaping it on entry is not an edit to an accepted record. And entry is the only moment the licence exists — from the moment the record lands in `99.adr/` its body is [append-only](#lifecycle--append-only).
-
-- **A split is a move, never a rewrite.** The sentences are the author's on both sides of it, exactly as re-homing leaves them, and each goes to one destination or the other whole. A record whose decision cannot be separated without rewriting prose is **not splittable** — report it and let the human decide, the same answer borderline admission gets.
-- **The human confirms it, and the plan names it per file.** Which sentences become the record and which become the page is stated file by file in the plan, and applied only on confirmation — the shape the empty-required-section rule above already uses. What a sentence _is_ is a judgement, and it is not the reconciler's to make alone.
-- **Cross-link both halves, both ways.** The record points at the page that now carries the convention; the page points back at the decision that established it. Neither half is left orphaned, and both pointers are written on entry, because afterwards the record may not gain one.
-- **A fragment that belongs on no page is dropped — the only thing a reconcile deletes.** Prose that fails the expiry test, records no decision and would not earn a page anywhere — a bare statement of state, "`system.*` currently holds two permissions" — is neither imported nor routed. Name it in the import plan and remove it **only** on explicit confirmation. It is bound to the record being imported and to nothing else: it never reaches an existing `docs/` page, since trimming one is rewriting prose and no reconcile may do that, and it never applies to a whole record — one that fails the threshold takes **report it and leave it alone**, where nothing is deleted either way.
-- **A missing target section is created in the same proposal.** Routing a fragment needs a section to route it into, and the repo may not have one — a `conventions/` that never appeared because nothing had earned it yet. Create it, directory and `index.md`, alongside the rest of the change: that is structure inside `docs/`, and both are already within the reconcile's blast radius. This holds for a plain **route it as an ordinary docs page** too, which always needed a target and never said what to do without one.
-- **The `status` question needs no rule of its own.** A split that empties a required section is already answered above — the human fills it in the same plan, or the record lands `proposed`.
-- **Unsure → report.** A wrong split costs what a wrong import costs, and the direction with no way back is unchanged. Propose one only where the seam is plain in the prose; otherwise name the record in the report and leave the call to the human.
-
-**An unsplit import carries its expiring material, and that is a priced cost rather than an oversight.** A record admitted whole enters with the author's sentences intact — the _currently_, the version, the enumeration a later change will extend, all of it. Faithfulness is what that buys, and [append-only](#lifecycle--append-only) is what it costs: nobody may fix those sentences afterwards. Say so in the plan rather than importing quietly, and where the human has not settled what the record should hold, `status: proposed` is available — the honest description of a record whose body is not yet what this log wants, and the status that leaves it free to be completed and accepted later.
+Everything else — whether a decision earns a record, its sections, its size, superseding, importing a log written elsewhere — is in `write-adr`.
 
 ## Reconcile rules
 
 Desired-state and idempotent. Blast radius: **structure + frontmatter only, prose untouched, inside `docs/` only, plan + diff first** (see SKILL.md) — with one configured exception, the [locale trees](#locale-trees-are-regenerated-not-categorized) below. Categorize each deviation:
 
-| Category      | Examples                                                                                                                                          | Action          |
-| :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------ | :-------------- |
-| Mechanical    | numbering gaps/dupes · missing `index.md` · removed/unknown frontmatter keys · `N.kebab.md` rename · unambiguous broken link                      | auto-fix        |
-| Value-needing | missing required `title`/`description` · a [foreign ADR directory](#foreign-adrs--a-decision-log-written-elsewhere) to import                     | propose + ask   |
-| Report only   | how-to without a checklist · page fits no section · suspected upstream duplication · secret found · missing media/source · suspected unused media | report, no edit |
+| Category      | Examples                                                                                                                                                                                       | Action          |
+| :------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------- |
+| Mechanical    | numbering gaps/dupes · missing `index.md` · removed/unknown frontmatter keys · `N.kebab.md` rename · unambiguous broken link                                                                   | auto-fix        |
+| Value-needing | missing required `title`/`description`                                                                                                                                                         | propose + ask   |
+| Report only   | how-to without a checklist · page fits no section · suspected upstream duplication · secret found · missing media/source · suspected unused media · a foreign ADR directory (name `write-adr`) | report, no edit |
 
 **Resolve the [render mode](#render-mode) before categorizing anything.** Two of the mechanical fixes are written against the portable contract and become destructive under the mode: _unknown frontmatter keys_ would strip the theme's fields off exactly the pages that need them, and _broken link_ would rewrite the mode's absolute doc paths as dangling relatives. Under the mode, read those two against the mode's rules instead — the theme's fields are known keys, an absolute doc path is the correct form, and a missing body H1 is not a deviation to restore. This is the whole reason the mode is a config key the reconciler can read rather than something each run infers.
 
-**`99.adr/` is exempt.** There the reconciler may only fix broken links and a missing/stale `index.md` row. It must **never** renumber an ADR, normalize `NNNN-title.md` to the dot-schema, close a numbering gap, rename a record whose title is not imperative, add a missing `Alternatives considered`, or touch body prose or `status` — ids are permanent, gaps are not deviations, and the body is append-only. A missing `title`/`description` is still worth proposing; everything else in an ADR is report-only.
-
-**The exemption covers the log, not what is outside it.** A [foreign ADR](#foreign-adrs--a-decision-log-written-elsewhere) has never entered `99.adr/`, so importing one is not an exception to the rule above — there is no id to renumber and no accepted record to edit. It is the single case where the reconciler moves a file into `99.adr/`, re-homes body prose, [splits](#splitting-a-record-on-entry) part of it onto a page elsewhere in `docs/` or drops a named fragment of it — all of that inside one confirmed proposal, and none of it anywhere but the record being imported.
+**`99.adr/` is out of scope.** The reconciler does not fix, rename, renumber or report-and-fix anything inside it in the default-locale tree — the log is `write-adr`'s, including its `index.md`. A finding there is reported once, naming that skill. A **foreign** ADR directory outside `99.adr/` is likewise reported and handed to `write-adr`'s import, never moved from here.
 
 **Media is exempt from mechanical fixes.** Follow [Media](#media): image targets, required capture sources and suspected unused assets are report-only even when a page link would be auto-fixed. `_assets/` gains no index, numbering or navigation entry.
 
@@ -426,7 +272,7 @@ The three categories above judge a tree against the convention. A [locale tree](
 
 **The sweep covers translated pages, never media files.** Shared images stay at their existing paths; localized captures require their capture owner. Missing variants and other media findings remain report-only under [Media](#media).
 
-`99.adr/` inside a locale tree is regenerated with the other pages, and that does **not** collide with [append-only](#lifecycle--append-only): the record is the source file, and its translation is a rendering of one. Ids, filenames and `status` are copied across untouched, and a decision is never superseded from inside a locale tree.
+`99.adr/` inside a locale tree is regenerated with the other pages, and that does **not** collide with `write-adr`'s append-only rule: the record is the source file, and its translation is a rendering of one. Ids, filenames and `status` are copied across untouched, and a decision is never superseded from inside a locale tree.
 
 Read the whole tree fresh every run — it is live state and is **never cached**.
 
@@ -520,20 +366,11 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 - ❌ A `type:` (or `icon:`/`nav:`) frontmatter field — the contract is `title` + `description` only (an ADR adds `status` + `date`, and a repo running the [render mode](#render-mode) adds that mode's theme fields; nothing else does).
 - ❌ A subject-matter top-level section (`plugins/`, `themes/`, `integrations/`) instead of routing content into a type section (nested if needed).
 - ❌ A second page on a topic that already has one — edit in place. (ADRs excepted — a new decision is a new ADR.)
-- ❌ An unprefixed `docs/adr/`, or any prefix other than `99`, for the ADR section.
-- ❌ An ADR id that is renumbered, reused, gap-filled, or written in the house `N.title.md` dot-schema.
-- ❌ An ADR title that names the topic (`0021-adr-format`) instead of stating the decision as an imperative (`0021-drop-the-legacy-queue`).
-- ❌ Rewriting an accepted ADR to reflect a new decision instead of superseding it.
-- ❌ Context/decision/consequences as ADR frontmatter fields instead of body sections.
-- ❌ An ADR sentence describing the repo at the moment of writing rather than the decision — _currently_, _is being_, a version number, a transcribed field list ([the expiry test](#what-the-body-may-hold)).
-- ❌ An ADR instructing its own continuation ("extend this list here") instead of deciding that the list exists and pointing at the page allowed to grow.
-- ❌ A `Consequences` entry prescribing how future work is to be done — that is a convention, and it belongs where it can be edited.
-- ❌ MADR fields (`decision-makers`, `consulted`, `informed`) or MADR's section names on an ADR — the shape here is Nygard's.
+- ❌ Writing, superseding, importing or reconciling an ADR from this skill — the log is `write-adr`'s.
+- ❌ Documenting a finished feature as an ADR instead of as pages.
 - ❌ A how-to without a closing checklist.
 - ❌ Restating upstream/framework behavior instead of linking it.
-- ❌ Rewriting prose during a reconcile, or touching anything outside `docs/`. (An [imported ADR](#foreign-adrs--a-decision-log-written-elsewhere) is the sole carve-out — its own sentences are re-homed under the required H2s, or split onto a page in the same confirmed proposal; the prose **moves**, it is never rewritten, and it never leaves `docs/`.)
-- ❌ [Splitting](#splitting-a-record-on-entry) an imported record by rewriting a sentence so it fits one side — a split moves whole sentences or it does not happen, and a record that will not come apart is reported instead.
-- ❌ Deleting prose anywhere but a named, confirmed fragment of the record being imported — an existing page is never trimmed, and a record the threshold declined is never emptied.
+- ❌ Rewriting prose during a reconcile, or touching anything outside `docs/`. (A [locale tree](#locale-trees-are-regenerated-not-categorized) is the sole carve-out — it is regenerated from the source, and it never leaves `docs/`.)
 - ❌ Emoji in generated headings, landing pages, or prose — output is plain text.
 - ❌ Naming a specific docs tool/generator in the pages or the convention — outside the [render mode](#render-mode), whose entire purpose is to target one, and which is off unless `docs.render` says otherwise.
 - ❌ Writing a component block, an absolute doc path or a theme frontmatter field into a repo whose config does **not** declare the mode — a component shows as raw text on the forge, and the reconciler strips the field on its next pass.
@@ -546,7 +383,6 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 - ❌ Correcting a translation inside `docs/de-DE/` — a translated page is generated output, so the fix belongs in the source page or in `docs.instructions`.
 - ❌ Reporting a locale tree's numbering, missing page or section shape as drift — it is derived, so a gap is an unrun sweep, not a deviation.
 - ❌ A stub or placeholder page standing in for a missing translation — a renderer already falls back to the nearest language, so the stub only hides that the sweep has not run.
-- ❌ Superseding an ADR, or renumbering one, from inside a locale tree — the record is the source file; the translation is a rendering of it.
 - ❌ Rewriting prose in the default-locale tree during a reconcile because `docs.locales` is set — the exception is scoped to the locale trees.
 - ❌ Hand-taken screenshots without committed capture sources, or treating reproducibility as proof of freshness.
 - ❌ Giving `_assets/` a numeric prefix, `index.md`, navigation entry or catalogue gap.

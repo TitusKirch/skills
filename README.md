@@ -126,8 +126,9 @@ Generate and maintain project documentation, READMEs and terminal demos in the h
 | :-------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------- |
 | [`compact-readme`](skills/docs/compact-readme/SKILL.md)         | Slims down an existing overstuffed README without losing information.                                          |
 | [`vhs-demo`](skills/docs/vhs-demo/SKILL.md)                     | Creates and maintains reproducible README or docs terminal-demo GIFs from VHS tapes.                           |
+| [`write-adr`](skills/docs/write-adr/SKILL.md)                   | Writes, supersedes and imports architecture decision records in docs/99.adr/ — short, rare, append-only.       |
 | [`write-contributing`](skills/docs/write-contributing/SKILL.md) | Writes and reconciles CONTRIBUTING.md in the house style, deriving every repo fact from the file that owns it. |
-| [`write-docs`](skills/docs/write-docs/SKILL.md)                 | Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format.      |
+| [`write-docs`](skills/docs/write-docs/SKILL.md)                 | Scaffolds, extends and reconciles a project's docs/ tree in the TitusKirch docs format; ADRs go to write-adr.  |
 | [`write-readme`](skills/docs/write-readme/SKILL.md)             | Generates project READMEs in the kirchDev house style.                                                         |
 
 ### Meta

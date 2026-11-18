@@ -13,13 +13,16 @@ date: '{YYYY-MM-DD}'
      Once superseded, keep the prose untouched, set status: superseded, refresh date,
      and add the pointer here:  > **Superseded by** [ADR-{NNNN}]({NNNN-slug}.md) -->
 
-<!-- All three sections are required as headings, not as a word budget: any of them may be a
+<!-- Aim for about 300 words of body; over 500 needs a reason in the plan. Any section may be a
      single sentence, and the whole record may be a single paragraph.
 
-     What is bounded is the content, not the length: nothing written here can ever be corrected,
-     so every sentence has to still be true years from now. No "currently" / "is being", no
-     version number, no field list or option table copied out of code, no list a later change
-     will extend. Freezing a fact on purpose is fine — put it in the past tense. -->
+     This is an architecture decision, not a feature spec: no behaviour, rules, parameters,
+     endpoints, migrations or rollout steps — those go on a page that can be edited.
+
+     Nothing written here can ever be corrected once it lands, and nothing is ever appended
+     (no amendments): every sentence has to still be true years from now. No "currently" /
+     "is being", no version number, no field list or option table copied out of code, no list
+     a later change will extend. Freezing a fact on purpose is fine — put it in the past tense. -->
 
 ## Context
 

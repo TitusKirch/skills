@@ -142,6 +142,7 @@ const VERIFY_CARRIERS: Record<'base' | 'isolated', string[]> = {
  */
 const PLAN_CARRIERS = [
   'docs/compact-readme',
+  'docs/write-adr',
   'docs/write-contributing',
   'docs/write-docs',
   'docs/write-readme',
@@ -261,7 +262,7 @@ describe('the generated config block is self-contained', () => {
   test('it is present in the skills that read config, and nowhere else by accident', () => {
     assert.equal(
       withConfigBlock.length,
-      19,
+      20,
       `found: ${withConfigBlock.join(', ')}`
     );
   });
@@ -421,6 +422,10 @@ const authorityClass: Record<
   'docs/write-contributing': {
     tier: 'none',
     reason: "the repo's own files and its existing guide — no third-party text"
+  },
+  'docs/write-adr': {
+    tier: 'none',
+    reason: "the repo's own decision log and docs — no third-party text"
   },
   'docs/write-docs': {
     tier: 'none',
