@@ -46,3 +46,4 @@ A decision earns an ADR when it constrains work that comes later and its reasoni
 | [ADR-0037](/adr/0037-commit-a-handoff-into-the-repo-it-hands-off)               | Commit a handoff into the repo it hands off                 | accepted   | 2026-08-26 |
 | [ADR-0038](/adr/0038-fix-the-tldr-frame-and-invoke-it-on-request)               | Fix the tldr frame and invoke it on request                 | accepted   | 2026-08-26 |
 | [ADR-0039](/adr/0039-choose-playwright-for-browser-capture)                     | Choose Playwright for browser capture                       | accepted   | 2026-10-12 |
+| [ADR-0040](/adr/0040-lock-the-issue-and-the-tree-not-the-loop)                  | Lock the issue and the tree, not the loop                   | accepted   | 2026-11-18 |
