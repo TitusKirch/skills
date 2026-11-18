@@ -111,70 +111,6 @@ What is left past 500 words is a decision with genuinely many forces, or several
 - **A chain of supersedes inside a few days is a smell.** It means records landed while the decision was still being worked out. Say so in the plan, and prefer letting the next decision wait until it has settled.
 - The general page rules **do not apply**: no edit-in-place for a changed decision, no one-topic-per-page dedupe (several ADRs may touch the same topic — that is the log working, not duplication), and no prose reconcile.
 
-### Foreign ADRs — a decision log written elsewhere
-
-A repo may already hold ADRs that were written **somewhere else, in someone else's format** — another tool's `docs/adr/0001-slug.md` with no frontmatter and a two-sentence body, a migrated repo's log, a human contributor following a different convention. Such a file is not a numbering gap, not a missing `index.md`, not an unknown key on a page either skill owns. It is a page no docs reconcile looks at, so the decision it records is **absent from the decision log** — the one failure a log must not have, because an incomplete log still reads as complete.
-
-The **import** job therefore recognizes such a directory and offers to bring it into the contract. `write-docs`' reconcile reports such a directory and names this skill.
-
-**Detection is a dedicated ADR directory, and nothing else.** Inside `docs/`, a directory whose whole content is decision records: `adr/`, `adrs/`, `decisions/`, `architecture-decisions/` and near variants of those names.
-
-- **Never match on filenames.** A page called `adr-caching.md` sitting in a section, or an `adr/` holding a mix of decisions and other material, is **report only** — filename matching starts collecting documents nobody meant as decision records, and a wrong import is far more expensive than a missed one. Unsure → report, don't import.
-- **A decision directory outside `docs/`** (a root-level `adr/`) is likewise **report only**: the import's blast radius stops at `docs/`, so name it in the report and leave the move to a human.
-
-**The import is one proposal, and nothing moves unasked.** Move, rename, index row and the missing values are presented **together** and applied only on confirmation. Splitting the move out as a mechanical first step saves nothing — `title` / `description` / `status` have to be asked for anyway — and buys a half-imported log, which is worse than an unimported one.
-
-#### The threshold governs adopted records too
-
-**Finding the directory is not the decision to admit it.** Admission is judged **per file**, against the same bar a record written here has to clear — [when a decision earns an ADR](SKILL.md#when-a-decision-earns-an-adr), together with the table of what is not an ADR, as the target repo's own `99.adr/index.md` states it. A threshold that governs which decisions earn an ADR governs adopted ones no differently; nothing about arriving in another tool's format earns a record a place this log would not otherwise give it.
-
-**The gate belongs at the import step and nowhere later.** The log is [append-only](#lifecycle--append-only), so a record admitted wrongly can never be pruned — faithfully importing another tool's noise into a log that cannot be trimmed is a worse outcome than the blind spot the import exists to close. Ask it before the id is assigned, because after that there is no undo.
-
-Admission has **four** outcomes, all of them proposed in the same plan:
-
-| Outcome                                      | When                                                                                                                                                                                        |
-| :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Import the record**                        | it clears the bar, and what it holds is what a record nobody may correct should hold                                                                                                        |
-| **[Split it](#splitting-a-record-on-entry)** | it holds a decision this log wants **and** material the [expiry test](#what-the-body-may-hold) rejects, and the two come apart without a sentence being rewritten                           |
-| **Route it as an ordinary docs page**        | the content is worth keeping but is not a decision this log records — it goes through the routing matrix of `write-docs` like any other page                                                |
-| **Report it and leave it alone**             | there is nothing to keep, the call is genuinely the human's, or the decision will not come apart from the rest without prose being rewritten — named in the report, not moved, not imported |
-
-**Borderline is the human's call.** Name it in the plan and let them answer; never resolve it by importing "just in case", since that is the direction with no way back. Nothing is deleted either way — a record the import declines stays exactly where it is. The single deletion this job permits belongs to a confirmed [split](#splitting-a-record-on-entry), never to a record the threshold turned down.
-
-| The import supplies    | From                                                                                                                                               |
-| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Path + name            | `docs/99.adr/NNNN-title.md`, `NNNN` the next free id — one per admitted file, in the source directory's own order                                  |
-| `title`/`description`  | proposed from the H1 / first paragraph, confirmed like any other missing required field                                                            |
-| `status`               | proposed (`accepted` for a decision evidently in force, `proposed` while any required section is empty), confirmed — never silently defaulted      |
-| `date`                 | the file's **first commit** is the decision date: `git log --follow --diff-filter=A --reverse --format=%as -- <file>`, first line. No guess needed |
-| Body                   | the existing text **re-homed** under the required `Context` / `Decision` / `Consequences` H2s                                                      |
-| The decision log's row | `99.adr/index.md`, in the same change                                                                                                              |
-
-- **`date` is the decision's date, not the import's.** The field records when the `status` last changed, and a record entering the log unchanged last changed when it was written — so the first commit, never the day it moved.
-- **`--follow` is not optional here.** `git log` stops at a rename without it, and a foreign ADR directory has usually been moved at least once already — that is often how it ended up where the import found it. Drop the flag and the one value this section claims needs no guess quietly becomes the date of a move.
-- **Untracked, or no commit for the file** → git has no answer; fall back to a date the file itself states, else propose today's and say which of the two it is.
-- **The title states the decision, not the source's topic.** A foreign H1 is characteristically a noun phrase (`ADR-0003: Caching strategy`); the imported filename and `title` restate it in this log's shape — the [file schema](#file-schema)'s naming rule applies to an adopted record exactly as to a written one. Entry is the **only** chance to get it right: nothing may rename a record once it is in `99.adr/`.
-- **Re-homing is not rewriting.** The sentences are the author's and stay the author's — they move under the H2 they belong to, and a section the source never wrote is left empty rather than invented. Everything the import cannot place goes in the plan for a human to place — and an empty required section decides the `status` the record enters at (next bullet).
-- **A record never lands `accepted` with a required section empty.** Immutability starts the moment the file enters `99.adr/`, so an empty `Context` / `Decision` / `Consequences` admitted at `accepted` is a hole append-only forbids ever filling. Either the human fills it **in the same plan, before the change is applied**, or the record lands `status: proposed` — the honest description of an incomplete one, and the status that leaves it free to be completed and accepted later. Empty **and** accepted is the one combination the import must not produce.
-- **Assigning an id does not break [append-only](#lifecycle--append-only).** The file was never accepted _in this log_, so the id is a **first assignment**, not a renumbering, and shaping it on entry is not an edit to an accepted record. From the moment it lands in `99.adr/` it is immutable like every other ADR.
-- **Idempotent** — an admitted record is gone from the source directory, so a second run has nothing left to propose for it; a split one is gone too, because both halves have landed. What the threshold declined is still there and is **reported** again, never re-proposed as an import; a directory emptied of everything admitted disappears from the job entirely.
-
-#### Splitting a record on entry
-
-**A foreign record is rarely all one thing**, and the one that most needs importing is usually the worst offender: a genuine decision, plus a naming convention telling the reader to extend a list, plus a version, plus a component that "is being removed". Every whole-file outcome is wrong for it — importing carries material the [expiry test](#what-the-body-may-hold) rejects into a log nobody may trim, routing loses the decision from the log, and leaving it alone is the blind spot the import exists to close.
-
-**So the record is split, and the split is one proposal.** The decision enters `99.adr/` as the record; what fails the expiry test goes through the routing matrix of `write-docs` as an ordinary page — in the **same** confirmed change, never as a follow-up, since a half-applied split leaves the log holding a record whose other half is nowhere. It rests on the same licence as the id assignment above: the file was never accepted _in this log_, so shaping it on entry is not an edit to an accepted record. And entry is the only moment the licence exists — from the moment the record lands in `99.adr/` its body is [append-only](#lifecycle--append-only).
-
-- **A split is a move, never a rewrite.** The sentences are the author's on both sides of it, exactly as re-homing leaves them, and each goes to one destination or the other whole. A record whose decision cannot be separated without rewriting prose is **not splittable** — report it and let the human decide, the same answer borderline admission gets.
-- **The human confirms it, and the plan names it per file.** Which sentences become the record and which become the page is stated file by file in the plan, and applied only on confirmation — the shape the empty-required-section rule above already uses. What a sentence _is_ is a judgement, and it is not the import's to make alone.
-- **Cross-link both halves, both ways.** The record points at the page that now carries the convention; the page points back at the decision that established it. Neither half is left orphaned, and both pointers are written on entry, because afterwards the record may not gain one.
-- **A fragment that belongs on no page is dropped — the only thing an import deletes.** Prose that fails the expiry test, records no decision and would not earn a page anywhere — a bare statement of state, "`system.*` currently holds two permissions" — is neither imported nor routed. Name it in the import plan and remove it **only** on explicit confirmation. It is bound to the record being imported and to nothing else: it never reaches an existing `docs/` page, since trimming one is rewriting prose, which neither skill may do, and it never applies to a whole record — one that fails the threshold takes **report it and leave it alone**, where nothing is deleted either way.
-- **A missing target section is created in the same proposal.** Routing a fragment needs a section to route it into, and the repo may not have one — a `conventions/` that never appeared because nothing had earned it yet. Create it, directory and `index.md`, alongside the rest of the change: that is structure inside `docs/`, and both are within the import's blast radius, and the page itself follows `write-docs`' contract. This holds for a plain **route it as an ordinary docs page** too, which always needed a target and never said what to do without one.
-- **The `status` question needs no rule of its own.** A split that empties a required section is already answered above — the human fills it in the same plan, or the record lands `proposed`.
-- **Unsure → report.** A wrong split costs what a wrong import costs, and the direction with no way back is unchanged. Propose one only where the seam is plain in the prose; otherwise name the record in the report and leave the call to the human.
-
-**An unsplit import carries its expiring material, and that is a priced cost rather than an oversight.** A record admitted whole enters with the author's sentences intact — the _currently_, the version, the enumeration a later change will extend, all of it. Faithfulness is what that buys, and [append-only](#lifecycle--append-only) is what it costs: nobody may fix those sentences afterwards. Say so in the plan rather than importing quietly, and where the human has not settled what the record should hold, `status: proposed` is available — the honest description of a record whose body is not yet what this log wants, and the status that leaves it free to be completed and accepted later.
-
 ## Index rules
 
 The **index** job keeps the table honest and nothing more:
@@ -186,7 +122,7 @@ The **index** job keeps the table honest and nothing more:
 | a missing `title` / `description` on a record                                                                | propose a value, confirm |
 | an id gap, a non-imperative title, a missing `Alternatives considered`, an amendment, a record over budget   | **report only**          |
 
-It **never** renumbers a record, normalizes `NNNN-title.md` to the house dot-schema, closes a numbering gap, renames a record, or touches body prose or `status` — ids are permanent, gaps are not deviations, and the body is append-only. Cleaning up a log that grew past its contract is a deliberate migration, not an index fix, and nothing in this skill performs it.
+It **never** renumbers a record, normalizes `NNNN-title.md` to the house dot-schema, closes a numbering gap, renames a record, or touches body prose or `status` — ids are permanent, gaps are not deviations, and the body is append-only. Cleaning up a log that grew past its contract, or importing one written elsewhere, is a deliberate migration and `prune-adrs`' job, never an index fix.
 
 **Render mode.** Where the repo sets `docs.render`, the log keeps this contract unchanged: a record's H1 is part of its file schema, and append-only forbids removing it from the records already written, so a mode switched on later would split the log into two shapes. A second heading on a rendered ADR is cosmetic; a split log is not.
 
@@ -273,5 +209,4 @@ value=$(printf '%s' "$resolved" | jq -er '.section.key // empty' 2>/dev/null) ||
 - ❌ An ADR instructing its own continuation ("extend this list here") instead of deciding that the list exists and pointing at the page allowed to grow.
 - ❌ A `Consequences` entry prescribing how future work is to be done — that is a convention, and it belongs where it can be edited.
 - ❌ MADR fields (`decision-makers`, `consulted`, `informed`) or MADR's section names on an ADR — the shape here is Nygard's.
-- ❌ [Splitting](#splitting-a-record-on-entry) an imported record by rewriting a sentence so it fits one side — a split moves whole sentences or it does not happen.
 - ❌ Superseding, importing or writing a record from inside a locale tree — the record is the source file; the translation is a rendering of it.

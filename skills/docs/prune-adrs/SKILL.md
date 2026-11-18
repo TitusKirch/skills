@@ -1,8 +1,8 @@
 ---
 name: prune-adrs
 metadata:
-  summary: Migrates an overgrown decision log onto write-adr's rules, rewriting every reference by script.
-description: Migrates an overgrown docs/99.adr/ decision log onto write-adr's rules in reviewed batches — keeps the architecture decisions, moves feature specs, rules, parameters and amendments onto editable docs pages, merges supersede chains that formed before a decision settled, and deletes what remains. The judgement goes into a tab-separated map a human confirms; a shipped POSIX script then rewrites every ADR-NNNN token and ADR link across the repo, removes the records and their index rows, and proves no reference to a removed id is left. Breaks append-only once, on purpose, and records that it did. Invoke manually only — never fires proactively, never commits or pushes. Use when the user wants to prune, clean up, consolidate, shrink or migrate an ADR log, says the ADRs got out of hand, or says things like "clean up the ADRs", "prune the decision log", "ADRs aufräumen", "ADRs nach den neuen Regeln anpassen".
+  summary: Migrates an overgrown or foreign decision log onto write-adr's rules, rewriting every reference by script.
+description: Migrates a decision log onto write-adr's rules in reviewed batches — prunes an overgrown docs/99.adr/ (keeps the architecture decisions, moves feature specs, rules, parameters and amendments onto editable docs pages, merges supersede chains that formed before a decision settled) and imports ADRs written elsewhere (docs/adr/ and similar) record by record through the same threshold. The judgement goes into a tab-separated map a human confirms; a shipped POSIX script then rewrites every ADR-NNNN token and ADR link across the repo, removes the records and their index rows, and proves no reference to a removed id is left. Breaks append-only once, on purpose. Invoke manually only — never fires proactively, never commits or pushes. Use when the user wants to prune, clean up, migrate or import an ADR log, says the ADRs got out of hand, or says things like "clean up the ADRs", "import our old ADRs", "ADRs aufräumen", "ADRs nach den neuen Regeln anpassen".
 allowed-tools:
   - Read
   - Write
@@ -19,62 +19,38 @@ allowed-tools:
 
 # prune-adrs
 
-Bring a decision log that grew past its contract back onto `write-adr`'s rules, and leave the repo with **every reference still pointing somewhere real**. The deliverable is a working tree with a log small enough to read, the knowledge that left it on pages that can be edited, and a clean check proving no `ADR-NNNN` dangles. **Manual invocation only**: nothing here fires proactively, and nothing is written before a human confirms the batch. This skill **never commits and never pushes**.
+Bring a decision log back onto `write-adr`'s rules and leave **every reference pointing somewhere real**: a log small enough to read, the knowledge that left it on pages that can be edited, and a check proving no `ADR-NNNN` dangles. **Manual invocation only**; nothing is written before a human confirms the batch, and this skill **never commits or pushes**.
 
-Its one principle:
+> **Judgement in the map, mechanics in the script.** Which record stays, merges or moves is a reading — an agent's and a human's, made once and written into a map. Rewriting thousands of references is no judgement at all, so no agent search does it: [`templates/rewrite-adr-refs.sh`](templates/rewrite-adr-refs.sh) applies the confirmed map, the same map always yields the same tree, and its check — not a model's confidence — says the migration is complete.
 
-> **Judgement in the map, mechanics in the script.** Which record stays, merges or moves is a reading of each record against `write-adr`'s threshold — an agent's and a human's call, made once and written down. Rewriting thousands of references is not a judgement at all, so no agent search does it: [`templates/rewrite-adr-refs.sh`](templates/rewrite-adr-refs.sh) applies the confirmed map, the same map always yields the same tree, and its check — not a model's confidence — is what says the migration is complete.
+**This breaks append-only, once and on purpose.** A log that grew by hundreds of feature specs cannot be repaired inside `write-adr`'s rule, so this skill is its single licensed exception, and the run ends by recording that it ran.
 
-**This breaks append-only, once and on purpose.** `write-adr` forbids deleting or editing a landed record. A log that grew by hundreds of feature specs cannot be repaired inside that rule, so this skill is the single licensed exception: it runs as a deliberate migration, ends by recording that it ran, and leaves `write-adr`'s rule in force for everything afterwards.
+**Opted out?** If the repo config sets `docs` to `false`, stop immediately and say docs are turned off in `.tituskirch-skills.json`. An _absent_ `docs` block is **not** disabled. Check `.docs == false` on the resolved config before any job — and before indexing `.docs.*`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
 
-**Opted out?** The log is part of the docs tree. If the repo config sets `docs` to `false`, stop immediately and tell the user docs are turned off in `.tituskirch-skills.json`. An _absent_ `docs` block is **not** disabled. Check `.docs == false` on the resolved config before any job — and before indexing `.docs.*`. A missing `jq` or config exits non-zero too, so a pass is not evidence the config was read.
+## Jobs
 
-## Workflow
+| State                                                      | Job        |
+| :--------------------------------------------------------- | :--------- |
+| `docs/99.adr/` grew past `write-adr`'s rules               | **prune**  |
+| decisions sit in another format or folder (`docs/adr/`, …) | **import** |
 
-### 1. Preconditions — checked before anything is read
+## 1. Preconditions — before anything is read
 
-- **`write-adr` is required, and checked first.** It holds the rules this migration measures against — the threshold and its table of what is not an ADR, the size budget, the lifecycle. Not installed → stop, name it, and report that nothing was touched. That check is what licenses naming **When a decision earns an ADR** in its SKILL.md and **What the body may hold** and **Size** in its REFERENCE instead of carrying a second copy here.
-- **A clean working tree.** The migration touches thousands of files, and the only way a human can review it is as one diff against a known state. `git status --porcelain` not empty → stop and ask for a commit or a stash. Suggest a branch of its own.
-- **Resolve the config** with this skill's own [`templates/resolve-config.sh`](templates/resolve-config.sh), by the rules of **Reading the config** in [REFERENCE.md](REFERENCE.md#reading-the-config).
+- **`write-adr` is required, checked first.** It holds the rules measured against — **When a decision earns an ADR** in its SKILL.md, **What the body may hold**, **Size** and **Lifecycle — append-only** in its REFERENCE. Absent → stop, name it, report that nothing was touched.
+- **A clean working tree** — `git status --porcelain` empty — so the result is one reviewable diff. Suggest a branch of its own.
+- **Resolve the config** with this skill's own [`templates/resolve-config.sh`](templates/resolve-config.sh) ([Reading the config](REFERENCE.md#reading-the-config)).
 
-### 2. Inventory — read-only
+## 2. Prune
 
-Measure the log before judging any record of it, and show the numbers: records, median and 90th-percentile body length, records over 500 words, records carrying amendments, supersede chains and how many days each spanned, and how many records arrived in the same commit as a feature change. Recipes: [REFERENCE.md](REFERENCE.md#inventory). The inventory is also the go/no-go: a log that is already small and short needs no migration, and saying so is a complete run.
+1. **Inventory, read-only.** Show the numbers first — records, median and p90 length, over 500 words, amendments, supersede chains in days, records arriving with a feature change ([recipes](REFERENCE.md#inventory)). A log already small and short needs no migration; saying so is a complete run.
+2. **Classify one batch of about 50 records**, each read in full, each given one action: `keep`, `trim` (stays, borrowed material and amendments move to a page), `merge` (into the record that superseded it before the decision settled), `move` (not an architecture decision — content to a page), or `drop` (nothing worth keeping, nothing references it). **A real reversal is history**: a decision lived with and later overturned keeps both records. **Unsure → `keep`** — a record wrongly kept costs words, one wrongly removed loses the only statement of why. Decisions go into a **batch map** under the git common dir ([format and rules](REFERENCE.md#the-map)).
+3. **Plan the batch** — counts per action, then every non-`keep` record with target and one line of reason, and for `trim`/`move` the page each sentence group lands on, borderline ones named. **Confirm** before writing; the human may change any line.
+4. **Apply the batch.** Write the pages first, sentences moved whole and never rewritten (`write-docs`' contract where installed, else `title` + `description` frontmatter in the section the plan named). Trim the `trim` records — the moved sentences and any `## Amendments` go, one link to the page is added. Run the script as a **dry run**, then **`--apply`**; fix every line its exit `1` names by hand and `--check` until it exits `0`. Run the repo's own checks ([the script](REFERENCE.md#the-script)).
+5. **Close** — after the last batch, `--check` against every batch map at once, then offer one short record of the migration through `write-adr`.
 
-### 3. Classify — one batch at a time
+## 3. Import
 
-Read each record **in full** against `write-adr`'s rules and give it exactly one action. Batches of about 50 records, in id order, keep each review readable.
-
-| Action  | When                                                                                                                            | What happens                                                                                 |
-| :------ | :------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------- |
-| `keep`  | an architecture decision within budget, no amendments                                                                           | nothing                                                                                      |
-| `trim`  | an architecture decision that carries borrowed material — parameters, behaviour, implementation detail — or amendments          | that material **moves**, whole sentences, to a page the record then links; the record stays  |
-| `merge` | a record superseded before its decision settled (a chain formed within days, a refinement, a duplicate) by a record that stands | references move to the survivor; the record goes                                             |
-| `move`  | not an architecture decision — a feature spec, rules, parameters, rollout mechanics, a fix                                      | its content moves, whole sentences, to a page; references move to that page; the record goes |
-| `drop`  | nothing worth keeping and **nothing references it**                                                                             | the record goes                                                                              |
-
-**A real reversal is history, not noise.** A decision that landed, was lived with, and was later overturned keeps both records — that is the log working. Only a supersede that happened while the decision was still being worked out is a merge.
-
-**Unsure → `keep`.** A record wrongly kept costs a few hundred words in a log; a record wrongly removed loses the only statement of why. Name the borderline ones in the batch plan so the human decides them.
-
-Write each batch's decisions to a **batch map** — one tab-separated line per record, format in [REFERENCE.md](REFERENCE.md#the-map). Batch maps live under the git common dir, never in the tree, so a run can resume across sessions and nothing of the migration's scaffolding is committed.
-
-### 4. Plan the batch, then confirm
-
-Present the batch: the counts per action, then every record that is not `keep` with its action, its target, and one line of reason. For `trim` and `move`, name the page each sentence group lands on. Nothing is written before the human confirms — they may change any line of the map.
-
-### 5. Apply the batch
-
-1. **Write the pages first** — the script refuses a `move` whose page does not exist. Sentences move whole and are never rewritten. A page follows `write-docs`' contract where that skill is installed; otherwise give it `title` + `description` frontmatter and put it in the section the plan named.
-2. **Trim** the `trim` records: remove exactly the moved sentences and any `## Amendments` section, and add one line linking the page. This is an edit to a landed record, and this migration is the only thing that may make it.
-3. **Dry run** the script against the batch map and show its summary. Then **`--apply`**. Exit `1` names every reference still pointing at a removed id, and every survivor that now cites itself (a `Supersedes` line rewritten onto its own id). Fix those by hand, then run `--check` until it exits `0`.
-4. **Run the repo's own checks** — docs link checks, tests that read ADR ids — before calling the batch done.
-
-Invocation and exit codes: [REFERENCE.md](REFERENCE.md#the-script).
-
-### 6. Close the migration
-
-After the last batch, run `--check` against **every** batch map at once — a later batch can reintroduce an id an earlier one removed. Then offer, through `write-adr`, **one** short record of the migration itself — that the log was pruned, by which rules, and that append-only holds again from here — and the matching sentence in the log's `index.md` introduction.
+A dedicated decision directory in another format is brought into `docs/99.adr/` **one file at a time, through the same threshold**: imported, split (the decision into the log, the rest onto a page), routed whole as a page, or reported and left alone — one proposal, applied on confirmation, sentences moved and never rewritten. Detection, the four outcomes, the `date` derivation and the split: [REFERENCE.md](REFERENCE.md#import--a-decision-log-written-elsewhere).
 
 <skills-plan>
 
@@ -148,15 +124,11 @@ opening for the summaries it writes on request; one house frame, reached two way
 ## Guardrails
 
 - **Manual only; plan per batch; confirm before writing.** Respect plan-only / dry-run: stop after the batch plan, or after the script's dry run.
-- **Judgement in the map, mechanics in the script.** References are rewritten by the script and by nothing else — never by an agent search-and-replace, which cannot prove it found every one.
-- **Sentences move, they are never rewritten.** On a page and in a trimmed record alike, the author's words survive whole or not at all.
-- **Ids are permanent.** A kept record is never renumbered; a removed id leaves a gap that stays.
-- **Unsure → keep.** Removal is the direction with no way back.
-- **Released history is left alone.** Changelogs keep the ids they shipped with; the script excludes them.
-- **Never commits, never pushes.** The result is one reviewable diff in the working tree.
-- **Attribution-free and secret-free** — no agent self-naming in pages or records; scan, warn, exclude.
+- **References are rewritten by the script and nothing else** — an agent search cannot prove it found every one.
+- **Sentences move, never get rewritten**; **ids are permanent** — a removed id leaves a gap.
+- **Unsure → keep.** **Changelogs keep their ids.** **Never commits, never pushes.**
+- **Attribution-free and secret-free.**
 
 ## Reference
 
-- **Open it before the inventory and before every apply** — the inventory recipes, the map's format and rules, the script's modes and exit codes, and where batch maps are kept: [REFERENCE.md](REFERENCE.md).
-- **The script itself** documents its contract in its header: [`templates/rewrite-adr-refs.sh`](templates/rewrite-adr-refs.sh).
+**Open [REFERENCE.md](REFERENCE.md) before the inventory and before every apply** — recipes, the map, the script's modes and exits, the import. The script documents its own contract in its header.

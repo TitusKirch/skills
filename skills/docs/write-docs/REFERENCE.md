@@ -246,7 +246,7 @@ The **reconciler reads the same key**, which is the other half of the mode worki
 - **Its pages follow their own contract** — `NNNN-title.md` filenames, `status` + `date` frontmatter, an append-only body — so none of the page rules in this file apply to them, and a reconcile never touches them in the default-locale tree.
 - **A translated ADR** is a rendering of a record, regenerated with its [locale tree](#locale-trees-are-regenerated-not-categorized): ids, filenames and `status` copied from the source untouched.
 
-Everything else — whether a decision earns a record, its sections, its size, superseding, importing a log written elsewhere — is in `write-adr`.
+Everything else — whether a decision earns a record, its sections, its size, superseding — is in `write-adr`; importing a log written elsewhere, or pruning one that grew past the contract, is `prune-adrs`'.
 
 ## Reconcile rules
 
@@ -260,7 +260,7 @@ Desired-state and idempotent. Blast radius: **structure + frontmatter only, pros
 
 **Resolve the [render mode](#render-mode) before categorizing anything.** Two of the mechanical fixes are written against the portable contract and become destructive under the mode: _unknown frontmatter keys_ would strip the theme's fields off exactly the pages that need them, and _broken link_ would rewrite the mode's absolute doc paths as dangling relatives. Under the mode, read those two against the mode's rules instead — the theme's fields are known keys, an absolute doc path is the correct form, and a missing body H1 is not a deviation to restore. This is the whole reason the mode is a config key the reconciler can read rather than something each run infers.
 
-**`99.adr/` is out of scope.** The reconciler does not fix, rename, renumber or report-and-fix anything inside it in the default-locale tree — the log is `write-adr`'s, including its `index.md`. A finding there is reported once, naming that skill. A **foreign** ADR directory outside `99.adr/` is likewise reported and handed to `write-adr`'s import, never moved from here.
+**`99.adr/` is out of scope.** The reconciler does not fix, rename, renumber or report-and-fix anything inside it in the default-locale tree — the log is `write-adr`'s, including its `index.md`. A finding there is reported once, naming that skill. A **foreign** ADR directory outside `99.adr/` is likewise reported and handed to `prune-adrs`' import, never moved from here.
 
 **Media is exempt from mechanical fixes.** Follow [Media](#media): image targets, required capture sources and suspected unused assets are report-only even when a page link would be auto-fixed. `_assets/` gains no index, numbering or navigation entry.
 
