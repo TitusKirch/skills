@@ -200,6 +200,16 @@ describe("a move into a component's own design notes", () => {
   });
 });
 
+describe('a page the batch has just written', () => {
+  test('is rewritten and checked although git does not track it yet', () => {
+    const dir = repo();
+    writeFileSync(join(dir, 'docs/2.concepts/new.md'), 'Builds on ADR-0002.\n');
+    const out = run(dir, MAP, '--apply');
+    assert.equal(out.status, 0, out.stdout + out.stderr);
+    assert.equal(read(dir, 'docs/2.concepts/new.md'), 'Builds on ADR-0001.\n');
+  });
+});
+
 describe('what the check refuses to call clean', () => {
   test('a survivor that would now cite itself', () => {
     const dir = repo({

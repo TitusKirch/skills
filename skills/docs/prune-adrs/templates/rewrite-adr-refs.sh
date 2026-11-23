@@ -102,10 +102,12 @@ if [ ! -s "$work/removed" ]; then
 fi
 ids=$(paste -sd '|' "$work/removed")
 
-# Files that may still mention a removed id: every tracked text file, except changelogs
-# (released history) — the records themselves are removed below, so they are excluded too.
+# Files that may still mention a removed id: every text file git does not ignore — tracked,
+# and untracked too, since the pages a batch writes are new when the script runs — except
+# changelogs (released history). The records themselves are removed below, so they are
+# excluded too.
 candidates() {
-  git grep -l -I -E "ADR-($ids)([^0-9]|\$)|adr/($ids)-|]\\(($ids)-" -- . \
+  git grep --untracked -l -I -E "ADR-($ids)([^0-9]|\$)|adr/($ids)-|]\\(($ids)-" -- . \
     ':(glob,exclude)**/CHANGELOG*' ':(glob,exclude)CHANGELOG*' 2>/dev/null || true
 }
 is_removed_record() { # $1 = path; true when it is a removed record or a translation of one

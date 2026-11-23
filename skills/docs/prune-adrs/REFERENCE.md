@@ -112,7 +112,7 @@ sh "$skill/templates/rewrite-adr-refs.sh" --check "$maps/all.tsv"       # the cl
 | `1`  | references to removed records remain, or a survivor cites itself — named line by line |
 | `2`  | invalid usage or map — nothing was written                                            |
 
-**What it rewrites, exactly.** In every tracked text file except changelogs: a bare `ADR-NNNN` (matched whole, so `ADR-00031` and `ADR-0030` are never touched for `0003`); a link whose target contains `adr/NNNN-…` (site paths and file paths alike); and a relative `NNNN-….md` link inside a `99.adr/` directory. A merge keeps a link's form and anchor and swaps the record; a move replaces the link target and turns the bare id into the label.
+**What it rewrites, exactly.** In every text file git does not ignore — untracked ones included, because the pages a batch writes are still new when it runs — except changelogs: a bare `ADR-NNNN` (matched whole, so `ADR-00031` and `ADR-0030` are never touched for `0003`); a link whose target contains `adr/NNNN-…` (site paths and file paths alike); and a relative `NNNN-….md` link inside a `99.adr/` directory. A merge keeps a link's form and anchor and swaps the record; a move replaces the link target and turns the bare id into the label.
 
 **What it validates before writing anything** — 4-digit ids listed once, a record for each, a known action, a merge target that exists and is not itself removed, a `move` page that exists when it is a repo path, and a label on every `move`. Any failure exits `2` with the tree untouched.
 
