@@ -41,6 +41,8 @@
       "write-contributing",
       "write-gitignore",
       "write-docs",
+      "write-adr",
+      "prune-adrs",
       "write-readme",
       "skills",
       "deps",
