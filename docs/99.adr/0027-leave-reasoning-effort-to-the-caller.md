@@ -13,11 +13,7 @@ The two work loops want different reasoning effort. Implementing is agentic codi
 
 Claude Code defines `effort` as a `SKILL.md` frontmatter field, and [ADR-0007](/adr/0007-permit-claude-code-frontmatter-extensions) already prices it in the **optimisation only** tier — a conformant client that ignores it loses tuning, not capability. The [extension matrix](https://github.com/TitusKirch/skills/blob/main/skills/meta/validate-skills/REFERENCE.md#the-extension-matrix) already lists it, so this repo's own conformance gate would not call it malformed. The field is therefore **permitted**; whether it is **earned** here is what this record settles.
 
-Two facts had to be established first, and only one of them is the one the question was framed around.
-
-**On the queue skills, a pin reaches nothing that matters.** Claude Code documents `effort` as the effort level _when this skill is active_, overriding the session level ([frontmatter reference](https://code.claude.com/docs/en/skills#frontmatter-reference)). The Agent tool takes a per-invocation `model` parameter and **no** `effort` parameter, and whether an agent spawned while a skill is active inherits that skill's effort is **not documented** either way. So `effort` on `work-implement-queue` governs the drain's own run, which is the part of a drain that needs it least, and it reaches the workers only through behaviour nobody has written down.
-
-**On the unit skills it reaches exactly the right agent, by the documented route.** A worker _is_ an agent that invokes `work-implement` or `work-review`, so the field would be operative for precisely the run that does the work. The premise that a `work-*` skill cannot set what its workers run at holds for the two queues and is false for the two units — which leaves a real decision here rather than one the facts foreclose.
+Where a pin would reach, and so where any later pin belongs, is [ADR-0046](/adr/0046-pin-effort-on-the-unit-skills-never-the-queues).
 
 ## Decision
 
@@ -40,5 +36,3 @@ Rejected: **the Workflow tool**, which takes a per-agent `effort`. It is opt-in,
 Which extensions this repo publishes is stated in [`skills/README.md`](https://github.com/TitusKirch/skills/blob/main/skills/README.md#field-notes). This record adds **no precedent**: it is a "no" on `effort` for these skills' own reasons, and ADR-0007's cost test still governs each remaining field on its own merits.
 
 The recommendation lives in `work-implement`'s `REFERENCE.md`, with `work-review`'s pointing at it — one home, the convention [ADR-0025](/adr/0025-keep-the-work-loops-reference-whole) already keeps the shared work-loop mechanics under. **It enforces nothing, and that is the cost this record accepts:** a caller who sets neither loop's effort gets whatever session they started with, exactly as before.
-
-What is bought instead is that the probe is not run twice. The reach finding — **queues no, units yes** — is the expensive part of this question and it is recorded whichever way a later decision goes. Should someone measure the split and want it enforced, the route is a pin on the two **unit** skills and never on the queues, and reopening the question means bringing that measurement rather than repeating the argument.
