@@ -17,7 +17,7 @@ Two skills have exactly that dependency, and say so in their own text. `work-imp
 
 The two claims are less a contradiction than a gap. ADR-0003 rejected a runtime dependency **introduced in order to avoid duplication** — a dependency minted to dedupe. The queue skills' dependency is functional and predates the question: they were never able to do the job themselves, and removing it would mean duplicating a worker skill wholesale. ADR-0003 simply does not describe a skill that installs fine and cannot **run** without a named sibling, so its rule reaches them by default.
 
-What that default costs is the queue skills' unconditional load path: they carried the mirrored blocks in `SKILL.md`, where every other skill keeps its blocks in the conditional one.
+What that default costs is measurable. These are the two largest `SKILL.md` files in the repo and the only two of the nineteen with no `REFERENCE.md`, so their blocks sit in the **unconditional** load path where every other skill keeps its blocks in the conditional one.
 
 And the blocks buy nothing in the one case they exist for. Installed without its worker, a queue skill loads the config contract, the authority rule, the plan rule and the whole lock protocol — then stops before the lock, because the worker is missing.
 

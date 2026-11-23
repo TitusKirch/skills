@@ -33,7 +33,7 @@ How length is handled instead, and why the rule binds what a skill presents rath
 
 ## Consequences
 
-Every plan-presenting skill carries a section it did not need to write, and a new one cannot be added without deciding whether it presents a plan — which is the intended cost: the classification is forced at the point a skill is added rather than after a plan arrives empty.
+Fifteen skills carry a section they did not need to write, and a sixteenth cannot be added without deciding whether it presents a plan — which is the intended cost: the classification is forced at the point a skill is added rather than after a plan arrives empty.
 
 A skill presenting a genuinely large list now has to make the trimming visible instead of deferring it to a widget. That is more work per report and produces a shorter one, which is the trade the decision buys.
 

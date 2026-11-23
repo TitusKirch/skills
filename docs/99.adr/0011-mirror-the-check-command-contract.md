@@ -36,8 +36,8 @@ Rejected: **keeping the install a repo responsibility.** The evidence against it
 
 ## Consequences
 
-One more generated artifact and one more roster to keep honest — `test/isolation.test.ts` fails if a skill carries a variant it is not listed for, or is listed and lost its block.
+Seven generated artifacts instead of six, and one more roster to keep honest — `test/isolation.test.ts` fails if a skill carries a variant it is not listed for, or is listed and lost its block.
 
 A new skill that runs checks now inherits the detection order, the package-manager mapping, the install cascade, and the rule that an undetectable gate is reported as unrun rather than passed. That last one is the part most likely to have been re-derived wrongly.
 
-The cost is prompt length: every listed skill carries a block they previously stated in one line. That is the standing trade of [ADR-0003](/adr/0003-mirror-shared-content-into-each-skill) — the alternative is a link that resolves to nothing once the skill is installed.
+The cost is prompt length: five skills carry a block they previously stated in one line. That is the standing trade of [ADR-0003](/adr/0003-mirror-shared-content-into-each-skill) — the alternative is a link that resolves to nothing once the skill is installed.

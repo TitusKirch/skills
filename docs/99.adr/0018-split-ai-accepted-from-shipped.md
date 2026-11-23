@@ -23,7 +23,12 @@ This is Linear-only in effect. A GitHub issue has labels and no workflow state, 
 
 `work.linear.states` carries **two** keys for the tail of the lifecycle, and the work loop writes only one of them.
 
-`states.accepted` is written by the review loop on its accept verdict and is deliberately **not** a terminal column; `states.done` is the terminal **shipped** state — the change is on the repo's **default branch** — and is written by **neither loop**: Linear's integration writes it where `pr.base` is the default branch, the `release` skill at the promotion merge where it is not. The label keeps its string and its meaning, and leaving `states.done` unmapped is a real answer. Who writes which key and when, and the migration of an existing map: [AI-accepted is not shipped](https://github.com/TitusKirch/skills/blob/main/skills/work/work-implement/REFERENCE.md#ai-accepted-is-not-shipped) in `work-implement`'s REFERENCE.
+- **`states.accepted`** — written by the review loop on its accept verdict. Deliberately **not** a terminal column.
+- **`states.done`** — the terminal **shipped** state: the change is on the repo's **default branch**. Written by **neither loop**.
+- **The label is untouched.**
+- **Unmapped is a real answer.**
+
+Who writes which key and when, and the migration of an existing map: [AI-accepted is not shipped](https://github.com/TitusKirch/skills/blob/main/skills/work/work-implement/REFERENCE.md#ai-accepted-is-not-shipped) in `work-implement`'s REFERENCE.
 
 **Why not re-point `states.done` at the accepted state and add `states.shipped`.** This was the alternative that "breaks fewer existing configs", and that framing is the trap: what it actually does is leave every existing config **wrong**. Their `done: "Done"` would keep being written at accept time, silently and unchanged, which is the entire defect. The chosen split fails the other way — a config that maps only `done` hits the existing "a step omitted from `states` leaves the workflow state untouched" rule, so the accept verdict writes no state at all. A board that lags is a smaller wrong than a board that lies, and it is visible to the person reading it.
 

@@ -23,7 +23,9 @@ Escalation is the right answer to a decision an agent must not make. It is the w
 
 **One exception, deliberately narrow: a comment that explicitly revises a named earlier decision stands until the body names it back.** "This revises the comment above", "decided instead", "superseded by" — such a comment is aimed at a specific prior statement, and a later body edit that never mentions it reads equally well as written without it in view.
 
-**Both statements are named either way**, so a wrong call is visible rather than buried, and **escalation survives for the genuinely undecidable**. The rule in full, with what is named and when to escalate, is [Body vs comment precedence](https://github.com/TitusKirch/skills/blob/main/skills/work/work-implement/REFERENCE.md#body-vs-comment-precedence).
+**Both statements are named either way**, so a wrong call is visible rather than buried.
+
+**Escalation survives for the genuinely undecidable**. The rule in full, with what is named and when to escalate, is [Body vs comment precedence](https://github.com/TitusKirch/skills/blob/main/skills/work/work-implement/REFERENCE.md#body-vs-comment-precedence).
 
 Rejected: **newest wins outright.** It makes an explicit "this revises the comment above" losable to an unrelated typo fix in the body — the deliberate act is exactly what the rule should protect. Rejected: **escalate on every such pair** — the status quo, which turns a documented precedence question into a human interrupt on finished work. Rejected: **the label decides**, as it does against the body — a label carries no scope, so there is nothing in it to prefer.
 

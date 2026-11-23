@@ -29,7 +29,7 @@ A third `tracker` value, `local`, on both `issue.tracker` and `work.tracker`, ba
 
 **Committed, under `.agents/`.** Being reviewable and shareable is the whole reason to choose files over a service; putting them in the git common dir would keep them out of history and hand every clone a different backlog.
 
-**The lifecycle lives in a frontmatter `state` field, holding the config key** (`ready`, `working`, `reviewRequested`, …), never the label string. Two consequences follow, and they are why the alternative lost:
+**The lifecycle lives in a frontmatter `state` field, holding the config key** (`ready`, `working`, `reviewRequested`, …), never the label string. Consequences follow, and they are why the alternative lost:
 
 - **Not a directory per state.** A transition would then be a `git mv`, and two drains transitioning two issues at once produce rename-shaped conflicts on a shared branch where a one-line frontmatter edit to two different files produces none. It also breaks every reference to the issue — branch names, cross-links, the path a human bookmarked — once per transition, for a fact that changes six times in an issue's life.
 - **The key, not the string.** `work.labels.*` strings are display names for a tracker that has a label catalog; a file has none, so the key is the stable name and the label-string changeover hazard the single-flight-lock spec documents simply does not arise here.
