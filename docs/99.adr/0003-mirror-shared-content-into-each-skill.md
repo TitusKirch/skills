@@ -7,6 +7,8 @@ date: '2026-07-23'
 
 # ADR-0003 — Mirror shared content into each skill instead of linking
 
+> **Partly superseded by** [ADR-0020](/adr/0020-separate-installable-alone-from-runnable-alone): mirroring stands as the rule for shared content; a skill that declares and checks a required sibling may assume that sibling's REFERENCE instead — a narrowing, not a reversal.
+
 ## Context
 
 Several skills need the same text: how to resolve `.tituskirch-skills.json`, and the author-authority rule. The instinct is to write it once and link to it.

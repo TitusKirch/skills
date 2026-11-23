@@ -7,6 +7,8 @@ date: '2026-11-23'
 
 # ADR-0044 — Keep a skill's rationale in its own design file
 
+Partly supersedes [ADR-0025](/adr/0025-keep-the-work-loops-reference-whole): the whole REFERENCE stands; its rejection of moving content out to shrink the file does not cover a skill's rationale, which now has a DESIGN.md of its own.
+
 Supersedes [ADR-0031](/adr/0031-keep-rationale-as-repo-memory).
 
 ## Context

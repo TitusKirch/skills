@@ -7,6 +7,8 @@ date: '2026-11-18'
 
 # ADR-0040 — Lock the issue and the tree, not the loop
 
+Partly supersedes [ADR-0020](/adr/0020-separate-installable-alone-from-runnable-alone): the declared, checked sibling dependency stands; the single-flight lock being the queue's mechanic alone does not — every worker now takes its own issue and tree locks.
+
 ## Context
 
 Each work loop had one single-flight lock per checkout. `work-implement-queue` held `…/work/implement.lock` for its batch. A directly invoked `work-implement` also took that lock for its run, so a direct run and a drain could not lease the same issue, and the drain's reconcile could not mistake a live direct run's `working` issue for an orphan.

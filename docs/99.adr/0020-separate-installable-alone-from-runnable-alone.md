@@ -7,6 +7,10 @@ date: '2026-07-31'
 
 # ADR-0020 — Separate installable alone from runnable alone
 
+Partly supersedes [ADR-0003](/adr/0003-mirror-shared-content-into-each-skill): mirroring stands as the rule for shared content; a skill that declares and checks a required sibling may assume that sibling's REFERENCE instead — a narrowing, not a reversal.
+
+> **Partly superseded by** [ADR-0040](/adr/0040-lock-the-issue-and-the-tree-not-the-loop): the declared, checked sibling dependency stands; the single-flight lock being the queue's mechanic alone does not — every worker now takes its own issue and tree locks.
+
 ## Context
 
 [ADR-0003](/adr/0003-mirror-shared-content-into-each-skill) mirrors shared content into every skill because a skill is installable alone — `npx skills add` copies one folder, `pnpm skills:link` symlinks one folder — so a link out of that folder resolves to nothing on the installed copy. It closes with a second rejection:
