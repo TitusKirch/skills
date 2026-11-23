@@ -1,15 +1,10 @@
----
-title: 'Fix the tldr frame and invoke it on request'
-description: 'What was settled for tldr: a fixed first and last section with a named middle, an empty section dropped rather than filled, terminal text rather than a file, and no persistent formatting mode.'
-status: 'accepted'
-date: '2026-08-26'
----
+# tldr — Design
 
-# ADR-0038 — Fix the tldr frame and invoke it on request
+**Fix the tldr frame and invoke it on request.** The decision record behind `tldr`, settled on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
 
 ## Context
 
-`tldr` summarises what just happened into a fixed section order over one scope. Its shape was settled in a `grilling` pass on the issue that specified it, rather than inferred. Relocated from the skill's `REFERENCE.md` under [ADR-0031](/adr/0031-keep-rationale-as-repo-memory); every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
+`tldr` summarises what just happened into a fixed section order over one scope. Its shape was settled in a `grilling` pass on the issue that specified it, rather than inferred. Relocated from the skill's `REFERENCE.md`; every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
 
 ## Decision
 

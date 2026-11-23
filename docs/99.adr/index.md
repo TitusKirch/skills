@@ -37,15 +37,9 @@ A decision earns an ADR when it is architectural, constrains work that comes lat
 | [ADR-0028](/adr/0028-dock-gitlab-and-resolve-the-host-per-repo)                 | Dock GitLab on both axes, and resolve the host per repo     | accepted   | 2026-08-02 |
 | [ADR-0029](/adr/0029-reproduce-the-author-guarantee-from-a-configured-identity) | Reproduce the author guarantee from a configured identity   | accepted   | 2026-08-03 |
 | [ADR-0030](/adr/0030-gate-ci-on-the-draft-state)                                | Gate CI on the draft state                                  | accepted   | 2026-08-03 |
-| [ADR-0031](/adr/0031-keep-rationale-as-repo-memory)                             | Keep rationale as repo memory                               | accepted   | 2026-08-26 |
-| [ADR-0032](/adr/0032-select-a-dependency-request-by-its-author-alone)           | Select a dependency request by its author alone             | accepted   | 2026-08-26 |
-| [ADR-0033](/adr/0033-classify-a-stale-branch-by-why-it-is-stale)                | Classify a stale branch by why it is stale                  | accepted   | 2026-08-26 |
-| [ADR-0034](/adr/0034-judge-a-comment-against-the-code-beneath-it)               | Judge a comment against the code beneath it                 | accepted   | 2026-08-26 |
-| [ADR-0035](/adr/0035-bind-the-release-skill-to-its-release-tool)                | Bind the release skill to its release tool, not its forge   | accepted   | 2026-08-26 |
-| [ADR-0036](/adr/0036-bound-update-deps-by-the-repos-own-tooling)                | Bound update-deps by the repo's own tooling                 | accepted   | 2026-08-26 |
-| [ADR-0037](/adr/0037-commit-a-handoff-into-the-repo-it-hands-off)               | Commit a handoff into the repo it hands off                 | accepted   | 2026-08-26 |
-| [ADR-0038](/adr/0038-fix-the-tldr-frame-and-invoke-it-on-request)               | Fix the tldr frame and invoke it on request                 | accepted   | 2026-08-26 |
+| [ADR-0031](/adr/0031-keep-rationale-as-repo-memory)                             | Keep rationale as repo memory                               | superseded | 2026-11-23 |
 | [ADR-0039](/adr/0039-choose-playwright-for-browser-capture)                     | Choose Playwright for browser capture                       | accepted   | 2026-10-12 |
 | [ADR-0040](/adr/0040-lock-the-issue-and-the-tree-not-the-loop)                  | Lock the issue and the tree, not the loop                   | accepted   | 2026-11-18 |
 | [ADR-0041](/adr/0041-give-adrs-their-own-skill-and-a-size-budget)               | Give ADRs their own skill and a size budget                 | accepted   | 2026-11-18 |
 | [ADR-0042](/adr/0042-rewrite-adr-references-by-script-not-by-search)            | Rewrite ADR references by script, not by search             | accepted   | 2026-11-18 |
+| [ADR-0044](/adr/0044-keep-a-skills-rationale-in-its-own-design-file)            | Keep a skill's rationale in its own design file             | accepted   | 2026-11-23 |

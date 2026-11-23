@@ -1,15 +1,10 @@
----
-title: 'Classify a stale branch by why it is stale'
-description: 'What was settled for prune-branches: four evidence-ordered categories instead of one flat list, two tiers of consent, and an unreadable fact that disarms the run rather than licensing a deletion.'
-status: 'accepted'
-date: '2026-08-26'
----
+# prune-branches — Design
 
-# ADR-0033 — Classify a stale branch by why it is stale
+**Classify a stale branch by why it is stale.** The decision record behind `prune-branches`, settled on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
 
 ## Context
 
-`prune-branches` reports a repo's stale branches and deletes only what a human confirms. The issue that specified it settled its shape; what it left open, and what followed from it, was settled in the implementation pass recorded here. Relocated from the skill's `REFERENCE.md` under [ADR-0031](/adr/0031-keep-rationale-as-repo-memory); every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
+`prune-branches` reports a repo's stale branches and deletes only what a human confirms. The issue that specified it settled its shape; what it left open, and what followed from it, was settled in the implementation pass recorded here. Relocated from the skill's `REFERENCE.md`; every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
 
 ## Decision
 
