@@ -11,7 +11,9 @@ date: '{YYYY-MM-DD}'
      decided, as something done: "let-the-review-establish-green", never "review-policy".
 
      Once superseded, keep the prose untouched, set status: superseded, refresh date,
-     and add the pointer here:  > **Superseded by** [ADR-{NNNN}]({NNNN-slug}.md) -->
+     and add the pointer here:  > **Superseded by** [ADR-{NNNN}]({NNNN-slug}.md)
+     Partly superseded — one part overturned, the rest in force — keeps status and date and
+     gains only:  > **Partly superseded by** [ADR-{NNNN}]({NNNN-slug}.md): {what stands, what does not} -->
 
 <!-- Aim for about 300 words of body; over 500 needs a reason in the plan. Any section may be a
      single sentence, and the whole record may be a single paragraph.

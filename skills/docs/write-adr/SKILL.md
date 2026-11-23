@@ -41,7 +41,7 @@ The TitusKirch **decision log** — `docs/99.adr/`, one architecture decision pe
 
 **Aim for about 300 words of body; over 500 needs a reason, stated in the plan.** Count before presenting and show the count. Over budget, move borrowed material to a page first — parameters, behaviour, detail — and never cut the reasoning, which is what the record is for. Past about 800 words it is almost always two decisions: propose two records. Full rule and its sources: [REFERENCE.md](REFERENCE.md#size).
 
-**A record is a draft until it lands on the integration branch**, and is edited freely until then. It is written as `status: accepted` from the start: the merge is the acceptance, and a change that never merges takes its draft with it. Once landed it is **immutable**: an overturned or materially revised decision gets a new record that **supersedes** it, and **nothing is ever appended** — no `## Amendments`, no addendum. What was learned while a decision stands goes on the concept page. Typo and link fixes are the only edits. [REFERENCE.md](REFERENCE.md#lifecycle--append-only).
+**A record is a draft until it lands on the integration branch**, and is edited freely until then. It is written as `status: accepted` from the start: the merge is the acceptance, and a change that never merges takes its draft with it. Once landed it is **immutable**: an overturned or materially revised decision gets a new record that **supersedes** it — **partly**, with a pointer both ways, where the rest still stands — and **nothing is ever appended** — no `## Amendments`, no addendum. What was learned while a decision stands goes on the concept page. Typo and link fixes are the only edits. [REFERENCE.md](REFERENCE.md#lifecycle--append-only).
 
 ## Workflow
 
@@ -49,7 +49,7 @@ The TitusKirch **decision log** — `docs/99.adr/`, one architecture decision pe
 2. **Ask the threshold.** No → name where the material belongs, hand page writing to `write-docs` (absent → name the page and section), and write nothing here.
 3. **Find the record it touches** — `grep` the log. Overturning a landed record is a **supersede**; refining an unlanded draft is an edit to it, never a second record.
 4. **Draft** from [`templates/adr.md`](templates/adr.md): next free id, imperative title, required H2s, the [content test](REFERENCE.md#what-the-body-may-hold), the word count.
-5. **Plan** — the record, its count, the `index.md` row, and on a supersede the old record's `status`, `date` and pointer. **Confirm → apply**, in one change.
+5. **Plan** — the record, its count, the `index.md` row, and on a supersede the old record's `status`, `date` and pointer — on a partial one, the pointer alone. **Confirm → apply**, in one change.
 6. **Locales** — the record lives in the default-locale tree; `write-docs`' locale sweep renders translations. Name that in the report.
 
 **Index job** — on "check the log": fix missing or stale `index.md` rows and broken links, propose a missing `title`/`description`, and report everything else ([index rules](REFERENCE.md#index-rules)).
