@@ -11,15 +11,7 @@ date: '2026-07-29'
 
 `pnpm skills:link` is the install path this repo recommends **for developing on itself** — Option B in the README, the one that makes an edit in the working copy live in the agent immediately. It had a single destination, `~/.claude/skills`, hard-coded as `DEST`. That was exactly right while Claude Code was the only client; the README now names four, and [ADR-0015](/adr/0015-tier-an-extension-by-the-clients-that-define-it) made those four — Claude Code, Codex, Cursor, OpenCode — the set the repo publishes for.
 
-Against that set, one destination is not a shortfall of three quarters. It is a shortfall of one, unevenly distributed:
-
-| Client      | Reads `~/.claude/skills/`           | Reads `~/.agents/skills/` |
-| :---------- | :---------------------------------- | :------------------------ |
-| Claude Code | yes — its only user-scope path      | no                        |
-| Cursor      | yes, as a legacy compatibility path | yes                       |
-| OpenCode    | yes, as a Claude-compatible path    | yes                       |
-| Codex       | **no**                              | yes                       |
-| Gemini CLI  | no                                  | yes                       |
+Against that set, one destination is not a shortfall of three quarters. It is a shortfall of one, unevenly distributed — which client reads which path is stated beside the list, in [`scripts/skills-lib.sh`](https://github.com/TitusKirch/skills/blob/main/scripts/skills-lib.sh).
 
 Two of the four picked the link tree up by accident of their compatibility paths, and **Codex saw nothing at all**. This repo carries `.codex/rules/default.rules` — Codex is used on it — so the recommended way to develop here did not work from one of the clients being developed for. The published path was never affected: `npx skills add` is client-aware and installs for Codex itself, which is what kept the gap invisible.
 
@@ -31,7 +23,7 @@ Two of the four picked the link tree up by accident of their compatibility paths
 
 - **The destination list lives once**, as `SKILL_LINK_DESTS` in `scripts/skills-lib.sh`, sourced by both scripts. Two copies of it would be one copy that stops matching, and the failure would be an orphaned link tree nobody cleans up.
 - **Every guard runs per destination** — the "is this destination a symlink back into the repo" bail-out, the "this exists and is not ours" skip, and the entry-by-entry linking that keeps `evals/` out of an installed skill ([ADR-0008](/adr/0008-keep-eval-fixtures-out-of-the-package)). A guard that ran once would protect the first destination and write blind into the second. The repo-symlink check runs over all destinations **before any of them is written**, so a bad one fails the run outright instead of half-linking.
-- **`test/link-destinations.test.ts` runs both scripts against a throwaway `HOME`** and asserts the symmetry — every destination linked, the fixture excluded in each, each cleared, and nothing the scripts did not create removed. It reads `SKILL_LINK_DESTS` out of the lib for the list it asserts over, for the same reason the scripts do: a list restated in the test file is a second copy, and the destination it would stop covering is the one just added.
+- **[`test/link-destinations.test.ts`](https://github.com/TitusKirch/skills/blob/main/test/link-destinations.test.ts) asserts the symmetry** against a throwaway `HOME`, reading the list from the lib rather than restating it.
 
 **Why not an argument.** `--client codex` is the obvious alternative and it is the one that breaks `unlink`. Unlink has to remove exactly what link created, which leaves two bad options: remember the choice on disk — new state for a pair of scripts whose whole appeal is having none, and state that goes stale the moment someone links from another checkout — or clear every destination regardless, which makes the argument inconsequential at exactly the moment it matters. Unconditional linking makes unlink deterministic and stateless, and the cost is a symlink tree in a directory the user's other agents were going to read anyway.
 
@@ -47,8 +39,4 @@ Cursor and OpenCode read both destinations, so they now see every skill twice. B
 
 A new destination is now a one-line change in `scripts/skills-lib.sh`, and the tests follow it automatically because they read that list rather than restating it. What they cannot detect is a client changing where it reads — the same upstream-drift limit [ADR-0015](/adr/0015-tier-an-extension-by-the-clients-that-define-it) records for the extension matrix, and the same answer: re-reading the clients' documentation is a periodic human job, and this ADR's date is the record of when it was last done.
 
-## Amendment (2026-09-13)
-
-OpenCode 1.18.30 now documents unique skill names across every discovery location. Its current resolver deduplicates this repository's two symlinked copies in practice, but that is weaker than a supported installation contract. The decision to link both paths remains: it is how one command serves Claude Code and agents that only read `~/.agents/skills/`. An OpenCode session using `pnpm skills:link` instead starts with `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1`, leaving the vendor-neutral path as its one source.
-
-`test/opencode-compatibility.test.ts`, run by the pinned OpenCode workflow, runs `skills:link` into an isolated `HOME` and starts OpenCode there with `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1`, from a project with no skills of its own. `debug skill` must then report every skill exactly once, located under the linked `~/.agents/skills/` — the installation the README recommends, not a stand-in for it. Both unattended queue-agent permission templates are checked through `debug agent`, together with the `question: deny` default of the `general` worker they delegate to. The test is deliberately a separate compatibility workflow: the normal `pnpm verify` gate stays pnpm-only.
+How OpenCode is started against the two copies, and the test that pins it: the [README](https://github.com/TitusKirch/skills/blob/main/README.md) and [`test/opencode-compatibility.test.ts`](https://github.com/TitusKirch/skills/blob/main/test/opencode-compatibility.test.ts).

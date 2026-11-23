@@ -15,25 +15,17 @@ That one lock therefore did three jobs. It kept two drains apart. It kept two wo
 
 ## Decision
 
-**Lock at three scopes, each excluding only its own collision.** The single-flight lock spec (`scripts/worklock-block.md`, mirrored into both work-loop units) now defines:
+**Lock at three scopes, each excluding only its own collision.** Which lock each run takes, where it lives, the acquire order, the owner record, the stale rule and the changeover window are the [single-flight lock spec](https://github.com/TitusKirch/skills/blob/main/scripts/worklock-block.md)'s.
 
-- A **drain** lock per loop (`…/work/implement.lock`, `…/work/review.lock`), taken by the queue skills only. It keeps two drains of one loop apart and nothing else.
-- An **issue** lock per issue (`…/work/implement/<ref>.lock`, `…/work/review/<ref>.lock`), taken by every worker, direct or under a drain. It is taken before the tracker lease and released after the hand-off flip. It is the compare-and-swap the label flip lacks.
-- A **tree** lock per working tree (`$(git rev-parse --git-dir)/…/work/tree.lock`), taken by every implement run in the tree it edits, and by a sequential drain for its batch. Review edits no working tree and takes none.
+**Direct runs never take the drain lock, and a held drain lock never stops one.** How the counterpart's issue locks enter the backpressure wait is [queue state](https://github.com/TitusKirch/skills/blob/main/skills/work/work-implement/REFERENCE.md#queue-state)'s.
 
-**Direct runs never take the drain lock, and a held drain lock never stops one.** Locks are taken in one fixed order (drain, tree, issue, lease) and never waited on, so they cannot deadlock. A live issue lock means the issue is being worked here, so both reconciles leave it alone outright. Their assignee and age guard still covers what a checkout-local lock cannot see. A counterpart's issue locks count as its heartbeat for the queue-state wait, because a direct run producing input holds no drain lock.
-
-**A busy tree offers a worktree rather than failing.** A direct `work-implement` that finds the tree lock held stops before any tracker write and names the issue the holder is on. It then asks whether to continue in a worktree of its own. On a yes it makes one, as a parallel drain does for its workers, installs from the lockfile, and carries on there. Unattended, it stops and reports, because a worktree costs a full install and paying that is the human's call.
-
-All three scopes keep the existing primitive (`mkdir`), owner record and heartbeat-timestamp stale rule. The owner record gains an `issue=` key, which the extensible `key=value` format already allowed.
+**A busy tree offers a worktree rather than failing.** Unattended, it stops and reports, because a worktree costs a full install and paying that is the human's call.
 
 ## Consequences
 
 Agents handed different issues now run at once, each in its own tree, and beside a running drain. Two runs still never lease one issue or edit one tree in the same checkout. The boundary has not moved: every lock is checkout-local, and across clones only the tracker lease is visible.
 
 Workers now have locks of their own to heartbeat and release. A crashed worker leaves an issue lock behind, and the stale rule reclaims it once the window elapses, exactly as it reclaims a crashed drain's lock.
-
-The changeover leaves a residual window. An old-spec direct run still takes the drain lock, so a new drain exits beside it; that costs a delay. A new-spec direct run beside an old-spec drain is protected by its lease label and the age-gated reconcile. What remains open is a self-select race between an old and a new copy. Handing each agent a named issue avoids it, and the window closes when the last old copy exits.
 
 ## Alternatives considered
 

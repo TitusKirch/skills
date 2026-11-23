@@ -3,7 +3,7 @@ title: 'Architecture decisions'
 description: 'The decision log — every architecture decision recorded for this project.'
 ---
 
-A decision earns an ADR when it is architectural, constrains work that comes later, and its reasoning would otherwise be lost: a choice between real alternatives, a convention every skill has to follow, a trade-off that looks like a mistake until the reason is known. Feature behaviour, parameters and rollout steps are not decisions this log records. Records aim for about 300 words and are append-only — a reversed or materially revised decision is written as a new ADR that supersedes the old one, never as an edit or an amendment to it. Amendments written before [ADR-0041](/adr/0041-give-adrs-their-own-skill-and-a-size-budget) stay where they are; no new ones are added.
+A decision earns an ADR when it is architectural, constrains work that comes later, and its reasoning would otherwise be lost: a choice between real alternatives, a convention every skill has to follow, a trade-off that looks like a mistake until the reason is known. Feature behaviour, parameters and rollout steps are not decisions this log records. Records aim for about 300 words and are append-only — a reversed or materially revised decision is written as a new ADR that supersedes the old one, never as an edit or an amendment to it. Amendments written before [ADR-0041](/adr/0041-give-adrs-their-own-skill-and-a-size-budget) were moved out by the migration [ADR-0042](/adr/0042-rewrite-adr-references-by-script-not-by-search) introduced; no new ones are added.
 
 | ADR                                                                             | Decision                                                    | Status     | Date       |
 | :------------------------------------------------------------------------------ | :---------------------------------------------------------- | :--------- | :--------- |
@@ -42,4 +42,5 @@ A decision earns an ADR when it is architectural, constrains work that comes lat
 | [ADR-0040](/adr/0040-lock-the-issue-and-the-tree-not-the-loop)                  | Lock the issue and the tree, not the loop                   | accepted   | 2026-11-18 |
 | [ADR-0041](/adr/0041-give-adrs-their-own-skill-and-a-size-budget)               | Give ADRs their own skill and a size budget                 | accepted   | 2026-11-18 |
 | [ADR-0042](/adr/0042-rewrite-adr-references-by-script-not-by-search)            | Rewrite ADR references by script, not by search             | accepted   | 2026-11-18 |
+| [ADR-0043](/adr/0043-refuse-a-grant-headed-by-an-exec-capable-command)          | Refuse a grant headed by an exec-capable command            | accepted   | 2026-11-23 |
 | [ADR-0044](/adr/0044-keep-a-skills-rationale-in-its-own-design-file)            | Keep a skill's rationale in its own design file             | accepted   | 2026-11-23 |

@@ -19,13 +19,11 @@ Nothing in the skill caused this. The plan step prescribed **what** to report �
 
 **A plan renders where it is read.** Everything a skill puts in front of a human — plan, preview, candidate list, findings report — arrives fully rendered in the terminal, with no interaction needed to reveal any part of it. Nothing may sit behind a control the terminal has no way to open: `<details>`/`<summary>`, a tab strip, an accordion, a "show more".
 
-**Length is handled by shortening, never by hiding.** Trim to what the decision needs, group the rest with a count per group, or split it across sections — and say what was left out, how much of it, and the exact command that shows the rest. Omission is a thing the reader can see; folding is not.
+How length is handled instead, and why the rule binds what a skill presents rather than what it writes, is the rule's own text in [`scripts/plan-block.md`](https://github.com/TitusKirch/skills/blob/main/scripts/plan-block.md).
 
-**The rule binds what a skill presents, not what it writes.** A `<details>` block inside a README, an issue body, a PR description or a docs page is rendered by a browser and stays entirely legitimate — `compact-readme` exists to write them. The constraint is on the message a human reads to decide.
+**It is mirrored, not written per skill.** The canonical text lives in `scripts/plan-block.md` and `pnpm skills:sync` writes it into every skill carrying a `<skills-plan>` element — the mechanic [ADR-0003](/adr/0003-mirror-shared-content-into-each-skill) settled for shared content. A rule stated once per skill is a rule that gets worded fifteen ways and drifts; a rule stated in a repo-root document is one an installed skill cannot read at all.
 
-**It is mirrored, not written per skill.** The canonical text lives in `scripts/plan-block.md` and `pnpm skills:sync` writes it into every skill carrying a `<skills-plan>` element, the mechanic [ADR-0003](/adr/0003-mirror-shared-content-into-each-skill) settled for shared content and the fifth contract to use it. A rule stated once per skill is a rule that gets worded fifteen ways and drifts; a rule stated in a repo-root document is one an installed skill cannot read at all.
-
-**Carriers are declared, in `test/isolation.test.ts`.** Both failure directions are invisible on disk — a skill that starts presenting a plan without the block re-decides the form per run, and a carrier that lost its block keeps the prose promising it — so the roster is asserted against the tags rather than inferred from them. Half of it is derived as well: every skill announcing a plan-only mode must carry the block, since a skill promising to print a plan and stop is presenting one by definition.
+**Carriers are declared, in [`test/isolation.test.ts`](https://github.com/TitusKirch/skills/blob/main/test/isolation.test.ts)**, because both failure directions are invisible on disk — a skill presenting a plan without the block, and a carrier that lost it.
 
 **Rejected: fixing `update-deps` alone.** It is where the failure was observed, not where it lives. Every plan-presenting skill had the same unstated form, so a local fix would have left the next one to rediscover it.
 
@@ -35,7 +33,7 @@ Nothing in the skill caused this. The plan step prescribed **what** to report �
 
 ## Consequences
 
-Fifteen skills carry a section they did not need to write, and a sixteenth cannot be added without deciding whether it presents a plan — which is the intended cost: the classification is forced at the point a skill is added rather than after a plan arrives empty.
+Every plan-presenting skill carries a section it did not need to write, and a new one cannot be added without deciding whether it presents a plan — which is the intended cost: the classification is forced at the point a skill is added rather than after a plan arrives empty.
 
 A skill presenting a genuinely large list now has to make the trimming visible instead of deferring it to a widget. That is more work per report and produces a shorter one, which is the trade the decision buys.
 

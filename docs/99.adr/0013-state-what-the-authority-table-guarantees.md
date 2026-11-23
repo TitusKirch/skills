@@ -7,6 +7,8 @@ date: '2026-07-27'
 
 # ADR-0013 — State what the authority table guarantees
 
+Partly supersedes [ADR-0004](/adr/0004-derive-author-authority-from-a-criterion): the criterion stands; the claim that the test asserts it does not.
+
 ## Context
 
 [ADR-0004](/adr/0004-derive-author-authority-from-a-criterion) replaced a name list with a criterion, because a list states the outcome without the reason and therefore does not extend itself — `prune-comments` and `prune-branches` fell straight through the old one. That decision was right and stands.

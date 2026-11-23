@@ -9,7 +9,7 @@ date: '2026-07-27'
 
 ## Context
 
-Five skills run the repo's own gate — `update-deps` after updating, `prune-comments` after its removals, `work-implement` before pushing, `merge-deps` against a dependency PR's head, `work-review` against a pushed head. All five answer the same question, and the root `verify` key is the repo's one answer to it.
+Several skills run the repo's own gate — the roster is in [`test/isolation.test.ts`](https://github.com/TitusKirch/skills/blob/main/test/isolation.test.ts). All answer the same question, and the root `verify` key is the repo's one answer to it.
 
 What was shared was the **reading**: [ADR-0003](/adr/0003-mirror-shared-content-into-each-skill) mirrors the resolver into every skill, byte-identical and drift-checked. What was not shared was everything that follows it.
 
@@ -36,10 +36,8 @@ Rejected: **keeping the install a repo responsibility.** The evidence against it
 
 ## Consequences
 
-Seven generated artifacts instead of six, and one more roster to keep honest — `test/isolation.test.ts` fails if a skill carries a variant it is not listed for, or is listed and lost its block.
+One more generated artifact and one more roster to keep honest — `test/isolation.test.ts` fails if a skill carries a variant it is not listed for, or is listed and lost its block.
 
 A new skill that runs checks now inherits the detection order, the package-manager mapping, the install cascade, and the rule that an undetectable gate is reported as unrun rather than passed. That last one is the part most likely to have been re-derived wrongly.
 
-The cost is prompt length: five skills carry a block they previously stated in one line. That is the standing trade of [ADR-0003](/adr/0003-mirror-shared-content-into-each-skill) — the alternative is a link that resolves to nothing once the skill is installed.
-
-The generator's per-contract mirror loop is now generic. The third copy is where the contracts would have started disagreeing about what counts as drift.
+The cost is prompt length: every listed skill carries a block they previously stated in one line. That is the standing trade of [ADR-0003](/adr/0003-mirror-shared-content-into-each-skill) — the alternative is a link that resolves to nothing once the skill is installed.

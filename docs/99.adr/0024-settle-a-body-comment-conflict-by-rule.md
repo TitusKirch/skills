@@ -21,17 +21,15 @@ Escalation is the right answer to a decision an agent must not make. It is the w
 
 **The body is the scope, so a newer body edit supersedes an older comment.** The body is the field a human edits to restate what the work is, and the existing precedence table already makes it the answer to _what is the work?_. A comment that argues, proposes or annotates loses to it however recent.
 
-**One exception, deliberately narrow: a comment that explicitly revises a named earlier decision stands until the body names it back.** "This revises the comment above", "decided instead", "superseded by" — such a comment is aimed at a specific prior statement, and a later body edit that never mentions it reads equally well as written without it in view. Where a newer body restates the very premise the revision rejected and is silent about the revision, the revision is live and the body is the stale text. A body that names the revision and overrides it is the ordinary case again, and wins.
+**One exception, deliberately narrow: a comment that explicitly revises a named earlier decision stands until the body names it back.** "This revises the comment above", "decided instead", "superseded by" — such a comment is aimed at a specific prior statement, and a later body edit that never mentions it reads equally well as written without it in view.
 
-**Both statements are named either way** — the two texts, their timestamps and which one the run followed — in the run's report and at the feedback destination, so a wrong call is visible rather than buried.
-
-**Escalation survives for the genuinely undecidable**: two statements each explicitly revising the other, or a choice that changes the work materially with nothing to settle which was meant.
+**Both statements are named either way**, so a wrong call is visible rather than buried, and **escalation survives for the genuinely undecidable**. The rule in full, with what is named and when to escalate, is [Body vs comment precedence](https://github.com/TitusKirch/skills/blob/main/skills/work/work-implement/REFERENCE.md#body-vs-comment-precedence).
 
 Rejected: **newest wins outright.** It makes an explicit "this revises the comment above" losable to an unrelated typo fix in the body — the deliberate act is exactly what the rule should protect. Rejected: **escalate on every such pair** — the status quo, which turns a documented precedence question into a human interrupt on finished work. Rejected: **the label decides**, as it does against the body — a label carries no scope, so there is nothing in it to prefer.
 
 ## Consequences
 
-The reviewer's **ambiguous intent** escalation narrows: a body–comment disagreement is no longer that case, and the verdict now says which statement the run followed and why. The four issues above are the last of their kind that should have to reach a human.
+The reviewer's **ambiguous intent** escalation narrows ([escalation policy](https://github.com/TitusKirch/skills/blob/main/skills/work/work-review/REFERENCE.md#escalation-to-needs-human)). The four issues above are the last of their kind that should have to reach a human.
 
 The rule can pick wrong — a maintainer who edits a body without recalling their own revision now gets the revision, not the edit. That is the trade, and naming both statements in the report is what keeps it cheap to correct: the human reads one line instead of reconstructing two timelines.
 
