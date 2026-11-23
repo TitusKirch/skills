@@ -210,6 +210,31 @@ describe('a page the batch has just written', () => {
   });
 });
 
+describe('listing the citations of a trimmed record', () => {
+  const dir = repo();
+  const out = run(dir, '0002\ttrim\n0001\tsplit\n0003\tkeep\n', '--cites');
+
+  test('lists every citing line, grouped by id, and exits 0', () => {
+    assert.equal(out.status, 0, out.stderr);
+    assert.match(out.stdout, /ADR-0002 — 3 citing lines/);
+    assert.match(out.stdout, /docs\/2\.concepts\/other\.md:1:/);
+    assert.match(out.stdout, /src\/a\.ts:2:\/\/ ADR-0002/);
+    assert.match(out.stdout, /docs\/99\.adr\/0002-old-b\.md:3:See ADR-0001/);
+  });
+
+  test('leaves out the record itself, changelogs and kept records', () => {
+    assert.doesNotMatch(out.stdout, /0002-old-b\.md:1:/);
+    assert.doesNotMatch(out.stdout, /CHANGELOG/);
+    assert.doesNotMatch(out.stdout, /ADR-0003 —/);
+  });
+
+  test('touches nothing', () => {
+    for (const [path, body] of Object.entries(FILES)) {
+      assert.equal(read(dir, path), body, `${path} changed`);
+    }
+  });
+});
+
 describe('what the check refuses to call clean', () => {
   test('a survivor that would now cite itself', () => {
     const dir = repo({

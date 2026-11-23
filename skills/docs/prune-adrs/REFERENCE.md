@@ -95,6 +95,7 @@ Most borrowed material in an overgrown record is borrowed **from a file that sti
 skill=/absolute/path/to/this/skill
 sh "$skill/templates/rewrite-adr-refs.sh" --diff "$maps/batch-01.tsv"   # dry run, with diffs
 sh "$skill/templates/rewrite-adr-refs.sh" --apply "$maps/batch-01.tsv"  # rewrite, remove, check
+sh "$skill/templates/rewrite-adr-refs.sh" --cites "$maps/batch-01.tsv"  # citations of trimmed records, to read
 cat "$maps"/batch-*.tsv > "$maps/all.tsv"
 sh "$skill/templates/rewrite-adr-refs.sh" --check "$maps/all.tsv"       # the closing check
 ```
@@ -105,6 +106,7 @@ sh "$skill/templates/rewrite-adr-refs.sh" --check "$maps/all.tsv"       # the cl
 | `--diff`  | with a dry run, a unified diff per changed file                                                                          |
 | `--apply` | removes the removed records' index rows, rewrites every reference, deletes the records in every locale tree, then checks |
 | `--check` | only reports — every line still citing a removed id, and every survivor that now cites itself                            |
+| `--cites` | only lists — every line citing a `trim` or `split` record, outside that record, for a human to read; always exits `0`    |
 
 | Exit | Means                                                                                 |
 | :--: | :------------------------------------------------------------------------------------ |
@@ -117,6 +119,10 @@ sh "$skill/templates/rewrite-adr-refs.sh" --check "$maps/all.tsv"       # the cl
 **What it validates before writing anything** — 4-digit ids listed once, a record for each, a known action, a merge target that exists and is not itself removed, a `move` page that exists when it is a repo path, and a label on every `move`. Any failure exits `2` with the tree untouched.
 
 **What it deliberately does not do.** It never decides an action, never writes a page, never edits a record's prose beyond the reference tokens, and never touches a changelog. A survivor whose `Supersedes ADR-0598` line now reads `Supersedes ADR-0601` on record 0601 is reported, not repaired: whether the line goes or says something else is a reading, and the script makes none.
+
+<a id="citations-of-a-trimmed-record"></a>
+
+**Citations of a trimmed record.** A `trim` or `split` keeps its id, so `--check` has nothing to report — yet a comment, a page or another record may cite it **for a sentence that just left**, or link an anchor (`#amendments`) whose heading is gone. Whether a citation still holds is a reading, so the script does not judge it; it lists every candidate, grouped by id, so the reading is complete. For each line: the cited sentence is still in the record → leave it; it moved to an owning file or a page → re-point the citation there; it went to a `split`'s second record → cite that record. Changes are proposed and applied on confirmation, in the batch's diff.
 
 **Run in batches, check once at the end.** Each `--apply` takes only its own batch map, because the records an earlier batch removed are gone and would fail validation. The closing `--check` takes all of them at once.
 

@@ -7,10 +7,12 @@
 # their index rows, and proves afterwards that no reference to a removed id is left.
 # No search is heuristic; the same map always produces the same tree.
 #
-# Usage:  sh rewrite-adr-refs.sh [--apply | --check] [--diff] MAP
+# Usage:  sh rewrite-adr-refs.sh [--apply | --check | --cites] [--diff] MAP
 #   (default)  dry run: report what would change, touch nothing
 #   --apply    rewrite references, delete removed records and their index rows, then check
 #   --check    only report references that still point at a removed id
+#   --cites    only list every line citing a trimmed or split record, for a human to read:
+#              the id still resolves, but the sentence a citation leans on may have left
 #   --diff     with a dry run, print a unified diff per changed file
 #
 # MAP is tab-separated, one record per line, `#` comments and blank lines ignored:
@@ -36,12 +38,13 @@ for arg in "$@"; do
   case $arg in
   --apply) mode=apply ;;
   --check) mode=check ;;
+  --cites) mode=cites ;;
   --diff) diff=1 ;;
   -*) echo "unknown option: $arg" >&2; exit 2 ;;
   *) [ -z "$map" ] || { echo "one MAP only" >&2; exit 2; }; map=$arg ;;
   esac
 done
-[ -n "$map" ] || { echo "usage: sh rewrite-adr-refs.sh [--apply|--check] [--diff] MAP" >&2; exit 2; }
+[ -n "$map" ] || { echo "usage: sh rewrite-adr-refs.sh [--apply|--check|--cites] [--diff] MAP" >&2; exit 2; }
 [ -f "$map" ] || { echo "map not found: $map" >&2; exit 2; }
 case $map in /*) ;; *) map="$(pwd)/$map" ;; esac
 
@@ -95,6 +98,30 @@ while IFS="$(printf '\t')" read -r id action target label; do
   esac
 done < "$work/entries"
 [ "$bad" -eq 0 ] || exit 2
+
+# --- cites -----------------------------------------------------------------------------
+# A trimmed or split record keeps its id, so nothing dangles — but a citation elsewhere may
+# lean on a sentence that left it. Which ones do is a reading; finding every candidate is not.
+if [ "$mode" = cites ]; then
+  awk -F '\t' '$2 == "trim" || $2 == "split" { print $1 }' "$work/entries" > "$work/kept"
+  if [ ! -s "$work/kept" ]; then
+    echo "nothing to list: the map trims and splits no record"
+    exit 0
+  fi
+  while IFS= read -r id; do
+    git grep --untracked -n -I -E "ADR-$id([^0-9]|\$)|adr/$id-|]\\($id-" -- . \
+      ':(glob,exclude)**/CHANGELOG*' ':(glob,exclude)CHANGELOG*' 2>/dev/null |
+      while IFS= read -r line; do
+        f=${line%%:*}
+        case $f in */99.adr/$id-*) continue ;; esac
+        printf '%s\n' "$line"
+      done > "$work/cites"
+    n=$(wc -l < "$work/cites" | tr -d ' ')
+    echo "ADR-$id — $n citing lines"
+    cat "$work/cites"
+  done < "$work/kept"
+  exit 0
+fi
 
 if [ ! -s "$work/removed" ]; then
   echo "nothing to remove: every record in the map is kept"
