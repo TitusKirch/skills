@@ -86,6 +86,10 @@ Most borrowed material in an overgrown record is borrowed **from a file that sti
 - **Remove, then link.** The sentences leave the record, and the record gains one link to the owning file in their place — written once, on entry, the way a split cross-links.
 - **Name every one in the plan**, with the owning file and the section, and remove only on confirmation. A sentence whose owner cannot be found is moved, never dropped.
 
+### Measured, not estimated
+
+A plan's word counts are confirmed as the batch's result, so they have to be the result. Draft each `trim` and `split` before planning — in the working tree, which the clean-tree precondition makes free to discard — and count the body with the same recipe the inventory uses, before and after. An estimate made from a reading drifts in one direction: it assumes more of a record is borrowed than turns out to be, because what is left after the borrowed material goes is reasoning, and reasoning is what a trim never cuts. A record still over 500 after an honest trim says so in the plan, with the reason `write-adr` asks for.
+
 ## The script
 
 [`templates/rewrite-adr-refs.sh`](templates/rewrite-adr-refs.sh) — POSIX `sh`, `sed -E` and `awk`, run from anywhere inside the repo:
