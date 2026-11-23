@@ -31,7 +31,8 @@ const dirs: string[] = [];
 after(() => dirs.forEach((d) => rmSync(d, { recursive: true, force: true })));
 
 const FILES: Record<string, string> = {
-  'docs/99.adr/0001-keep-a.md': '# ADR-0001 — Keep a\n\nStands alone.\n',
+  'docs/99.adr/0001-keep-a.md':
+    '# ADR-0001 — Keep a\n\n## Context\n\nStands alone.\n',
   'docs/99.adr/0002-old-b.md': '# ADR-0002 — Old b\n\nSee ADR-0001.\n',
   'docs/99.adr/0003-feature-c.md': '# ADR-0003 — Feature c\n\nRules.\n',
   'docs/99.adr/0004-feature-d.md': '# ADR-0004 — Feature d\n\nRules.\n',
@@ -253,6 +254,59 @@ describe('what the check refuses to call clean', () => {
     const out = run(dir, '0002\tdrop\n', '--apply');
     assert.equal(out.status, 1);
     assert.match(out.stdout, /src\/a\.ts:2:\/\/ ADR-0002/);
+  });
+});
+
+describe('a link into a surviving record', () => {
+  test('whose anchor left in a trim is refused by the check', () => {
+    const dir = repo();
+    const out = run(dir, '0002\ttrim\n', '--check');
+    assert.equal(out.status, 1, out.stdout);
+    assert.match(out.stdout, /anchor no longer exists/);
+    assert.match(out.stdout, /other\.md:1:adr\/0002-old-b\.md#context/);
+  });
+
+  test('whose anchor still exists passes', () => {
+    const dir = repo({
+      ...FILES,
+      'docs/99.adr/0002-old-b.md':
+        '# ADR-0002 — Old b\n\n## Context\n\nSee ADR-0001.\n'
+    });
+    const out = run(dir, '0002\ttrim\n', '--check');
+    assert.equal(out.status, 0, out.stdout);
+  });
+});
+
+describe('a trim checked for rewording', () => {
+  const RECORD = 'docs/99.adr/0001-keep-a.md';
+  const base = {
+    ...FILES,
+    [RECORD]:
+      '# ADR-0001 — Keep a\n\n## Context\n\nStands alone, and it was weighed with care. It reads well.\n'
+  };
+  const trimmed = (body: string) => {
+    const dir = repo(base);
+    writeFileSync(
+      join(dir, RECORD),
+      `# ADR-0001 — Keep a\n\n## Context\n\n${body}\n`
+    );
+    return run(dir, '0001\ttrim\n', '--reworded');
+  };
+
+  test('a pure deletion passes, capitalised where a clause went', () => {
+    const out = trimmed('Stands alone. Reads well.');
+    assert.equal(out.status, 0, out.stdout);
+  });
+
+  test('a sentence carrying the added link is exempt', () => {
+    const out = trimmed('Stands alone. The rest is in [the page](c.md).');
+    assert.equal(out.status, 0, out.stdout);
+  });
+
+  test('a reworded sentence is named', () => {
+    const out = trimmed('Stands apart, weighed with care.');
+    assert.equal(out.status, 1, out.stdout);
+    assert.match(out.stdout, /0001-keep-a\.md: Stands apart/);
   });
 });
 

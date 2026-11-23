@@ -7,12 +7,17 @@
 # their index rows, and proves afterwards that no reference to a removed id is left.
 # No search is heuristic; the same map always produces the same tree.
 #
-# Usage:  sh rewrite-adr-refs.sh [--apply | --check | --cites] [--diff] MAP
+# Usage:  sh rewrite-adr-refs.sh [--apply | --check | --cites | --reworded] [--diff] MAP
 #   (default)  dry run: report what would change, touch nothing
 #   --apply    rewrite references, delete removed records and their index rows, then check
-#   --check    only report references that still point at a removed id
+#   --check    only report references that still point at a removed id, and links into a
+#              surviving record whose #anchor no longer exists
 #   --cites    only list every line citing a trimmed or split record, for a human to read:
 #              the id still resolves, but the sentence a citation leans on may have left
+#   --reworded only report sentences of a trimmed or split record that are not a pure
+#              deletion from the committed version (HEAD): a trim removes, it never rewrites.
+#              A sentence carrying a link is exempt — it is the link the trim adds.
+#              --base=REV compares against REV instead, once the trim is committed
 #   --diff     with a dry run, print a unified diff per changed file
 #
 # MAP is tab-separated, one record per line, `#` comments and blank lines ignored:
@@ -28,23 +33,26 @@
 #                     written as given
 #   drop              allowed only for a record nothing else references
 #
-# Exit: 0 done / clean · 1 references to removed ids remain · 2 invalid usage or map.
+# Exit: 0 done / clean · 1 references to removed ids or dead anchors remain, or a
+# sentence was reworded · 2 invalid usage or map.
 # POSIX sh, sed -E and awk only; no GNU-only flags.
 
 set -eu
 
-mode=dry diff=0 map=
+mode=dry diff=0 map= base=HEAD
 for arg in "$@"; do
   case $arg in
   --apply) mode=apply ;;
   --check) mode=check ;;
   --cites) mode=cites ;;
+  --reworded) mode=reworded ;;
   --diff) diff=1 ;;
+  --base=?*) base=${arg#--base=} ;;
   -*) echo "unknown option: $arg" >&2; exit 2 ;;
   *) [ -z "$map" ] || { echo "one MAP only" >&2; exit 2; }; map=$arg ;;
   esac
 done
-[ -n "$map" ] || { echo "usage: sh rewrite-adr-refs.sh [--apply|--check|--cites] [--diff] MAP" >&2; exit 2; }
+[ -n "$map" ] || { echo "usage: sh rewrite-adr-refs.sh [--apply|--check|--cites|--reworded] [--diff] MAP" >&2; exit 2; }
 [ -f "$map" ] || { echo "map not found: $map" >&2; exit 2; }
 case $map in /*) ;; *) map="$(pwd)/$map" ;; esac
 
@@ -123,7 +131,105 @@ if [ "$mode" = cites ]; then
   exit 0
 fi
 
+# --- reworded ----------------------------------------------------------------------------
+# Every sentence left in a trimmed record must be a deletion from a sentence it had: its
+# words, in order, a subsequence of one committed sentence. Anything else was rewritten.
+if [ "$mode" = reworded ]; then
+  awk -F '\t' '$2 == "trim" || $2 == "split" { print $1 }' "$work/entries" > "$work/kept"
+  : > "$work/reworded"
+  while IFS= read -r id; do
+    f=$(record "$id"); [ -n "$f" ] || continue
+    git show "$base:$f" > "$work/old" 2>/dev/null || continue
+    awk -v rec="$f" '
+      function body(file,   line, n, state, text) {
+        text = ""; n = 0; state = 0
+        while ((getline line < file) > 0) {
+          n++
+          if (n == 1 && line == "---") { state = 1; continue }
+          if (state == 1) { if (line == "---") state = 2; continue }
+          text = text (line == "" ? "\n" : line " ")
+        }
+        close(file); return text
+      }
+      function split_sentences(text, arr,   n, i, c, cur, parts, k, m) {
+        n = 0
+        m = split(text, parts, "\n")
+        for (k = 1; k <= m; k++) {
+          cur = parts[k]
+          while (match(cur, /[.!?][*_`")]*[ ]+/)) {
+            arr[++n] = substr(cur, 1, RSTART + RLENGTH - 1); cur = substr(cur, RSTART + RLENGTH)
+          }
+          if (cur ~ /[^ ]/) arr[++n] = cur
+        }
+        return n
+      }
+      function norm(w) { gsub(/[.,;:!?)("*_`]+$/, "", w); gsub(/^[("*_`]+/, "", w); return tolower(w) }
+      function words(sent, arr,   n, i, raw, k) {
+        n = split(sent, raw, /[ ]+/); k = 0
+        for (i = 1; i <= n; i++) { w = norm(raw[i]); if (w != "") arr[++k] = w }
+        return k
+      }
+      function subseq(a, na, b, nb,   i, j) {
+        j = 1
+        for (i = 1; i <= nb && j <= na; i++) if (a[j] == b[i]) j++
+        return j > na
+      }
+      BEGIN {
+        no = split_sentences(body(ARGV[1]), olds)
+        nn = split_sentences(body(ARGV[2]), news)
+        for (s = 1; s <= nn; s++) {
+          if (news[s] ~ /\]\(/) continue
+          na = words(news[s], a); if (na == 0) continue
+          ok = 0
+          for (o = 1; o <= no && !ok; o++) { delete b; nb = words(olds[o], b); if (subseq(a, na, b, nb)) ok = 1 }
+          delete a
+          if (!ok) printf "%s: %s\n", rec, substr(news[s], 1, 160)
+        }
+        exit
+      }' "$work/old" "$f" >> "$work/reworded"
+  done < "$work/kept"
+  if [ -s "$work/reworded" ]; then
+    echo "sentences that are not a deletion from the committed record:"
+    cat "$work/reworded"
+    exit 1
+  fi
+  echo "clean: every trimmed sentence is a deletion from what was committed"
+  exit 0
+fi
+
+# --- anchors ---------------------------------------------------------------------------
+# A link into a record that stays can still break: the heading its #anchor named may have
+# left in a trim, or a merge may have moved the link onto a survivor without that heading.
+anchors() {
+  awk -F '\t' '$2 == "keep" || $2 == "trim" || $2 == "split" { print $1 } $2 == "merge" { print $3 }' \
+    "$work/entries" | sort -u > "$work/survivors"
+  : > "$work/dead"
+  while IFS= read -r id; do
+    f=$(record "$id"); [ -n "$f" ] || continue
+    awk '
+      /^#+ / { h = $0; sub(/^#+ +/, "", h); h = tolower(h); gsub(/[^a-z0-9 _-]/, "", h); gsub(/ /, "-", h)
+               if (seen[h]++) h = h "-" (seen[h] - 1); print h }
+      { while (match($0, /id="[^"]+"/)) { print substr($0, RSTART + 4, RLENGTH - 5); $0 = substr($0, RSTART + RLENGTH) } }
+    ' "$f" > "$work/have"
+    git grep --untracked -n -I -o -E "(adr/|]\\()$id-[a-z0-9-]*(\\.md)?#[A-Za-z0-9_-]+" -- . \
+      ':(glob,exclude)**/CHANGELOG*' ':(glob,exclude)CHANGELOG*' 2>/dev/null |
+      while IFS= read -r hit; do
+        a=${hit##*#}
+        grep -qx "$a" "$work/have" || printf '%s\n' "$hit"
+      done >> "$work/dead"
+  done < "$work/survivors"
+  if [ -s "$work/dead" ]; then
+    echo "links into a surviving record whose anchor no longer exists:"
+    cat "$work/dead"
+    return 1
+  fi
+  return 0
+}
+
 if [ ! -s "$work/removed" ]; then
+  if [ "$mode" = check ] || [ "$mode" = apply ]; then
+    anchors || exit 1
+  fi
   echo "nothing to remove: every record in the map is kept"
   exit 0
 fi
@@ -165,6 +271,7 @@ check() {
     cat "$work/self"
     found=1
   fi
+  anchors || found=1
   if [ "$found" -eq 0 ]; then echo "clean: no reference to a removed record remains"; fi
   return "$found"
 }

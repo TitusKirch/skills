@@ -100,23 +100,25 @@ skill=/absolute/path/to/this/skill
 sh "$skill/templates/rewrite-adr-refs.sh" --diff "$maps/batch-01.tsv"   # dry run, with diffs
 sh "$skill/templates/rewrite-adr-refs.sh" --apply "$maps/batch-01.tsv"  # rewrite, remove, check
 sh "$skill/templates/rewrite-adr-refs.sh" --cites "$maps/batch-01.tsv"  # citations of trimmed records, to read
+sh "$skill/templates/rewrite-adr-refs.sh" --reworded "$maps/batch-01.tsv"  # trims that rewrote instead of removed
 cat "$maps"/batch-*.tsv > "$maps/all.tsv"
 sh "$skill/templates/rewrite-adr-refs.sh" --check "$maps/all.tsv"       # the closing check
 ```
 
-| Mode      | Does                                                                                                                     |
-| :-------- | :----------------------------------------------------------------------------------------------------------------------- |
-| (default) | dry run — lists every file it would change and every record it would remove; touches nothing                             |
-| `--diff`  | with a dry run, a unified diff per changed file                                                                          |
-| `--apply` | removes the removed records' index rows, rewrites every reference, deletes the records in every locale tree, then checks |
-| `--check` | only reports — every line still citing a removed id, and every survivor that now cites itself                            |
-| `--cites` | only lists — every line citing a `trim` or `split` record, outside that record, for a human to read; always exits `0`    |
+| Mode         | Does                                                                                                                                                                                               |
+| :----------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| (default)    | dry run — lists every file it would change and every record it would remove; touches nothing                                                                                                       |
+| `--diff`     | with a dry run, a unified diff per changed file                                                                                                                                                    |
+| `--apply`    | removes the removed records' index rows, rewrites every reference, deletes the records in every locale tree, then checks                                                                           |
+| `--check`    | only reports — every line still citing a removed id, every survivor that now cites itself, and every link whose `#anchor` a surviving record no longer has                                         |
+| `--cites`    | only lists — every line citing a `trim` or `split` record, outside that record, for a human to read; always exits `0`                                                                              |
+| `--reworded` | only reports — every sentence of a `trim` or `split` record that is not a pure deletion from the committed version (`--base=REV` once the trim is committed); a sentence carrying a link is exempt |
 
-| Exit | Means                                                                                 |
-| :--: | :------------------------------------------------------------------------------------ |
-| `0`  | done, or clean                                                                        |
-| `1`  | references to removed records remain, or a survivor cites itself — named line by line |
-| `2`  | invalid usage or map — nothing was written                                            |
+| Exit | Means                                                                                                                             |
+| :--: | :-------------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | done, or clean                                                                                                                    |
+| `1`  | references to removed records remain, a survivor cites itself, an anchor is dead, or a sentence was reworded — named line by line |
+| `2`  | invalid usage or map — nothing was written                                                                                        |
 
 **What it rewrites, exactly.** In every text file git does not ignore — untracked ones included, because the pages a batch writes are still new when it runs — except changelogs: a bare `ADR-NNNN` (matched whole, so `ADR-00031` and `ADR-0030` are never touched for `0003`); a link whose target contains `adr/NNNN-…` (site paths and file paths alike); and a relative `NNNN-….md` link inside a `99.adr/` directory. A merge keeps a link's form and anchor and swaps the record; a move replaces the link target and turns the bare id into the label.
 
@@ -127,6 +129,8 @@ sh "$skill/templates/rewrite-adr-refs.sh" --check "$maps/all.tsv"       # the cl
 <a id="citations-of-a-trimmed-record"></a>
 
 **Citations of a trimmed record.** A `trim` or `split` keeps its id, so `--check` has nothing to report — yet a comment, a page or another record may cite it **for a sentence that just left**, or link an anchor (`#amendments`) whose heading is gone. Whether a citation still holds is a reading, so the script does not judge it; it lists every candidate, grouped by id, so the reading is complete. For each line: the cited sentence is still in the record → leave it; it moved to an owning file or a page → re-point the citation there; it went to a `split`'s second record → cite that record. Changes are proposed and applied on confirmation, in the batch's diff.
+
+**Trims are checked for rewording.** "Sentences move, never get rewritten" is the rule a trim is most likely to break unnoticed — a stale count updated, two clauses joined around a new link — and across a batch drafted by several agents nobody can hold it by reading. `--reworded` makes it mechanical: each sentence left in a trimmed record must be its committed sentence with words removed, compared case-insensitively so a sentence may start with a capital where a clause went. The one sentence a trim adds, the link to the owning file, is exempt by carrying a link. A frozen count that has since gone stale stays, in the past tense the record was written in; it is history, not a claim about today.
 
 **Run in batches, check once at the end.** Each `--apply` takes only its own batch map, because the records an earlier batch removed are gone and would fail validation. The closing `--check` takes all of them at once.
 
