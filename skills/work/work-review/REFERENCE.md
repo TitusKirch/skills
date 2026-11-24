@@ -587,19 +587,22 @@ esac
 # $host/$owner/$repo and numeric $pr come from the same validated PR binding, not the Linear key.
 # 1. the newest un-draft, where one has happened at all. --paginate applies --jq per page,
 #    so this prints one candidate per page; the sort below picks across them.
+# Empty = the PR was never un-drafted; `unreadable` is its own fact, never folded into empty.
 ready=$(gh api --hostname "$host" "repos/$owner/$repo/issues/$pr/timeline" --paginate \
-  --jq '[.[] | select(.event=="ready_for_review") | .created_at] | max // empty') || ready=
+  --jq '[.[] | select(.event=="ready_for_review") | .created_at] | max // empty') || ready=unreadable
+[ "$ready" = unreadable ] || ready=$(printf '%s\n' "$ready" | grep '^[0-9]' | sort | tail -n 1)
+
 # 2. this head's own commit — when the implement loop made it reviewable. That loop commits
 #    and pushes within one run, so the commit date is the push to within seconds.
 head=$(gh pr view "$pr" --repo "$pr_repo" --json commits \
   --jq '[.commits[].committedDate] | max // empty' 2>/dev/null) || head=
 # ISO-8601 UTC sorts lexicographically, so `sort` is a time sort.
-since=$(printf '%s\n%s\n' "$ready" "$head" | grep . | sort | tail -1)
+since=$(printf '%s\n%s\n' "$ready" "$head" | grep '^[0-9]' | sort | tail -1)
 ```
 
 Each round then gets the base it should: the round that un-drafts takes the flip, which is newer than the head it just judged; a re-work round on an already-ready PR takes its **new head**, so the budget starts when the work did; a PR with no `ready_for_review` event has the head alone, which is a base rather than nothing.
 
-**`$since` bounds the wait and nothing else.** It is the deadline's origin, never a filter on which results count — the poll below settles that by dropping `skipping` outright, and deliberately not by this timestamp, because a base this permissive-by-fallback cannot be trusted to decide correctness. Getting `$since` wrong makes the wait too long or too short; it can never make an unanalysed head read as green.
+**`$since` bounds the wait and nothing else.** It is the deadline's origin, never a filter on which results count — it may fall back to the head commit, and a base that permissive cannot be trusted to decide correctness. Which results count is the poll's question, answered from the **un-draft itself** (`$ready`) and never from `$since`. Getting `$since` wrong makes the wait too long or too short; it can never make an unanalysed head read as green.
 
 **So the budget is CI's elapsed time, not CI's own runtime, and on a re-work round it starts early.** Where the base is this head's commit — the round answering a CI failure, or any PR that never carried the event — the clock has been running through everything between the push and the first poll: the drain picking the issue up, this review creating its worktree, installing from the lockfile and running `verify`. Size `work.review.timeout` against that wall-clock span rather than against the pipeline's duration alone, or a repo whose CI nearly fills the budget will escalate on the reviewer's own overhead. The direction of the error is the safe one — `needs human`, never an accept — but it is an escalation a bigger number would have avoided.
 
@@ -610,12 +613,18 @@ Each round then gets the base it should: the round that un-drafts takes the flip
 ```sh
 # Non-zero here is routine — 8 while runs are pending, 1 on a failure or with no checks at
 # all — so the status is deliberately not branched on, and never blanks the payload.
-checks=$(gh pr checks "$pr" --repo "$pr_repo" --json bucket 2>/dev/null)
+[ "$ready" != unreadable ] || { echo unreadable; exit 0; }   # never the permissive reading
+checks=$(gh pr checks "$pr" --repo "$pr_repo" --json bucket,startedAt 2>/dev/null)
 # `skipping` is dropped, never counted — it is a job declining to answer, not an answer.
-raw=$(printf '%s' "$checks" | jq -r '.[]? | select(.bucket != "skipping") | .bucket' 2>/dev/null) || raw=
+# Where the PR was un-drafted, a row from a run started before that flip is the draft's run —
+# a summary job that passed over skipped work — and is dropped too.
+raw=$(printf '%s' "$checks" | jq -r --arg flip "$ready" \
+  '.[]? | select(.bucket != "skipping") | select($flip == "" or (.startedAt // "") >= $flip) | .bucket' \
+  2>/dev/null) || raw=
 
 case $raw in
-'')          echo none ;;      # nobody answered — "not yet" or "not at all", below
+'')          echo none ;;      # nobody answered since the flip — "not yet" or "not at all", below
+
 *fail*)      echo red ;;
 *pending*)   echo pending ;;   # keep polling until the deadline
 *cancel*)    echo pending ;;   # superseded — a replacement run is due, so poll on
@@ -623,9 +632,9 @@ case $raw in
 esac
 ```
 
-**Dropping `skipping` is what stops a stale result reading as green, and it is the only thing that has to.** A repo whose draft gate sits on the **job** does not report nothing while the PR is a draft — it reports `skipping`, one row per gated job, and gating `codeql.yml` adds a third. `gh pr ready` fires a fresh run for the same head SHA, but that run takes seconds to register: poll inside that window while counting those rows and the list holds three of them — no `fail`, no `pending`, and **not empty** — so the recipe would answer green and write `done` on a head CI never analysed. Dropping them empties the list instead, which is the `none` case below and already handled correctly.
+**Two kinds of stale row, and the poll drops both.** A repo whose draft gate sits on the **job** does not report nothing while the PR is a draft — it reports `skipping`, one row per gated job. And a repo whose workflow ends in a **summary job** — a `Gate` that `needs` the real work and accepts a skipped dependency — reports that summary as `pass` on the draft's run, because the work it summarises was skipped rather than failed. `gh pr ready` fires a fresh run for the same head SHA, but that run takes seconds to register: poll inside that window and the list holds the draft's `skipping` rows **and** its green summary — no `fail`, no `pending`, not empty — so a recipe that only dropped `skipping` would answer green and write `done` on a head CI never analysed. So `skipping` is dropped outright, and every row from a run that **started before the newest un-draft** is dropped with it: the draft's run is not this review's evidence, whatever its summary says. Both leave the list empty inside that window, which is the `none` case below and already handled correctly.
 
-**Why dropped rather than filtered by start time.** Timestamping the rows against `$since` looks equivalent and is not: it is only as good as `$since` being the **flip**, and `$since` legitimately falls back to the head commit (below) — a base **older** than the draft-gate rows, because those are registered by the push (commit → push → run start, always in that order). One transient timeline read is then enough to hand the poll a permissive base, let all three stale rows through, and produce exactly the false `done` above — the same "an unreadable value must not be the permissive reading" trap this file guards everywhere else. Dropping the rows removes the failure mode instead of narrowing its window, and needs no timestamp at all, so the poll asks for `bucket` alone.
+**Filtered by the un-draft, never by `$since`.** `$since` legitimately falls back to the head commit — a base **older** than the draft's rows, because those are registered by the push — so filtering on it would let the stale rows straight through. The flip is the one moment that separates the draft's run from the ready one, so the filter reads `$ready` alone, recomputed in the poll's own call (each command is its own process). A PR that was never a draft has no `ready_for_review` event and no draft run to exclude, so an empty `$ready` filters nothing. **An unreadable timeline is neither**: it prints `unreadable`, never the permissive empty, and routes to `needs human` saying the un-draft could not be read — the same rule as an [unreadable round count](#round-count).
 
 **A `skipping` is never a pass, even when it is honest.** After the un-draft a job may still decline on a condition of its own — a `paths` filter this head does not match, a matrix exclusion — and that is a legitimate outcome, but it is the job saying _nothing_ about this head rather than approving it. Where those are the only rows, the list reads `none`, and the fourth row of the table below is exactly right for it: the accept rests on the `verify` this review ran itself, not on a check that declined. Nothing stalls, because "none" is a reading with a verdict, not a wait.
 
