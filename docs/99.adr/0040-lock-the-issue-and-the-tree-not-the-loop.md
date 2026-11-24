@@ -7,7 +7,9 @@ date: '2026-11-18'
 
 # ADR-0040 — Lock the issue and the tree, not the loop
 
-Partly supersedes [ADR-0020](/adr/0020-separate-installable-alone-from-runnable-alone): the declared, checked sibling dependency stands; the single-flight lock being the queue's mechanic alone does not — every worker now takes its own issue and tree locks.
+> **Partly superseded by** [ADR-0047](/adr/0047-never-reclaim-a-lock-and-lock-the-local-store): the three lock scopes stand; the stale rule reclaiming a crashed run's lock does not — such a lock is reported, and a human removes it.
+
+Partly supersedes [ADR-0020](/adr/0020-separate-installable-alone-from-runnable-alone): the declared, checked sibling dependency stands; the single-flight lock being the queue's mechanic alone does not — every implement worker now takes its own issue and tree locks, a review worker the issue lock alone.
 
 ## Context
 
