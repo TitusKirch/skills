@@ -28,6 +28,8 @@ cd skills
 pnpm install   # wires husky hooks
 ```
 
+**Agent instructions live in [`AGENTS.md`](AGENTS.md) alone** ([ADR-0049](docs/99.adr/0049-keep-one-instruction-file-agents-md.md)). Claude Code reads it from v2.1.277 on — but only while no `CLAUDE.md` **or `CLAUDE.local.md`** sits in the working directory or above, and only under its default _project instructions_ setting (`claude-md-or-agents-md`; `claude-md-and-agents-md` reads both). A personal `CLAUDE.local.md` therefore hides these instructions as surely as a committed `CLAUDE.md` would. If an agent ignores the repo's conventions, check those three things first; `/memory` in Claude Code shows which files it actually loaded.
+
 ## Adding a new skill
 
 1. Pick a category — `repo/`, `work/`, `docs/` or `meta/` (see [`skills/README.md`](skills/README.md)) — and create `skills/<category>/<skill-name>/SKILL.md`: YAML frontmatter (`name`, `summary`, `description`, optional `allowed-tools`) followed by the skill body. Use an existing skill (e.g. [`skills/docs/write-readme/`](skills/docs/write-readme/)) as a reference.
@@ -50,6 +52,8 @@ CI runs the same commands, one step per command, so a single run reports every f
 **Checks that need container tooling sit outside that gate.** `pnpm skills:conformance` validates every skill against the [Agent Skills specification](https://agentskills.io/specification) with the standard's own validator, pinned and run in a container — so it needs Docker, which is exactly why `pnpm verify` does not reach it and stays runnable with nothing but pnpm. A separate workflow runs it on any pull request that touches `skills/`. It re-tiers the Claude Code frontmatter extensions this repo deliberately uses ([ADR-0007](docs/99.adr/0007-permit-claude-code-frontmatter-extensions.md)) rather than failing on them, so a green run still reports them as non-portable.
 
 `pnpm containers:audit` needs Docker and Trivy. It scans the current Python image from the registry, builds the VHS template with refreshed system packages, and scans the resulting renderer. It prints finding counts and paths to JSON reports in a temporary directory; an optional directory argument keeps them where you choose. Exit 0 means no advisories, 1 means advisories were found, and 2 means a check could not run. These are image-package findings, independent of the skill-conformance verdict.
+
+Two more client probes run only where their CLI is installed and are skipped, saying so, everywhere else: `test/policy-parity.test.ts` asks `codex execpolicy check` for the intended decisions, and `test/install.test.ts` installs every skill with the README's `skills` CLI into a throwaway project and checks what landed. CI installs neither.
 
 OpenCode's exact version lives in `scripts/toolchain-versions.json`; the workflow and integration test both read it. To require the real CLI probe locally, set `OPENCODE_REQUIRED=true` and point `OPENCODE_BIN` at that version's executable when running `pnpm verify`.
 

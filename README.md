@@ -72,6 +72,19 @@ OpenCode loads skills through its native `skill` tool; installing a skill does *
 
 The two work queues need an agent that cannot ask questions while it runs unattended. Each queue ships an opt-in template: copy [`work-implement-queue`'s](skills/work/work-implement-queue/templates/opencode-agent.md) or [`work-review-queue`'s](skills/work/work-review-queue/templates/opencode-agent.md) template into the consuming repo as `.opencode/agents/<queue-name>.md`, then restart OpenCode. Run one drain with `opencode run --auto --agent <queue-name> "Run the queue once."`; schedule later drains externally. OpenCode has no native `/loop` command.
 
+### What is verified, per client
+
+Four questions, answered separately, because a yes to one says nothing about the next: what was **shipped**, what the client **loaded**, which skill the model **chose**, and what it then **did**.
+
+| Client      | Shipped                                                | Loaded                                                                     | Chosen / did                |
+| :---------- | :----------------------------------------------------- | :------------------------------------------------------------------------- | :-------------------------- |
+| OpenCode    | `test/install.test.ts` (with the `skills` CLI on PATH) | `test/opencode-compatibility.test.ts`, at the pinned version, CI and local | not measured — see `evals/` |
+| Codex       | as above                                               | policy rules via `test/policy-parity.test.ts` (with `codex` on PATH)       | not measured — see `evals/` |
+| Claude Code | as above; `.claude-plugin/plugin.json` validates       | not automated                                                              | not measured — see `evals/` |
+| Cursor      | as above                                               | documented support only, not checked                                       | not measured                |
+
+A probe that needs a CLI the machine does not have is **skipped and says so** — never counted as a pass. Model choice and behaviour are measured per skill by the `evals/` cases ([Evaluating a skill](skills/README.md#evaluating-a-skill)), not by any test here.
+
 ## ✨ Features
 
 - **🧩 Self-contained skills** — each folder under `skills/` ships a `SKILL.md` (YAML frontmatter + body) plus optional templates, references and scripts. No runtime code.
