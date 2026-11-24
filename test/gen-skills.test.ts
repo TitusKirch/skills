@@ -538,3 +538,51 @@ describe('the table is compared semantically, not byte for byte', () => {
     assert.notDeepEqual(parseTable(moved), expectedTableTokens(groups));
   });
 });
+
+describe('names every install path flattens into one directory', () => {
+  const write = (root: string, rel: string, name: string) => {
+    mkdirSync(join(root, 'skills', rel), { recursive: true });
+    writeFileSync(
+      join(root, 'skills', rel, 'SKILL.md'),
+      `---\nname: ${name}\ndescription: d\n---\n`
+    );
+  };
+
+  test('the same name in two categories is a loud failure naming both', () => {
+    const { root } = open();
+    write(root, 'work/alpha', 'alpha');
+    assert.throws(
+      () => discoverSkills(paths(root)),
+      /'alpha' is taken twice: skills\/repo\/alpha and skills\/work\/alpha/
+    );
+  });
+
+  test('a name that differs from its folder is a loud failure', () => {
+    const { root } = open();
+    write(root, 'repo/delta', 'epsilon');
+    assert.throws(
+      () => discoverSkills(paths(root)),
+      /name 'epsilon' differs from its folder 'delta'/
+    );
+  });
+});
+
+describe('a folded description', () => {
+  test('is refused at the gate rather than read as its indicator', () => {
+    for (const indicator of ['>-', '>', '|', '|-']) {
+      const problems = lintFrontmatter([
+        skill({ frontmatter: { description: indicator } })
+      ]);
+      assert.equal(problems.length, 1, indicator);
+      assert.match(problems[0] as string, /YAML block scalar/);
+    }
+  });
+
+  test('the parser reads a one-line description whole', () => {
+    assert.equal(
+      parseFrontmatter('---\ndescription: Read a specific file.\n---\n')
+        .description,
+      'Read a specific file.'
+    );
+  });
+});

@@ -227,7 +227,7 @@ export function discoverSkills(p: Paths, documents = new Documents()): Skill[] {
   }
 
   // Category order comes from CATEGORIES; skills sort alphabetically within one.
-  return (Object.keys(CATEGORIES) as Category[])
+  const skills = (Object.keys(CATEGORIES) as Category[])
     .filter((category) => categories.includes(category))
     .flatMap((category) =>
       readdirSync(join(p.skills, category), { withFileTypes: true })
@@ -250,6 +250,26 @@ export function discoverSkills(p: Paths, documents = new Documents()): Skill[] {
         })
         .filter((skill) => skill !== null)
     );
+
+  // Every install path flattens the categories into one directory per client, so a name
+  // is unique across all of them, and it is the folder's name — else the catalogue and
+  // what a client can load disagree. Thrown, not linted: --paths feeds the linker too.
+  const seen = new Map<string, string>();
+  for (const skill of skills) {
+    if (skill.name !== skill.dir) {
+      throw new Error(
+        `skills/${skill.path}/SKILL.md: name '${skill.name}' differs from its folder '${skill.dir}'`
+      );
+    }
+    const other = seen.get(skill.name);
+    if (other) {
+      throw new Error(
+        `skill name '${skill.name}' is taken twice: skills/${other} and skills/${skill.path} — every install path puts both at the same place`
+      );
+    }
+    seen.set(skill.name, skill.path);
+  }
+  return skills;
 }
 
 // [{ category, title, description, skills: [...] }] in CATEGORIES order.
@@ -606,6 +626,14 @@ export function lintFrontmatter(skills: Skill[]): string[] {
 
     for (const field of ['summary', 'description'] as const) {
       const value = skill.frontmatter[field];
+      // A YAML block scalar (`>-`, `|`) is valid YAML that this line parser reads as the
+      // indicator alone, so the catalogue would carry `>-` where a client reads the text.
+      if (value && /^[>|][+-]?$/.test(value.trim())) {
+        problems.push(
+          `${skill.path}: \`${field}\` is a YAML block scalar (${value.trim()}) — write it on one line, the house form the generator reads`
+        );
+        continue;
+      }
       if (!value || /^['"]/.test(value.trim())) continue;
       if (value.includes(': ')) {
         problems.push(
