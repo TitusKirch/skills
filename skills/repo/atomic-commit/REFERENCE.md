@@ -268,6 +268,8 @@ Proposed commits:
    └─ README.md           (hunk: "## Authentication" section)
 
 Unassigned: none
+Already staged, not by this session — left staged as is:
+   └─ src/config.ts       (hunk: timeout 30 → 60)
 ```
 
 In plan-only mode, follow the plan with the runnable commands, e.g.:

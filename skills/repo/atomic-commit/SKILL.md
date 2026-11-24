@@ -56,7 +56,8 @@ Exact detection recipes: [REFERENCE.md](REFERENCE.md#detecting-conventions).
 ### 2. Survey the changes
 
 - `git status --porcelain` + `git diff` (unstaged) + `git diff --staged` + list untracked files.
-- Read the diffs so you understand _what_ changed, not just _which files_. Fold anything already staged into the plan.
+- Read the diffs so you understand _what_ changed, not just _which files_.
+- **Sort every change by where it came from, and show the sort in the plan.** _This session's_ — the changes this conversation made; _already staged by someone else_ — hunks in the index this session did not put there; _origin unknown_ — anything else in the tree. Only the first group is the job by default. A pre-staged hunk is somebody's deliberate selection: it is committed only when the human says so for that hunk, and otherwise **left staged exactly as it was**, byte for byte.
 
 ### 3. Plan atomic commits
 
@@ -74,7 +75,7 @@ Show the detected conventions, then a numbered commit plan: each commit's messag
 ### 5. Commit — or stop
 
 - **Plan-only triggers** ("nicht committen", "nur den Plan", "wie würdest du das committen", "don't commit", "dry run", "just show me"): **stop after the plan** and print the exact `git` commands the user could run. Do **not** run `git commit`.
-- **Otherwise**: ask for confirmation, then execute group by group — stage exactly that group's files/hunks, commit, verify with `git diff --cached --stat` before and `git log -1` after. Reset staging between groups so commits stay atomic.
+- **Otherwise**: ask for confirmation, then execute group by group — stage exactly that group's files/hunks, commit, verify with `git diff --cached --stat` before and `git log -1` after. **Judge the index by what it must hold, not by a reset**: before each commit it holds that group and nothing else, and after the last one it holds exactly the pre-staged hunks the plan left alone — so never `git reset` away someone else's staging to make room. Where a group shares a file with a pre-staged hunk, save that hunk's patch first (`git diff --cached -- <file>`) and re-apply it to the index once the group is committed. A declined plan changes neither the tree nor the index.
 
 <skills-plan>
 
