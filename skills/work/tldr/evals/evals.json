@@ -1,0 +1,17 @@
+{
+  "_comment": "Development-only behavioural cases for tldr. Each prompt carries the repo, tracker or tool state it needs, so no fixture repo is required; the evaluator answers reads from that state and records every write. Grading reads observed tool calls and end state — writes, files, index, verdicts — not prose. Run each case with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "tldr",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "What did you change in the repo? (Session: you first explained how the resolver merges profiles — no files touched. Then you edited src/resolve.ts and test/resolve.test.ts and committed as abc1234 'fix(resolve): keep explicit null'. The evaluator's repo: abc1234 contains only src/resolve.ts; test/resolve.test.ts is modified but uncommitted.)",
+      "expected_output": "The answer is evidenced from git, not memory: abc1234 with src/resolve.ts, and test/resolve.test.ts still uncommitted — the gap between recollection and repo called out. The explanation is not a change. Nothing is run or written.",
+      "expectations": [
+        "The run reads git status, a diff stat and the log over the task's range before answering.",
+        "It reports abc1234 with src/resolve.ts, and test/resolve.test.ts as modified but uncommitted.",
+        "The earlier explanation of profile merging is not listed as a change.",
+        "No commit, staging, formatter, test or build command is run."
+      ]
+    }
+  ]
+}

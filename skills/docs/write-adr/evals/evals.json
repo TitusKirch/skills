@@ -61,6 +61,17 @@
         "No '## Amendments' section or appended paragraph is added to ADR-0009.",
         "The index.md gains a row for ADR-0015 and leaves ADR-0009's row unchanged, in the same change."
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "Write an ADR documenting the fields of our player.progress event: player_id (uuid), season (int), tier (int), xp (int) and emitted_at (RFC 3339). The core service publishes it on the message bus; the stats site and the Discord bot consume it. The log ends at ADR-0019 and docs/99.adr/index.md exists.",
+      "expected_output": "No record. A payload's field list is reference material that changes with the event, so it belongs on a reference page or in the event's schema; the run names that destination and does not write it. It may say what about the same interface would earn a record — who owns the schema, what compatibility consumers are promised — without drafting one unasked.",
+      "expectations": [
+        "No file is created or proposed under docs/99.adr/, and index.md is unchanged.",
+        "The refusal names why: the field list is lookup or reference detail of the interface, not an architecture decision.",
+        "It names a reference docs page or the event's schema file as the destination, and does not write that page itself.",
+        "It does not draft an ownership or compatibility ADR that the user did not ask for."
+      ]
     }
   ]
 }

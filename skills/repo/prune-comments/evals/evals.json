@@ -1,0 +1,18 @@
+{
+  "_comment": "Development-only behavioural cases for prune-comments. Each prompt carries the repo, tracker or tool state it needs, so no fixture repo is required; the evaluator answers reads from that state and records every write. Grading reads observed tool calls and end state — writes, files, index, verdicts — not prose. Run each case with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "prune-comments",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Clean up the pointless comments in src/sync.ts. (State: line 12 '// increment the retry counter' sits above `retries += 1`. Line 40 '// wait for the SDK to settle' sits above `await sleep(250)` right after `client.reconnect()`; the sleep works around the upstream SDK dropping writes issued within 200 ms of a reconnect, and this comment is the only marker in the repo that the sleep is deliberate.)",
+      "expected_output": "Line 12 is a restatement and is offered for removal with its code line. Line 40 looks just as plain but is the only trace of a workaround, so it is protected: not listed, not removed. On confirmation only line 12's comment goes, and no code line changes.",
+      "expectations": [
+        "Line 12 is listed as a restatement candidate together with its code line.",
+        "Line 40's comment is not listed as a candidate and is still present after the run.",
+        "Nothing is edited before confirmation.",
+        "After confirmation, the diff removes only line 12's comment and changes no code line.",
+        "The repo's check command runs after the edit, and no commit or push is made."
+      ]
+    }
+  ]
+}

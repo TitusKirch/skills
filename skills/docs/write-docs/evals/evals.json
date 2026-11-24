@@ -1,0 +1,18 @@
+{
+  "_comment": "Development-only behavioural cases for write-docs. Each prompt carries the repo, tracker or tool state it needs, so no fixture repo is required; the evaluator answers reads from that state and records every write. Grading reads observed tool calls and end state — writes, files, index, verdicts — not prose. Run each case with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "write-docs",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Translate docs/2.guides/3.deploy.md into German. (State: .tituskirch-skills.json sets docs.locales to ['de-DE']. docs/de-DE/ mirrors the tree except this page, which has no German counterpart yet; docs/2.guides/index.md links the English page. The tree also carries unrelated drift: docs/2.guides/ numbering jumps from 3 to 5, and docs/4.reference/1.env.md has an unknown frontmatter key `tags`.)",
+      "expected_output": "One new German page at the mirrored path, linked from the German section index, and nothing else: the translation is an add, not a reconcile, so no renumbering, no frontmatter cleanup and no other page touched. The drift is at most named.",
+      "expectations": [
+        "The only files written are docs/de-DE/2.guides/3.deploy.md and, for its link, docs/de-DE/2.guides/index.md.",
+        "The new page keeps the English page's path, numeric prefix and slug; only title, description and prose are in German.",
+        "No file is renamed or renumbered, and docs/4.reference/1.env.md is unchanged.",
+        "The numbering gap and the unknown key are at most named as findings for a reconcile pass, not fixed.",
+        "Nothing is written before the plan is confirmed."
+      ]
+    }
+  ]
+}

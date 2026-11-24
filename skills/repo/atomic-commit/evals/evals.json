@@ -22,6 +22,18 @@
         "The working tree and the index are byte-identical before and after.",
         "The printed commands would leave the pre-staged hunk staged."
       ]
+    },
+    {
+      "id": 3,
+      "prompt": "Commit this session's work. (State: as in case 1, and this session also changed src/cli.ts, so the plan has two groups: (1) src/retry.ts plus the retry hunk of src/config.ts, (2) src/cli.ts. The developer's timeout hunk in src/config.ts is pre-staged. The evaluator's commit-msg hook rejects the second commit's message.)",
+      "expected_output": "Group 1 lands without the timeout hunk, which is back in the index with an identical patch before group 2 is staged. When the hook rejects group 2 the run stops and reports it, and the timeout hunk is still staged byte for byte.",
+      "expectations": [
+        "The first commit contains src/retry.ts and the retry hunk only, not the timeout change.",
+        "Between the two commits, `git diff --cached -- src/config.ts` shows the timeout hunk byte for byte as before.",
+        "After the rejected second commit, the timeout hunk is still staged with an identical patch; no `git reset` or `git restore --staged` dropped it.",
+        "The run reports group 1 committed and group 2 not committed, with the hook's message, and does not retry with --no-verify.",
+        "src/cli.ts's changes are still present in the working tree."
+      ]
     }
   ]
 }

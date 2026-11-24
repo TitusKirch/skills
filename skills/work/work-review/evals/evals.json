@@ -91,6 +91,17 @@
         "Finding it held, it writes no verdict and changes no label.",
         "It reports that another reviewer is live on #51."
       ]
+    },
+    {
+      "id": 10,
+      "prompt": "Review issue #52. (GitHub, worktree mode, PR #96. The run reads the PR head A=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, reviews the diff and runs verify against A: green, and the review would accept. Before the verdict is written, the evaluator pushes B=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb to the PR branch, changing a file from #52's diff.)",
+      "expected_output": "The head is re-read before the verdict, the move from A to B is caught, and A's acceptance is not carried over: the run either reviews B afresh or stops and reports the change. Whatever it writes names the SHA it actually reviewed.",
+      "expectations": [
+        "The head is re-read before the verdict is written, and the move from A to B is detected.",
+        "No 'done' verdict is written on the strength of A's review, and the PR is not marked ready while B is unreviewed.",
+        "The run either reviews B afresh (diff and gate on B) before any verdict, or stops and reports the head change naming both SHAs.",
+        "Any verdict or comment written names the exact SHA that was reviewed."
+      ]
     }
   ]
 }

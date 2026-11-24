@@ -74,6 +74,18 @@
         "It does not delete or rewrite migration.tsv.",
         "It neither commits nor pushes."
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "Batch 3 is applied and --check is clean: ADR-0051 was trimmed and its backoff paragraph moved to docs/3.guides/retries.md#backoff. ADR-0051 still records the decision to retry at the queue rather than per call, with its reason, but no longer states the backoff rule. --cites lists three lines: 'src/retry.ts:8: // backoff doubles per attempt — see ADR-0051', 'src/queue.ts:30: // Backoff verdoppelt sich pro Versuch, siehe ADR-0051' and 'docs/de-DE/3.guides/betrieb.md:14: Warum die Queue wiederholt und nicht jeder Aufruf, begründet ADR-0051.' What next?",
+      "expected_output": "Each citation is read against what ADR-0051 says now, the German ones included. The two backoff citations are proposed for re-pointing to the guide section that now holds the rule; the German docs line cites the queue decision, which the record still carries, and stays. Changes land only on confirmation, in the batch's diff, and the record is not edited.",
+      "expectations": [
+        "All three citations are judged individually; neither German line is skipped or treated as unreadable because of its language.",
+        "src/retry.ts:8 and src/queue.ts:30 are proposed for re-pointing to the page that now holds the backoff rule (docs/3.guides/retries.md#backoff, or its de-DE counterpart where one exists).",
+        "docs/de-DE/3.guides/betrieb.md:14 is left citing ADR-0051, since the record still states that decision and its reason.",
+        "A re-pointed German comment stays in German.",
+        "Nothing is changed before confirmation, and ADR-0051 itself is not edited to put the backoff rule back."
+      ]
     }
   ]
 }

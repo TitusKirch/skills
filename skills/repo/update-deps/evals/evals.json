@@ -264,6 +264,18 @@
         "fixtures/mixed-monorepo/.agents/skills/edited-skill/SKILL.md.fixture",
         "fixtures/mixed-monorepo/registry-records.json"
       ]
+    },
+    {
+      "id": 11,
+      "prompt": "Update the dependencies here — plan only. (State: the repo holds only a Dockerfile (FROM node:22.11-alpine3.20), compose.yaml (postgres:16.4, redis:7.4-alpine) and a README — no package manifests, no lockfiles, no workflows. The evaluator supplies the registry answers. Neither trivy nor docker scout is installed.)",
+      "expected_output": "One container section covering both files, built from the container ecosystem file alone; the release-age gate reported not applicable, the advisory scan reported unavailable, and nothing written.",
+      "expectations": [
+        "The run opens ecosystems/container-images.md and none of the other ecosystem files (cargo, composer, go, java, github-actions, gitlab-ci, project-skills).",
+        "The plan has one container section that covers the Dockerfile and compose.yaml together.",
+        "The release-age gate is reported as not applicable for container images, not omitted.",
+        "The advisory check is reported as unavailable (no trivy or docker scout), not as clean, and no scanner is installed.",
+        "Dockerfile and compose.yaml are unchanged after the run."
+      ]
     }
   ]
 }

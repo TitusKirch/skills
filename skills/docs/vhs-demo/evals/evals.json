@@ -1,0 +1,18 @@
+{
+  "_comment": "Development-only behavioural cases for vhs-demo. Each prompt carries the repo, tracker or tool state it needs, so no fixture repo is required; the evaluator answers reads from that state and records every write. Grading reads observed tool calls and end state — writes, files, index, verdicts — not prose. Run each case with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "vhs-demo",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Re-render the envprism demo GIF — I added an `envprism switch staging` step to the tape. (State: .github/assets/demo.tape and the shared Dockerfile are committed. The evaluator's render succeeds; ffprobe reports 1920x1080 and a duration matching the sum of the visible Sleeps. But the CLI now asks 'Overwrite existing profile? [y/N]' before switching and the tape never answers it, so every frame from the switch step to the end shows that prompt and no staging output.)",
+      "expected_output": "Dimensions and duration pass, but because the flow changed the run samples key frames — the one after the new step and the final frame — finds the unanswered prompt, and reports the GIF as not matching the intended CLI state instead of shipping it. The fix goes into the tape, followed by a re-render.",
+      "expectations": [
+        "The run extracts frames from the GIF (e.g. ffmpeg with an fps or select filter) and inspects at least the frame after the new switch step and the final frame.",
+        "It reports that those frames show an unanswered 'Overwrite existing profile? [y/N]' prompt instead of the staging output.",
+        "The passing ffprobe dimensions and duration are not presented as proof that the demo is correct.",
+        "The broken GIF is not committed, and the page reference is not reported as done.",
+        "Any fix proposed is an edit to the .tape (answering the prompt) followed by a re-render, never an edit to the GIF itself."
+      ]
+    }
+  ]
+}

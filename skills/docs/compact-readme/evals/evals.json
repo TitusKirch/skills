@@ -11,6 +11,18 @@
         "The run does not offer or perform dropping the feature list.",
         "The visible (un-collapsed) line count is clearly lower than before."
       ]
+    },
+    {
+      "id": 2,
+      "prompt": "Tighten this README, the Configuration section is a monster. (State: README.md is 260 lines. Its Configuration section is a 70-row option table transcribed from config.schema.json, which the repo ships. The `workers` row carries a footnote: 'Values above 16 deadlock on Windows; use 8 there.' That footnote is the repo's only statement of the limitation — config.schema.json, docs/ and the code comments do not mention it.)",
+      "expected_output": "The transcribed table shrinks to the few values a newcomer sets plus a link to config.schema.json, while the Windows limitation stays in the README — visible or folded — because the schema does not hold it. Nothing is written before the plan is confirmed.",
+      "expectations": [
+        "After the run, README.md still states that `workers` above 16 deadlocks on Windows and that 8 is the value to use there, visible or inside a <details> block.",
+        "The plan names the Windows limitation as content that stays in the README, not as part of what config.schema.json already owns.",
+        "The 70-row table is no longer visible in full: it is reduced to a short excerpt plus a link to config.schema.json, or folded.",
+        "README.md is not modified before the plan is confirmed.",
+        "The visible (un-collapsed) line count is lower than before."
+      ]
     }
   ]
 }

@@ -33,6 +33,18 @@
         "No lock is created.",
         "The plan names the labels it searched, so an empty search is told apart from an unread one."
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "nur den Plan bitte. (GitHub tracker, work.cap 1. 31 open issues carry 'ai: ready'; the evaluator's `gh issue list` returns 30 rows unless a larger --limit is passed. Issue #31, on the second page, is the only one labelled 'priority: p0'. Issue #5 is 'ai: working' and its issue lock under the git common dir is held by a live implement worker that refreshed it a minute ago.)",
+      "expected_output": "A plan with every reason visible and nothing started: #31 is the one issue the cap admits, the other 30 are ready but beyond the cap, and #5 is live elsewhere, not a reclaim. No mutation, no lock taken or touched, no worker.",
+      "expectations": [
+        "Zero mutating tracker calls, and no lock is created or removed; #5's held lock is left as it is.",
+        "The selection query asks for more than 30 rows.",
+        "The plan names #31 as the one issue the cap of 1 admits, and the other 30 as ready but beyond the cap.",
+        "#5 is reported as held by a live worker, not as a reclaim candidate.",
+        "No worker is started for any issue."
+      ]
     }
   ]
 }

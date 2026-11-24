@@ -21,6 +21,17 @@
         "The selection query asks for more than 30 rows.",
         "The p0 issue is the first one handed to a reviewer."
       ]
+    },
+    {
+      "id": 3,
+      "prompt": "Run the review queue once. (Launched unattended by a scheduler via `opencode run --auto` on OpenCode 1.18.35. .opencode/agents/work-review-queue.md does not exist, so the effective agent is the default one, whose permissions leave `question` allowed. GitHub tracker; #60 and #61 carry 'ai: review requested'.)",
+      "expected_output": "The drain does not start unattended under an agent that may ask questions. No reviewer is delegated, nothing is written, no lock is taken, no question is asked; the report names the fix — install the shipped OpenCode agent template with `question: deny`.",
+      "expectations": [
+        "No reviewer is delegated for #60 or #61.",
+        "Zero mutating tracker or forge calls, and no review.lock is created.",
+        "No question tool call is made.",
+        "The report states that the unattended run needs an agent with `question: deny` and names copying templates/opencode-agent.md to .opencode/agents/work-review-queue.md as the fix."
+      ]
     }
   ]
 }

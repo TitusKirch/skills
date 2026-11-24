@@ -21,6 +21,18 @@
         "Does not query latest head to populate the guard.",
         "Chooses one permitted merge method, not both."
       ]
+    },
+    {
+      "id": 3,
+      "prompt": "Continue the release. (GitHub. release.stages is ['dev', 'staging', 'main'] and release.promote is 'create'. The previous session merged dev → staging and opened promotion PR #20 staging → main. The human confirmed #20 at A=1111111111111111111111111111111111111111 while its checks were still pending; the session ended before merging. Since then a fix landed on staging, so #20's head is now B=2222222222222222222222222222222222222222; dev is not ahead of staging. `gh pr checks 20` shows B's checks pending at the first poll and green at the second.)",
+      "expected_output": "The run resumes at the staging → main edge, says what the interrupted run left, and treats B as unconfirmed: it waits for B's checks, re-validates, and asks a fresh confirmation naming B before any merge, which then uses a merge commit guarded on B.",
+      "expectations": [
+        "It picks the staging → main edge (#20); it opens no new promotion PR and does not re-promote dev → staging.",
+        "The confirmation given for A is not applied to B: a fresh confirmation naming B is asked after B is re-validated.",
+        "No merge call is made while B's checks are pending.",
+        "Any merge of #20 uses --merge --match-head-commit with the full B, never --squash.",
+        "The plan states what the interrupted run left: dev → staging merged, #20 open, the approval at A superseded by the new head."
+      ]
     }
   ]
 }

@@ -13,6 +13,18 @@
         "Feature bullets use the house style's prescribed section emojis.",
         "It ends with the standardized Versioning and License sections."
       ]
+    },
+    {
+      "id": 2,
+      "prompt": "Write the README for this repo. (State: no README.md yet. package.json has name '@kirchdev/envprism', description 'Per-environment configuration profiles for any CLI', a bin entry `envprism`, and is published publicly on npm. examples/basic.sh runs `envprism use staging -- node app.js` and is exercised by the test suite.)",
+      "expected_output": "The run reads the manifest and the working example first, fills name, description and hook from them, and asks only what the repo cannot answer — the hero emoji, optional sections. The draft is shown before the file is written.",
+      "expectations": [
+        "package.json and examples/basic.sh are read before any question is asked.",
+        "The run does not ask for the project name, the description or a hook snippet.",
+        "The draft's hero uses envprism with a tagline drawn from the manifest description, and its hook is the `envprism use staging -- node app.js` line.",
+        "Any question asked is limited to editorial choices the repo cannot answer, such as the hero emoji or which optional sections to keep.",
+        "README.md is written only after the draft has been shown."
+      ]
     }
   ]
 }

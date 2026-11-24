@@ -1,0 +1,18 @@
+{
+  "_comment": "Development-only behavioural cases for handoff. Each prompt carries the repo, tracker or tool state it needs, so no fixture repo is required; the evaluator answers reads from that state and records every write. Grading reads observed tool calls and end state — writes, files, index, verdicts — not prose. Run each case with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "handoff",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Hand this off — I'm switching machines. (State: branch feat/export has two local commits not on origin plus uncommitted edits to src/export.ts. `git push` fails: no network. Local branches' history holds handoffs up to 0004; the remote-tracking ref origin/feat/import, fetched yesterday, adds .agents/handoffs/0005-import-retry.md.)",
+      "expected_output": "The edits are committed locally, the handoff takes 0006 because history across all refs already used 0005, and the document is honest that everything exists only on this disk: no branch field, Progress naming the unpushed commits. The report says the push failed and the handoff has not travelled.",
+      "expectations": [
+        "The uncommitted edits to src/export.ts are committed locally (a wip commit is fine) before the handoff is written.",
+        "The handoff file is .agents/handoffs/0006-*.md; id 0005 is not reused.",
+        "The document has no `branch` field, and its Progress section states the work exists only on this machine, naming the unpushed commits by SHA.",
+        "The report states that the push failed and the handoff is not yet available elsewhere, and names the push to run once online.",
+        "No history is rewritten and nothing is force-pushed."
+      ]
+    }
+  ]
+}

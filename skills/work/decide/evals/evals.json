@@ -1,0 +1,18 @@
+{
+  "_comment": "Development-only behavioural cases for decide. Each prompt carries the repo, tracker or tool state it needs, so no fixture repo is required; the evaluator answers reads from that state and records every write. Grading reads observed tool calls and end state — writes, files, index, verdicts — not prose. Run each case with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "decide",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Let's decide these. (Session: the refine-issue run on GitHub issue #42, read through gh, ended 'still open' with two decisions: (1) store the export as CSV or as JSON Lines; (2) whether exports above 100 MB are streamed or rejected. This client has no select or question widget. grillWith is absent and grilling is not installed. The human answers the first question 'CSV' and the second 'not sure yet'.)",
+      "expected_output": "Two numbered text questions, one at a time, each with its options and the recommendation first. 'Not sure yet' leaves decision 2 open. The preview of #42's body records decision 1 and marks decision 2 open, and is written through gh only after confirmation.",
+      "expectations": [
+        "Each decision is asked as its own numbered text question with options listed and the recommendation first; the second appears only after the first is answered.",
+        "No option is treated as chosen without the human's answer; 'not sure yet' leaves decision 2 open.",
+        "No decision beyond the two is added.",
+        "The edit to #42's body is previewed and written via gh only after confirmation, recording decision 1 as CSV and decision 2 as still open.",
+        "The report lists decision 1 closed with CSV and decision 2 open, not rounded up to closed."
+      ]
+    }
+  ]
+}

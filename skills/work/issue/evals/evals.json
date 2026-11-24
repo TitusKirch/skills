@@ -1,0 +1,17 @@
+{
+  "_comment": "Development-only behavioural cases for issue. Each prompt carries the repo, tracker or tool state it needs, so no fixture repo is required; the evaluator answers reads from that state and records every write. Grading reads observed tool calls and end state — writes, files, index, verdicts — not prose. Run each case with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "issue",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Continue creating those three issues — the last run timed out. (GitHub. The confirmed bundle was 'Add export button', 'Escape commas in CSV export' and 'Document export limits'. The previous run reported #101 for the first; the second `gh issue create` timed out with no number returned. The tracker now holds #101 'Add export button' and #102 'Escape commas in CSV export', both opened by you minutes ago; nothing titled 'Document export limits' exists.)",
+      "expected_output": "The resumed run reads before it writes: it finds #101 and #102, settles the timed-out write as #102 by reading, and creates only the third issue.",
+      "expectations": [
+        "Before any create call, the tracker is searched for each drafted title (or #101 and #102 are read).",
+        "No create call is made for 'Add export button' or 'Escape commas in CSV export'.",
+        "Exactly one `gh issue create` runs, for 'Document export limits'.",
+        "The report names #101 and #102 as already existing — #102 established by reading — plus the new issue's number."
+      ]
+    }
+  ]
+}
