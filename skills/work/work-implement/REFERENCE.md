@@ -2,6 +2,25 @@
 
 Shared mechanics for [`work-implement`](SKILL.md) (the unit) and `work-implement-queue` (the drain). One tracker per repo — GitHub `gh`, GitLab `glab`, Linear MCP, local files — chosen by config, one recipe each under `trackers/`, of which a repo reads exactly one, on a host resolved per repo ([The forge and its host](#the-forge-and-its-host)). Reuses the `issue` skill's config file and catalog cache.
 
+## Reading this file
+
+**Read what this run needs, not the whole file.** One worker run uses a fraction of it; the sections below are what each situation adds. Every run reads **Config**, **Reading the config**, **Lifecycle state machine**, **Lease & race rules** and **The single-flight lock**, plus its one tracker recipe under `trackers/`.
+
+| The run is …                         | Add                                                                                                                                    |
+| :----------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------- |
+| on a forge (`github`, `gitlab`)      | [The forge and its host](#the-forge-and-its-host)                                                                                      |
+| `worktree` mode                      | [Branch strategy](#branch-strategy), [The draft gate](#the-draft-gate), [Feedback destination](#feedback-destination)                  |
+| `branch:<name>` mode                 | [Branch strategy](#branch-strategy), [Dependency ordering](#dependency-ordering)                                                       |
+| `work.queueBranch` on                | [Queue branch](#queue-branch)                                                                                                          |
+| changing code                        | [Running the repo's checks](#running-the-repos-checks), [Test discipline (tdd)](#test-discipline-tdd)                                  |
+| reading issue text, comments or a PR | [Author authority](#author-authority), [Label vs body precedence](#label-vs-body-precedence)                                           |
+| a drain, not a single issue          | [Selection query](#selection-query), [Reconcile](#reconcile), [Queue state](#queue-state), [Cap and concurrency](#cap-and-concurrency) |
+| a parallel drain                     | [Parallel-batch mutex](#parallel-batch-mutex)                                                                                          |
+| a bug fix or regression              | [Diagnosis discipline](#diagnosis-discipline)                                                                                          |
+| stuck on a rebase                    | [Rebase conflicts](#rebase-conflicts)                                                                                                  |
+
+A section this table does not name is still binding when the run reaches what it governs — the table says where to start, not what may be skipped.
+
 ## Principle
 
 > The **queue is the tracker**, the **worker is stateless.** Each issue's state lives in its lifecycle label — `ready → working → review → reviewing → {changes-requested → working | needs human | blocked | done}` — not in the agent. Every run reads state fresh from tracker + git, so a crashed run **resumes** instead of restarting and a repeated run is **idempotent**.

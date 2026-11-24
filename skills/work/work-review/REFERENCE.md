@@ -2,6 +2,22 @@
 
 Mechanics for [`work-review`](SKILL.md) (the unit) and `work-review-queue` (the drain) — the **review half** of the two-loop agent workflow. Shares the config, catalog cache, tracker recipes and [forge/host resolution](#the-forge-and-its-host) with `work-implement`; this file covers what is review-specific.
 
+## Reading this file
+
+**Read what this review needs, not the whole file.** Every review reads **Config**, **Reading the config**, **The single-flight lock**, **Round count**, **Fetching the diff**, **Verifying the pushed head** and **Feedback recipes**, plus its one tracker recipe under `trackers/`.
+
+| The review is …                      | Add                                                                      |
+| :----------------------------------- | :----------------------------------------------------------------------- |
+| on a forge (`github`, `gitlab`)      | [The forge and its host](#the-forge-and-its-host)                        |
+| about to accept a draft PR           | [Marking ready, then waiting for CI](#marking-ready-then-waiting-for-ci) |
+| under `branch:<name>`                | [Review-after-land](#review-after-land-branchname)                       |
+| with `work.labels.reviewing` set     | [The `reviewing` lease](#the-reviewing-lease)                            |
+| reading issue text, comments or a PR | [Author authority](#author-authority)                                    |
+| heading for `needs human`            | [Escalation to `needs human`](#escalation-to-needs-human)                |
+| a drain, not a single issue          | [Selection query](#selection-query)                                      |
+
+A section this table does not name is still binding when the review reaches what it governs — the table says where to start, not what may be skipped.
+
 ## Principle
 
 > **The reviewer is independent and read-only.** A different agent than the implementer, with fresh context, judges the pushed work and writes a **verdict** — a label move plus a comment. It never edits, commits, or merges. State lives in the label, so a crashed review just re-runs (idempotent).

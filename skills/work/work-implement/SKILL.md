@@ -26,7 +26,7 @@ This skill is the **implement half** of a two-loop workflow: it builds and pushe
 
 Resolve `.tituskirch-skills.json` via [`templates/resolve-config.sh`](templates/resolve-config.sh), never by reading the raw file ([REFERENCE.md](REFERENCE.md#reading-the-config) states how, missing `jq` included); the `work.*` section holds tracker, label lifecycle, branch strategy, the [feedback destination](REFERENCE.md#feedback-destination) and Linear scope. Resolution per setting: **config → default**. Determine the tracker (`work.tracker`, falling back to `issue.tracker`) and confirm it is available/authenticated. Reuse the `issue` catalog cache for labels/teams/states.
 
-Config schema, the full lifecycle and everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). The tracker recipes are one file each, and this step settles which: [`trackers/github.md`](trackers/github.md), [`trackers/gitlab.md`](trackers/gitlab.md), [`trackers/linear.md`](trackers/linear.md), [`trackers/local.md`](trackers/local.md).
+Config schema, the full lifecycle and everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). **Start at its [reading map](REFERENCE.md#reading-this-file)**, which names the sections this run's tracker, branch mode and task add, instead of loading the whole file. The tracker recipes are one file each, and this step settles which: [`trackers/github.md`](trackers/github.md), [`trackers/gitlab.md`](trackers/gitlab.md), [`trackers/linear.md`](trackers/linear.md), [`trackers/local.md`](trackers/local.md).
 
 ### 2. Resolve the target issue
 
