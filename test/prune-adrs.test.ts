@@ -361,9 +361,10 @@ describe('only a link that lands on a record of the log is rewritten', () => {
   });
 
   test("another site's ADR url is left alone, and named", () => {
-    assert.match(
-      read(dir, 'docs/2.concepts/far.md'),
-      /example\.org\/adr\/0002-unrelated/
+    assert.ok(
+      read(dir, 'docs/2.concepts/far.md').includes(
+        '<https://example.org/adr/0002-unrelated>'
+      )
     );
     assert.match(out.stdout, /another site's ADR path/);
   });
