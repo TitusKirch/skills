@@ -48,18 +48,21 @@ VALIDATOR_MODULE='skills_ref.cli'
 #
 # Claude Code's seventeen documented fields minus the three that are also standard
 # (`name`, `description`, `allowed-tools` — skills-ref allows all three, so none is ever
-# re-tiered) leaves fourteen; Cursor's legacy `globs` is the fifteenth.
+# re-tiered) leaves fourteen; Cursor's legacy `globs` and its Custom Mode badge, `icon` and
+# `color`, make seventeen.
 CLIENT_EXTENSIONS=(
   'agent=Claude Code'
   'argument-hint=Claude Code'
   'arguments=Claude Code'
   'background=Claude Code'
+  'color=Cursor'
   'context=Claude Code'
-  'disable-model-invocation=Claude Code, Cursor'
+  'disable-model-invocation=Claude Code, Cursor, OpenCode'
   'disallowed-tools=Claude Code'
   'effort=Claude Code'
   'globs=Cursor'
   'hooks=Claude Code'
+  'icon=Cursor'
   'model=Claude Code'
   'paths=Claude Code, Cursor'
   'shell=Claude Code'
