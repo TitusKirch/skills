@@ -2,7 +2,7 @@
 name: issue
 metadata:
   summary: Creates/updates/searches issues across GitHub (gh), GitLab (glab), Linear (MCP) or local files, tracker chosen by config.
-description: Manages issues — create, update, search/list, and bulk — across GitHub (gh CLI), GitLab (glab CLI), Linear (MCP) or local issue files, with the active tracker and the host it talks to chosen per-repo by a committed config (.tituskirch-skills.json), self-hosted instances included. Drafts title and body from a free-text description plus session context, previews once, and creates only after confirmation; switches to plan-only when asked. Use when the user wants to create, open, update, or find an issue or ticket, mentions GitHub issues, GitLab issues or Linear, or says things like "open an issue", "create a ticket", "find the issue about X", "Issue erstellen", "Ticket anlegen".
+description: Creates, updates, finds and bulk-edits issues on GitHub, GitLab, Linear or local issue files, with the tracker and host chosen per repo by config — drafted from the request and session context, previewed, created only after confirmation. To get one filed issue ready for an agent, use refine-issue; to answer decisions a run already listed, use decide. Use when the user wants to create, open, update or find an issue or ticket, or says things like "open an issue", "create a ticket", "find the issue about X", "Issue erstellen", "Ticket anlegen".
 allowed-tools:
   - Read
   - Grep
@@ -79,28 +79,17 @@ One preview: tracker · action · template · title · body · labels/priority/s
 
 ## Presenting the plan
 
-Everything this skill puts in front of a human — plan, preview, candidate list, findings report —
-is read **once, in a terminal**, and answered there. So **every section of it renders on arrival**,
-with no interaction needed to reveal it: prose, lists, tables, fenced code.
+Whatever this skill puts in front of a human to decide on — a plan, a preview, a candidate list, a
+findings report — is read **once, in a terminal**, so **every part of it renders on arrival**.
 
-**Never fold content behind a control.** `<details>`/`<summary>` is a browser widget, and a
-terminal has no way to open it: the summary line prints and everything under it does not. The plan
-then arrives as headings with nothing beneath them, and the failure is silent on **both** sides —
-the skill believes it reported, and the reader sees no marker saying anything is missing, so a
-human confirms a plan whose contents never reached them. What gets folded is whatever ran long,
-which is to say the part the decision actually rested on. The same holds for anything else needing
-a click: a tab strip, an accordion, a "show more".
-
-**Length is handled by shortening, never by hiding.** This is a fixed rule of the skill, not a
-per-run judgement, so it holds however long the list runs. Trim to what the decision needs, group
-the rest by something the reader already thinks in (ecosystem, kind, verdict) with a count per
-group, or split it across sections. What is left out is left out **visibly**: say how many, why,
-and the exact command that shows the rest.
-
-**This binds what the skill presents, not what it writes.** A `<details>` block inside a README, an
-issue body, a pull request description or a docs page is rendered by a browser and is entirely
-legitimate there. The rule is about the message a human reads to decide — never about the content
-of a file.
+- **Never fold it behind a control.** A terminal cannot open `<details>`/`<summary>`, a tab or a
+  "show more": only the summary line prints, and the human confirms a plan whose body never
+  reached them.
+- **Shorten instead of hiding.** Show every item that needs a decision, each with a visible id and
+  its effect. Group the rest by something the reader already thinks in (kind, verdict, ecosystem)
+  with a count and a reason, and name the command that shows them in full.
+- **This binds the message, not the files it writes.** A `<details>` block in a README, an issue,
+  a pull request or a docs page renders in a browser and is fine there.
 
 </skills-plan>
 

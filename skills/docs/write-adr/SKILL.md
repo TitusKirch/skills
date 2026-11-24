@@ -2,7 +2,7 @@
 name: write-adr
 metadata:
   summary: Writes and supersedes architecture decision records in docs/99.adr/ — short, rare, append-only.
-description: Writes and supersedes architecture decision records (ADRs) in a project's `docs/99.adr/` decision log — the TitusKirch ADR format, Nygard's Context / Decision / Consequences, append-only. Gates every record on a threshold first and turns away what is not an architecture decision — feature behaviour, rules, limits, rollout steps and implementation detail go to an editable docs page instead. Keeps each record short (aim ~300 words, over 500 only with a stated reason), never amends a landed one, and supersedes instead. Always previews a plan, writing only after confirmation. Use when the user wants to write, record or supersede an ADR or an architecture decision, asks whether a decision earns one, or says things like "write an ADR", "record this decision", "supersede ADR 12", "ADR schreiben", "Entscheidung festhalten". Offer it proactively only for an architectural change, never once per feature.
+description: Writes one new architecture decision record (ADR) in docs/99.adr/, or supersedes one, in the TitusKirch format — short, append-only, previewed before writing — and does the log's small upkeep, such as a missing index row, a broken link or a typo. For migrating a whole existing log in batches, use prune-adrs; for documenting how a feature behaves, use write-docs. Turns away what is not an architecture decision and names the docs page it belongs on instead. Use when the user wants to write, record or supersede an ADR, asks whether a decision earns one, or says things like "write an ADR", "record this decision", "supersede ADR 12", "ADR schreiben", "Entscheidung festhalten". Offer it proactively only for an architectural change, never once per feature.
 allowed-tools:
   - Read
   - Write
@@ -64,28 +64,17 @@ The TitusKirch **decision log** — `docs/99.adr/`, one architecture decision pe
 
 ## Presenting the plan
 
-Everything this skill puts in front of a human — plan, preview, candidate list, findings report —
-is read **once, in a terminal**, and answered there. So **every section of it renders on arrival**,
-with no interaction needed to reveal it: prose, lists, tables, fenced code.
+Whatever this skill puts in front of a human to decide on — a plan, a preview, a candidate list, a
+findings report — is read **once, in a terminal**, so **every part of it renders on arrival**.
 
-**Never fold content behind a control.** `<details>`/`<summary>` is a browser widget, and a
-terminal has no way to open it: the summary line prints and everything under it does not. The plan
-then arrives as headings with nothing beneath them, and the failure is silent on **both** sides —
-the skill believes it reported, and the reader sees no marker saying anything is missing, so a
-human confirms a plan whose contents never reached them. What gets folded is whatever ran long,
-which is to say the part the decision actually rested on. The same holds for anything else needing
-a click: a tab strip, an accordion, a "show more".
-
-**Length is handled by shortening, never by hiding.** This is a fixed rule of the skill, not a
-per-run judgement, so it holds however long the list runs. Trim to what the decision needs, group
-the rest by something the reader already thinks in (ecosystem, kind, verdict) with a count per
-group, or split it across sections. What is left out is left out **visibly**: say how many, why,
-and the exact command that shows the rest.
-
-**This binds what the skill presents, not what it writes.** A `<details>` block inside a README, an
-issue body, a pull request description or a docs page is rendered by a browser and is entirely
-legitimate there. The rule is about the message a human reads to decide — never about the content
-of a file.
+- **Never fold it behind a control.** A terminal cannot open `<details>`/`<summary>`, a tab or a
+  "show more": only the summary line prints, and the human confirms a plan whose body never
+  reached them.
+- **Shorten instead of hiding.** Show every item that needs a decision, each with a visible id and
+  its effect. Group the rest by something the reader already thinks in (kind, verdict, ecosystem)
+  with a count and a reason, and name the command that shows them in full.
+- **This binds the message, not the files it writes.** A `<details>` block in a README, an issue,
+  a pull request or a docs page renders in a browser and is fine there.
 
 </skills-plan>
 

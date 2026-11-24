@@ -2,7 +2,7 @@
 name: write-docs
 metadata:
   summary: Scaffolds, extends and reconciles a project's docs/ tree in the TitusKirch docs format; ADRs go to write-adr.
-description: Scaffolds, extends, and reconciles a project's `docs/` tree in the TitusKirch docs format — one stack-agnostic convention shared across all repos. The ADR log in `docs/99.adr/` belongs to write-adr — this skill names it and never writes a record. Routes by state — scaffolds when `docs/` is missing, adds to the right section when it exists, reconciles pages when asked (never rewriting prose). Always previews a plan, writing only after confirmation. Use when the user wants to write, add, scaffold, or update documentation, set up docs/, document a feature, or says things like "write the docs", "add a docs page", "document this", "reconcile the docs", "Doku schreiben", "docs aktualisieren". Also trigger proactively once a feature has cleared review and final approval — when the work is settled, not when implementation ends — to document the shipped result as pages, never as an ADR.
+description: Writes, extends and reconciles a project's docs/ pages in the TitusKirch format — scaffolds the tree when it is missing, adds a page to the right section, reconciles pages without rewriting prose, previewed before writing. For an architecture decision, use write-adr; for cleaning up the ADR log, use prune-adrs. Use when the user wants to write, add, scaffold or update documentation, document a feature, or says things like "write the docs", "add a docs page", "document this", "Doku schreiben", "docs aktualisieren". Also offer it once a feature has cleared review and final approval, to document the shipped result as pages.
 allowed-tools:
   - Read
   - Write
@@ -120,28 +120,17 @@ Desired-state, idempotent — like a `--fix` linter for the docs tree.
 
 ## Presenting the plan
 
-Everything this skill puts in front of a human — plan, preview, candidate list, findings report —
-is read **once, in a terminal**, and answered there. So **every section of it renders on arrival**,
-with no interaction needed to reveal it: prose, lists, tables, fenced code.
+Whatever this skill puts in front of a human to decide on — a plan, a preview, a candidate list, a
+findings report — is read **once, in a terminal**, so **every part of it renders on arrival**.
 
-**Never fold content behind a control.** `<details>`/`<summary>` is a browser widget, and a
-terminal has no way to open it: the summary line prints and everything under it does not. The plan
-then arrives as headings with nothing beneath them, and the failure is silent on **both** sides —
-the skill believes it reported, and the reader sees no marker saying anything is missing, so a
-human confirms a plan whose contents never reached them. What gets folded is whatever ran long,
-which is to say the part the decision actually rested on. The same holds for anything else needing
-a click: a tab strip, an accordion, a "show more".
-
-**Length is handled by shortening, never by hiding.** This is a fixed rule of the skill, not a
-per-run judgement, so it holds however long the list runs. Trim to what the decision needs, group
-the rest by something the reader already thinks in (ecosystem, kind, verdict) with a count per
-group, or split it across sections. What is left out is left out **visibly**: say how many, why,
-and the exact command that shows the rest.
-
-**This binds what the skill presents, not what it writes.** A `<details>` block inside a README, an
-issue body, a pull request description or a docs page is rendered by a browser and is entirely
-legitimate there. The rule is about the message a human reads to decide — never about the content
-of a file.
+- **Never fold it behind a control.** A terminal cannot open `<details>`/`<summary>`, a tab or a
+  "show more": only the summary line prints, and the human confirms a plan whose body never
+  reached them.
+- **Shorten instead of hiding.** Show every item that needs a decision, each with a visible id and
+  its effect. Group the rest by something the reader already thinks in (kind, verdict, ecosystem)
+  with a count and a reason, and name the command that shows them in full.
+- **This binds the message, not the files it writes.** A `<details>` block in a README, an issue,
+  a pull request or a docs page renders in a browser and is fine there.
 
 </skills-plan>
 

@@ -2,7 +2,7 @@
 name: refine-issue
 metadata:
   summary: Takes one filed issue to the point a human can approve it for the AI loop — finds the open decisions and closes them.
-description: Prepares a single filed issue for the AI work loop across GitHub (gh), GitLab (glab), Linear (MCP) or local issue files — reads it against the repo as it stands today, flags an issue already solved or duplicated, finds the decisions an agent may not make for itself (an architectural choice, a trade-off the repo inherits, a dependency, a requirement too loose to verify), and closes them with the human by driving grilling one question at a time. The answers go back into the issue body, so the loop reads a settled brief. It never applies the ai-ready label itself — it reports that the issue has earned it and leaves the approval to the human. Use when the user wants to get an issue ready for an agent, asks whether an issue is ready to hand over, wants one refined, sharpened or its open questions settled, or says things like "is issue 42 ready", "refine issue 42", "Issue 42 vorbereiten", "Issue abklären".
+description: Gets one filed issue ready for the AI work loop on GitHub, GitLab, Linear or local issue files — checks it against the repo today, flags a duplicate or an already-solved issue, finds the decisions an agent may not make alone and settles them with the human, writing the answers into the issue body. It never applies the ai-ready label itself. To create or edit issues, use issue; to answer a list of decisions a run already named, use decide. Use when the user asks whether an issue is ready to hand over, wants one refined or its open questions settled, or says things like "is issue 42 ready", "refine issue 42", "Issue 42 vorbereiten", "Issue abklären".
 allowed-tools:
   - Read
   - Grep
@@ -118,28 +118,17 @@ The skill's terminal output is a **report**. It applies no lifecycle label, clos
 
 ## Presenting the plan
 
-Everything this skill puts in front of a human — plan, preview, candidate list, findings report —
-is read **once, in a terminal**, and answered there. So **every section of it renders on arrival**,
-with no interaction needed to reveal it: prose, lists, tables, fenced code.
+Whatever this skill puts in front of a human to decide on — a plan, a preview, a candidate list, a
+findings report — is read **once, in a terminal**, so **every part of it renders on arrival**.
 
-**Never fold content behind a control.** `<details>`/`<summary>` is a browser widget, and a
-terminal has no way to open it: the summary line prints and everything under it does not. The plan
-then arrives as headings with nothing beneath them, and the failure is silent on **both** sides —
-the skill believes it reported, and the reader sees no marker saying anything is missing, so a
-human confirms a plan whose contents never reached them. What gets folded is whatever ran long,
-which is to say the part the decision actually rested on. The same holds for anything else needing
-a click: a tab strip, an accordion, a "show more".
-
-**Length is handled by shortening, never by hiding.** This is a fixed rule of the skill, not a
-per-run judgement, so it holds however long the list runs. Trim to what the decision needs, group
-the rest by something the reader already thinks in (ecosystem, kind, verdict) with a count per
-group, or split it across sections. What is left out is left out **visibly**: say how many, why,
-and the exact command that shows the rest.
-
-**This binds what the skill presents, not what it writes.** A `<details>` block inside a README, an
-issue body, a pull request description or a docs page is rendered by a browser and is entirely
-legitimate there. The rule is about the message a human reads to decide — never about the content
-of a file.
+- **Never fold it behind a control.** A terminal cannot open `<details>`/`<summary>`, a tab or a
+  "show more": only the summary line prints, and the human confirms a plan whose body never
+  reached them.
+- **Shorten instead of hiding.** Show every item that needs a decision, each with a visible id and
+  its effect. Group the rest by something the reader already thinks in (kind, verdict, ecosystem)
+  with a count and a reason, and name the command that shows them in full.
+- **This binds the message, not the files it writes.** A `<details>` block in a README, an issue,
+  a pull request or a docs page renders in a browser and is fine there.
 
 </skills-plan>
 
