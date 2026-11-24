@@ -14,7 +14,11 @@ done
 output="${1:-$(mktemp -d "${TMPDIR:-/tmp}/skills-container-audit.XXXXXX")}"
 mkdir -p "$output"
 context="$(mktemp -d "${TMPDIR:-/tmp}/skills-container-build.XXXXXX")"
-trap 'rm -rf "$context"' EXIT
+# A tag of this run's own, never a shared one: two audits running at once would otherwise
+# scan whichever renderer the other one built last. Removed again on exit.
+tag="tituskirch-skills-vhs-audit:run-$$-$(date +%s)"
+trap 'rm -rf "$context"; docker image rm "$tag" >/dev/null 2>&1 || true' EXIT
+echo "trivy: $(trivy --version 2>/dev/null | head -n 1)"
 
 python_image="$(sed -n "s/^IMAGE='\([^']*\)'$/\1/p" "$REPO/scripts/check-conformance.sh")"
 if [ -z "$python_image" ]; then
@@ -41,6 +45,10 @@ const findings = (report.Results ?? []).flatMap((result) => result.Vulnerabiliti
 const counts = {};
 for (const finding of findings) counts[finding.Severity] = (counts[finding.Severity] ?? 0) + 1;
 console.log(`${process.argv[3]}: ${findings.length} package findings, ${new Set(findings.map((f) => f.VulnerabilityID)).size} unique advisories; ${JSON.stringify(counts)}`);
+// What was scanned, not just what it was called: a tag moves, an image id and digest do not.
+const meta = report.Metadata ?? {};
+const id = [meta.ImageID, ...(meta.RepoDigests ?? [])].filter(Boolean).join(' ');
+console.log(`identity: ${id || 'unknown'} · scanned ${report.CreatedAt ?? 'at an unknown time'}`);
 console.log(`report: ${process.argv[2]}`);
 JS
   then
@@ -55,9 +63,10 @@ JS
 # Docker only after a successful build, so it cannot accidentally scan an older build.
 scan "$python_image" remote conformance
 docker build --pull --no-cache -f "$REPO/skills/docs/vhs-demo/templates/vhs.Dockerfile" \
-  -t tituskirch-skills-vhs-audit:local "$context" || {
+  --iidfile "$context/iid" -t "$tag" "$context" || {
     echo "containers:audit: renderer build failed; no previous image was scanned" >&2
     exit 2
   }
-scan tituskirch-skills-vhs-audit:local docker vhs
+echo "renderer: built $(cat "$context/iid" 2>/dev/null || echo 'with no image id') as $tag"
+scan "$tag" docker vhs
 exit "$status"
