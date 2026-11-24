@@ -48,6 +48,7 @@ These are the **prescribed** emojis for recurring sections. Use the same emoji f
 | Security policy                            |  🔐   | When linking SECURITY.md prominently.                                                               |
 | FAQ                                        |  ❓   | If included.                                                                                        |
 | Roadmap                                    |  🗺️   | If included.                                                                                        |
+| Inspiration / Credits / Prior art          |  💡   | Projects this one is modelled on or borrows from — a link and one line each.                        |
 
 **Order & merging:** Installation / Quick start lead (before Features) so a reader reaches the install command fast; an optional **Why / Problem** block sits between the hook and Installation. Installation + Quick start may be merged into one **Install & run** section — this keeps a write-readme scaffold and a `compact-readme` pass in agreement.
 
