@@ -199,7 +199,7 @@ The local `pnpm skills:link` / `:list` / `:unlink` scripts are modelled on [matt
 PRs welcome — branch off `dev` and target `dev`. Conventional Commits required (enforced via commitlint). Husky runs `oxlint` + `oxfmt` on `git commit` — primarily on markdown, since that's what skills are made of.
 
 > [!TIP]
-> Run `pnpm verify` before pushing. It is the whole gate — lint, format, artifact drift, types and tests — and CI runs `on: pull_request` only, so nothing checks a commit that reaches `dev` any other way.
+> Run `pnpm verify` before pushing. It is the whole gate — lint, format, artifact drift, types and tests — and a commit pushed straight to `dev` is checked by CI only after it landed.
 
 The full workflow is in [`CONTRIBUTING.md`](CONTRIBUTING.md), the disclosure process in [`SECURITY.md`](SECURITY.md), and why things are shaped the way they are in [`docs/99.adr/`](docs/99.adr/index.md).
 
