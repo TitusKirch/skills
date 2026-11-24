@@ -4,10 +4,6 @@ This repo publishes reusable [agent skills](https://agentskills.io/specification
 
 Every file named below is the source of truth for what it configures. Read it rather than trusting a summary here — this file carries only what no file states outright.
 
-## Agent instruction files
-
-`AGENTS.md` is the repo's one instruction file — Codex, OpenCode, Cursor, Copilot and Claude Code all read it. Claude Code reads it directly since v2.1.277, **but only while no `CLAUDE.md` exists**: a `CLAUDE.md` anywhere from the working directory up makes it read that file instead and ignore this one. So the repo keeps none, and adding one is the one way to make Claude Code stop seeing these instructions ([ADR-0049](docs/99.adr/0049-keep-one-instruction-file-agents-md.md)).
-
 ## Commands
 
 `package.json` has the full list. The ones with non-obvious behaviour:
