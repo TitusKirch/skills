@@ -1,5 +1,5 @@
 {
-  "_comment": "Development-only output-quality cases for with/without-skill evaluation via the documented skill-creator workflow. The evaluator seeds a disposable repo from files, fixes the clock, supplies registry and gate responses, and varies initial state as stated in each prompt. These are fixtures, not recorded benchmark passes. Never install or publish the fixture as a package.",
+  "_comment": "Development-only output-quality cases for with/without-skill evaluation via the documented skill-creator workflow. The evaluator seeds a disposable repo from files, fixes the clock, supplies registry and gate responses, and varies initial state as stated in each prompt. These are fixtures, not recorded benchmark passes. Never install or publish the fixture as a package. A fixture file whose name ends in `.fixture` is seeded without that suffix: the installed skills the cases simulate are stored as `SKILL.md.fixture`, so no client or installer ever reads them as skills of this repo.",
   "skill_name": "update-deps",
   "evals": [
     {
@@ -156,8 +156,8 @@
         "fixtures/mixed-monorepo/tools/bots/Cargo.toml",
         "fixtures/mixed-monorepo/tools/bots/Cargo.lock",
         "fixtures/mixed-monorepo/skills-lock.json",
-        "fixtures/mixed-monorepo/.agents/skills/reviewed-skill/SKILL.md",
-        "fixtures/mixed-monorepo/.agents/skills/edited-skill/SKILL.md",
+        "fixtures/mixed-monorepo/.agents/skills/reviewed-skill/SKILL.md.fixture",
+        "fixtures/mixed-monorepo/.agents/skills/edited-skill/SKILL.md.fixture",
         "fixtures/mixed-monorepo/registry-records.json"
       ]
     },
@@ -191,8 +191,8 @@
         "fixtures/mixed-monorepo/tools/bots/Cargo.toml",
         "fixtures/mixed-monorepo/tools/bots/Cargo.lock",
         "fixtures/mixed-monorepo/skills-lock.json",
-        "fixtures/mixed-monorepo/.agents/skills/reviewed-skill/SKILL.md",
-        "fixtures/mixed-monorepo/.agents/skills/edited-skill/SKILL.md",
+        "fixtures/mixed-monorepo/.agents/skills/reviewed-skill/SKILL.md.fixture",
+        "fixtures/mixed-monorepo/.agents/skills/edited-skill/SKILL.md.fixture",
         "fixtures/mixed-monorepo/registry-records.json"
       ]
     },
@@ -226,8 +226,8 @@
         "fixtures/mixed-monorepo/tools/bots/Cargo.toml",
         "fixtures/mixed-monorepo/tools/bots/Cargo.lock",
         "fixtures/mixed-monorepo/skills-lock.json",
-        "fixtures/mixed-monorepo/.agents/skills/reviewed-skill/SKILL.md",
-        "fixtures/mixed-monorepo/.agents/skills/edited-skill/SKILL.md",
+        "fixtures/mixed-monorepo/.agents/skills/reviewed-skill/SKILL.md.fixture",
+        "fixtures/mixed-monorepo/.agents/skills/edited-skill/SKILL.md.fixture",
         "fixtures/mixed-monorepo/registry-records.json"
       ]
     },
@@ -260,8 +260,8 @@
         "fixtures/mixed-monorepo/tools/bots/Cargo.toml",
         "fixtures/mixed-monorepo/tools/bots/Cargo.lock",
         "fixtures/mixed-monorepo/skills-lock.json",
-        "fixtures/mixed-monorepo/.agents/skills/reviewed-skill/SKILL.md",
-        "fixtures/mixed-monorepo/.agents/skills/edited-skill/SKILL.md",
+        "fixtures/mixed-monorepo/.agents/skills/reviewed-skill/SKILL.md.fixture",
+        "fixtures/mixed-monorepo/.agents/skills/edited-skill/SKILL.md.fixture",
         "fixtures/mixed-monorepo/registry-records.json"
       ]
     }
