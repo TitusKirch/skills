@@ -79,8 +79,9 @@ describe('the intended decisions, per client', () => {
   const claudeAllows = (command: string) =>
     allow.some((p) => command === p || command.startsWith(`${p} `));
 
-  test('Claude pre-approves a read and the formatter, and denies a force-push', () => {
+  test('Claude pre-approves a read, the gate and the formatter, and denies a force-push', () => {
     assert.ok(claudeAllows('git status'));
+    assert.ok(claudeAllows('pnpm verify'));
     assert.ok(claudeAllows('pnpm check:fix'));
     assert.ok(claudeDenies('git push --force origin dev'));
   });

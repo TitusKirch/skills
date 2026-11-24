@@ -17,7 +17,12 @@
       "Bash(pnpm format)",
       "Bash(pnpm format:fix)",
       "Bash(pnpm check)",
-      "Bash(pnpm check:fix)"
+      "Bash(pnpm check:fix)",
+      "Bash(pnpm verify)",
+      "Bash(pnpm test)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm skills:check)",
+      "Bash(pnpm skills:sync)"
     ],
     "deny": [
       "Bash(git push --force:*)",
