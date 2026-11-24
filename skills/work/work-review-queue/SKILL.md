@@ -27,11 +27,12 @@ Drain the repo's queue of issues **awaiting review** — every issue in `reviewR
 
 - **`work-review` is required, and checked first.** This loop reviews nothing itself — every issue is handed to it — so if it is not installed, **stop here, before resolving anything and before taking the lock**: name the missing skill and report that no issue was touched. Checking up front is the whole point; a required call first noticed mid-drain has already leased issues into `reviewing` that the next run must reclaim. It is also what lets this skill **name** the three contracts its worker's REFERENCE already states — **Reading the config**, **The single-flight lock** and **The forge and its host** — rather than carry a second copy of each: no path reaches any of them with the worker absent, because this check runs before all of them.
 - Config + tracker as in `work-review` (the `work.*` section, where `work.review.maxRounds` governs escalation; its REFERENCE's **Config**, read by the rules its **Reading the config** states). Resolve it with this skill's own [`templates/resolve-config.sh`](templates/resolve-config.sh) — the same copy every skill ships — and apply those rules unchanged. Where the tracker is a forge (`github`, `gitlab`), the **host** it talks to is resolved per repo rather than assumed — **The forge and its host** in `work-review`'s REFERENCE.
+- **Decide the mode before anything else changes.** A plan-only request ("just show me", "dry run", "nur den Plan", "don't run") makes this a **preview** run, and a preview writes **nothing**: it takes **no lock**, and the reconcile and the queue are **computed** from what the tracker returns, then shown. Every transition the reconcile would make is listed as planned, never applied — a preview with zero planned changes still applies zero. Only a run that is not a preview takes the locks below, and it **re-reads** the state it acts on, because the preview's reading may be stale by then.
 - Acquire the **review single-flight lock** — `mkdir` the lock at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/review.lock` (atomic create-or-fail), a **separate** path from the implement loop's `…/work/implement.lock`, so an implement-drain and a review-drain run at the same time in the same checkout. It guards **drains only**: a direct `work-review` never takes it, so agents reviewing single issues keep running beside this drain, and the **issue** lock each worker takes keeps them off each other's issue. On adopting this path, first `rm -f` the old loose `tituskirch-work-review-queue.lock` (see the migration in the spec) so the two cannot coexist. The path, the `mkdir` primitive, the **heartbeat-timestamp** stale rule, the migration and the single-checkout boundary are specified in **The single-flight lock** in `work-review`'s REFERENCE.
 
 ### 2. Reconcile — close out out-of-band actions, reclaim stale review leases
 
-Before building the queue, two idempotent sweeps:
+**In a preview, both sweeps report what they would do and write nothing** — no `done`, no `blocked`, no comment, no reclaimed lease. Before building the queue, two idempotent sweeps:
 
 **(a) Out-of-band human actions on the PR** — for every issue in `reviewRequested`, check whether a human acted on its PR out-of-band:
 
@@ -49,7 +50,7 @@ The **selection query** (`work-review`'s REFERENCE) → every issue in `reviewRe
 
 ### 4. Announce the batch — then drain
 
-Issues in `reviewRequested` were pushed by the implement loop **for exactly this** — so the review drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, then drain (unattended only in a runner that cannot ask questions). **Plan-only triggers** ("just show me", "dry run", "nur den Plan", "don't run") still stop after the plan.
+Issues in `reviewRequested` were pushed by the implement loop **for exactly this** — so the review drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, then drain (unattended only in a runner that cannot ask questions). **A preview stops here** — after the plan, with no lock taken and nothing written (step 1).
 
 ### 5. Drain
 
