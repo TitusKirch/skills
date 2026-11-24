@@ -22,10 +22,12 @@ done | sort -n > "$tmp/lengths"
 | records arriving with a feature | the commit that added each record — `git log --diff-filter=A --format='%h %s' -- <record>` — typed `feat` or `fix` |
 
 ```sh
-git log --follow --diff-filter=A --reverse --format=%as -- "$record" | head -n 1   # the day a record landed
+git log --follow --diff-filter=A --format=%as -- "$record" | tail -n 1   # the day a record entered git
 ```
 
-**A chain is measured in days.** Records that supersede one another within a few days are a decision still being worked out when it landed, and the classic `merge`. A supersede months later is a reversal, and both records stay.
+**Never `--reverse` with `--follow`.** Git applies the rename tracking after the reversal, so on a renamed file the pair prints nothing and exits `0` — an empty date that reads as success. `tail -n 1` takes the oldest addition instead. It is still only the day the file entered git, not proof of when the decision fell: where the record's own text, an acceptance or a release dates it otherwise, that wins, and the plan names which source it used.
+
+**A chain is measured in days — as a hint, not a rule.** Records that supersede one another within a few days are usually a decision still being worked out when it landed, and the classic `merge`. A supersede months later is usually a reversal, and both records stay. A log imported or committed in bulk carries no such signal: there the content decides whether the first decision was ever in force.
 
 ### Instruction files
 
@@ -57,26 +59,28 @@ One **batch map** per batch, tab-separated, one record per line, `#` comments an
 0412	drop
 ```
 
-| Action                    | `target`                                                                                                                                                                             | `label`                                  |
-| :------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------- |
-| `keep` / `trim` / `split` | —                                                                                                                                                                                    | —                                        |
-| `merge`                   | the surviving record's 4-digit id — a record kept or trimmed, never one removed in any batch                                                                                         | —                                        |
-| `move`                    | the page's link target: a repo path — a docs page or a component's `DESIGN.md` (written relative to each linking file), or the site path the repo already links with (`/concepts/…`) | the text that replaces a bare `ADR-NNNN` |
-| `drop`                    | —                                                                                                                                                                                    | —                                        |
+| Action          | `target`                                                                                                                                                                             | `label`                                  |
+| :-------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------- |
+| `keep` / `trim` | —                                                                                                                                                                                    | —                                        |
+| `split`         | optional: the ids of the records split off it, comma-separated — `--reworded` checks each against this record's committed text                                                       | —                                        |
+| `merge`         | the surviving record's id — a record kept or trimmed, never one removed in any batch                                                                                                 | —                                        |
+| `move`          | the page's link target: a repo path — a docs page or a component's `DESIGN.md` (written relative to each linking file), or the site path the repo already links with (`/concepts/…`) | the text that replaces a bare `ADR-NNNN` |
+| `drop`          | —                                                                                                                                                                                    | —                                        |
 
 **Use the link form the repo already uses.** A rendered site that links records as `/adr/NNNN-slug` links pages the same way, so its `move` targets are site paths; a portable tree links files, so its targets are `docs/` paths. Mixing them leaves a tree that half-renders.
 
 **The label reads in a sentence.** It replaces `ADR-0609` wherever it stands — a code comment, a link text, a table cell — so a noun phrase (`the dragon egg page`) works where a path would not.
 
-**Where batch maps live** — under the git common dir, beside the other TitusKirch caches, so they survive across sessions and are never committed:
+**Where batch maps live** — under the git common dir, beside the other TitusKirch caches, so they survive across sessions and are never committed. Each batch gets a directory of its own, holding the map, the drafts the plan measured, and a `state` file: the commit the batch started from, the confirmed word counts, and the results of its last dry run and check — so a session that picks the migration up later starts from exactly that state:
 
 ```sh
 maps="$(git rev-parse --git-common-dir)/tituskirch-skills/prune-adrs"
-mkdir -p "$maps"
-printf '%s\n' "$maps/batch-01.tsv"
+mkdir -p "$maps/batch-01/drafts"
+printf 'base\t%s\n' "$(git rev-parse HEAD)" > "$maps/batch-01/state"
+printf '%s\n' "$maps/batch-01/map.tsv"
 ```
 
-Delete the directory once the migration's final check is clean.
+**The common dir is per clone; the protocol is not.** Another clone, or another machine, sees none of these files. What it sees is the committed **protocol**, which `--apply` writes ([the protocol](#the-protocol)) — so a batch counts as handed over only once a human has committed it. Delete the directory once the migration's final check is clean; the protocol has its own, later end.
 
 ## Removed, not moved
 
@@ -88,41 +92,58 @@ Most borrowed material in an overgrown record is borrowed **from a file that sti
 
 ### Measured, not estimated
 
-A plan's word counts are confirmed as the batch's result, so they have to be the result. Draft each `trim` and `split` before planning — in the working tree, which the clean-tree precondition makes free to discard — and count the body with the same recipe the inventory uses, before and after. An estimate made from a reading drifts in one direction: it assumes more of a record is borrowed than turns out to be, because what is left after the borrowed material goes is reasoning, and reasoning is what a trim never cuts. A record still over 500 after an honest trim says so in the plan, with the reason `write-adr` asks for.
+A plan's word counts are confirmed as the batch's result, so they have to be the result. Draft each `trim` and `split` before planning — as a copy in the batch's `drafts/` directory, never in the working tree, so a plan the human declines or stops at leaves the tree as it was — and count the body with the same recipe the inventory uses, before and after. The confirmed draft is what the apply step copies into place.
+An estimate made from a reading drifts in one direction: it assumes more of a record is borrowed than turns out to be, because what is left after the borrowed material goes is reasoning, and reasoning is what a trim never cuts. A record still over 500 after an honest trim says so in the plan, with the reason `write-adr` asks for.
 
 ## The script
 
-[`templates/rewrite-adr-refs.sh`](templates/rewrite-adr-refs.sh) — POSIX `sh`, `sed -E` and `awk`, run from anywhere inside the repo:
+[`templates/rewrite-adr-refs.sh`](templates/rewrite-adr-refs.sh) — POSIX `sh`, `sed` and `awk`, run under `LC_ALL=C` from anywhere inside the repo. Its header is the full contract; this is how a batch uses it:
 
 ```sh
 # Fill in this skill's own directory, as for the resolver.
 skill=/absolute/path/to/this/skill
-sh "$skill/templates/rewrite-adr-refs.sh" --diff "$maps/batch-01.tsv"   # dry run, with diffs
-sh "$skill/templates/rewrite-adr-refs.sh" --apply "$maps/batch-01.tsv"  # rewrite, remove, check
-sh "$skill/templates/rewrite-adr-refs.sh" --cites "$maps/batch-01.tsv"  # citations of trimmed records, to read
-sh "$skill/templates/rewrite-adr-refs.sh" --reworded "$maps/batch-01.tsv"  # trims that rewrote instead of removed
-cat "$maps"/batch-*.tsv > "$maps/all.tsv"
-sh "$skill/templates/rewrite-adr-refs.sh" --check "$maps/all.tsv"       # the closing check
+b="$maps/batch-01/map.tsv"
+sh "$skill/templates/rewrite-adr-refs.sh" --diff "$b"       # dry run, with diffs
+sh "$skill/templates/rewrite-adr-refs.sh" --apply "$b"      # refuse or rewrite, remove, protocol, check
+sh "$skill/templates/rewrite-adr-refs.sh" --reworded "$b"   # sentences the batch rewrote instead of moved
+sh "$skill/templates/rewrite-adr-refs.sh" --cites "$b"      # citations of trimmed records, to read
+cat "$maps"/batch-*/map.tsv > "$maps/all.tsv"
+sh "$skill/templates/rewrite-adr-refs.sh" --check "$maps/all.tsv"   # the closing check
+sh "$skill/templates/rewrite-adr-refs.sh" --renumber                # then: dry run of the renumbering
+sh "$skill/templates/rewrite-adr-refs.sh" --renumber --apply        # rename, rewrite, protocol, check
 ```
 
-| Mode         | Does                                                                                                                                                                                               |
-| :----------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| (default)    | dry run — lists every file it would change and every record it would remove; touches nothing                                                                                                       |
-| `--diff`     | with a dry run, a unified diff per changed file                                                                                                                                                    |
-| `--apply`    | removes the removed records' index rows, rewrites every reference, deletes the records in every locale tree, then checks                                                                           |
-| `--check`    | only reports — every line still citing a removed id, every survivor that now cites itself, and every link whose `#anchor` a surviving record no longer has                                         |
-| `--cites`    | only lists — every line citing a `trim` or `split` record, outside that record, for a human to read; always exits `0`                                                                              |
-| `--reworded` | only reports — every sentence of a `trim` or `split` record that is not a pure deletion from the committed version (`--base=REV` once the trim is committed); a sentence carrying a link is exempt |
+| Mode         | Does                                                                                                                                                                                     |
+| :----------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| (default)    | dry run — every file it would change, every record it would remove, and every reason `--apply` would refuse; touches nothing                                                             |
+| `--diff`     | with a dry run, a unified diff per changed file                                                                                                                                          |
+| `--apply`    | refuses first (below); otherwise rewrites every reference, removes the index rows and the records in every locale tree, appends the batch to the protocol, then checks                   |
+| `--check`    | only reports — every reference to a removed id, every link into the log whose record, slug, locale or `#anchor` does not exist, a removed record still present, a survivor citing itself |
+| `--cites`    | only lists — every line citing a `trim` or `split` record, outside that record, for a human to read; always exits `0`                                                                    |
+| `--reworded` | only reports — every sentence a batch left on a record or target page that is not a deletion from committed text (`--base=REV`, which must resolve, once the batch is committed)         |
+| `--renumber` | after the last batch — gives every record its rank as id, renames the files in every locale tree, rewrites every reference in one pass; a dry run unless `--apply`, which also checks    |
 
-| Exit | Means                                                                                                                             |
-| :--: | :-------------------------------------------------------------------------------------------------------------------------------- |
-| `0`  | done, or clean                                                                                                                    |
-| `1`  | references to removed records remain, a survivor cites itself, an anchor is dead, or a sentence was reworded — named line by line |
-| `2`  | invalid usage or map — nothing was written                                                                                        |
+| Option                                | For                                                                                                                                  |
+| :------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------- |
+| `--log=DIR`, `--width=N`              | a log outside `docs/99.adr`, or ids that are not four digits (read from the file names by default)                                   |
+| `--route=PATH`                        | the site route the log renders under, default `/adr/`; `/<locale>/adr/…` resolves into the locale tree                               |
+| `--repo-url=PREFIX`, `--site-url=URL` | absolute URLs that are this repo's files or this site's pages; the origin remote's GitHub or GitLab blob URLs are recognised unasked |
+| `--batch=NAME`                        | the batch name in the protocol, default the map's file name                                                                          |
+| `--fragments=drop`                    | lets a move collapse links carrying a `#fragment` onto the target page's top                                                         |
 
-**What it rewrites, exactly.** In every text file git does not ignore — untracked ones included, because the pages a batch writes are still new when it runs — except changelogs: a bare `ADR-NNNN` (matched whole, so `ADR-00031` and `ADR-0030` are never touched for `0003`); a link whose target contains `adr/NNNN-…` (site paths and file paths alike); and a relative `NNNN-….md` link inside a `99.adr/` directory. A merge keeps a link's form and anchor and swaps the record; a move replaces the link target and turns the bare id into the label.
+| Exit | Means                                                                                                                                                         |
+| :--: | :------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `0`  | done, or clean                                                                                                                                                |
+| `1`  | a finding, named line by line: a reference or dead link remains, a survivor cites itself, a sentence was reworded — or an apply refused, with nothing written |
+| `2`  | invalid usage or map, or a search that failed — nothing was written                                                                                           |
 
-**What it validates before writing anything** — 4-digit ids listed once, a record for each, a known action, a merge target that exists and is not itself removed, a `move` page that exists when it is a repo path, and a label on every `move`. Any failure exits `2` with the tree untouched.
+**What counts as a reference — resolved, never pattern-matched.** Every text file git does not ignore is read — untracked ones included, because the pages a batch writes are still new when it runs — except changelogs and the protocol. In it, a **bare `ADR-NNNN`** (matched whole, so `ADR-00031` and `ADR-0030` are never touched for `0003`), and every **link target** — inline, reference-style, `href="…"`, `<…>` autolinks, and a path written as text in code or prose that names the log or its route. Each target is **resolved against the file it sits in** — `./` and `../` normalised, a leading `/` read as the site route or else the repo root, a known URL prefix stripped — and counts only when it lands on a record of this log, in the default or a locale tree. So `guide/0002-jobs.md` is never mistaken for record 0002, and `https://example.org/adr/0002-x` is left alone and named as a note. A merge keeps a link's form and anchor and swaps the record; a move replaces the target, written relative to each linking file, and turns the bare id into the label.
+
+**What `--apply` refuses before writing anything.** A `drop` that something still references; a reference in a form the script cannot rewrite — a wiki link `[[0003-x]]`; a move that would collapse a link's `#fragment` onto a page top, unless `--fragments=drop` says that is meant. The dry run shows the same list, so nothing reaches the tree that would need undoing. A rerun after a partial apply is allowed: a removed record that is already gone is accepted when HEAD still has it, never when the log never did.
+
+**What the check resolves.** In documents — Markdown, MDX, HTML, reStructuredText, AsciiDoc — every link into the log must land on a record that exists **in the locale it names**, under the slug it names, and its `#anchor` must be a heading of **that** file: a GitHub-style slug, a `{#id}` heading attribute or an `id="…"` anchor. A renderer whose slugs differ needs its own build as the second check. In code and as bare paths only a removed id is a finding, since a fixture or an example may name a record that never existed.
+
+**What it validates before writing anything** — ids of the log's width, listed once, a record for each that stays, a known action, a merge target that exists and is not itself removed, a split-off record that exists, a `move` page that exists when it is a repo path, and a label on every `move`. Any failure exits `2` with the tree untouched. A file name holding a newline or a tab is refused the same way, because no line-based tool can carry it safely.
 
 **What it deliberately does not do.** It never decides an action, never writes a page, never edits a record's prose beyond the reference tokens, and never touches a changelog. A survivor whose `Supersedes ADR-0598` line now reads `Supersedes ADR-0601` on record 0601 is reported, not repaired: whether the line goes or says something else is a reading, and the script makes none.
 
@@ -130,9 +151,35 @@ sh "$skill/templates/rewrite-adr-refs.sh" --check "$maps/all.tsv"       # the cl
 
 **Citations of a trimmed record.** A `trim` or `split` keeps its id, so `--check` has nothing to report — yet a comment, a page or another record may cite it **for a sentence that just left**, or link an anchor (`#amendments`) whose heading is gone. Whether a citation still holds is a reading, so the script does not judge it; it lists every candidate, grouped by id, so the reading is complete. For each line: the cited sentence is still in the record → leave it; it moved to an owning file or a page → re-point the citation there; it went to a `split`'s second record → cite that record. Changes are proposed and applied on confirmation, in the batch's diff.
 
-**Trims are checked for rewording.** "Sentences move, never get rewritten" is the rule a trim is most likely to break unnoticed — a stale count updated, two clauses joined around a new link — and across a batch drafted by several agents nobody can hold it by reading. `--reworded` makes it mechanical: each sentence left in a trimmed record must be its committed sentence with words removed, compared case-insensitively so a sentence may start with a capital where a clause went. The one sentence a trim adds, the link to the owning file, is exempt by carrying a link. A frozen count that has since gone stale stays, in the past tense the record was written in; it is history, not a claim about today.
+### Sentences move, never get rewritten
 
-**Run in batches, check once at the end.** Each `--apply` takes only its own batch map, because the records an earlier batch removed are gone and would fail validation. The closing `--check` takes all of them at once.
+The rule is literal provenance: every sentence a batch leaves behind is a committed sentence with words removed. It is the rule a batch is most likely to break unnoticed — a stale count updated, two clauses joined around a new link — and across a batch drafted by several agents nobody can hold it by reading. `--reworded` makes it mechanical. It compares every **trimmed** record, every record **split off** one (named in the map), every **merge target** and every **relative move target** against the committed text of the page and of the records that fed it, word sequence by word sequence, case-insensitively, with the map's own token rewrites applied first — a moved record's `ADR-NNNN` reads as its label.
+
+**The named exceptions, and nothing else:**
+
+- **The pointer lines** — `Supersedes …`, `Partly supersedes …`, `> **Superseded by** …`, `> **Partly superseded by** …`.
+- **The head of a page the batch created** — its headings and the one paragraph under its H1, which a new record or a `DESIGN.md` needs and no source has.
+- **A sentence carrying a link** is not refused but **listed**, as the pointer a trim leaves where removed material went. Read each one: a link added to new prose is still new prose.
+
+A deletion that **dropped a negation** — `not`, `never`, `only`, `without` … from the sentence it came from — is listed too. A word-sequence check cannot see meaning, and that is the one deletion most likely to reverse it. A frozen count that has since gone stale stays, in the past tense the record was written in; it is history, not a claim about today.
+
+### The protocol
+
+`--apply` appends every row of its map to `<log>/migration.tsv`, with the batch's name and the commit it was applied on, and `--renumber --apply` appends every old id with its new one. It is the one place another clone, a reviewer or a reader holding an old link can look an old id up — **there are no redirects**, and a commit message, an issue or another repository that names an old id can only be resolved there.
+
+```text
+# batch	base	id	action	target	label
+batch-01	2e162f3a91c0	0032	move	skills/repo/merge-deps/DESIGN.md	the merge-deps design notes
+renumber	9b1c04d2e7aa	0039	renumber	0032
+```
+
+It is never scanned and never rewritten, so it keeps naming the old ids it maps. It stays committed until **every reviewer** has signed the migration off — every batch checked, the renumbering checked, nothing left open — and is then deleted in a commit of its own, on explicit confirmation. Nothing in the script deletes it.
+
+### Renumbering
+
+Ids stay stable through every batch, because maps, citations and reviews all name them. **After the last batch**, `--renumber` closes the gaps in one pass: each record of the default log gets its rank as id, the same id in every locale tree, and every reference the batch rules recognise moves with it — each one replaced once from the full old-to-new table, so `0004 → 0003` and `0003 → 0002` never chain into `0004 → 0002`. Changelogs and the protocol keep the old numbers; the protocol maps them. After writing, it checks every link into the log and every record's H1 against its file name.
+
+**Run in batches, check once at the end.** Each `--apply` takes only its own batch map. The closing `--check` takes all of them at once and must be clean before the renumbering; after it, the old maps no longer describe the log, and the protocol is what remains.
 
 ## Import — a decision log written elsewhere
 
@@ -164,22 +211,23 @@ Admission has **four** outcomes, all of them proposed in the same plan:
 
 **Borderline is the human's call.** Name it in the plan and let them answer; never resolve it by importing "just in case", since that is the direction with no way back. Nothing is deleted either way — a record the import declines stays exactly where it is. The single deletion this job permits belongs to a confirmed [split](#splitting-a-record-on-entry), never to a record the threshold turned down.
 
-| The import supplies    | From                                                                                                                                               |
-| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Path + name            | `docs/99.adr/NNNN-title.md`, `NNNN` the next free id — one per admitted file, in the source directory's own order                                  |
-| `title`/`description`  | proposed from the H1 / first paragraph, confirmed like any other missing required field                                                            |
-| `status`               | proposed (`accepted` for a decision evidently in force, `proposed` while any required section is empty), confirmed — never silently defaulted      |
-| `date`                 | the file's **first commit** is the decision date: `git log --follow --diff-filter=A --reverse --format=%as -- <file>`, first line. No guess needed |
-| Body                   | the existing text **re-homed** under the required `Context` / `Decision` / `Consequences` H2s                                                      |
-| The decision log's row | `99.adr/index.md`, in the same change                                                                                                              |
+| The import supplies    | From                                                                                                                                                                                             |
+| :--------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Path + name            | `docs/99.adr/NNNN-title.md`, `NNNN` allocated by `write-adr`'s **Allocating an id** rule — one per admitted file, reserved together in the plan, in the source directory's own order             |
+| `title`/`description`  | proposed from the H1 / first paragraph, confirmed like any other missing required field                                                                                                          |
+| `status`               | proposed (`accepted` for a decision evidently in force, `proposed` while any required section is empty), confirmed — never silently defaulted                                                    |
+| `date`                 | the file's **first commit**: `git log --follow --diff-filter=A --format=%as -- <file> \| tail -n 1` — never with `--reverse` ([why](#inventory)), and overruled by a date the file itself states |
+| Body                   | the existing text **re-homed** under the required `Context` / `Decision` / `Consequences` H2s                                                                                                    |
+| The decision log's row | `99.adr/index.md`, in the same change                                                                                                                                                            |
 
-- **`date` is the decision's date, not the import's.** The field records when the `status` last changed, and a record entering the log unchanged last changed when it was written — so the first commit, never the day it moved.
+- **`date` is the decision's date, not the import's** — the first commit stands in for it, and the plan says so. The field records when the `status` last changed, and a record entering the log unchanged last changed when it was written — so the first commit, never the day it moved.
 - **`--follow` is not optional here.** `git log` stops at a rename without it, and a foreign ADR directory has usually been moved at least once already — that is often how it ended up where the import found it. Drop the flag and the one value this section claims needs no guess quietly becomes the date of a move.
 - **Untracked, or no commit for the file** → git has no answer; fall back to a date the file itself states, else propose today's and say which of the two it is.
 - **The title states the decision, not the source's topic.** A foreign H1 is characteristically a noun phrase (`ADR-0003: Caching strategy`); the imported filename and `title` restate it in this log's shape — the naming rule of `write-adr`'s file schema applies to an adopted record exactly as to a written one. Entry is the **only** chance to get it right: nothing may rename a record once it is in `99.adr/`.
 - **Re-homing is not rewriting.** The sentences are the author's and stay the author's — they move under the H2 they belong to, and a section the source never wrote is left empty rather than invented. Everything the import cannot place goes in the plan for a human to place — and an empty required section decides the `status` the record enters at (next bullet).
-- **A record never lands `accepted` with a required section empty.** Immutability starts the moment the file enters `99.adr/`, so an empty `Context` / `Decision` / `Consequences` admitted at `accepted` is a hole append-only forbids ever filling. Either the human fills it **in the same plan, before the change is applied**, or the record lands `status: proposed` — the honest description of an incomplete one, and the status that leaves it free to be completed and accepted later. Empty **and** accepted is the one combination the import must not produce.
+- **A record never lands `accepted` with a required section empty.** Immutability starts the moment the file enters `99.adr/`, so an empty `Context` / `Decision` / `Consequences` admitted at `accepted` is a hole append-only forbids ever filling. Either the human fills it **in the same plan, before the change is applied**, or the record lands `status: proposed` — the honest description of an incomplete one, and the status that leaves it free to be completed and accepted later, by the transition `write-adr` defines ([status transitions](https://github.com/TitusKirch/skills/blob/main/skills/docs/write-adr/REFERENCE.md#status-transitions)). Empty **and** accepted is the one combination the import must not produce.
 - **Assigning an id does not break append-only.** The file was never accepted _in this log_, so the id is a **first assignment**, not a renumbering, and shaping it on entry is not an edit to an accepted record. From the moment it lands in `99.adr/` it is immutable like every other ADR.
+- **References to the source files move by script too.** Once the admitted records have landed, run the script against the **source** directory — `--log=docs/adr`, its own `--width` — with one `move` row per admitted file: the new record's path as target, its new `ADR-NNNN` as label. That rewrites every link into the old file and removes it, as for any batch. **A bare `ADR-NNNN` is ambiguous** where the two logs' numbers overlap: the script cannot tell which log a token means, so the dry run's diff is read line by line, and a token meaning the other log is fixed by hand first. Where the repo had no log of its own before, nothing overlaps.
 - **Idempotent** — an admitted record is gone from the source directory, so a second run has nothing left to propose for it; a split one is gone too, because both halves have landed. What the threshold declined is still there and is **reported** again, never re-proposed as an import; a directory emptied of everything admitted disappears from the job entirely.
 
 ### Splitting a record on entry
