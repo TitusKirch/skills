@@ -1,0 +1,27 @@
+{
+  "_comment": "Development-only output-quality cases for atomic-commit. The evaluator seeds a disposable git repo in the stated state; grading reads the resulting commits and the index byte for byte, not the prose. Run with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "atomic-commit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Commit this session's work. (State: in src/config.ts a developer has deliberately staged one hunk raising a timeout from 30 to 60. This session edited a different hunk of the same file, adding a retry flag, and created src/retry.ts. Nothing else changed.)",
+      "expected_output": "The plan sorts the changes: this session's retry hunk and src/retry.ts, and the pre-staged timeout hunk named as someone else's and left alone. On confirmation the commit holds the session's changes only, and afterwards the timeout hunk is still staged with an identical patch.",
+      "expectations": [
+        "The plan names the timeout hunk as already staged by someone else and does not put it into a commit.",
+        "The resulting commit contains the retry hunk and src/retry.ts, and not the timeout change.",
+        "After the run, `git diff --cached` shows exactly the timeout hunk, byte for byte as before.",
+        "No `git reset` clears the developer's staging."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Wie würdest du das committen? Nicht committen. (State: the same repo as case 1.)",
+      "expected_output": "The plan and the exact commands, and nothing executed: tree and index are unchanged.",
+      "expectations": [
+        "No commit is created.",
+        "The working tree and the index are byte-identical before and after.",
+        "The printed commands would leave the pre-staged hunk staged."
+      ]
+    }
+  ]
+}

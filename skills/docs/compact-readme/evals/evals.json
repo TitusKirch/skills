@@ -1,0 +1,16 @@
+{
+  "_comment": "Development-only output-quality cases for compact-readme. Each prompt carries the README state it needs. Grading checks that no information is lost: every fact of the input README is still present in the output, visible or folded. Run with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "compact-readme",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Compact this README; the feature list is way too long. (State: README.md has a 40-item feature list. Twelve of the items — e.g. the supported database drivers and the offline mode — are stated nowhere else in the repo: not in docs/, not in other READMEs.)",
+      "expected_output": "The feature list is folded into a <details> block or moved to a docs page, never dropped; the twelve items that exist only here survive, and the visible line count roughly halves.",
+      "expectations": [
+        "All 40 feature items are still present in the output, visible or inside <details> (or on a docs page the run creates).",
+        "The run does not offer or perform dropping the feature list.",
+        "The visible (un-collapsed) line count is clearly lower than before."
+      ]
+    }
+  ]
+}

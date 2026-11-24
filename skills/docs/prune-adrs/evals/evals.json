@@ -63,6 +63,17 @@
         "It explains that the protocol is the only lookup for old ids, since there are no redirects.",
         "It neither commits nor pushes."
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "Continue the ADR migration. (State: batch 2's directory under the git common dir holds map.tsv and a state file naming base commit abc123. The previous session ran --apply and then crashed: the tree is dirty, docs/99.adr/migration.tsv already has batch-02's rows, two of the batch's three moved records are deleted and one is still present.)",
+      "expected_output": "The run reads the batch state instead of starting over, reruns the same map with --apply (accepted, since the missing records existed at HEAD), checks until clean, and does not reclassify or re-plan the batch. It reports what the crash left and leaves committing to the human.",
+      "expectations": [
+        "It reads batch-02's map and state rather than drafting a new batch.",
+        "It reruns --apply on the same map and then --check, and reports both results.",
+        "It does not delete or rewrite migration.tsv.",
+        "It neither commits nor pushes."
+      ]
     }
   ]
 }
