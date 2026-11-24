@@ -5,8 +5,8 @@
 // checks an exit code goes red on `disallowed-tools`, a field ADR-0007 records as
 // deliberate.
 //
-// Two copies of one list is exactly the drift shape ci-gate.test.ts and
-// agent-instructions.test.ts exist for. This is the third, and it pins both halves of
+// Two copies of one list is exactly the drift shape ci-gate.test.ts exists for. This is
+// the second, and it pins both halves of
 // each row: the field *and* the clients that define it. The clients are not decoration —
 // `paths` and `disable-model-invocation` are Cursor's as well as Claude Code's, and a
 // finding that calls them Claude-only tells an author they lost a portability they

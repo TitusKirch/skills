@@ -9,7 +9,7 @@ date: '2026-08-03'
 
 ## Context
 
-CI here runs `on: pull_request` only. What that leaves unchecked is [CI gotchas](https://github.com/TitusKirch/skills/blob/main/CLAUDE.md#ci-gotchas) in `CLAUDE.md`.
+CI here runs `on: pull_request` only. What that leaves unchecked is [CI gotchas](https://github.com/TitusKirch/skills/blob/main/AGENTS.md#ci-gotchas) in `AGENTS.md`.
 
 The AI work loop pushes on **every round**, not once per issue: `work-implement` implements, pushes and hands the issue to the review loop; a `changes requested` verdict sends it back and the next round pushes again. Each of those pushes opened or updated a pull request, and each therefore spent a full CI run on an implementation nobody had judged yet.
 

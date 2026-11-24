@@ -8,14 +8,14 @@ A decision earns an ADR when it is architectural, constrains work that comes lat
 | ADR                                                                             | Decision                                                    | Status     | Date       |
 | :------------------------------------------------------------------------------ | :---------------------------------------------------------- | :--------- | :--------- |
 | [ADR-0001](/adr/0001-split-the-work-loop-in-two)                                | Split the AI work loop into implement and review            | accepted   | 2026-07-22 |
-| [ADR-0002](/adr/0002-keep-agents-md-byte-identical)                             | Keep CLAUDE.md and AGENTS.md byte-identical                 | accepted   | 2026-07-23 |
+| [ADR-0002](/adr/0002-keep-agents-md-byte-identical)                             | Keep CLAUDE.md and AGENTS.md byte-identical                 | superseded | 2026-11-24 |
 | [ADR-0003](/adr/0003-mirror-shared-content-into-each-skill)                     | Mirror shared content into each skill instead of linking    | accepted   | 2026-07-23 |
 | [ADR-0004](/adr/0004-derive-author-authority-from-a-criterion)                  | Derive author authority from a criterion, not a name list   | accepted   | 2026-07-25 |
 | [ADR-0005](/adr/0005-keep-allowed-tools-as-pre-approval)                        | Keep allowed-tools, as pre-approval rather than restriction | accepted   | 2026-07-25 |
 | [ADR-0006](/adr/0006-move-summary-into-metadata)                                | Move summary into metadata.summary                          | accepted   | 2026-07-25 |
 | [ADR-0007](/adr/0007-permit-claude-code-frontmatter-extensions)                 | Permit Claude Code frontmatter extensions, at a stated cost | accepted   | 2026-07-25 |
 | [ADR-0008](/adr/0008-keep-eval-fixtures-out-of-the-package)                     | Keep eval fixtures in the skill folder, out of the package  | accepted   | 2026-07-25 |
-| [ADR-0009](/adr/0009-enforce-the-agents-md-mirror-in-the-gate)                  | Enforce the AGENTS.md mirror in the gate                    | accepted   | 2026-07-27 |
+| [ADR-0009](/adr/0009-enforce-the-agents-md-mirror-in-the-gate)                  | Enforce the AGENTS.md mirror in the gate                    | superseded | 2026-11-24 |
 | [ADR-0010](/adr/0010-choose-marker-syntax-by-its-reader)                        | Choose marker syntax by its reader                          | accepted   | 2026-07-27 |
 | [ADR-0011](/adr/0011-mirror-the-check-command-contract)                         | Mirror the check-command contract                           | accepted   | 2026-07-27 |
 | [ADR-0012](/adr/0012-let-the-review-establish-green)                            | Let the review establish green                              | accepted   | 2026-07-27 |
@@ -48,3 +48,4 @@ A decision earns an ADR when it is architectural, constrains work that comes lat
 | [ADR-0046](/adr/0046-pin-effort-on-the-unit-skills-never-the-queues)            | Put any effort pin on the unit skills, never the queues     | accepted   | 2026-11-23 |
 | [ADR-0047](/adr/0047-never-reclaim-a-lock-and-lock-the-local-store)             | Never reclaim a lock, and lock the local store              | accepted   | 2026-11-24 |
 | [ADR-0048](/adr/0048-renumber-a-migrated-log-once-and-keep-a-protocol)          | Renumber a migrated log once, and keep a protocol           | accepted   | 2026-11-24 |
+| [ADR-0049](/adr/0049-keep-one-instruction-file-agents-md)                       | Keep one instruction file, AGENTS.md                        | accepted   | 2026-11-24 |

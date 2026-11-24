@@ -1,11 +1,13 @@
 ---
 title: 'Keep CLAUDE.md and AGENTS.md byte-identical'
 description: 'Two real files rather than a symlink, because not every agent tool resolves one.'
-status: 'accepted'
-date: '2026-07-23'
+status: 'superseded'
+date: '2026-11-24'
 ---
 
 # ADR-0002 — Keep CLAUDE.md and AGENTS.md byte-identical
+
+> **Superseded by** [ADR-0049](/adr/0049-keep-one-instruction-file-agents-md)
 
 ## Context
 

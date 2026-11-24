@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 This repo publishes reusable [agent skills](https://agentskills.io/specification) — Claude Code, Codex, Cursor, OpenCode and friends. Skills live at `skills/<category>/<skill>/` — categories are `repo/`, `work/`, `docs/`, `meta/` — each self-contained: a `SKILL.md` (YAML frontmatter + body) plus optional assets. **No runtime code ships** except two files: `scripts/resolve-config.sh`, mirrored into every skill that reads the config, and `prune-adrs`' `templates/rewrite-adr-refs.sh`, the mechanical half of an ADR-log migration that must not be left to an agent search. That is what `test/` covers — the skill prose has no `test/` suite, and none is wanted there. Skill quality is measured out of band instead, by the `evals/` convention ([`skills/README.md`](skills/README.md#evaluating-a-skill)): per-skill, with/without-baseline fixtures that are inert dev-only data a development tool runs, never `test/`, and stripped by packaging and `skills:link`.
 
@@ -6,15 +6,7 @@ Every file named below is the source of truth for what it configures. Read it ra
 
 ## Agent instruction files
 
-`CLAUDE.md` and `AGENTS.md` are kept **byte-identical**. `CLAUDE.md` is what Claude Code reads; `AGENTS.md` is what vendor-neutral agent tools read — Codex, OpenCode, Cursor, Copilot, and whatever follows them. Two real files, deliberately not a symlink: not every tool resolves one.
-
-**After editing either file, copy it over the other — don't repeat the edit by hand:**
-
-```bash
-cp CLAUDE.md AGENTS.md   # or the reverse, whichever you just edited
-```
-
-Retyping a change is exactly how the two drift; one reflowed line or reworded clause is enough. `diff CLAUDE.md AGENTS.md` must print nothing — `pnpm test` fails when it does. Fix it by letting one file win wholesale, never by merging them.
+`AGENTS.md` is the repo's one instruction file — Codex, OpenCode, Cursor, Copilot and Claude Code all read it. Claude Code reads it directly since v2.1.277, **but only while no `CLAUDE.md` exists**: a `CLAUDE.md` anywhere from the working directory up makes it read that file instead and ignore this one. So the repo keeps none, and adding one is the one way to make Claude Code stop seeing these instructions ([ADR-0049](docs/99.adr/0049-keep-one-instruction-file-agents-md.md)).
 
 ## Commands
 
@@ -27,7 +19,7 @@ Retyping a change is exactly how the two drift; one reflowed line or reworded cl
 | `pnpm skills:sync`        | Regenerates eleven artifacts from the skill folders. **Run after touching any skill.**                                                                                                                                                                                                                                                                                                                                                                              |
 | `pnpm skills:check`       | The CI guard for the above. Fails if any of them drifted.                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `pnpm typecheck`          | `tsc --noEmit`. `erasableSyntaxOnly` is on, so an enum fails here, not at runtime.                                                                                                                                                                                                                                                                                                                                                                                  |
-| `pnpm test`               | `node --test` over `test/` — the resolver, the ADR prune script, the schema, skill self-containment, the CI-gate guard, the conformance-gate guard, the link destinations, and the `CLAUDE.md`/`AGENTS.md` mirror.                                                                                                                                                                                                                                                  |
+| `pnpm test`               | `node --test` over `test/` — the resolver, the ADR prune script, the schema, skill self-containment, the CI-gate guard, the conformance-gate guard, and the link destinations.                                                                                                                                                                                                                                                                                      |
 | `pnpm skills:link`        | Symlinks every skill into **both** `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (Codex, Cursor, OpenCode, Gemini CLI) for live local testing — whole-folder, except a skill carrying a dev-artifact dir (`evals/`) links entry by entry to leave the fixture out, per destination. `pnpm skills:unlink` clears both; the destination list lives once, in `scripts/skills-lib.sh` ([ADR-0016](docs/99.adr/0016-link-into-every-client-skills-path.md)). |
 | `pnpm skills:conformance` | Validates every skill against the Agent Skills spec with `skills-ref`, pinned and run in Docker. **Not in `verify`** — the gate stays pnpm-only; this needs Docker. Its own workflow.                                                                                                                                                                                                                                                                               |
 | `pnpm containers:audit`   | Optional Docker + Trivy check, outside `verify`. Scans the current conformance image from the registry and the VHS renderer built from its template. Prints counts and JSON-report paths; exit 0 = no advisories, 1 = advisories, 2 = a check could not run.                                                                                                                                                                                                        |
