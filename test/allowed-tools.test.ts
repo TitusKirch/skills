@@ -85,7 +85,7 @@ const BLANKET_BASH: Record<string, { why: string; detail: string }> = {
  * A permission rule is a command-prefix match, so `Bash(sh:*)` matches `sh -c '<anything>'`
  * and `Bash(find:*)` matches `find . -exec <anything> \;`. A scoped rule headed by one of
  * these is a blanket `Bash` spelled differently — it reads as a narrowing in review and
- * grants arbitrary execution in fact, which is the one outcome ADR-0017 exists to prevent.
+ * grants arbitrary execution in fact, which is the one outcome ADR-0043 refuses.
  * Each entry names the mechanism, so the list can be argued with rather than trusted.
  *
  * This is a floor, not a proof of confinement. It catches the primitives whose *purpose*
@@ -373,7 +373,7 @@ const NOT_A_COMMAND = new Set([
  *
  * The narrowest prefix covering a skill's calls is not always a subcommand — `pull-request`
  * drives `git branch` only as `--show-current`, `prune-comments` `git symbolic-ref` only as
- * `--short` — and ADR-0017 records that a flag is the **more brittle anchor**, sound only
+ * `--short` — and the frontmatter contract in skills/README.md records that a flag is the **more brittle anchor**, sound only
  * where the call has a single shape, which is a property of the call site rather than of
  * the rule. So the gate *accepts* a flag-anchored rule and never *requires* one: it demands
  * a narrowing only where the next token is a plain subcommand word, which is where the
@@ -839,7 +839,7 @@ describe('the frontmatter contract teaches rules its own gate accepts', () => {
   //
   // Only this file is read. An ADR records what was decided on its date and is refined by
   // a later record rather than edited, so ADR-0005's `Bash(git:*) Bash(gh:*)` stays as
-  // written and ADR-0017 carries the correction — a template to copy is a different thing
+  // written and ADR-0043 carries the correction — a template to copy is a different thing
   // from a record of a decision, and only the template has to hold today.
   test('the contract shows rules at all, so an unreadable file cannot pass', () => {
     assert.ok(
@@ -886,7 +886,7 @@ describe('the frontmatter contract teaches rules its own gate accepts', () => {
 });
 
 describe('a grant is no broader than the calls the skill drives', () => {
-  // The rule this makes mechanical is ADR-0017's: *a grant is written at the narrowest
+  // The rule this makes mechanical is the frontmatter contract's: *a grant is written at the narrowest
   // prefix that covers every call the skill makes*. Four grants were narrowed under it and
   // every one rested on review — nothing stopped the next author widening any of them back,
   // which is the shape a claim in prose always fails in.
@@ -895,7 +895,7 @@ describe('a grant is no broader than the calls the skill drives', () => {
   // get-url`, where the narrowing lands on a subcommand. `git branch --show-current` and
   // `git symbolic-ref --short` land on a *flag*, and pinning those would mean demanding a
   // flag anchor wherever a skill's calls share one — which is `jq -er`, `printf %s`,
-  // `mkdir -p`, `head -1` and twenty more, the brittle sweep ADR-0017 declined by saying a
+  // `mkdir -p`, `head -1` and twenty more, the brittle sweep that contract declines by saying a
   // flag anchor holds only where the call has a single shape, a property of the call site
   // rather than of the rule. So the flag-anchored half stays a review matter, deliberately,
   // and this gate says so rather than implying it covers all four.

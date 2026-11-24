@@ -7,6 +7,8 @@ date: '2026-07-25'
 
 # ADR-0004 — Derive author authority from a criterion, not a name list
 
+> **Partly superseded by** [ADR-0013](/adr/0013-state-what-the-authority-table-guarantees): the criterion stands; the claim that the test asserts it does not.
+
 ## Context
 
 Skills read text other people wrote — issue bodies, reviews, comments, handoff documents, upstream changelogs, code comments — and then act on it. Text that arrives as data must not become instruction, so the repo adopted an author-authority rule: third-party text is read as an instruction only when its author is authorized, because authorship, unlike a label or a title, cannot be set by a passer-by.

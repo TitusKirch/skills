@@ -9,7 +9,7 @@ date: '2026-07-31'
 
 ## Context
 
-Every skill in the catalogue is a full product: intro, opt-out paragraph, numbered workflow, guardrails, config block, reference pointer. All of them sit above 6,400 bytes net of their mirrored blocks, and the spread across the catalogue is a factor of 2.7. There was no shape for a skill that only reaches for another one, or carries a single rule.
+Every skill in the catalogue is a full product. All of them sit above 6,400 bytes net of their mirrored blocks, and the spread across the catalogue is a factor of 2.7. There was no shape for a skill that only reaches for another one, or carries a single rule.
 
 That floor was a convention nobody decided. It emerged because every skill so far genuinely needed the full shape — which is a different thing from the full shape being the only permitted one, and the difference was invisible to the next author, who had one shape to copy and no way to tell "this is required" from "this is what everyone happened to need".
 
@@ -21,11 +21,7 @@ Other catalogues do carry the small form: `mattpocock/skills` has nine skills un
 
 The criterion is the decision. Naming the form without it would have been worse than not naming it, because "thin" would then mean "shorter", and every full skill's first draft qualifies as shorter.
 
-Three things follow, and none of them relaxes an existing rule:
-
-- **Mandatory frontmatter is unchanged.** `name` and `description` are required by the standard; `metadata.summary` is required here, because `pnpm skills:sync` reads it to build the README tables — dropping it breaks generation rather than merely looking sparse.
-- **The opt-out paragraph and the `<skills-config>` block need no exception.** Both exist only in a skill that reads the config, and a thin skill reads none; it is absent from the mirrored-block rosters in `test/isolation.test.ts` exactly as every other config-free skill already is. A thin skill that read config would be carrying a procedure, which the criterion sends to the full shape.
-- **`skills/README.md` names the form and states the criterion**, so a reviewer has something to check and the next author reads a two-paragraph `SKILL.md` as complete.
+Nothing in it relaxes an existing rule — the frontmatter contract and the config block are unchanged, as [the thin-shape section of `skills/README.md`](https://github.com/TitusKirch/skills/blob/main/skills/README.md#two-shapes-full-and-thin) states. **`skills/README.md` names the form and states the criterion**, so a reviewer has something to check and the next author reads a two-paragraph `SKILL.md` as complete.
 
 Rejected: **leaving it as is** — every skill a full product, the one-line alias simply never written. It is defensible, and its argument is real: one shape to learn, and a shape with zero members risks guessing what a thin skill needs before a real case has tested it. It lost on what happens at the moment a thin skill is first wanted. Unnamed, the form is not absent then — it is re-litigated, and the skill either gets padded into the full shape to look finished or ships looking half-done. Naming it costs nothing today (no existing skill changes, no check changes) and is cheap to reverse, which is the opposite of the hardening the objection warned about.
 

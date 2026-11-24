@@ -7,6 +7,8 @@ date: '2026-07-29'
 
 # ADR-0015 — Tier an extension by the clients that define it
 
+Partly supersedes [ADR-0007](/adr/0007-permit-claude-code-frontmatter-extensions): the permission and its cost test stand; the single `[Claude Code]` tag and the Claude-only cost framing do not.
+
 ## Context
 
 [ADR-0007](/adr/0007-permit-claude-code-frontmatter-extensions) permitted Claude Code frontmatter extensions at a stated cost and closed on the consequence that made this record necessary:
@@ -24,14 +26,11 @@ And the framing has a further blind spot. Codex solves the same problem the oppo
 The re-tiering rule is keyed on a **matrix of field → the clients that define it**, not a list of field names, and the finding **names the clients**.
 
 - **The matrix lives once**, in `validate-skills`' `REFERENCE.md`. The skill's own `SKILL.md` gives examples and points at it; `scripts/check-conformance.sh` mirrors it; `test/conformance-gate.test.ts` pins the mirror to the source key-for-key **and client-for-client**. Prose that re-types the list is the copy that goes stale, which is what happened here.
-- **Four clients are covered** — Claude Code, Codex, Cursor, OpenCode: the ones this repo publishes for and the only ones that currently differ. Gemini CLI and GitHub Copilot were checked and left out; both follow agentskills.io and document no frontmatter of their own, so tiering them would change no verdict.
+- **Four clients are covered** — Claude Code, Codex, Cursor, OpenCode: the ones this repo publishes for and the only ones that currently differ.
 - **A Codex sidecar is in no violation tier.** Present, it is reported as a fact; absent, as a client not targeted. Never as a fault.
 - **Non-portability is reported as a range**, not a verdict: a conformant validator **rejects** the skill, OpenCode **ignores** the field and loads it anyway, the defining clients **honour** it.
 
-Two corrections to ADR-0007 that this record carries, in the manner of [ADR-0013](/adr/0013-state-what-the-authority-table-guarantees) — the decision stands, its stated reasoning is amended:
-
-- Its **cost framing** — "Claude-only", "will not load elsewhere" — is right for the Claude-only rows and wrong for `paths` and `disable-model-invocation`, which Cursor shares. The trade is per field, not per client.
-- Its **count** is off by one. It reads "seventeen fields, two of them standard, the other fifteen are not", which files `allowed-tools` among the extensions; `allowed-tools` is one of the standard six (Experimental, but on `skills-ref`'s allowlist), so Claude Code contributes **fourteen** re-tiered keys. Cursor's legacy `globs` is the fifteenth row, which is why the matrix has fifteen and the coincidence is not the ADR's fifteen.
+Where ADR-0007's cost framing and field count were off, and the counts as they stand: the [extension matrix](https://github.com/TitusKirch/skills/blob/main/skills/meta/validate-skills/REFERENCE.md#the-extension-matrix) and the notes beneath it.
 
 ## Consequences
 

@@ -5,9 +5,11 @@
 Generate and maintain project documentation, READMEs and terminal demos in the house style.
 
 - **[compact-readme](./compact-readme/SKILL.md)** — Slims down an existing overstuffed README without losing information.
+- **[prune-adrs](./prune-adrs/SKILL.md)** — Migrates an overgrown or foreign decision log onto write-adr's rules, rewriting every reference by script.
 - **[vhs-demo](./vhs-demo/SKILL.md)** — Creates and maintains reproducible README or docs terminal-demo GIFs from VHS tapes.
+- **[write-adr](./write-adr/SKILL.md)** — Writes and supersedes architecture decision records in docs/99.adr/ — short, rare, append-only.
 - **[write-contributing](./write-contributing/SKILL.md)** — Writes and reconciles CONTRIBUTING.md in the house style, deriving every repo fact from the file that owns it.
-- **[write-docs](./write-docs/SKILL.md)** — Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format.
+- **[write-docs](./write-docs/SKILL.md)** — Scaffolds, extends and reconciles a project's docs/ tree in the TitusKirch docs format; ADRs go to write-adr.
 - **[write-readme](./write-readme/SKILL.md)** — Generates project READMEs in the kirchDev house style.
 
 Back to [all skills](../README.md).

@@ -1,0 +1,66 @@
+{
+  "_comment": "Output-quality cases for write-adr's load-bearing behaviours: saying no to a feature, saying yes to a public contract a feature prompted, keeping a real record short, and superseding — fully or partly — instead of amending. Each prompt carries the repo state it needs, so no fixture repo is required. Run each case with and without the skill (Anthropic's skill-creator) for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "write-adr",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We just merged the dragon egg feature for our Minecraft network: a placed egg is open to anyone for six hours, then secured for the claim it stands in; within 16 blocks of an open egg outsiders may build, and the area is restored five minutes after they leave. The core service stores placed_at and secured_claim_id, and the territory plugin asks it on every player hit. Write an ADR for this in docs/99.adr/.",
+      "expected_output": "No ADR is written. The run explains that this is feature behaviour with parameters and implementation detail, not an architecture decision, and names where it belongs instead — a concept or guide page through write-docs — at most noting a single architectural question (if any) as a borderline candidate for the human to decide.",
+      "expectations": [
+        "No file is created or proposed under docs/99.adr/.",
+        "The refusal names the threshold: the material is feature behaviour, parameters or implementation detail, not an architecture decision.",
+        "It names an editable docs page (concept or guide) as the destination, and does not write that page itself.",
+        "It does not offer to write the ADR 'just in case'."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Record this decision as an ADR: we are moving all player state writes behind the Laravel core service. Until now the Paper and Velocity plugins wrote to Postgres directly, which caused two lost-update incidents when a player switched servers mid-write. Alternatives were row-level locking in each plugin, or an event log every writer appends to. We chose a single writer because the plugins are replaced on every deploy and cannot be trusted to agree on a locking protocol; the cost is an extra network hop on every write and a hard dependency on the core being up. The log currently ends at ADR-0012 and docs/99.adr/index.md exists.",
+      "expected_output": "One plan, then on confirmation one record docs/99.adr/0013-<imperative-slug>.md with Context, Decision, Consequences and an Alternatives considered section, status accepted, plus its index.md row — body around 300 words and under 500, with the word count shown in the plan.",
+      "expectations": [
+        "The plan shows the record's word count, and the body is under 500 words.",
+        "The file is 0013 with a present-tense imperative slug, and the H1 reads 'ADR-0013 — ...'.",
+        "Frontmatter carries title, description, status: accepted and date — nothing else.",
+        "It has Context, Decision and Consequences sections, and the two rejected alternatives appear with the reason each lost.",
+        "The index.md row is part of the same change.",
+        "No sentence states the state of the world in the present tense ('currently', a version number)."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "ADR-0007 'Store sessions in Redis' was merged to main two months ago. We now learned that Redis eviction under memory pressure silently dropped sessions, so sessions move to Postgres with a TTL column; Redis stays only as a read cache. Please add an Amendments section to ADR-0007 with this.",
+      "expected_output": "The run declines to amend the landed record and proposes a new ADR that supersedes ADR-0007 instead: the new record states the decision and the eviction finding; ADR-0007 keeps its prose and only gains status superseded, an updated date and a 'Superseded by' pointer; both changes plus the index rows in one change.",
+      "expectations": [
+        "No '## Amendments' section or appended paragraph is added to ADR-0007.",
+        "A new record with the next free id is proposed, and it points back with 'Supersedes ADR-0007'.",
+        "ADR-0007's Context, Decision and Consequences stay unchanged; only status, date and a 'Superseded by' pointer change.",
+        "The index.md rows for both records are updated in the same change.",
+        "The new record stays under 500 words."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "While building the season-pass feature we added a player.progress event that the core service publishes to the message bus. The stats site, the Discord bot and two partner servers we do not control already consume it. We want to decide that the core service owns the event's schema, that changes are additive only within a major version, and that a breaking change ships as a new event name with the old one published in parallel for six months. Does this earn an ADR? The log ends at ADR-0019 and docs/99.adr/index.md exists.",
+      "expected_output": "Yes: the run treats the event's ownership and compatibility promise as an architecture decision about a public contract, even though one feature prompted it, and plans one record docs/99.adr/0020-<imperative-slug>.md plus its index.md row. The record decides ownership and the compatibility rule; it does not enumerate the event's fields, and the six-month window is kept out or written as a parameter that lives on a page.",
+      "expectations": [
+        "The run concludes that the decision earns an ADR and does not turn it away as implementation detail or feature behaviour.",
+        "It names why: a public contract's compatibility or ownership, with consumers outside the feature, binds later work regardless of the feature that triggered it.",
+        "The planned file is 0020 with a present-tense imperative slug, and the index.md row is part of the same change.",
+        "The record does not list the event's fields or payload format.",
+        "The plan shows the word count, and the body is under 500 words."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "ADR-0009 'Run every game server on Kubernetes' landed on main last year (status accepted, date 2025-10-02). It still holds for the lobby and minigame servers, but the survival servers move to dedicated bare-metal hosts because the persistent world files suffered from volume latency. Record this. The log ends at ADR-0014 and docs/99.adr/index.md exists.",
+      "expected_output": "A new ADR-0015 that opens with 'Partly supersedes ADR-0009:' and one sentence naming what stands (lobby and minigame servers on Kubernetes) and what does not (survival servers). ADR-0009 keeps its prose, status accepted and date 2025-10-02, and gains only a '> **Partly superseded by** ADR-0015:' line under its H1 with the same sentence. ADR-0009's index row is unchanged; ADR-0015 gets a new row; everything in one change.",
+      "expectations": [
+        "A new record 0015 is proposed and opens with 'Partly supersedes ADR-0009:' plus one sentence naming what stands and what does not.",
+        "ADR-0009 keeps status accepted and date 2025-10-02 — it is not marked superseded.",
+        "ADR-0009 gains only a '> **Partly superseded by** ADR-0015:' line under its H1; its Context, Decision and Consequences stay unchanged.",
+        "No '## Amendments' section or appended paragraph is added to ADR-0009.",
+        "The index.md gains a row for ADR-0015 and leaves ADR-0009's row unchanged, in the same change."
+      ]
+    }
+  ]
+}

@@ -1,15 +1,10 @@
----
-title: 'Judge a comment against the code beneath it'
-description: 'What was settled for prune-comments: the working diff is the default scope, a contradiction is reported rather than removed, and uncertainty is expressed as never-preselected rather than as never-listed.'
-status: 'accepted'
-date: '2026-08-26'
----
+# prune-comments — Design
 
-# ADR-0034 — Judge a comment against the code beneath it
+**Judge a comment against the code beneath it.** The decision record behind `prune-comments`, recorded in the ADR log on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
 
 ## Context
 
-`prune-comments` finds comments made redundant by the code beneath them and reports them as removal candidates. The issue that specified it left three questions open — the category and name, the default scope, and how far the language catalogue has to reach. Relocated from the skill's `REFERENCE.md` under [ADR-0031](/adr/0031-keep-rationale-as-repo-memory); every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
+`prune-comments` finds comments made redundant by the code beneath them and reports them as removal candidates. The issue that specified it left three questions open — the category and name, the default scope, and how far the language catalogue has to reach. Relocated from the skill's `REFERENCE.md`; every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
 
 ## Decision
 

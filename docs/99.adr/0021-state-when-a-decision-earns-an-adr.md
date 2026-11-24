@@ -7,13 +7,15 @@ date: '2026-07-31'
 
 # ADR-0021 — State when a decision earns an ADR
 
+> **Partly superseded by** [ADR-0041](/adr/0041-give-adrs-their-own-skill-and-a-size-budget): its threshold stands, its rule that size is a permission rather than a ceiling does not.
+
 ## Context
 
 `write-docs` specified the ADR **artifact** exhaustively — section, file schema, frontmatter, required H2s, the decision log, the append-only lifecycle — and never stated the **threshold**. The routing matrix answered "which page type is this", never "is there a record to make here at all". Left implicit, the question gets re-answered every run, and drifts either way: every settled question becomes an ADR, or one gets written only when someone remembers the section exists. Append-only makes the first failure the expensive one — noise cannot be pruned once accepted.
 
 `templates/adr-index.md` already carried the slot (`{One short paragraph — what earns an ADR here.}`), so the skill had not forgotten the threshold; it had **delegated** it, without saying what a good one looks like.
 
-The contract was equally silent on **size**. Three required H2s, and no statement that any of them may be one sentence. The 19 records here average **609 words** (11,571 in total), and the trend is not flat: `0001`–`0014` run 243 to 658, while the five since — `0015` 813, `0016` 895, `0017` 2070, `0018` 1135, `0019` 854 — all sit above 810. None of them is padded, but mandatory-looking sections invite filling, and that cost is paid at the moment of writing.
+The contract was equally silent on **size**. Three required H2s, and no statement that any of them may be one sentence. Mandatory-looking sections invite filling, and that cost is paid at the moment of writing.
 
 ## Decision
 
