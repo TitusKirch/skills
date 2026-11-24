@@ -1,11 +1,13 @@
 ---
 title: 'Enforce the AGENTS.md mirror in the gate'
 description: 'Make the byte-identical copy a test, because the only path some changes take has no other check.'
-status: 'accepted'
-date: '2026-07-27'
+status: 'superseded'
+date: '2026-11-24'
 ---
 
 # ADR-0009 — Enforce the AGENTS.md mirror in the gate
+
+> **Superseded by** [ADR-0049](/adr/0049-keep-one-instruction-file-agents-md)
 
 ## Context
 

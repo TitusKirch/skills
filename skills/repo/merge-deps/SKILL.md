@@ -2,7 +2,7 @@
 name: merge-deps
 metadata:
   summary: Triages a repo's open dependency-bot requests, verifying each on its own branch before merging.
-description: Triages and merges a repo's open dependency-bot pull requests — on GitLab, merge requests — selected strictly by author so no human's and no other bot's request is ever touched. On GitHub that author is the constant app/dependabot; on GitLab it is the one identity mergeDeps.gitlab.bot names, since Renovate is self-run there. Verifies each update on its own branch first, because such a request into an integration branch often runs no meaningful CI at all. Merging is opt-in per repo via mergeDeps.merge; mergeDeps.confirm (default major) then lets the low-risk tier ride that opt-in while major bumps wait for a human. Forge per-repo by config (root forge key) — GitHub via gh, GitLab via glab. Invoke manually only — never fires proactively and never opens a request. Use when the user asks to triage, review or merge Dependabot or Renovate requests, dependency updates or bumps, or says things like "merge the dependabot PRs", "Dependabot PRs mergen".
+description: Triages and merges a repo's open dependency-bot requests — Dependabot on GitHub, the configured Renovate identity on GitLab — selected strictly by author, each verified on its own head before merging; merging is opt-in per repo and a major bump always waits for a human. To update dependencies yourself, use update-deps; to ship a release, use release. Invoke manually only — never fires proactively and never opens a request. Use when the user asks to triage, review or merge Dependabot or Renovate requests or dependency bumps, or says things like "merge the dependabot PRs", "Dependabot PRs mergen".
 allowed-tools:
   - Bash
   - Read
@@ -30,14 +30,16 @@ Work the **dependency-bot queue** — read the bot's open requests and the repo'
 
 ```bash
 # GitHub — the constant, named here and deliberately not a config key.
-gh pr list --state open --search "author:app/dependabot" \
+gh pr list --state open --search "author:app/dependabot" --limit 1000 \
   --json number,title,headRefName,baseRefName,isDraft,mergeable,mergeStateStatus
 
-# GitLab — narrow on the login for readability, prove on the id. Pages cap at 100.
+# GitLab — narrow on the login for readability, prove on the id. Pages cap at 100:
+# repeat with --page 2, 3, … until a page returns fewer than 100.
 # No --all: it widens to closed and merged, and this queue is open requests only.
 glab mr list --per-page 100 --output json --author "$bot_login"
 ```
 
+- **Read the whole queue.** `gh pr list` stops at 30 rows unless told otherwise, and a list that comes back exactly at `--limit` may be a prefix — say so in the report rather than presenting it as the whole queue.
 - **Re-assert the author per request** before touching it — `author.login` must equal `app/dependabot` on GitHub; `author.id` must equal `mergeDeps.gitlab.bot.id` on GitLab. The list narrows; this is what proves it. On GitLab the login the list was narrowed with is **not** the proof: a username is reusable after a rename, so a login that disagrees with its id is the rename signal — report it and leave the MR alone.
 - **No `mergeDeps.gitlab.bot` under `forge: gitlab` → stop**, saying the key is unset and that the queue cannot be identified without it. Never infer the author from a branch prefix, a label or a title, and never report an unidentifiable queue as an empty one — an empty queue reads as a healthy run.
 - **Never select by label, title or branch.** The `dependencies` label, a `build(deps)` title and a `renovate/*` branch are settable by anyone; authorship is not. A human's request wearing the `dependencies` label must come back from step 2 empty-handed.
@@ -56,7 +58,7 @@ Per selected request, gather facts. **Never merge on a heuristic.**
 > **An empty or irrelevant check list is `unknown`, never `green`.** A workflow gated on `branches: [main]` does not run for a PR into `dev`, and a `.gitlab-ci.yml` that says nothing about merge requests runs nothing for an MR — so the absence is not a pass, there was no verdict at all. A suite that only scans source for vulnerabilities (CodeQL) says nothing about whether a lockfile still installs or the repo still lints. Counting either as "checks green" is how an unverified bump gets merged. **Never merge on `unknown`.**
 
 - **Verify locally** — this is the **primary** gate, not a fallback. Run `mergeDeps.verify` against the request's own head in a throwaway worktree, so the user's tree is never touched ([recipe](REFERENCE.md#forge--git-recipes)). **Install the head's lockfile first** — an uninstalled worktree resolves the command against whatever is on `PATH`, which is green or red by accident and never touches the versions the request pins ([how](REFERENCE.md#running-the-repos-checks)). CI, where it genuinely ran, is corroboration.
-- **Update type** — grouped / patch / minor / major, read from the **bot's own artifacts**: Dependabot's `Updates X from A to B` lines and branch group, or Renovate's update table and branch. **Cannot be determined with confidence → hold the request.** Do not guess a bump level. And on a grouped request, **the highest bump in it sets its tier** — Renovate's groups are broad enough to carry a major among the patches ([how to read both](REFERENCE.md#reading-the-bump-level)).
+- **Update type** — grouped / patch / minor / major, read from the **bot's own artifacts**: Dependabot's `Updates X from A to B` lines and branch group, or Renovate's update table and branch. **Cannot be determined with confidence → hold the request.** Do not guess a bump level. And on a grouped request, **the highest bump in it sets its tier** — Renovate's groups are broad enough to carry a major among the patches ([how to read both](REFERENCE.md#reading-the-bump-level)). **Grouped is a claim the request must evidence** — group name in branch or body, every update minor or patch; without it, it is held as not a group request ([modes](REFERENCE.md#merge-modes)).
 
 **No `mergeDeps.verify` configured _and_ the base's checks don't cover the change → hold and report.** The skill has no basis to call it safe, and says so rather than merging.
 
@@ -104,28 +106,17 @@ Use the forge's own vocabulary throughout — **pull request** on GitHub, **merg
 
 ## Presenting the plan
 
-Everything this skill puts in front of a human — plan, preview, candidate list, findings report —
-is read **once, in a terminal**, and answered there. So **every section of it renders on arrival**,
-with no interaction needed to reveal it: prose, lists, tables, fenced code.
+Whatever this skill puts in front of a human to decide on — a plan, a preview, a candidate list, a
+findings report — is read **once, in a terminal**, so **every part of it renders on arrival**.
 
-**Never fold content behind a control.** `<details>`/`<summary>` is a browser widget, and a
-terminal has no way to open it: the summary line prints and everything under it does not. The plan
-then arrives as headings with nothing beneath them, and the failure is silent on **both** sides —
-the skill believes it reported, and the reader sees no marker saying anything is missing, so a
-human confirms a plan whose contents never reached them. What gets folded is whatever ran long,
-which is to say the part the decision actually rested on. The same holds for anything else needing
-a click: a tab strip, an accordion, a "show more".
-
-**Length is handled by shortening, never by hiding.** This is a fixed rule of the skill, not a
-per-run judgement, so it holds however long the list runs. Trim to what the decision needs, group
-the rest by something the reader already thinks in (ecosystem, kind, verdict) with a count per
-group, or split it across sections. What is left out is left out **visibly**: say how many, why,
-and the exact command that shows the rest.
-
-**This binds what the skill presents, not what it writes.** A `<details>` block inside a README, an
-issue body, a pull request description or a docs page is rendered by a browser and is entirely
-legitimate there. The rule is about the message a human reads to decide — never about the content
-of a file.
+- **Never fold it behind a control.** A terminal cannot open `<details>`/`<summary>`, a tab or a
+  "show more": only the summary line prints, and the human confirms a plan whose body never
+  reached them.
+- **Shorten instead of hiding.** Show every item that needs a decision, each with a visible id and
+  its effect. Group the rest by something the reader already thinks in (kind, verdict, ecosystem)
+  with a count and a reason, and name the command that shows them in full.
+- **This binds the message, not the files it writes.** A `<details>` block in a README, an issue,
+  a pull request or a docs page renders in a browser and is fine there.
 
 </skills-plan>
 
@@ -133,45 +124,26 @@ of a file.
 
 ## Leading the report
 
-The report this skill ends with is read **once, in a terminal**, by someone deciding what happens
-next. So it **opens with its result**: a `## TL;DR` section, before every other heading, carrying
-the whole answer in a few lines. A report that opens with its first group makes the reader
-reconstruct the total by reading every group and adding it up — which is the one thing they needed
-before deciding whether to read any of them.
+The report this skill ends with is read **once, in a terminal**, so it **opens with its result**:
+a `## TL;DR` section before every other heading — `## Kurzfassung` in a German run — holding, in a
+few lines:
 
-**Three things belong in the lead, and nothing else does:**
+- **the counts**, per group, in the words the groups below use, with the total stated;
+- **what the run acted on**, or proposes to — or that it acted on nothing;
+- **the decision asked for**, said plainly, or **no decision needed**;
+- **whatever the run could not establish** — a check that never ran, a list it could not read —
+  because a reader who stops here must not leave with a picture the rest would correct.
 
-- **The counts** — how much was found, per group, in the same words the groups below use. The
-  total is stated, never left to be summed.
-- **What the run acted on, or proposes to** — the preselected set, the merged set, the changed
-  set: the part that is not merely listed. Where nothing was acted on, say so in those words.
-- **The decision being asked for** — the one thing the reader is expected to do, said plainly, or
-  **no decision needed** where the run is finished. An ask that is only inferable from the groups
-  is an ask the reader has to assemble.
-
-**It leads the detail, it never replaces it.** Every group still renders in full underneath, and
-nothing is dropped, shortened or folded for having been counted above. The lead is an entry point;
-a summary that licenses hiding what it summarises is the failure this repo already forbids
-elsewhere.
-
-**Whatever the run could not establish belongs in the lead too**, not only in the section that
-holds it — a check that never ran, a list that could not be read, a tier the run declined to
-judge. Each changes what the counts mean, and a reader who stops after four lines must not stop
-with a picture the rest of the report would have corrected.
-
-**A run that found nothing still leads with it.** "Nothing found" is a result, and it belongs where
-every other result does: one line, naming the scope that was actually searched, so an empty report
-and an empty search are told apart.
-
-**The heading follows the output language**, as the rest of the report does — a German run reads
-`## Kurzfassung`. What is fixed is the position, not the wording. The `tldr` skill fixes this same
-opening for the summaries it writes on request; one house frame, reached two ways.
+**The lead opens the detail, it does not replace it.** Every item that needs action renders in full
+below. A group that needs none may be counted with its reason and the command that lists it.
+**"Nothing found" is a result too:** one line, naming the scope that was searched. The `tldr`
+skill fixes the same opening for the summaries it writes on request.
 
 </skills-tldr>
 
 ## Guardrails
 
-- **Bot-authored requests only, matched on author.** Never any other request, under any circumstance, for any reason. Not a comment, not a label, not a mention in the report. The author is `app/dependabot` on GitHub and `mergeDeps.gitlab.bot`'s **id** on GitLab — one identity either way, and never a selector.
+- **Bot-authored requests only, matched on author.** Never any other request, under any circumstance, for any reason. Not a comment, not a label, not an assessment, and not a mention in the report — except that a non-bot request **the user names explicitly** may get **one neutral line** saying it is not a dependency-bot request and out of scope. The author is `app/dependabot` on GitHub and `mergeDeps.gitlab.bot`'s **id** on GitLab — one identity either way, and never a selector.
 - **An unidentifiable queue is a stop, never an empty one.** `forge: gitlab` with no `mergeDeps.gitlab.bot` → say the key is unset and stop. Never infer the author from a branch prefix, a label or a title, and never let "selected nothing" stand in for "could not tell whose".
 - **Manual invocation only.** Never fire proactively — not on a push, not because bumps "look due". Someone asks, or this skill does nothing.
 - **Plan first; then merge only what the config authorizes.** The plan/report is always shown before any merge. A **major bump waits for an explicit confirmation** even when opted in; the low-risk tier merges on the standing opt-in unless `mergeDeps.confirm` is `"always"`. Plan-only triggers ("nur den Plan", "dry run", "just show me", "nicht mergen") → print the plan and the exact `gh` / `glab` commands, then stop.

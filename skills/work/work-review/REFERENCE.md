@@ -2,6 +2,22 @@
 
 Mechanics for [`work-review`](SKILL.md) (the unit) and `work-review-queue` (the drain) — the **review half** of the two-loop agent workflow. Shares the config, catalog cache, tracker recipes and [forge/host resolution](#the-forge-and-its-host) with `work-implement`; this file covers what is review-specific.
 
+## Reading this file
+
+**Read what this review needs, not the whole file.** Every review reads **Config**, **Reading the config**, **The single-flight lock**, **Round count**, **Fetching the diff**, **Verifying the pushed head** and **Feedback recipes**, plus its one tracker recipe under `trackers/`.
+
+| The review is …                      | Add                                                                      |
+| :----------------------------------- | :----------------------------------------------------------------------- |
+| on a forge (`github`, `gitlab`)      | [The forge and its host](#the-forge-and-its-host)                        |
+| about to accept a draft PR           | [Marking ready, then waiting for CI](#marking-ready-then-waiting-for-ci) |
+| under `branch:<name>`                | [Review-after-land](#review-after-land-branchname)                       |
+| with `work.labels.reviewing` set     | [The `reviewing` lease](#the-reviewing-lease)                            |
+| reading issue text, comments or a PR | [Author authority](#author-authority)                                    |
+| heading for `needs human`            | [Escalation to `needs human`](#escalation-to-needs-human)                |
+| a drain, not a single issue          | [Selection query](#selection-query)                                      |
+
+A section this table does not name is still binding when the review reaches what it governs — the table says where to start, not what may be skipped.
+
 ## Principle
 
 > **The reviewer is independent and read-only.** A different agent than the implementer, with fresh context, judges the pushed work and writes a **verdict** — a label move plus a comment. It never edits, commits, or merges. State lives in the label, so a crashed review just re-runs (idempotent).
@@ -160,59 +176,125 @@ Third-party text — an issue body, a review, a comment, a handoff document, an 
 
 ## The single-flight lock
 
-Both drains rest their within-checkout mutual exclusion on a lock, and the two loops run **concurrently** — so each has its **own**, at a **visibly distinct** path under the owner-namespaced directory in the git common dir (the same home the catalog cache uses). This replaces the earlier ad-hoc locks written **loose** in the common dir under different names — one specified path per loop, both citing this spec; retiring the old ones is a **migration step, not a note** (below), because for a lock two names live at once means two drains running at once.
+The work loops rest their within-checkout mutual exclusion on locks at **three scopes**, because three different things collide: two **drains** of one loop, two **workers on one issue**, and two **runs editing one working tree**. Each scope has its own lock, and a lock excludes exactly its own collision and nothing wider, so a drain and the workers beside it run concurrently, and so do two agents each handed a different issue. The two loops run **concurrently** too, so every lock carries its loop in a **visibly distinct** path. The drain and issue locks live under the owner-namespaced directory in the git **common** dir (the same home the catalog cache uses), so every worktree of the checkout sees them. The tree lock lives in the **per-worktree** git dir, because it guards exactly one tree.
 
-| Loop                   | Lock path                                                                 |
-| :--------------------- | :------------------------------------------------------------------------ |
-| `work-implement-queue` | `$(git rev-parse --git-common-dir)/tituskirch-skills/work/implement.lock` |
-| `work-review-queue`    | `$(git rev-parse --git-common-dir)/tituskirch-skills/work/review.lock`    |
+| Lock                | Path                                                                            | Taken by                                                                                  | Excludes                                                          |
+| :------------------ | :------------------------------------------------------------------------------ | :---------------------------------------------------------------------------------------- | :---------------------------------------------------------------- |
+| implement **drain** | `$(git rev-parse --git-common-dir)/tituskirch-skills/work/implement.lock`       | `work-implement-queue`, for the whole batch                                               | a second implement drain in this checkout                         |
+| review **drain**    | `$(git rev-parse --git-common-dir)/tituskirch-skills/work/review.lock`          | `work-review-queue`, for the whole batch                                                  | a second review drain in this checkout                            |
+| implement **issue** | `$(git rev-parse --git-common-dir)/tituskirch-skills/work/implement/<ref>.lock` | every `work-implement` worker, direct or under a drain, from before the lease to hand-off | a second implement worker on the same issue                       |
+| review **issue**    | `$(git rev-parse --git-common-dir)/tituskirch-skills/work/review/<ref>.lock`    | every `work-review` worker, direct or under a drain, from before the lease to the verdict | a second review of the same issue, which is the competing verdict |
+| implement **tree**  | `$(git rev-parse --git-dir)/tituskirch-skills/work/tree.lock`                   | every `work-implement` worker, in the tree it edits; a **sequential** drain for its batch | a second implement run editing the same working tree              |
+| local **store**     | `$(git rev-parse --git-common-dir)/tituskirch-skills/work/store.lock`           | any run of either loop writing a `local` tracker transition, for that one write           | a second write to the `local` store's index and branch tip        |
 
-**The acquire primitive is `mkdir`** — a single create-or-fail syscall, atomic on every POSIX filesystem and identical across GNU and BSD, so the test-and-set is **one** operation with no window. It is the **canonical primitive both queues cite**; never substitute a `[ -e "$lock" ] && …` test-then-create, which re-opens the very race the lock closes. (A `set -C` noclobber redirect — `( set -C; : > "$lock" )` — is the equally-atomic alternative; the skills standardise on `mkdir` so there is one idiom to reason about, and because a lock **directory** gives the owner record below a natural home.)
+**The store lock is the one lock both loops share**, because both write the one `local` store in the main working tree, and it exists only under `tracker: local`. It lives in the **common** dir and not in a per-worktree git dir: for the main working tree the two are the same directory, but a worker sitting in a linked worktree resolves `--git-dir` to its own, so only `--git-common-dir` names one path from every tree. It is held only around one transition: assert the branch, re-read the state, write the issue file, commit exactly that file. It is never held across verify or the implementation, so a held store lock is seconds old: a run that finds it held retries for about a minute, then stops and reports.
+
+**`<ref>` is the issue's own reference**, made path-safe: the number on `github` and `gitlab`, the identifier (`ABC-42`) on `linear`, the file's id on `local`. Replace every character outside `[A-Za-z0-9._-]` with `_`. A ref therefore names one lock on every host, and two trackers in one checkout cannot share a name, because a checkout has exactly one tracker.
+
+**Why the drain lock no longer covers direct runs.** One lock per loop used to do all three jobs. A directly-invoked `/work-implement 42` took the drain's lock, so it was single-flight against **every** other implement run in the checkout, and two agents handed two different issues excluded each other although nothing of theirs collided. What actually collides is narrower. Two workers on **one issue** collide, because the label flip is not a true compare-and-swap, so both can read `ready` and both lease. Two runs in **one tree** collide, because they share one index and one set of files. The issue lock and the tree lock each close one of those, and the drain lock is left guarding the one thing only it can: two drains building one queue.
+
+**Which locks a run takes:**
+
+- **A direct `work-implement`** takes the **tree** lock of the tree it runs in, then the **issue** lock. It never touches the drain lock, and a held drain lock never stops it: the issue lock keeps it and the drain off each other's issue.
+- **A direct `work-review`** takes the **issue** lock only. Review never edits the working tree. It reads the diff and runs the gate in a per-issue tree derived from the issue's ref, and the issue lock is what covers that derived path.
+- **`work-implement-queue`** takes its **drain** lock. **Sequential** (`parallel: false`), it also takes the **tree** lock of the tree it runs in, for the whole batch, and its workers run under it rather than re-taking it. **Parallel**, each worker takes the tree lock **in its own worktree**. Either way, **every worker takes its own issue lock**.
+- **`work-review-queue`** takes its **drain** lock, and each worker its own **issue** lock.
+- **Under `tracker: local`**, every run of either loop also takes the **store** lock around each transition it writes, and drops it straight after the commit.
+
+**Acquire in one fixed order: drain, tree, issue, then the tracker lease** (the `working` or `reviewing` label), with the store lock innermost, taken and dropped around each `local` write. Release in the reverse order. One order across every run means no run ever holds a lock while it waits for one another run holds first, so the locks cannot deadlock. The issue lock comes **before** the lease, because it is the lease's compare-and-swap: the run that wins the `mkdir` is the only one that flips the label. It is released only **after** the hand-off label flip (`reviewRequested`, `blocked`, or the verdict), so no run can read the issue as eligible while its worker is still writing.
+
+**Every exit releases what this run took, in reverse order.** This holds at the success hand-off and at every stop. A worker that won the tree lock and then finds the issue lock held releases the tree lock before it stops or moves on. A drain that won its drain lock and then finds the tree lock held releases the drain lock before it reports. A `blocked`, `skipped` or error exit releases the same way. A run releases only locks it acquired: a sequential drain's tree lock stays with the drain, and a lock another run holds is never touched.
+
+**A held lock never waits; what it means depends on the scope:**
+
+| Held              | Meaning                                    | Action                                                                                                                                                                                       |
+| :---------------- | :----------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| a **drain** lock  | another drain of this loop is live here    | a second drain **exits** and reports. A direct run is not affected                                                                                                                           |
+| an **issue** lock | another worker is live on that issue       | a **named** issue: **stop and report** the holder. A **self-selected** issue, or one in a drain's queue: **skip it** and take the next candidate. Never lease it, label it, or comment on it |
+| the **tree** lock | another implement run is editing this tree | **stop before any tracker write** and report the issue the holder is on. A direct run then **offers its own worktree** (below). A drain stops and reports, having leased nothing             |
+
+A lock the stale rule below reads as **probably orphaned** is still held for every row of this table. It adds a report and never a removal.
+
+**A busy tree is a reason to move, not a reason to fail.** A direct `work-implement` that finds the tree lock held reads the holder's `issue` from the owner record, names it, and **asks whether to continue in a worktree of its own**. On a **yes**, make the tree the way a parallel drain makes one for its workers, using the client's own worktree mechanism where it has one (Claude Code's `.claude/worktrees/`). Otherwise use `git worktree add` at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/implement-<ref>`, cut exactly as the branch strategy cuts this issue's branch. Take **that** new tree's lock **before anything is installed or written into it**. Only then run there **exactly as a parallel worker does**: **install from the lockfile** (a worktree holds tracked files only), and carry on from the issue lock. The run's report names the tree's path. **This run removes the tree itself** as its last step, after releasing that tree's lock. It runs the removal from the tree it started in, by the rule a drain's worktrees follow: clean, its work on the remote, never `--force`. A tree that fails that test stays, and the report names its path for a human to remove. **Unattended there is nobody to answer**, so the run stops and reports instead of making a tree on its own: a tree costs a full install, and choosing to pay that is the human's call.
+
+**The acquire primitive is `mkdir`** — a single create-or-fail syscall, atomic on every POSIX filesystem and identical across GNU and BSD, so the test-and-set is **one** operation with no window. It is the **canonical primitive every lock above uses**; never substitute a `[ -e "$lock" ] && …` test-then-create, which re-opens the very race the lock closes. (A `set -C` noclobber redirect — `( set -C; : > "$lock" )` — is the equally-atomic alternative; the skills standardise on `mkdir` so there is one idiom to reason about, and because a lock **directory** gives the owner record below a natural home.)
 
 ```sh
-# Acquire — implement loop; the review loop is identical with review.lock.
+# Acquire — any lock in the table; set $lock to its path. Example: the implement issue lock.
 common=$(git rev-parse --git-common-dir)
-lock="$common/tituskirch-skills/work/implement.lock"
+ref=$(printf '%s' "$issue_ref" | tr -c 'A-Za-z0-9._-' '_')
+lock="$common/tituskirch-skills/work/implement/$ref.lock"
+# drain:  "$common/tituskirch-skills/work/implement.lock"  (review: …/review.lock, …/review/$ref.lock)
+# tree:   "$(git rev-parse --git-dir)/tituskirch-skills/work/tree.lock"
+# store:  "$common/tituskirch-skills/work/store.lock"  (local tracker only, around one write)
 owner="$lock/owner"
+# The run id: made ONCE, at the run's first acquire, then set as a literal in every later
+# command (each command is a fresh shell). One id per run, for every lock it takes.
+[ -n "$run_id" ] || run_id=$(printf '%s-%s-%s' "$(date +%s)" "$$" "$(od -An -N4 -tx4 /dev/urandom | tr -d ' ')")
 mkdir -p "$(dirname "$lock")"
-rm -f "$common/implement.lock"   # migration: retire the old loose lock (review loop: rm -f "$common/tituskirch-work-review-queue.lock")
+rm -f "$common/implement.lock"   # drain lock only — migration: retire the old loose lock (review loop: rm -f "$common/tituskirch-work-review-queue.lock")
 if mkdir "$lock" 2>/dev/null; then
-  # won the race — stamp the owner (host + a heartbeat timestamp) for the stale check
-  printf 'host=%s\nrefreshed=%s\n' "$(uname -n)" "$(date +%s)" > "$owner.tmp" && mv "$owner.tmp" "$owner"
+  # won the race — stamp the owner (host, run id, the issue it guards, a heartbeat timestamp)
+  printf 'host=%s\nrun=%s\nissue=%s\nrefreshed=%s\n' "$(uname -n)" "$run_id" "$issue_ref" "$(date +%s)" > "$owner.tmp" && mv "$owner.tmp" "$owner"
 else
-  # held — read owner's refreshed timestamp and decide live vs stale (below) first
+  # held — read the owner record and judge live vs probably orphaned (below); never remove it
   :
 fi
 
-# Heartbeat — the drain re-stamps the timestamp once per iteration (per issue), one cheap
-# command, so the lock stays demonstrably live across the batch's many separate processes.
+# Heartbeat — the holder re-stamps the timestamp: a drain once per iteration (per issue), a
+# worker at each step boundary of its issue (its issue lock, and its tree lock with it). One
+# cheap command, so the lock stays demonstrably live across the run's many separate processes.
 # Always write the sibling temp file and RENAME it over the record, never overwrite in
 # place: the rename replaces a directory entry, so it moves $lock's own mtime too (below).
-printf 'host=%s\nrefreshed=%s\n' "$(uname -n)" "$(date +%s)" > "$owner.tmp" && mv "$owner.tmp" "$owner"
+# Only while the record still carries this run's id: a foreign id means the lock is no
+# longer this run's, so stop before any further tracker write and report.
+if [ "$(sed -n 's/^run=//p' "$owner" 2>/dev/null)" = "$run_id" ]; then
+  printf 'host=%s\nrun=%s\nissue=%s\nrefreshed=%s\n' "$(uname -n)" "$run_id" "$issue_ref" "$(date +%s)" > "$owner.tmp" && mv "$owner.tmp" "$owner"
+else
+  echo "lock $lock is no longer held by run $run_id: stopping" >&2; exit 1
+fi
 
 # Release — no trap (a per-command shell fires EXIT and would drop the lock immediately);
-# the drain's final "Report & release" step removes the lock explicitly, once, at batch end:
-rm -rf "$lock"
+# remove each lock explicitly, once, in reverse acquire order: a worker its issue lock after
+# the hand-off flip, then its tree lock; a drain its own at its final "Report & release" step.
+# Only a lock whose record still carries this run's id is removed; any other is reported.
+if [ "$(sed -n 's/^run=//p' "$owner" 2>/dev/null)" = "$run_id" ]; then
+  rm -rf "$lock"
+else
+  echo "lock $lock is not held by run $run_id: left in place" >&2
+fi
 ```
+
+The drain lock's `issue=` is empty, and a drain holding the tree lock for its batch re-stamps `issue=` with the issue its worker is on, which is what lets a blocked direct run name it.
+
+**The run id is what makes a lock this run's.** `run=` is unique per run: the epoch, a pid and four random bytes, so two runs started in the same second on one host still differ. The heartbeat and the release both act **only** while the record still carries the run's own id. A foreign id means the lock was removed and retaken behind this run's back, for example by a human while this run was suspended. The heartbeat then stops the run before its next tracker write, and the release leaves the lock in place and reports it. The check and the write are two steps, which is safe only because nothing but a human ever removes another run's lock (the stale rule below). An owner record without `run=`, written by an earlier copy, is never this run's.
+
+**A live issue lock settles the reconcile here.** Each loop's reconcile asks whether a leased issue is still being worked. An issue whose **issue lock is live** (by the stale rule below) has a worker **in this checkout**, so it is **never** an orphan, whatever its assignee or age say. It is left alone without further checks. That makes the reconcile safe beside direct runs, which hold no drain lock for it to see. A **missing** issue lock proves no more than that nobody here is working the issue. A second clone's live worker holds its own lock, invisible here, so the reconcile's assignee and age guard still applies to every such issue. A **probably orphaned** issue lock (the stale rule below) leaves the issue as it is: the reconcile reports the lock, and the next reconcile after a human removes it handles the lease.
 
 **Migrate off the old loose locks.** Earlier runs wrote each loop's lock **loose** in the common dir under an ad-hoc name — the implement loop's `$(git rev-parse --git-common-dir)/implement.lock` and the review loop's `$(git rev-parse --git-common-dir)/tituskirch-work-review-queue.lock`, neither under `tituskirch-skills/work/`. For a **cache** a changeover is harmless — re-detect into the new path and `rm -f` the old file. For a **lock** it is not: while both names are live, an old-spec drain holding the loose file and a new-spec drain that `mkdir`s the path above **never see each other and both run**. So on adopting the new path **actively retire the old one** — `rm -f` the loop's own old loose lock **before** the `mkdir` (the line in the snippet above), so no run reading the new spec ever finds the old file to honour. This retires the old **file**, not a still-running old-spec drain: while such a drain is still live it holds a name the new path never checks, and — the file now deleted — a second old-spec run could even re-take it. That residual gap is inherent to any changeover and closes as soon as the last old-spec drain exits; the migration guarantees only that a **new**-spec run will not resurrect the old idiom.
 
+**Moving direct runs off the drain lock is a changeover too**, and its residual window points the safe way. An **old-spec direct run** still takes the drain lock, so a new-spec drain finds it held and exits. That costs a delay, never a double lease. A **new-spec direct run** beside an **old-spec drain** holds no lock the old drain reads. The old drain still cannot select the issue, which already carries its `working` or `reviewing` lease. Its reconcile cannot destroy the run either, because that reconcile defaults to the age-gated path under a shared identity, and the age window is longer than any live run. What stays open is the **self-select race**: an old and a new run both choosing the same top `ready` issue in the seconds before either lease lands. Handing each agent a **named** issue avoids it outright, and the window closes when the last old-spec copy exits.
+
+**The tree lock, the store lock and the run id are a changeover too, and this one has no safe residual.** An earlier copy takes no tree lock, so it and a new run can edit one tree together. It takes no store lock, so it can clobber a `local` write. It still reclaims a stale lock by `rm -rf`, so it can delete a new run's lock. **Let every run of an earlier copy finish before starting any run of this one**, drains and direct runs alike.
+
 **A label string is a changeover too.** Changing a `work.labels.*` string — or switching a mechanic on — is the **same class of change** as the loose locks above: while a primitive lives under two names at once, it splits the very set it should partition, so the tracker and the config must move **before** the skill copies do. **The string must exist on the tracker before any copy adopts it:** `gh issue list --label '<a label the tracker lacks>'` **exits 0** on an empty result, so a queue split between an old copy's string and a new copy's stalls **silently**, with no error to notice. Create the label and relabel every open issue onto it first, or pin the old string under `work.labels.<key>` until you do — the pin covers the **steady** state, the relabel the **transition**. And **do not switch `reviewing` on until every drain runs a copy that knows it:** an unaware review drain selects the issue straight off `reviewRequested`, writes a **competing verdict**, and never reclaims a `reviewing` orphan invisible to it — the lease buys nothing until the last unaware copy exits (the same residual window the lock note reasons through), and enabling it mid-rollout is worse than leaving it off.
 
-**Stale rule — a refreshed timestamp, not a probed pid.** These skills run **each shell command in its own short-lived process** — the harness does not persist shell state between commands — so a pid captured at acquire (`$$`) names a shell that is **dead within milliseconds**, while the drain that owns the lock runs on across many separate commands for the whole batch. A recorded pid therefore cannot separate a **live** drain from a **crashed** one here: probing it reports "no such process" for a live lock exactly as it would after a real crash, so a pid-liveness rule would read a **live** lock as stale and let a second drain delete it and run alongside the first — the very double-verdict this lock exists to prevent. So the lock records **no pid and probes no process**. It is held for the **logical duration of the drain**, which no single process spans; liveness is judged instead from a **timestamp the live drain keeps refreshing**. The `owner` records the `host` and a **`refreshed` timestamp** (epoch seconds), and the drain **re-stamps** it once per iteration — each issue it works, one cheap command (the heartbeat in the snippet above). **Every stamp is written through a rename** — into `$lock/owner.tmp`, then `mv`d over `$lock/owner` — because a rename replaces a **directory entry** and so moves the lock directory's own mtime, where overwriting an existing file in place leaves that mtime frozen at the moment `owner` was first created. That is what makes the directory's mtime a second, coarser heartbeat rather than a creation timestamp, and it is what the **no record yet** row below rests on; the rename is atomic, so a reader never meets a half-written record either. The record is **`key=value` lines**, one per line, **parsed by key** and **extensible** — the reader takes `refreshed` by its name and ignores any other field a drain may add (its own loop name, say), so the timestamp always carries a stable key rather than riding on a fixed field count. Liveness is then read from the clock:
+**Stale rule — a refreshed timestamp, not a probed pid.** It applies to **every** lock above alike. These skills run **each shell command in its own short-lived process** — the harness does not persist shell state between commands — so a pid captured at acquire (`$$`) names a shell that is **dead within milliseconds**, while the run that owns the lock goes on across many separate commands. A recorded pid therefore cannot separate a **live** holder from a **crashed** one here: probing it reports "no such process" for a live lock exactly as it would after a real crash, so a pid-liveness rule would read a **live** lock as stale and let a second run delete it and run alongside the first — the very double-verdict this lock exists to prevent. So the lock records **no pid and probes no process**. It is held for the **logical duration of the run that took it** (a drain's batch, a worker's issue), which no single process spans; liveness is judged instead from a **timestamp the live holder keeps refreshing**. The `owner` records the `host`, the run's id (`run`), the `issue` it guards and a **`refreshed` timestamp** (epoch seconds), and the holder **re-stamps** it — a drain once per iteration, a worker at each step boundary of its issue (the heartbeat in the snippet above). **Every stamp is written through a rename** — into `$lock/owner.tmp`, then `mv`d over `$lock/owner` — because a rename replaces a **directory entry** and so moves the lock directory's own mtime, where overwriting an existing file in place leaves that mtime frozen at the moment `owner` was first created. That is what makes the directory's mtime a second, coarser heartbeat rather than a creation timestamp, and it is what the **no record yet** row below rests on; the rename is atomic, so a reader never meets a half-written record either. The record is **`key=value` lines**, one per line, **parsed by key** and **extensible** — the reader takes `refreshed` by its name and ignores any other field a run may add (its own loop name, say), so the timestamp always carries a stable key rather than riding on a fixed field count. Liveness is then read from the clock:
 
-| What the reader finds at `$lock/owner`                                                                             | Judgement                                                                                                                                  |
-| :----------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
-| a `refreshed` **within the window below** (a live drain is mid-iteration)                                          | presumed a **live drain** → **stop and report**, never break it                                                                            |
-| a `refreshed` **not within that window**                                                                           | the drain **crashed** — a live one would have re-stamped by now → **stale**: `rm -rf` it and retake                                        |
-| **no record yet** — no `owner` at all (the `mkdir` won and the first stamp is still in flight)                     | just-created → fall back to the lock **directory's own age** (its mtime) under the **same** window, never stale on the missing stamp alone |
-| **a record present but unparseable** — an `owner` carrying no `refreshed=` key, or another file standing in for it | presumed a **live drain** → **stop and report** exactly as the first row; **never** `rm -rf`, and name the shape found in the run's report |
+| What the reader finds at `$lock/owner`                                                                             | Judgement                                                                                                                                   |
+| :----------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
+| a `refreshed` **within the window below** (a live holder is mid-run)                                               | presumed a **live holder** → **stop and report**, never break it                                                                            |
+| a `refreshed` **not within that window**                                                                           | **probably orphaned** — a live holder would have re-stamped by now → **stop and report** it (below); **never** `rm -rf` it unattended       |
+| **no record yet** — no `owner` at all (the `mkdir` won and the first stamp is still in flight)                     | just-created → fall back to the lock **directory's own age** (its mtime) under the **same** window, never stale on the missing stamp alone  |
+| **a record present but unparseable** — an `owner` carrying no `refreshed=` key, or another file standing in for it | presumed a **live holder** → **stop and report** exactly as the first row; **never** `rm -rf`, and name the shape found in the run's report |
 
-The **window** is longer than any **legitimate gap between refreshes** — longer than the longest single-issue implementation a drain runs between two heartbeats (hours, not minutes) — so a live drain mid-iteration is **never** misjudged as stale, while a crashed drain, which stops re-stamping, is reclaimed once the window elapses. Err toward **not** breaking: misjudging a live lock must cost a **delay** (the reader waits; the true holder finishes and releases), **never** a destroyed lock. This is deliberately **not** the plain age TTL this section could have opened with — that would evict a slow-but-live run — because the heartbeat separates "slow" from "dead": only a live drain keeps the timestamp moving. The tradeoff is a lock format richer than an empty file — `key=value` lines to write and re-stamp each iteration — bought to keep eviction heartbeat-gated rather than clock-driven.
+The **window** is longer than any **legitimate gap between refreshes** — longer than the longest single step a worker runs between two heartbeats, which is the implementation itself (hours, not minutes) — so a live holder mid-step is **never** misjudged as stale, while a crashed one, which stops re-stamping, is reported as probably orphaned once the window elapses. Err toward **not** breaking: misjudging a live lock must cost a **delay** (the reader waits; the true holder finishes and releases), **never** a destroyed lock. This is deliberately **not** the plain age TTL this section could have opened with — that would evict a slow-but-live run — because the heartbeat separates "slow" from "dead": only a live holder keeps the timestamp moving. The tradeoff is a lock format richer than an empty file — `key=value` lines to write and re-stamp — bought to keep the orphan judgement heartbeat-gated rather than clock-driven.
 
-**The last two rows are opposite findings, which is why they are two rows.** _No record yet_ is the ordinary just-created race, seconds wide, and the directory's mtime answers it — but only because every stamp goes through the **rename** above. Overwrite `owner` in place instead and that mtime stops moving the moment `owner` is created, so the fallback silently becomes a plain age TTL on the lock's **creation** time: a drain that outruns the window is then read as stale and `rm -rf`'d **mid-run** by the one clause meant to protect a lock too young to have stamped — the eviction this section exists to rule out, arriving through the row that looks safest. _A record present but unparseable_ says the opposite: something wrote it, so another writer holds this lock, and that is exactly when destroying it costs most. Presume it **live**. The cost of being wrong is bounded and the asymmetry is the whole point — a wrongly-live lock costs a **delay** (the reader stops and reports; a repeating driver retries), a wrongly-stale one costs the double-verdict. **Report the shape found**, because an off-spec record is a bug in whatever wrote it and nothing else will surface it: such a lock is never reclaimed automatically, so the report is what brings a human to clear it. **`owner.tmp` is not a record** — it is this spec's own scratch name mid-stamp, and a reader ignores it rather than reading it as a file standing in for `owner`.
+**A probably orphaned lock is reported, never reclaimed by a run.** Reclaiming means check the timestamp, `rm -rf`, then `mkdir`, and those are three steps, not one atomic operation. Two runs that both judge one lock stale can each delete it, and the slower one then deletes the lock the faster one just took, so both run. A holder that was only suspended (a sleeping laptop, a paused VM) can also return after the window, finish, and release a lock that is now another run's. The run id stops the second case at release time, but nothing in skill prose makes the first atomic. So an **unattended** run stops for that issue or tree and reports the lock as probably orphaned, with the holder's `host`, `run` and `issue`, the age of its `refreshed`, the lock's path and the exact command that removes it (`rm -rf '<path>'`). A drain skips the issue and goes on; a held drain or tree lock stops the run as the held-lock table says. An **attended** run may offer that removal to the human and runs it only on an explicit yes, then retakes the lock by `mkdir`, which can still lose to another run. Either way only a human decides that a lock is dead.
 
-**The boundary, stated plainly.** This mutual exclusion holds **within one checkout** — the clones that share **one** git common dir on **one** filesystem, where the lock directory is visible to all of them. Two clones (or two hosts) that do **not** share the filesystem holding the lock each `mkdir` _their own_ lock and never see each other's. Cross-host coordination needs a central arbiter and is **out of scope for skill prose**; the reconcile's assignee/age guard, not the lock, is what keeps a second clone from destroying a first clone's live work.
+**The last two rows are opposite findings, which is why they are two rows.** _No record yet_ is the ordinary just-created race, seconds wide, and the directory's mtime answers it — but only because every stamp goes through the **rename** above. Overwrite `owner` in place instead and that mtime stops moving the moment `owner` is created, so the fallback silently becomes a plain age TTL on the lock's **creation** time: a run that outlasts the window is then reported as orphaned and offered for removal **mid-run** by the one clause meant to protect a lock too young to have stamped — the eviction this section exists to rule out, arriving through the row that looks safest. _A record present but unparseable_ says the opposite: something wrote it, so another writer holds this lock, and that is exactly when destroying it costs most. Presume it **live**. The cost of being wrong is bounded and the asymmetry is the whole point — a wrongly-live lock costs a **delay** (the reader stops and reports; a repeating driver retries), a wrongly-stale one costs the double-verdict. **Report the shape found**, because an off-spec record is a bug in whatever wrote it and nothing else will surface it: such a lock is never reclaimed automatically, so the report is what brings a human to clear it. **`owner.tmp` is not a record** — it is this spec's own scratch name mid-stamp, and a reader ignores it rather than reading it as a file standing in for `owner`.
+
+**The boundary, stated plainly.** This mutual exclusion is **exclusive within one clone**: its main working tree and all its linked worktrees, which share **one** git common dir on **one** filesystem. That covers the issue locks as much as the drain locks. Two independent clones, on one host or two, each have their own common dir, so two clones handed the same issue each take **their own** issue lock and never see each other's. **Across clones nothing is guaranteed.** Only the tracker lease (`working`, `reviewing`), re-read once the issue lock is held, **narrows** the race there, because the label flip and the assignee are not a compare-and-swap. Cross-host coordination needs a central arbiter and is **out of scope for skill prose**; the reconcile's assignee/age guard, not the lock, is what keeps a second clone from destroying a first clone's live work.
 
 </skills-worklock>
 
@@ -344,8 +426,12 @@ review=$(printf '%s' "$resolved" | jq -er '.work.labels.reviewRequested | select
 [ "$review" = 'false' ] && review=
 
 # GitHub — issues awaiting review
-test -n "$review" && gh issue list --state open --label "$review" --json number,title,labels,createdAt
+test -n "$review" && { issues=$(gh issue list --state open --label "$review" --limit 1000 \
+  --json number,title,labels,createdAt) || issues=unreadable; }
+[ "$issues" = unreadable ] || [ "$(printf '%s' "$issues" | jq length)" -lt 1000 ] || echo "selection may be truncated"
 ```
+
+**`--limit 1000`, and a full page is not a complete one.** `gh` stops at **30** rows by default, silently, so without the limit the 31st eligible issue — possibly the only workable or highest-priority one — is never seen and the drain reports an empty or partial queue as if it were whole. Even 1000 is a bigger page, not a guarantee: when the count comes back equal to the limit, say in the plan that the selection may be a prefix, and never report "nothing eligible" from it. A failed read is an unread queue, never an empty one.
 
 **Never pass `--label "$review"` unguarded.** With `labels.reviewRequested: false` the label mechanic is off and the PR's existence is the signal — select on that instead; do **not** fall through to a label query with an empty value.
 
@@ -357,7 +443,7 @@ A missing store is a setup error, never a drained queue. Check it exists before 
 
 ## The `reviewing` lease
 
-`work.labels.reviewing` is the review loop's lease — the tracker-global claim `working` is for the implement loop, giving cross-clone mutual exclusion the checkout-local review lock cannot (the lock only proves no live reviewer **in this checkout**; a second clone's reviewer holds its own lock, invisible here). Two clones draining the review queue would otherwise both select the same `reviewRequested` issue and write **competing** verdicts (one `done`, one `changes-requested`, last-write-wins).
+`work.labels.reviewing` is the review loop's lease — the tracker-global claim `working` is for the implement loop, narrowing the cross-clone race the clone-local review lock cannot see, though not closing it (the lock only proves no live reviewer **in this checkout**; a second clone's reviewer holds its own lock, invisible here). Two clones draining the review queue would otherwise both select the same `reviewRequested` issue and write **competing** verdicts (one `done`, one `changes-requested`, last-write-wins).
 
 **It defaults to _off_** — the one `labels.*` key with **no default string**, so an absent `reviewing` means the lease is off (today's behaviour), never `ai: reviewing`. Resolve it as label-or-off and act only on a resolved string:
 
@@ -470,7 +556,7 @@ The review runs the repo's gate itself under [Running the repo's checks](#runnin
 # GitLab MR: source_ref=refs/merge-requests/<bound-iid>/head.
 # No PR/MR: source_ref=refs/heads/<validated-shared-branch>.
 # origin must resolve to the bound base repository; target hooks/filters are disabled.
-# Reclaim the derived path under the lock first; unresolved removal failures stop.
+# Reclaim the derived path under this issue's review lock first; unresolved removal failures stop.
 test -n "$assessed_head" && test -n "$source_ref" || exit 1
 git fetch origin "$source_ref" \
   && test "$(git rev-parse --verify FETCH_HEAD)" = "$assessed_head" \
@@ -485,7 +571,7 @@ The expected SHA comes from the bound PR/MR metadata (GitHub `headRefOid`) or th
 
 **The trusted orchestrator records the result, then cleans up.** Associate the actual runner exit status, full reviewed SHA and bounded gate output outside the target-writable filesystem before removing the snapshot or worktree. Cleanup success never overwrites a failed or unavailable gate, and text printed by the target cannot declare the gate green. A cleanup failure is reported separately. Subsequent tool calls restore the recorded result explicitly; shell variables do not survive between calls.
 
-The review path is derived from the git common directory and selected issue id so each invocation can recover it. Reclaim only under the work lock, never with `--force`; a live lease or a non-empty remnant that cannot be removed safely stops preparation and is reported. The source worktree should remain unchanged because target execution writes only to the sandbox snapshot. After recording the gate outcome, the trusted orchestrator removes the source worktree with `git worktree remove` on that same derived path.
+The review path is derived from the git common directory and selected issue id so each invocation can recover it. Reclaim only under this issue's review lock — the lock that covers the derived path — never with `--force`; a live lease or a non-empty remnant that cannot be removed safely stops preparation and is reported. The source worktree should remain unchanged because target execution writes only to the sandbox snapshot. After recording the gate outcome, the trusted orchestrator removes the source worktree with `git worktree remove` on that same derived path.
 
 **On a shared branch, red is not automatically _this_ issue's fault.** `branch:dev` means the head carries every issue that landed before this one, so the gate judges the combined tree. That is the right thing to run — a branch that does not pass is a fact worth having — but attributing it is a separate step: check whether the failure touches this issue's own commit range before writing `changes-requested` against it. It does not → the finding is real and belongs on the branch, so escalate to `needs human` rather than bouncing an issue whose diff is fine.
 
@@ -521,19 +607,22 @@ esac
 # $host/$owner/$repo and numeric $pr come from the same validated PR binding, not the Linear key.
 # 1. the newest un-draft, where one has happened at all. --paginate applies --jq per page,
 #    so this prints one candidate per page; the sort below picks across them.
+# Empty = the PR was never un-drafted; `unreadable` is its own fact, never folded into empty.
 ready=$(gh api --hostname "$host" "repos/$owner/$repo/issues/$pr/timeline" --paginate \
-  --jq '[.[] | select(.event=="ready_for_review") | .created_at] | max // empty') || ready=
+  --jq '[.[] | select(.event=="ready_for_review") | .created_at] | max // empty') || ready=unreadable
+[ "$ready" = unreadable ] || ready=$(printf '%s\n' "$ready" | grep '^[0-9]' | sort | tail -n 1)
+
 # 2. this head's own commit — when the implement loop made it reviewable. That loop commits
 #    and pushes within one run, so the commit date is the push to within seconds.
 head=$(gh pr view "$pr" --repo "$pr_repo" --json commits \
   --jq '[.commits[].committedDate] | max // empty' 2>/dev/null) || head=
 # ISO-8601 UTC sorts lexicographically, so `sort` is a time sort.
-since=$(printf '%s\n%s\n' "$ready" "$head" | grep . | sort | tail -1)
+since=$(printf '%s\n%s\n' "$ready" "$head" | grep '^[0-9]' | sort | tail -1)
 ```
 
 Each round then gets the base it should: the round that un-drafts takes the flip, which is newer than the head it just judged; a re-work round on an already-ready PR takes its **new head**, so the budget starts when the work did; a PR with no `ready_for_review` event has the head alone, which is a base rather than nothing.
 
-**`$since` bounds the wait and nothing else.** It is the deadline's origin, never a filter on which results count — the poll below settles that by dropping `skipping` outright, and deliberately not by this timestamp, because a base this permissive-by-fallback cannot be trusted to decide correctness. Getting `$since` wrong makes the wait too long or too short; it can never make an unanalysed head read as green.
+**`$since` bounds the wait and nothing else.** It is the deadline's origin, never a filter on which results count — it may fall back to the head commit, and a base that permissive cannot be trusted to decide correctness. Which results count is the poll's question, answered from the **un-draft itself** (`$ready`) and never from `$since`. Getting `$since` wrong makes the wait too long or too short; it can never make an unanalysed head read as green.
 
 **So the budget is CI's elapsed time, not CI's own runtime, and on a re-work round it starts early.** Where the base is this head's commit — the round answering a CI failure, or any PR that never carried the event — the clock has been running through everything between the push and the first poll: the drain picking the issue up, this review creating its worktree, installing from the lockfile and running `verify`. Size `work.review.timeout` against that wall-clock span rather than against the pipeline's duration alone, or a repo whose CI nearly fills the budget will escalate on the reviewer's own overhead. The direction of the error is the safe one — `needs human`, never an accept — but it is an escalation a bigger number would have avoided.
 
@@ -544,12 +633,18 @@ Each round then gets the base it should: the round that un-drafts takes the flip
 ```sh
 # Non-zero here is routine — 8 while runs are pending, 1 on a failure or with no checks at
 # all — so the status is deliberately not branched on, and never blanks the payload.
-checks=$(gh pr checks "$pr" --repo "$pr_repo" --json bucket 2>/dev/null)
+[ "$ready" != unreadable ] || { echo unreadable; exit 0; }   # never the permissive reading
+checks=$(gh pr checks "$pr" --repo "$pr_repo" --json bucket,startedAt 2>/dev/null)
 # `skipping` is dropped, never counted — it is a job declining to answer, not an answer.
-raw=$(printf '%s' "$checks" | jq -r '.[]? | select(.bucket != "skipping") | .bucket' 2>/dev/null) || raw=
+# Where the PR was un-drafted, a row from a run started before that flip is the draft's run —
+# a summary job that passed over skipped work — and is dropped too.
+raw=$(printf '%s' "$checks" | jq -r --arg flip "$ready" \
+  '.[]? | select(.bucket != "skipping") | select($flip == "" or (.startedAt // "") >= $flip) | .bucket' \
+  2>/dev/null) || raw=
 
 case $raw in
-'')          echo none ;;      # nobody answered — "not yet" or "not at all", below
+'')          echo none ;;      # nobody answered since the flip — "not yet" or "not at all", below
+
 *fail*)      echo red ;;
 *pending*)   echo pending ;;   # keep polling until the deadline
 *cancel*)    echo pending ;;   # superseded — a replacement run is due, so poll on
@@ -557,9 +652,9 @@ case $raw in
 esac
 ```
 
-**Dropping `skipping` is what stops a stale result reading as green, and it is the only thing that has to.** A repo whose draft gate sits on the **job** does not report nothing while the PR is a draft — it reports `skipping`, one row per gated job, and gating `codeql.yml` adds a third. `gh pr ready` fires a fresh run for the same head SHA, but that run takes seconds to register: poll inside that window while counting those rows and the list holds three of them — no `fail`, no `pending`, and **not empty** — so the recipe would answer green and write `done` on a head CI never analysed. Dropping them empties the list instead, which is the `none` case below and already handled correctly.
+**Two kinds of stale row, and the poll drops both.** A repo whose draft gate sits on the **job** does not report nothing while the PR is a draft — it reports `skipping`, one row per gated job. And a repo whose workflow ends in a **summary job** — a `Gate` that `needs` the real work and accepts a skipped dependency — reports that summary as `pass` on the draft's run, because the work it summarises was skipped rather than failed. `gh pr ready` fires a fresh run for the same head SHA, but that run takes seconds to register: poll inside that window and the list holds the draft's `skipping` rows **and** its green summary — no `fail`, no `pending`, not empty — so a recipe that only dropped `skipping` would answer green and write `done` on a head CI never analysed. So `skipping` is dropped outright, and every row from a run that **started before the newest un-draft** is dropped with it: the draft's run is not this review's evidence, whatever its summary says. Both leave the list empty inside that window, which is the `none` case below and already handled correctly.
 
-**Why dropped rather than filtered by start time.** Timestamping the rows against `$since` looks equivalent and is not: it is only as good as `$since` being the **flip**, and `$since` legitimately falls back to the head commit (below) — a base **older** than the draft-gate rows, because those are registered by the push (commit → push → run start, always in that order). One transient timeline read is then enough to hand the poll a permissive base, let all three stale rows through, and produce exactly the false `done` above — the same "an unreadable value must not be the permissive reading" trap this file guards everywhere else. Dropping the rows removes the failure mode instead of narrowing its window, and needs no timestamp at all, so the poll asks for `bucket` alone.
+**Filtered by the un-draft, never by `$since`.** `$since` legitimately falls back to the head commit — a base **older** than the draft's rows, because those are registered by the push — so filtering on it would let the stale rows straight through. The flip is the one moment that separates the draft's run from the ready one, so the filter reads `$ready` alone, recomputed in the poll's own call (each command is its own process). A PR that was never a draft has no `ready_for_review` event and no draft run to exclude, so an empty `$ready` filters nothing. **An unreadable timeline is neither**: it prints `unreadable`, never the permissive empty, and routes to `needs human` saying the un-draft could not be read — the same rule as an [unreadable round count](#round-count).
 
 **A `skipping` is never a pass, even when it is honest.** After the un-draft a job may still decline on a condition of its own — a `paths` filter this head does not match, a matrix exclusion — and that is a legitimate outcome, but it is the job saying _nothing_ about this head rather than approving it. Where those are the only rows, the list reads `none`, and the fourth row of the table below is exactly right for it: the accept rests on the `verify` this review ran itself, not on a check that declined. Nothing stalls, because "none" is a reading with a verdict, not a wait.
 

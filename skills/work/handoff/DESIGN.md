@@ -1,15 +1,10 @@
----
-title: 'Commit a handoff into the repo it hands off'
-description: 'What was settled for handoff: the document is committed because its reader is on another machine, ids come from git history because the files are deleted, and nothing in the frame invites an agent to sign its work.'
-status: 'accepted'
-date: '2026-08-26'
----
+# handoff — Design
 
-# ADR-0037 — Commit a handoff into the repo it hands off
+**Commit a handoff into the repo it hands off.** The decision record behind `handoff`, recorded in the ADR log on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
 
 ## Context
 
-`handoff` hands in-progress work from one agent or session to another through a document under `.agents/handoffs/`. The issue that specified it left most of its shape open and asked for research into an existing convention. Relocated from the skill's `REFERENCE.md` under [ADR-0031](/adr/0031-keep-rationale-as-repo-memory); every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
+`handoff` hands in-progress work from one agent or session to another through a document under `.agents/handoffs/`. The issue that specified it left most of its shape open and asked for research into an existing convention. Relocated from the skill's `REFERENCE.md`; every part of it that steers what the skill does now lives in the skill's own mechanics as a rule.
 
 ## Decision
 

@@ -25,7 +25,7 @@ jobs:
       pull-requests: read
       checks: read
       statuses: read
-    uses: kirchDev/workflows/.github/workflows/_fast-forward-queue.yml@ea3a3c15385340fe1f9751e0afefaef32970aad7 # v0.12.0
+    uses: kirchDev/workflows/.github/workflows/_fast-forward-queue.yml@e3abe515daa69d2a65794a96608d698daaf389ce # v0.19.1
     with:
       pr: ${{ inputs.pr }}
     secrets:

@@ -1,0 +1,17 @@
+{
+  "_comment": "Development-only behavioural cases for pull-request. Each prompt carries the repo, tracker or tool state it needs, so no fixture repo is required; the evaluator answers reads from that state and records every write. Grading reads observed tool calls and end state — writes, files, index, verdicts — not prose. Run each case with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "pull-request",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Open a PR for this branch. (GitHub; you are bob; origin is acme/app and pr.base is dev. The current branch feature/login is pushed to origin and is not stacked on another branch. `gh pr list --head feature/login --state open` returns PR #12, opened by alice from her fork alice/app with head branch feature/login (isCrossRepository true). No open PR has acme/app's feature/login as its head.)",
+      "expected_output": "#12 belongs to alice's fork, not to this branch, so it is neither updated nor treated as a reason to stop: the plan creates a new PR dev ← feature/login on acme/app after confirmation, and #12 receives no write.",
+      "expectations": [
+        "The plan identifies #12 as alice's PR from the fork alice/app, not as this branch's existing PR.",
+        "No `gh pr edit`, comment, label, review or close call targets #12.",
+        "The plan shows `dev ← feature/login` on acme/app and proposes creating a new PR.",
+        "`gh pr create` runs only after confirmation, with --base dev and --head feature/login against acme/app."
+      ]
+    }
+  ]
+}

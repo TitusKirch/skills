@@ -1,0 +1,18 @@
+{
+  "_comment": "Development-only behavioural cases for tituskirch-skills-config. Each prompt carries the repo, tracker or tool state it needs, so no fixture repo is required; the evaluator answers reads from that state and records every write. Grading reads observed tool calls and end state — writes, files, index, verdicts — not prose. Run each case with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "tituskirch-skills-config",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Reconcile the skills config, and turn write-docs back on — I want it locally. (State: .tituskirch-skills.json is {\"$schema\": \"<schema url>\", \"forge\": \"github\", \"verify\": \"pnpm verify\", \"docs\": false, \"work\": {\"branch\": \"branch:dev\"}, \"profiles\": {\"ci\": {\"work\": {\"branch\": \"branch:dev\"}, \"docs\": {\"language\": \"de\"}}}}. The remote runner's scheduler sets CI=true; nothing sets TITUSKIRCH_SKILLS_PROFILE.)",
+      "expected_output": "For docs the plan states each context's effective value with its source — off locally from the base key, on with language de under CI through profiles.ci — and puts the change where the local value comes from: the base `docs` key. The ci overlay's work.branch repeats the base and is reported as removable. Nothing is written before confirmation, and no default-valued key is added.",
+      "expectations": [
+        "For docs the plan states the effective value per context: false locally, from the base `docs` key; enabled with language de under CI, from profiles.ci selected by CI=true.",
+        "The proposed change edits the base `docs` key (dropping `false` so docs falls back to defaults) and does not edit profiles.ci to achieve the local change.",
+        "profiles.ci.work.branch is reported as identical to the base value and offered for removal.",
+        "No key is written set to its own schema default.",
+        "The config file is unchanged until the plan is confirmed."
+      ]
+    }
+  ]
+}

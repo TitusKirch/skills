@@ -85,9 +85,13 @@ $RECYCLE.BIN/
 .nfs*
 # endregion
 
-# region agents@v1
+# region agents@v2
 .claude/settings.local.json
 .claude/worktrees/
+.codex/config.toml
 # endregion
 
 # endregion
+
+# Local scratch space, never committed.
+/tmp/

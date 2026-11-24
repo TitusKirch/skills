@@ -71,6 +71,37 @@
         "Does not infer success from cleanup exit 0 or printed marker.",
         "Keeps the result associated with the exact reviewed commit."
       ]
+    },
+    {
+      "id": 8,
+      "prompt": "Review issue #50 and finish it if it is right. (GitHub, worktree mode. The review lands on done; PR #95 is a draft. The evaluator's timeline: ready_for_review at 10:00:00Z once the run marks it ready. `gh pr checks` returns, at the first poll, the draft's run — 'CI / Check' skipping and 'CI / Gate' pass, both started 09:50Z — and no new run yet; at the second poll a new 'CI / Check' pending started 10:00:10Z; at the third, it passes.)",
+      "expected_output": "The reviewer marks the PR ready and waits: the draft run's green Gate does not count, so done is written only after the new run passes.",
+      "expectations": [
+        "The verdict done is written only after the third poll.",
+        "The first poll's green Gate from the draft run is not read as a pass.",
+        "No verdict is written while the new run is pending."
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Review issue #51. (Config: work.labels.reviewing is false. Another reviewer process already holds the review issue lock for #51 in this checkout.)",
+      "expected_output": "The run takes the issue lock even with reviewing off, finds it held, and stops for #51 without writing a verdict.",
+      "expectations": [
+        "The run attempts to take the review issue lock for #51.",
+        "Finding it held, it writes no verdict and changes no label.",
+        "It reports that another reviewer is live on #51."
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Review issue #52. (GitHub, worktree mode, PR #96. The run reads the PR head A=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, reviews the diff and runs verify against A: green, and the review would accept. Before the verdict is written, the evaluator pushes B=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb to the PR branch, changing a file from #52's diff.)",
+      "expected_output": "The head is re-read before the verdict, the move from A to B is caught, and A's acceptance is not carried over: the run either reviews B afresh or stops and reports the change. Whatever it writes names the SHA it actually reviewed.",
+      "expectations": [
+        "The head is re-read before the verdict is written, and the move from A to B is detected.",
+        "No 'done' verdict is written on the strength of A's review, and the PR is not marked ready while B is unreviewed.",
+        "The run either reviews B afresh (diff and gate on B) before any verdict, or stops and reports the head change naming both SHAs.",
+        "Any verdict or comment written names the exact SHA that was reviewed."
+      ]
     }
   ]
 }

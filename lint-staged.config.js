@@ -1,16 +1,12 @@
+// Static tasks: lint-staged appends the staged paths itself, as separate arguments, so a
+// path with a space stays one path. The two files oxfmt ignores are left out by their
+// exact basename — CHANGELOG.md (a release-please merge back to dev stages nothing else,
+// and oxfmt exits non-zero when every file it is handed is ignored) and pnpm-lock.yaml.
 export default {
-  '*.md': (filenames) => {
-    // oxfmt ignores CHANGELOG.md and exits non-zero when every file it is
-    // handed is ignored — which is exactly a release-please merge back to dev.
-    const files = filenames.filter((f) => !f.endsWith('CHANGELOG.md'));
-    return files.length > 0 ? [`pnpm exec oxfmt ${files.join(' ')}`] : [];
-  },
-  '*.{json,jsonc,yml,yaml}': (filenames) => {
-    const files = filenames.filter((f) => !f.includes('pnpm-lock.yaml'));
-    return files.length > 0 ? `pnpm exec oxfmt ${files.join(' ')}` : [];
-  },
-  '*.{js,ts,mjs,cjs}': (filenames) => [
-    `pnpm exec oxlint --fix --deny-warnings ${filenames.join(' ')}`,
-    `pnpm exec oxfmt ${filenames.join(' ')}`
+  '!(CHANGELOG).md': 'pnpm exec oxfmt',
+  '!(pnpm-lock).{json,jsonc,yml,yaml}': 'pnpm exec oxfmt',
+  '*.{js,ts,mjs,cjs}': [
+    'pnpm exec oxlint --fix --deny-warnings',
+    'pnpm exec oxfmt'
   ]
 };

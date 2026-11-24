@@ -8,8 +8,8 @@
 # Verify after editing:
 #   codex execpolicy check --pretty --rules .codex/rules/default.rules -- <command>
 #
-# Verify the two files still ban the same set:
-#   pnpm check:policy
+# Verify the two files still ban the same set: test/policy-parity.test.ts, part of
+# pnpm test, which also asks this engine natively when the codex CLI is installed.
 #
 # Two differences from .claude/settings.json are deliberate, because the rule
 # languages differ rather than the intent:
@@ -24,7 +24,7 @@
 #   in the spellings written down. "rm -rf /" and "rm -fr /" are both here;
 #   "rm -r -f /" and "redis-cli FlushAll" are not, and enumerating permutations
 #   never ends. Both files list the same spellings — that parity is what
-#   pnpm check:policy proves; it is not a claim that the set is complete.
+#   test/policy-parity.test.ts proves; it is not a claim that the set is complete.
 
 # ─────────────────────────── git: work and history ───────────────────────────
 

@@ -1,0 +1,19 @@
+{
+  "_comment": "Development-only behavioural cases for validate-skills. Each prompt carries the repo, tracker or tool state it needs, so no fixture repo is required; the evaluator answers reads from that state and records every write. Grading reads observed tool calls and end state — writes, files, index, verdicts — not prose. Run each case with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "validate-skills",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Validate skills/demo/widget against the spec. (State: its SKILL.md frontmatter has `name: widget`, a valid description, `colour: blue`, `paths: [\"src/**\"]`, and `allowed-tools: Read Grep Bash(git status:*)` written as a space-separated string rather than a YAML list. skills-ref is not on PATH, and installing it fails: no network.)",
+      "expected_output": "The report leads with the spec tier UNVERIFIED and why, and keeps each cause apart: `paths` as a client extension naming Claude Code and Cursor, `colour` as an unrecognised field judged only non-authoritatively, the string allowed-tools as the spec's own form. Nothing is called valid and nothing is edited.",
+      "expectations": [
+        "The report states, before any finding, that the spec tier is UNVERIFIED because skills-ref could not be installed, naming the failed install.",
+        "No finding or summary calls the skill valid or spec-clean.",
+        "`paths` is reported as a client extension accepted by Claude Code and Cursor, not as a spec violation.",
+        "`colour` is reported as an unrecognised field in a finding of its own, labelled non-authoritative since skills-ref did not run.",
+        "The space-separated allowed-tools string is not reported as a spec violation; if flagged at all, it is a separate house-style finding.",
+        "SKILL.md is not edited."
+      ]
+    }
+  ]
+}

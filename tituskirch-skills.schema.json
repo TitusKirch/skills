@@ -128,7 +128,7 @@
       ]
     },
     "docs": {
-      "description": "write-docs settings, or false to opt the repo out of docs entirely.",
+      "description": "Settings for write-docs, write-adr and prune-adrs, or false to opt the repo out of docs entirely.",
       "oneOf": [
         {
           "$ref": "#/$defs/docsShape"
@@ -918,7 +918,7 @@
           ]
         },
         "docs": {
-          "description": "write-docs settings, or false to opt the repo out of docs entirely.",
+          "description": "Settings for write-docs, write-adr and prune-adrs, or false to opt the repo out of docs entirely.",
           "oneOf": [
             {
               "$ref": "#/$defs/docsShape"

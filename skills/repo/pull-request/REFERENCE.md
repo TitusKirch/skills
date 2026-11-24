@@ -66,16 +66,20 @@ fi
 ```bash
 # GitHub
 me=$(gh api user --jq .login)
+# Only a PR whose head lives in THIS repo is this branch's PR: a fork can carry a branch of
+# the same name, and its PR is somebody else's work, not a duplicate of the one to open.
 gh pr list --head "$(git branch --show-current)" --state open \
-  --json number,author,isDraft,title --jq '.[0]'
+  --json number,author,isDraft,title,isCrossRepository \
+  --jq '[.[] | select(.isCrossRepository == false)] | .[0]'
 
 # GitLab — the head branch is the *source* branch, and `draft` is a title prefix, not a field
 me=$(glab api user --jq .username)
 glab mr list --source-branch "$(git branch --show-current)" --output json \
-  | jq '.[0] | {number: .iid, author: .author.username, draft, title}'
+  | jq '[.[] | select(.source_project_id == .target_project_id)] | .[0]
+        | {number: .iid, author: .author.username, draft, title}'
 ```
 
-- No result → **create**.
+- No result → **create**. A same-named branch's PR from a **fork** is not a result here: it is filtered out above, so it neither blocks this PR nor gets touched.
 - author == `$me` → offer to **update its body only**.
 - author != `$me` (a teammate, or a bot / automation such as a `dev → main` rollup) → **leave it untouched**; report number + author and stop.
 
@@ -139,7 +143,7 @@ fi
 - **A missing `origin/<B>` is skipped, not fatal.** The fetch above is what makes that safe: after it, a ref still missing is a branch this remote does not have, not one this tree merely had not seen. Skip that candidate and say so in the plan; do not end the run. **The fetch is the one command here that is not pre-approved** — `git fetch` carries the same `--upload-pack=<cmd>` exec route that keeps `git push` out of [`allowed-tools`](#config), so it asks. Declined or failing, judge against the refs already present and **name every skipped candidate in the plan**, so the human sees which branches were not judged rather than being told, wrongly, that nothing was found.
 - **A tip already on the trunk is filtered.** An open PR whose commits have since landed on the base is an ancestor of every branch cut after it, and without this arm it would read as a parent for all of them. A genuine parent always carries commits the trunk does not.
 
-**The list is paged, and a truncated page is the one drop nobody sees.** `gh pr list` returns **30** PRs by default, so past thirty open PRs the candidate set is cut off with no error and no signal — and a genuine parent outside the page is never considered, which lands exactly the mis-based PR this section exists to prevent. Every other drop above is knowing: cross-fork is filtered on a stated rule, a missing ref is named in the plan, a trunk-contained tip is filtered on a stated rule. Truncation drops a candidate without anyone learning there was one, so the asymmetry the rest of this section argues for does not hold for it. Hence `--limit 100` in the query — and, because that is a bigger page rather than a guarantee, **a page that comes back full is itself worth a line in the plan**: at that count the set may be a prefix, so say so instead of reporting "no parent found" as if the whole list had been read. The [existing-PR check](#existing-pr-and-who-owns-it) needs none of this — it is `--head`-scoped, so it is bounded already.
+**The list is paged, and a truncated page is the one drop nobody sees.** `gh pr list` returns **30** PRs by default, so past thirty open PRs the candidate set is cut off with no error and no signal — and a genuine parent outside the page is never considered, which lands exactly the mis-based PR this section exists to prevent. Every other drop above is knowing: cross-fork is filtered on a stated rule, a missing ref is named in the plan, a trunk-contained tip is filtered on a stated rule. Truncation drops a candidate without anyone learning there was one, so the asymmetry the rest of this section argues for does not hold for it. Hence `--limit 100` in the query — and, because that is a bigger page rather than a guarantee, **a page that comes back full is itself worth a line in the plan**: at that count the set may be a prefix, so say so instead of reporting "no parent found" as if the whole list had been read. The [existing-PR check](#existing-pr--mr-and-who-owns-it) needs none of this — it is `--head`-scoped, so it is bounded already.
 
 The refusal that stays is the one that earns it: a candidate sharing history that is **not** on the trunk, whose tip is nevertheless no ancestor of this branch. That one may well be the parent, moved out from under this branch, and guessing there is exactly what produces the wrong diff.
 

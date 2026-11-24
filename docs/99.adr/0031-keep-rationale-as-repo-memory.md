@@ -1,11 +1,13 @@
 ---
 title: 'Keep rationale as repo memory'
 description: 'Per-skill rationale moves out of every REFERENCE.md and into this log, after every behaviour-steering part of it has been folded into the mechanics as a positively phrased rule.'
-status: 'accepted'
-date: '2026-08-26'
+status: 'superseded'
+date: '2026-11-23'
 ---
 
 # ADR-0031 — Keep rationale as repo memory
+
+> **Superseded by** [ADR-0044](/adr/0044-keep-a-skills-rationale-in-its-own-design-file)
 
 Supersedes [ADR-0014](/adr/0014-let-rationale-travel-with-the-skill).
 

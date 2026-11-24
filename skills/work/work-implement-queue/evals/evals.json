@@ -1,0 +1,50 @@
+{
+  "_comment": "Development-only behavioural cases for the implement drain. The evaluator supplies the tracker as recording stubs (every read answered from the prompt's state, every write recorded, nothing live) and grades observed tool calls and end state, not prose: mutating tracker calls, locks created under the git common dir, and which issues reach the plan. Run each case with and without the skill (Anthropic's skill-creator) for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "work-implement-queue",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "nur den Plan: which issues would the implement queue work right now? (Repo: GitHub tracker, work.cap 3. Issue #12 is labelled 'ai: working', assigned to nobody, with no branch, no PR and no pushed commit — an abandoned claim. Issues #20 and #21 are 'ai: ready'.)",
+      "expected_output": "A plan only: it names #12 as an abandoned claim the reconcile would return to ready, and #20/#21 (and #12 after the reclaim) as the queue, with the cap. No lock is taken, no label changes, no comment, no assignment.",
+      "expectations": [
+        "Zero mutating tracker calls (no label edit, comment or assignment).",
+        "No implement.lock or issue lock is created under the git common dir.",
+        "#12's reclaim appears in the plan as a planned transition, not as something done.",
+        "#20 and #21 appear in the planned queue."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Run the implement queue. (GitHub tracker, work.cap 1. 31 open issues carry 'ai: ready'; issues 1–30 also carry 'mutex: deploy' and a prerequisite that has not landed, so all thirty are deferred. Issue 31 is ready with no prerequisite. The evaluator's `gh issue list` returns 30 rows unless a larger --limit is passed.)",
+      "expected_output": "The selection reads past the first 30 rows, defers 1–30 with their reason, and works #31. It never reports an empty queue.",
+      "expectations": [
+        "The selection query asks for more than 30 rows (e.g. --limit 1000).",
+        "Issue #31 is selected and handed to a worker.",
+        "Issues 1–30 are reported as deferred, with the unlanded prerequisite as the reason.",
+        "The run does not report 'nothing eligible'."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "just show me what the queue would do. (GitHub tracker; no issue carries 'ai: ready' or 'ai: changes requested'; nothing is in 'ai: working'.)",
+      "expected_output": "An empty plan that says which labels were searched and that nothing is eligible — still with zero writes and no lock.",
+      "expectations": [
+        "Zero mutating tracker calls.",
+        "No lock is created.",
+        "The plan names the labels it searched, so an empty search is told apart from an unread one."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "nur den Plan bitte. (GitHub tracker, work.cap 1. 31 open issues carry 'ai: ready'; the evaluator's `gh issue list` returns 30 rows unless a larger --limit is passed. Issue #31, on the second page, is the only one labelled 'priority: p0'. Issue #5 is 'ai: working' and its issue lock under the git common dir is held by a live implement worker that refreshed it a minute ago.)",
+      "expected_output": "A plan with every reason visible and nothing started: #31 is the one issue the cap admits, the other 30 are ready but beyond the cap, and #5 is live elsewhere, not a reclaim. No mutation, no lock taken or touched, no worker.",
+      "expectations": [
+        "Zero mutating tracker calls, and no lock is created or removed; #5's held lock is left as it is.",
+        "The selection query asks for more than 30 rows.",
+        "The plan names #31 as the one issue the cap of 1 admits, and the other 30 as ready but beyond the cap.",
+        "#5 is reported as held by a live worker, not as a reclaim candidate.",
+        "No worker is started for any issue."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "_comment": "Development-only behavioural cases for write-contributing. Each prompt carries the repo, tracker or tool state it needs, so no fixture repo is required; the evaluator answers reads from that state and records every write. Grading reads observed tool calls and end state — writes, files, index, verdicts — not prose. Run each case with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "write-contributing",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "In CONTRIBUTING.md, change only the setup instructions — they still say npm install. (State: CONTRIBUTING.md exists. package.json sets packageManager to pnpm@10.12.1 and pnpm-lock.yaml is committed; there is no package-lock.json. The guide's Development setup section says `npm install`. Elsewhere the guide is stale too: it says 'Branch off main' while .tituskirch-skills.json sets pr.base to dev, and its suite table lists 14 scripts copied from package.json.)",
+      "expected_output": "One targeted change: the setup section now installs with pnpm, the manager read from packageManager. The branch line and the suite table stay byte-identical; the drift is named in a line or two with a reconcile pass offered, not fixed.",
+      "expectations": [
+        "The applied diff touches only the Development setup section of CONTRIBUTING.md and replaces `npm install` with `pnpm install`.",
+        "The plan names package.json's packageManager (or the pnpm lockfile) as the source of the package manager.",
+        "The 'Branch off main' line and the suite table are byte-identical after the run.",
+        "The stale branch name and the transcribed suite table are at most named briefly in the report, with a reconcile pass offered, not fixed.",
+        "No file other than CONTRIBUTING.md is written, and nothing is written before confirmation."
+      ]
+    }
+  ]
+}

@@ -5,7 +5,7 @@
 **Agent skills by Titus Kirch — installable via [skills.sh](https://skills.sh) in [Claude Code](https://code.claude.com/docs/en/overview), [Codex](https://github.com/openai/codex), [Cursor](https://cursor.com/docs), [OpenCode](https://opencode.ai) and friends**
 
 [![skills.sh](https://skills.sh/b/TitusKirch/skills)](https://skills.sh/TitusKirch/skills)
-[![Tests](https://github.com/TitusKirch/skills/actions/workflows/ci.yml/badge.svg?event=pull_request)](https://github.com/TitusKirch/skills/actions/workflows/ci.yml)
+[![Tests](https://github.com/TitusKirch/skills/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/TitusKirch/skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/TitusKirch/skills?style=flat-square&color=10b981)](LICENSE)
 
 </div>
@@ -66,11 +66,14 @@ Copy one skill folder into:
 
 </details>
 
-### OpenCode
+<details>
+<summary><b>OpenCode notes</b> — no slash commands, and how to run the two queues unattended</summary>
 
 OpenCode loads skills through its native `skill` tool; installing a skill does **not** create a slash command. Use a prose request like the one above, or define an explicit command under `.opencode/commands/` when a shortcut is useful.
 
 The two work queues need an agent that cannot ask questions while it runs unattended. Each queue ships an opt-in template: copy [`work-implement-queue`'s](skills/work/work-implement-queue/templates/opencode-agent.md) or [`work-review-queue`'s](skills/work/work-review-queue/templates/opencode-agent.md) template into the consuming repo as `.opencode/agents/<queue-name>.md`, then restart OpenCode. Run one drain with `opencode run --auto --agent <queue-name> "Run the queue once."`; schedule later drains externally. OpenCode has no native `/loop` command.
+
+</details>
 
 ## ✨ Features
 
@@ -78,7 +81,6 @@ The two work queues need an agent that cannot ask questions while it runs unatte
 - **⚙️ Configurable per repo** — one committed `.tituskirch-skills.json` tells every skill which forge, tracker, branch and language _this_ repo uses. Absent config means built-in defaults.
 - **🔁 Two AI work loops** — an implement loop that builds and pushes, a review loop that judges the result as an independent agent; the issue's label is the entire handover.
 - **🛡️ Lint-clean by construction** — `oxlint` + `oxfmt` (markdown-first) gated by husky + commitlint + lint-staged. CI runs the same checks, plus a conformance check against the [Agent Skills spec](https://agentskills.io/specification).
-- **📥 Three install paths** — `skills.sh` CLI for users, `pnpm skills:link` for live local dev, hand-copy for one-off picks.
 - **📋 House-style enforced** — the [`write-readme`](skills/docs/write-readme/SKILL.md) skill prescribes the README layout, section emojis and badge palette so every kirchDev repo looks the same.
 - **🚀 Release-please ready** — Conventional Commits drive automated versioning + CHANGELOG via release-please on `main`.
 
@@ -125,9 +127,11 @@ Generate and maintain project documentation, READMEs and terminal demos in the h
 | Skill                                                           | Description                                                                                                    |
 | :-------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------- |
 | [`compact-readme`](skills/docs/compact-readme/SKILL.md)         | Slims down an existing overstuffed README without losing information.                                          |
+| [`prune-adrs`](skills/docs/prune-adrs/SKILL.md)                 | Migrates an overgrown or foreign decision log onto write-adr's rules, rewriting every reference by script.     |
 | [`vhs-demo`](skills/docs/vhs-demo/SKILL.md)                     | Creates and maintains reproducible README or docs terminal-demo GIFs from VHS tapes.                           |
+| [`write-adr`](skills/docs/write-adr/SKILL.md)                   | Writes and supersedes architecture decision records in docs/99.adr/ — short, rare, append-only.                |
 | [`write-contributing`](skills/docs/write-contributing/SKILL.md) | Writes and reconciles CONTRIBUTING.md in the house style, deriving every repo fact from the file that owns it. |
-| [`write-docs`](skills/docs/write-docs/SKILL.md)                 | Scaffolds, extends and reconciles a project's docs/ tree — ADRs included — in the TitusKirch docs format.      |
+| [`write-docs`](skills/docs/write-docs/SKILL.md)                 | Scaffolds, extends and reconciles a project's docs/ tree in the TitusKirch docs format; ADRs go to write-adr.  |
 | [`write-readme`](skills/docs/write-readme/SKILL.md)             | Generates project READMEs in the kirchDev house style.                                                         |
 
 ### Meta
@@ -140,6 +144,24 @@ Configure the skills themselves, per repo.
 | [`validate-skills`](skills/meta/validate-skills/SKILL.md)                   | Validates skills against the Agent Skills spec via skills-ref, separating spec violations, client extensions and house-style deviations. |
 
 <!-- skills:end -->
+
+## 🧪 What is verified, per client
+
+Four questions, answered separately, because a yes to one says nothing about the next: what was **shipped**, what the client **loaded**, which skill the model **chose**, and what it then **did**.
+
+<details>
+<summary><b>Per-client table</b> — which probe covers what, and what a skipped probe means</summary>
+
+| Client      | Shipped                                                | Loaded                                                                                                | Chosen / did                |
+| :---------- | :----------------------------------------------------- | :---------------------------------------------------------------------------------------------------- | :-------------------------- |
+| OpenCode    | `test/install.test.ts` (with the `skills` CLI on PATH) | `test/opencode-compatibility.test.ts`, at the pinned version, CI and local                            | not measured — see `evals/` |
+| Codex       | as above                                               | policy rules via `test/policy-parity.test.ts` (with `codex` on PATH)                                  | not measured — see `evals/` |
+| Claude Code | as above; `.claude-plugin/plugin.json` validates       | plugin manifest via `claude plugin validate` in `test/plugin-version.test.ts` (with `claude` on PATH) | not measured — see `evals/` |
+| Cursor      | as above                                               | documented support only, not checked                                                                  | not measured                |
+
+A probe that needs a CLI the machine does not have is **skipped and says so** — never counted as a pass. Model choice and behaviour are measured per skill by the `evals/` cases ([Evaluating a skill](skills/README.md#evaluating-a-skill)), not by any test here.
+
+</details>
 
 ## ⚙️ Configuration
 
@@ -184,7 +206,7 @@ The local `pnpm skills:link` / `:list` / `:unlink` scripts are modelled on [matt
 PRs welcome — branch off `dev` and target `dev`. Conventional Commits required (enforced via commitlint). Husky runs `oxlint` + `oxfmt` on `git commit` — primarily on markdown, since that's what skills are made of.
 
 > [!TIP]
-> Run `pnpm verify` before pushing. It is the whole gate — lint, format, artifact drift, types and tests — and CI runs `on: pull_request` only, so nothing checks a commit that reaches `dev` any other way.
+> Run `pnpm verify` before pushing. It is the whole gate — lint, format, artifact drift, types and tests — and a commit pushed straight to `dev` is checked by CI only after it landed.
 
 The full workflow is in [`CONTRIBUTING.md`](CONTRIBUTING.md), the disclosure process in [`SECURITY.md`](SECURITY.md), and why things are shaped the way they are in [`docs/99.adr/`](docs/99.adr/index.md).
 

@@ -27,11 +27,12 @@ Drain the repo's queue of **implementable** issues — every `ready` issue plus 
 
 - **`work-implement` is required, and checked first** — before resolving anything, before taking the lock. Absent: stop, name it, and report that no issue was touched, having leased nothing and held nothing.
 - Resolve the config with this skill's own [`templates/resolve-config.sh`](templates/resolve-config.sh) and read it by the rules `work-implement`'s REFERENCE states under **Reading the config**; the tracker is `work.tracker`, falling back to `issue.tracker`. Where that tracker is a forge (`github`, `gitlab`), the **host** it talks to is resolved per repo rather than assumed — **The forge and its host** there.
-- Acquire the **implement single-flight lock** by `mkdir` at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/implement.lock`, retiring the old loose `implement.lock` first; held → a second implement-drain in this checkout exits. The review loop takes a **separate** lock, so implement and review drains run concurrently. The primitive, the **heartbeat-timestamp** stale rule, that migration and the single-checkout boundary: **The single-flight lock** in `work-implement`'s REFERENCE.
+- **Decide the mode before anything else changes.** A plan-only request ("just show me", "dry run", "nur den Plan", "don't run") makes this a **preview** run, and a preview writes **nothing**: it takes **no lock**, and the reconcile and the queue are **computed** from what the tracker returns, then shown. Every transition the reconcile would make is listed as planned, never applied — a preview with zero planned changes still applies zero. Only a run that is not a preview takes the locks below, and it **re-reads** the state it acts on, because the preview's reading may be stale by then.
+- Acquire the **implement single-flight lock** by `mkdir` at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/implement.lock`, retiring the old loose `implement.lock` first; held → a second implement-drain in this checkout exits. **Sequential** (`parallel: false`), also take the **tree** lock of the tree the drain runs in, for the whole batch; held → another run is editing this tree, so **release the drain lock** and stop and report the issue it is on, having leased nothing. The drain lock guards **drains only**: a direct `work-implement` never takes it, so agents handed single issues keep running beside this drain, and the **issue** lock each worker takes keeps them off each other's issue. The review loop takes a **separate** lock, so implement and review drains run concurrently. The primitive, the **heartbeat-timestamp** stale rule, that migration and the single-checkout boundary: **The single-flight lock** in `work-implement`'s REFERENCE.
 
 ### 2. Reconcile — reclaim crashed implementations
 
-Before building the queue, reclaim issues an earlier implement-run crashed on: an issue in `working` with **no pushed artifact** (no PR, no pushed commit) was leased but abandoned before its push. The lock proves no live worker **in this checkout** only, never in another **clone**, so gate the reclaim on the **assignee** the claim set — an issue assigned to a **different** runner, or under one shared bot identity to this one, is presumed **live** and left alone unless a weaker age fallback clears it. Only an **unassigned** issue, or this runner's **own** crashed lease where identities are per-runner, is flipped back to `ready` (dropping the assignee), or `blocked` where it left an unrecoverable state. Full rules, incl. the same-bot caveat: **Reconcile** in `work-implement`'s REFERENCE. Idempotent — nothing to reclaim is the normal outcome.
+**In a preview, this step reports what it would reclaim and writes nothing.** Before building the queue, reclaim issues an earlier implement-run crashed on: an issue in `working` with **no pushed artifact** (no PR, no pushed commit) was leased but abandoned before its push. **An issue whose issue lock is live is never reclaimed** — a worker here, a direct run included, is on it. An issue whose issue lock is **probably orphaned** is left alone too and reported with the lock's removal command. A missing issue lock proves no live worker **in this checkout** only, never in another **clone**, so gate the reclaim on the **assignee** the claim set — an issue assigned to a **different** runner, or under one shared bot identity to this one, is presumed **live** and left alone unless a weaker age fallback clears it. Only an **unassigned** issue, or this runner's **own** crashed lease where identities are per-runner, is flipped back to `ready` (dropping the assignee), or `blocked` where it left an unrecoverable state. Full rules, incl. the same-bot caveat: **Reconcile** in `work-implement`'s REFERENCE. Idempotent — nothing to reclaim is the normal outcome.
 
 (A `working` issue **with** a pushed artifact only failed to flip its label — advance it to `reviewRequested` instead of re-working.)
 
@@ -48,7 +49,7 @@ Run the **selection query** (`work-implement`'s REFERENCE) for every eligible is
 
 **`ai: ready` is already the human's approval** — "scoped + approved for an AI agent to pick up" — so the drain does **not** gate on a fresh confirmation. **Announce** the ordered queue, the cap, the branch strategy, the parallel mode and (when parallel) the **concurrency**, calling out any **dependency-forced order**, any **mutex-forced wave split**, and every issue **deferred** or **withheld**. Name the **queue mode** as the run's own choice: with `work.queueBranch` **on**, that workers cut branches under `ai/queue/` and which open `ai/queue-<hash>` their PRs will target, or that none is open yet so the first go to `pr.base`; with it **off**, that branches stay `ai/<ref>-<slug>` and nothing groups them in **any** repo. Then drain — unattended only in a runner that cannot ask questions.
 
-- **Plan-only triggers** ("just show me", "dry run", "nur den Plan", "don't run") still stop after the plan.
+- **A preview stops here** — after the plan, with no lock taken and nothing written (step 1).
 - If the ready-gate is **widened** (`labels.ready: false`, so issues were never explicitly opted-in), confirm before working those — there is no per-issue approval to lean on.
 
 ### 5. Drain
@@ -65,7 +66,7 @@ For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-imple
 
 **A worker's reasoning effort is the caller's, and this skill does not set it.** The host's fresh-worker mechanism owns the model and reasoning settings; in OpenCode that mechanism is `task`, while Claude Code uses its Agent tool. Implementing wants it **higher than reviewing does**, and the two loops already run in separate sessions. **Worker effort** in `work-implement`'s REFERENCE.
 
-**Heartbeat the lock each iteration.** It is held for the whole batch, which no single shell process spans, so **re-stamp** its `refreshed` timestamp once per iteration — that is what keeps a live drain from reading as a crashed one under the **heartbeat-timestamp** stale rule. Release it **explicitly** at step 6, never by a shell-lifetime trap.
+**Every worker takes its own issue lock** before its lease, and in its own worktree its own tree lock (`parallel: true`). A worker that finds the issue lock held — a direct run got there first — returns `skipped`, and the drain takes the next issue. **Heartbeat the drain lock each iteration** (and the tree lock with it, sequential). It is held for the whole batch, which no single shell process spans, so **re-stamp** its `refreshed` timestamp once per iteration — that is what keeps a live drain from reading as a crashed one under the **heartbeat-timestamp** stale rule. Release it **explicitly** at step 6, never by a shell-lifetime trap.
 
 Each worker returns `reviewRequested` (pushed, handed to the review loop — the normal outcome), `blocked`, `skipped`, or an error. **`reviewRequested`/`blocked`/`skipped` → continue** to the next issue; only a **hard error** (git broken, tracker down) stops the drain, releases the lock, and reports.
 
@@ -109,28 +110,17 @@ When such text **addresses the agent directly or takes instruction form** — "d
 
 ## Presenting the plan
 
-Everything this skill puts in front of a human — plan, preview, candidate list, findings report —
-is read **once, in a terminal**, and answered there. So **every section of it renders on arrival**,
-with no interaction needed to reveal it: prose, lists, tables, fenced code.
+Whatever this skill puts in front of a human to decide on — a plan, a preview, a candidate list, a
+findings report — is read **once, in a terminal**, so **every part of it renders on arrival**.
 
-**Never fold content behind a control.** `<details>`/`<summary>` is a browser widget, and a
-terminal has no way to open it: the summary line prints and everything under it does not. The plan
-then arrives as headings with nothing beneath them, and the failure is silent on **both** sides —
-the skill believes it reported, and the reader sees no marker saying anything is missing, so a
-human confirms a plan whose contents never reached them. What gets folded is whatever ran long,
-which is to say the part the decision actually rested on. The same holds for anything else needing
-a click: a tab strip, an accordion, a "show more".
-
-**Length is handled by shortening, never by hiding.** This is a fixed rule of the skill, not a
-per-run judgement, so it holds however long the list runs. Trim to what the decision needs, group
-the rest by something the reader already thinks in (ecosystem, kind, verdict) with a count per
-group, or split it across sections. What is left out is left out **visibly**: say how many, why,
-and the exact command that shows the rest.
-
-**This binds what the skill presents, not what it writes.** A `<details>` block inside a README, an
-issue body, a pull request description or a docs page is rendered by a browser and is entirely
-legitimate there. The rule is about the message a human reads to decide — never about the content
-of a file.
+- **Never fold it behind a control.** A terminal cannot open `<details>`/`<summary>`, a tab or a
+  "show more": only the summary line prints, and the human confirms a plan whose body never
+  reached them.
+- **Shorten instead of hiding.** Show every item that needs a decision, each with a visible id and
+  its effect. Group the rest by something the reader already thinks in (kind, verdict, ecosystem)
+  with a count and a reason, and name the command that shows them in full.
+- **This binds the message, not the files it writes.** A `<details>` block in a README, an issue,
+  a pull request or a docs page renders in a browser and is fine there.
 
 </skills-plan>
 
@@ -138,46 +128,27 @@ of a file.
 
 ## Leading the report
 
-The report this skill ends with is read **once, in a terminal**, by someone deciding what happens
-next. So it **opens with its result**: a `## TL;DR` section, before every other heading, carrying
-the whole answer in a few lines. A report that opens with its first group makes the reader
-reconstruct the total by reading every group and adding it up — which is the one thing they needed
-before deciding whether to read any of them.
+The report this skill ends with is read **once, in a terminal**, so it **opens with its result**:
+a `## TL;DR` section before every other heading — `## Kurzfassung` in a German run — holding, in a
+few lines:
 
-**Three things belong in the lead, and nothing else does:**
+- **the counts**, per group, in the words the groups below use, with the total stated;
+- **what the run acted on**, or proposes to — or that it acted on nothing;
+- **the decision asked for**, said plainly, or **no decision needed**;
+- **whatever the run could not establish** — a check that never ran, a list it could not read —
+  because a reader who stops here must not leave with a picture the rest would correct.
 
-- **The counts** — how much was found, per group, in the same words the groups below use. The
-  total is stated, never left to be summed.
-- **What the run acted on, or proposes to** — the preselected set, the merged set, the changed
-  set: the part that is not merely listed. Where nothing was acted on, say so in those words.
-- **The decision being asked for** — the one thing the reader is expected to do, said plainly, or
-  **no decision needed** where the run is finished. An ask that is only inferable from the groups
-  is an ask the reader has to assemble.
-
-**It leads the detail, it never replaces it.** Every group still renders in full underneath, and
-nothing is dropped, shortened or folded for having been counted above. The lead is an entry point;
-a summary that licenses hiding what it summarises is the failure this repo already forbids
-elsewhere.
-
-**Whatever the run could not establish belongs in the lead too**, not only in the section that
-holds it — a check that never ran, a list that could not be read, a tier the run declined to
-judge. Each changes what the counts mean, and a reader who stops after four lines must not stop
-with a picture the rest of the report would have corrected.
-
-**A run that found nothing still leads with it.** "Nothing found" is a result, and it belongs where
-every other result does: one line, naming the scope that was actually searched, so an empty report
-and an empty search are told apart.
-
-**The heading follows the output language**, as the rest of the report does — a German run reads
-`## Kurzfassung`. What is fixed is the position, not the wording. The `tldr` skill fixes this same
-opening for the summaries it writes on request; one house frame, reached two ways.
+**The lead opens the detail, it does not replace it.** Every item that needs action renders in full
+below. A group that needs none may be counted with its reason and the command that lists it.
+**"Nothing found" is a result too:** one line, naming the scope that was searched. The `tldr`
+skill fixes the same opening for the summaries it writes on request.
 
 </skills-tldr>
 
 ## Guardrails
 
 - **`work-implement` is required** — verified **first**, before the config is resolved and before the lock is taken; absent, the run stops having touched no issue and holding nothing.
-- **Single-flight** — one implement-drain per checkout at a time (separate from the review lock; mutual exclusion is within one checkout, not across clones).
+- **Single-flight per scope** — one implement-drain per checkout, one worker per issue, one implement run per tree (separate from the review locks; exclusive within one clone and all its worktrees — across clones only the label/assignee re-read narrows the race, and nothing guarantees it). The drain lock never blocks a direct run on another issue.
 - **Reconcile first, select second** — never re-work an issue the sweep is about to reclaim.
 - **Claim-before-work, fresh fetch each iteration** — the worker leases each issue; the loop never snapshots the queue.
 - **The cap is mandatory** — never drain unbounded, and apply it **after** the ordering. It bounds the **run**; `work.concurrency` bounds how many workers are alive **at once** and never raises it.

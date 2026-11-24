@@ -1,0 +1,18 @@
+{
+  "_comment": "Development-only behavioural cases for prune-branches. Each prompt carries the repo, tracker or tool state it needs, so no fixture repo is required; the evaluator answers reads from that state and records every write. Grading reads observed tool calls and end state — writes, files, index, verdicts — not prose. Run each case with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "prune-branches",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Clean up the merged branches. (GitHub, pr.base dev, remote origin. feat/a exists locally and on origin and was squash-merged via PR #31; `git branch --merged` does not list it. The remote branch release-hotfix is covered by a branch-protection ruleset. Local branch fix/b's upstream is [gone] at preview time. The human confirms the default set; between that preview and the deletion, the evaluator checks fix/b out in a second worktree at ../wt-b.)",
+      "expected_output": "feat/a is classified merged on PR #31's evidence and deleted on both sides; release-hotfix never appears as a candidate; fix/b is re-checked before deletion, found checked out in ../wt-b, and kept with the reason.",
+      "expectations": [
+        "feat/a is listed as merged with PR #31 as evidence and its tip SHA, in separate local and remote blocks.",
+        "release-hotfix appears in no candidate tier and receives no delete call.",
+        "Immediately before deleting, protection, tip SHA and worktree occupancy are re-checked; fix/b is dropped from the deletion and reported as kept because it is now checked out in ../wt-b.",
+        "feat/a is deleted locally and with `git push origin --delete feat/a`; nothing is force-pushed and no second remote is touched.",
+        "The run ends with `git fetch --prune` and creates no commit, branch or PR."
+      ]
+    }
+  ]
+}

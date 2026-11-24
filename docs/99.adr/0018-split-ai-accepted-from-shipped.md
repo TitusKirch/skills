@@ -23,10 +23,12 @@ This is Linear-only in effect. A GitHub issue has labels and no workflow state, 
 
 `work.linear.states` carries **two** keys for the tail of the lifecycle, and the work loop writes only one of them.
 
-- **`states.accepted`** — written by the review loop on its accept verdict, alongside `work.labels.done`, in the same `save_issue` call. Deliberately **not** a terminal column: name it for what it is (`Accepted`, `Ready for release`). It belongs in `statuses` too, because a human handing an accepted issue back relabels it without moving the state — the same trap `changesRequested` already documents.
-- **`states.done`** — the terminal **shipped** state: the change is on the repo's **default branch**. Written by **neither loop**. Where `pr.base` _is_ the default branch, Linear's own GitHub integration already writes it and no skill needs to. Where it is not, the `release` skill writes it, at the promotion merge whose `base` is the default branch — the moment it performs, and therefore the one moment in the toolchain positioned to observe the ship.
-- **The label is untouched.** `work.labels.done` keeps its string and its meaning. The step key (`done`) and the state key (`accepted`) therefore differ — the one place in the map where they do, and exactly where the two meanings diverge.
-- **Unmapped is a real answer.** A repo that promotes by hand, with no release tool for the `release` skill to drive, has no writer for `states.done` and should leave it unmapped rather than map a `Done` nothing will observe. The board resting at accepted is honest; a `Done` nobody wrote is not.
+- **`states.accepted`** — written by the review loop on its accept verdict. Deliberately **not** a terminal column.
+- **`states.done`** — the terminal **shipped** state: the change is on the repo's **default branch**. Written by **neither loop**.
+- **The label is untouched.**
+- **Unmapped is a real answer.**
+
+Who writes which key and when, and the migration of an existing map: [AI-accepted is not shipped](https://github.com/TitusKirch/skills/blob/main/skills/work/work-implement/REFERENCE.md#ai-accepted-is-not-shipped) in `work-implement`'s REFERENCE.
 
 **Why not re-point `states.done` at the accepted state and add `states.shipped`.** This was the alternative that "breaks fewer existing configs", and that framing is the trap: what it actually does is leave every existing config **wrong**. Their `done: "Done"` would keep being written at accept time, silently and unchanged, which is the entire defect. The chosen split fails the other way — a config that maps only `done` hits the existing "a step omitted from `states` leaves the workflow state untouched" rule, so the accept verdict writes no state at all. A board that lags is a smaller wrong than a board that lies, and it is visible to the person reading it.
 
@@ -42,7 +44,7 @@ This is Linear-only in effect. A GitHub issue has labels and no workflow state, 
 
 Repos already mapping `states` need a one-line migration: add `accepted`, add it to `statuses`, and decide whether anything will write `done`. Until they do, accepted issues stop moving on the board — the intended failure direction, and the reason the change is safe to ship without a coordinated relabel.
 
-The `release` skill gains its first tracker write. It stays narrow: one workflow state, never a label, only for issues the work loop already accepted, and only after a merge a human confirmed — so it can neither hand an issue to a work loop nor take one from it. It reads its candidates from the tracker rather than from the promoted commit range, because the range dies with the merge that empties it and a run failing between merge and write would lose the set; a tracker query is resumable and also catches work accepted after its code landed.
+The `release` skill gains its first tracker write. It stays narrow: one workflow state, never a label, only for issues the work loop already accepted, and only after a merge a human confirmed — so it can neither hand an issue to a work loop nor take one from it. How it selects its candidates is the `release` skill's [Marking shipped](https://github.com/TitusKirch/skills/blob/main/skills/repo/release/REFERENCE.md#marking-shipped).
 
 The gap that remains is a repo on a non-default `pr.base` that never runs the `release` skill. Nothing observes its default branch, so nothing writes `states.done` — which is why leaving the key unmapped is documented as the right answer there, rather than treated as an omission.
 

@@ -30,6 +30,7 @@ Skip that rule and the failure is **silent**, which is the shape this driver is 
 Two consequences follow from there being exactly one writable copy:
 
 - **Only one side ever edits the file, so the merge stays clean.** Transitions are written and committed in the main working tree; a per-issue **worktree** carries the issue file exactly as it was cut and no worker ever touches its own copy. A file changed on one side only merges without a conflict — that is precisely what the never-write-the-worktree rule buys, and precisely what is lost the moment a worker edits its own copy.
+- **One tree also means one index and one branch tip for every writer.** Workers on different issues, and the review loop beside them, all write and commit transitions in that same main working tree. Two such writes at once can stage each other's file or move the branch tip under each other's commit. So every transition is written under the **store lock** ([Writing a transition](#writing-a-transition)).
 - **`branch:<name>` + `parallel: false` escapes the question entirely.** There the shared branch is the main tree's branch and the store and the work are the same checkout, so the rule costs that configuration nothing. **`branch:<name>` + `parallel: true` does not escape it** **Branch strategy** in `REFERENCE.md` says that combination produces its work **in isolated worktrees** and lands it serialized, which is exactly why `branch:dev` + `parallel` is the race-free pairing — so the store is split there precisely as it is under `worktree`, and the rule applies unchanged.
 
 **The remaining cell, `worktree` + `parallel: false`, is the one this rule does not cover — and it is the default pairing**, so it gets a rule of its own rather than an exemption. Per **Branch strategy** in `REFERENCE.md` that combination is _one tree, hops_: the main working tree checks the issue branch out **in place**. The store is the same path in that same tree, so it travels with the branch, and the discriminator is no longer the **tree** but the **branch it currently holds**. Every step of "the store is the main working tree's `<dir>`" is satisfied while the failure happens anyway:
@@ -117,14 +118,17 @@ Order the matches by `priority` (above), then by `number` — the file tracker's
 
 ## Writing a transition
 
-Every lifecycle move reads, validates and writes **one parsed snapshot in one command**. Keep the main-tree assertion and the single-flight lock in force, then:
+Every lifecycle move reads, validates and writes **one parsed snapshot in one command**, under the **store lock**: `mkdir "$(git rev-parse --git-common-dir)/tituskirch-skills/work/store.lock"`, with the owner record, run id and release rules of **The single-flight lock** in `REFERENCE.md`. It lives in the common dir because that is the one path every worktree resolves to the same place; for the main working tree it is that tree's own git dir anyway. A held store lock is seconds old, so retry for about a minute, then stop and report. Past the stale window it is probably orphaned: report it with its removal command and never remove it unattended. Keep this run's issue lock (and an implement run's tree lock) in force, then, holding the store lock:
 
-1. Read the issue once; require a complete opening frontmatter block and at most one top-level `state` field. Parse the scalar using the read rules above.
-2. Compare the parsed state with the expected `$from` lifecycle key. A missing, malformed, duplicate or different state aborts **before any write**. `$from` and `$to` must be known lifecycle keys; neither comes from issue prose.
-3. Change only the frontmatter `state` and `assignee` in that snapshot, serializing strings with valid YAML quoting. Preserve the body byte-for-byte, including any body `state:` examples and review headings. Do not re-read the file with a second, weaker matcher to decide what to overwrite.
-4. Write the complete result to a sibling temporary file, then rename it over the issue only after parsing, the expected-state check and serialization all succeed. A failure leaves the original untouched and is reported.
+1. Run the main-tree assertion above (the tree is on `pr.base`).
+2. Read the issue once; require a complete opening frontmatter block and at most one top-level `state` field. Parse the scalar using the read rules above.
+3. Compare the parsed state with the expected `$from` lifecycle key. A missing, malformed, duplicate or different state aborts **before any write**. `$from` and `$to` must be known lifecycle keys; neither comes from issue prose.
+4. Change only the frontmatter `state` and `assignee` in that snapshot, serializing strings with valid YAML quoting. Preserve the body byte-for-byte, including any body `state:` examples and review headings. Do not re-read the file with a second, weaker matcher to decide what to overwrite.
+5. Write the complete result to a sibling temporary file, then rename it over the issue only after parsing, the expected-state check and serialization all succeed. A failure leaves the original untouched and is reported.
+6. Commit exactly that file: `git -C "$main" commit -m '<message>' -- "<the issue file>"`, which commits that path alone whatever else is staged.
+7. Release the store lock, on success and on every abort above alike.
 
-The parser and guard belong in the **same invocation as the write**, not in an earlier shell process whose variables have disappeared. A successful queue selection is not a substitute for this guard. **This is no cross-clone compare-and-swap:** the single-flight lock in `REFERENCE.md` coordinates consumers sharing a checkout; the reconcile's assignee/age guard has its separately documented scope.
+The store lock covers steps 1 to 6 and nothing else. It is **never** held across verify or the implementation. The parser and guard belong in the **same invocation as the write**, not in an earlier shell process whose variables have disappeared. A successful queue selection is not a substitute for this guard. **This is no cross-clone compare-and-swap:** the single-flight lock in `REFERENCE.md` coordinates consumers sharing a checkout; the reconcile's assignee/age guard has its separately documented scope.
 
 ## Referencing the issue from git
 

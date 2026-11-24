@@ -5,6 +5,11 @@
 name: CI
 
 on:
+  # A direct push to dev — the work loop's branch:dev mode — is checked after the
+  # fact, so a broken commit there is visible on the server, not only in a local run.
+  push:
+    branches:
+      - dev
   pull_request:
     branches:
       - main
@@ -23,7 +28,7 @@ permissions:
 jobs:
   check:
     name: CI
-    uses: kirchDev/workflows/.github/workflows/_ci-check.yml@ea3a3c15385340fe1f9751e0afefaef32970aad7 # v0.12.0
+    uses: kirchDev/workflows/.github/workflows/_ci-check.yml@e3abe515daa69d2a65794a96608d698daaf389ce # v0.19.1
     with:
       node-version: '26'
       # This repo's gate is `verify`, which chains `check`, `skills:check`,

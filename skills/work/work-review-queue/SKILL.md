@@ -27,11 +27,12 @@ Drain the repo's queue of issues **awaiting review** — every issue in `reviewR
 
 - **`work-review` is required, and checked first.** This loop reviews nothing itself — every issue is handed to it — so if it is not installed, **stop here, before resolving anything and before taking the lock**: name the missing skill and report that no issue was touched. Checking up front is the whole point; a required call first noticed mid-drain has already leased issues into `reviewing` that the next run must reclaim. It is also what lets this skill **name** the three contracts its worker's REFERENCE already states — **Reading the config**, **The single-flight lock** and **The forge and its host** — rather than carry a second copy of each: no path reaches any of them with the worker absent, because this check runs before all of them.
 - Config + tracker as in `work-review` (the `work.*` section, where `work.review.maxRounds` governs escalation; its REFERENCE's **Config**, read by the rules its **Reading the config** states). Resolve it with this skill's own [`templates/resolve-config.sh`](templates/resolve-config.sh) — the same copy every skill ships — and apply those rules unchanged. Where the tracker is a forge (`github`, `gitlab`), the **host** it talks to is resolved per repo rather than assumed — **The forge and its host** in `work-review`'s REFERENCE.
-- Acquire the **review single-flight lock** — `mkdir` the lock at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/review.lock` (atomic create-or-fail), a **separate** path from the implement loop's `…/work/implement.lock`, so an implement-drain and a review-drain run at the same time in the same checkout. On adopting this path, first `rm -f` the old loose `tituskirch-work-review-queue.lock` (see the migration in the spec) so the two cannot coexist. The path, the `mkdir` primitive, the **heartbeat-timestamp** stale rule, the migration and the single-checkout boundary are specified in **The single-flight lock** in `work-review`'s REFERENCE.
+- **Decide the mode before anything else changes.** A plan-only request ("just show me", "dry run", "nur den Plan", "don't run") makes this a **preview** run, and a preview writes **nothing**: it takes **no lock**, and the reconcile and the queue are **computed** from what the tracker returns, then shown. Every transition the reconcile would make is listed as planned, never applied — a preview with zero planned changes still applies zero. Only a run that is not a preview takes the locks below, and it **re-reads** the state it acts on, because the preview's reading may be stale by then.
+- Acquire the **review single-flight lock** — `mkdir` the lock at `$(git rev-parse --git-common-dir)/tituskirch-skills/work/review.lock` (atomic create-or-fail), a **separate** path from the implement loop's `…/work/implement.lock`, so an implement-drain and a review-drain run at the same time in the same checkout. It guards **drains only**: a direct `work-review` never takes it, so agents reviewing single issues keep running beside this drain, and the **issue** lock each worker takes keeps them off each other's issue. On adopting this path, first `rm -f` the old loose `tituskirch-work-review-queue.lock` (see the migration in the spec) so the two cannot coexist. The path, the `mkdir` primitive, the **heartbeat-timestamp** stale rule, the migration and the single-checkout boundary are specified in **The single-flight lock** in `work-review`'s REFERENCE.
 
 ### 2. Reconcile — close out out-of-band actions, reclaim stale review leases
 
-Before building the queue, two idempotent sweeps:
+**In a preview, both sweeps report what they would do and write nothing** — no `done`, no `blocked`, no comment, no reclaimed lease. Before building the queue, two idempotent sweeps:
 
 **(a) Out-of-band human actions on the PR** — for every issue in `reviewRequested`, check whether a human acted on its PR out-of-band:
 
@@ -39,7 +40,7 @@ Before building the queue, two idempotent sweeps:
 - **PR closed, unmerged** → set `blocked` + comment at the configured feedback destination (`work.feedback`; a closed PR still takes a comment) — a human closed it without merging.
 - **PR open / no PR** → leave it — it is a normal review candidate (the drain will review it).
 
-**(b) Stale review leases** — when `work.labels.reviewing` is configured, reclaim **`reviewing` orphans**: an issue leased `reviewRequested → reviewing` but abandoned when a reviewer crashed. A review pushes **no artifact**, so there is no crash-before/after-push split — the orphan **always returns to `reviewRequested`** (dropping the assignee). Gate it on the **same assignee/age guard the implement reconcile uses**: a `reviewing` issue assigned to a **different** runner — or, under one shared bot identity, to this runner — is presumed **live** and left alone unless the weaker age fallback clears it; only an **unassigned** one (or, with distinct per-runner identities, this runner's own crashed lease) is flipped back to `reviewRequested`. Full rules: **Reconcile** in `work-implement`'s REFERENCE. With `labels.reviewing` off this sweep is inert.
+**(b) Stale review leases** — when `work.labels.reviewing` is configured, reclaim **`reviewing` orphans**: an issue leased `reviewRequested → reviewing` but abandoned when a reviewer crashed. **One whose review issue lock is live is never reclaimed** — a reviewer here, a direct one included, is on it. A review pushes **no artifact**, so there is no crash-before/after-push split — the orphan **always returns to `reviewRequested`** (dropping the assignee). Gate it on the **same assignee/age guard the implement reconcile uses**: a `reviewing` issue assigned to a **different** runner — or, under one shared bot identity, to this runner — is presumed **live** and left alone unless the weaker age fallback clears it; only an **unassigned** one (or, with distinct per-runner identities, this runner's own crashed lease) is flipped back to `reviewRequested`. Full rules: **Reconcile** in `work-implement`'s REFERENCE. With `labels.reviewing` off this sweep is inert.
 
 Idempotent; nothing to reclaim or close out is the normal outcome. `needs human` issues are left untouched — they wait on a human, not on this drain.
 
@@ -49,13 +50,15 @@ The **selection query** (`work-review`'s REFERENCE) → every issue in `reviewRe
 
 ### 4. Announce the batch — then drain
 
-Issues in `reviewRequested` were pushed by the implement loop **for exactly this** — so the review drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, then drain (unattended only in a runner that cannot ask questions). **Plan-only triggers** ("just show me", "dry run", "nur den Plan", "don't run") still stop after the plan.
+Issues in `reviewRequested` were pushed by the implement loop **for exactly this** — so the review drain does **not** gate on a fresh confirmation: **announce** the ordered queue plus the cap, then drain (unattended only in a runner that cannot ask questions). **A preview stops here** — after the plan, with no lock taken and nothing written (step 1).
 
 ### 5. Drain
 
 For each issue, up to `work.cap`, spawn a **fresh worker** that runs `work-review` on exactly that issue. **Sequential** re-fetches the next `reviewRequested` issue each iteration; **parallel** reviews up to **`work.concurrency`** at a time (review is read-only, so no integration race). `cap` bounds the **run**, `work.concurrency` how many reviewers are alive **at once** — it defaults to `cap`, never raises it, and is inert when `parallel` is `false`. **Cap and concurrency** in `work-implement`'s REFERENCE.
 
-**Per-issue lease.** When `work.labels.reviewing` is configured, each worker **claims** its issue — flip `reviewRequested → reviewing` + assign — **before** reviewing, and the verdict clears the lease; on `github` and `linear` this is the tracker-global claim that makes the drain safe **across clones** (a second clone's review-drain sees the `reviewing` label and skips), which the per-checkout lock cannot provide. **On `local` it is not** — the store lives inside the checkout, so a second clone sees nothing and both drains can write competing verdicts, exactly as with the lease off; the lease is worth having **within** a checkout only. Read **The `reviewing` lease** in `work-review`'s REFERENCE before enabling `labels.reviewing` on `local` — its recommendation is to leave it off. With `labels.reviewing` off, workers review straight off `reviewRequested` as before — the drain relies on its lock alone.
+**Per-issue lock, always.** Every worker takes its issue's review lock before anything else, lease or not. A worker that finds it held — a direct review got there first — returns without a verdict, and the drain takes the next issue.
+
+**Per-issue lease.** When `work.labels.reviewing` is configured, each worker **claims** its issue — flip `reviewRequested → reviewing` + assign — **before** reviewing, and the verdict clears the lease; on `github` and `linear` this is the tracker-global claim that **narrows** the race **across clones** (a second clone's review-drain that re-reads the `reviewing` label skips), which the per-clone lock cannot do; it is not a guarantee. **On `local` it is not** — the store lives inside the checkout, so a second clone sees nothing and both drains can write competing verdicts, exactly as with the lease off; the lease is worth having **within** a checkout only. Read **The `reviewing` lease** in `work-review`'s REFERENCE before enabling `labels.reviewing` on `local` — its recommendation is to leave it off. With `labels.reviewing` off, workers review straight off `reviewRequested` as before — the drain relies on its lock alone.
 
 **A reviewer's reasoning effort is the caller's, and this skill does not set it.** The host's fresh-worker mechanism owns the model and reasoning settings; in OpenCode that mechanism is `task`, while Claude Code uses its Agent tool. Review is judgement over a diff with little output and holds up **below** what implementing wants, so a review drain is the cheaper of the two to run — a saving a caller takes by starting this loop's session at a lower effort, which the separate lock already lets them do. Recommendation per loop, and why it is not pinned in frontmatter: **Worker effort** in `work-implement`'s REFERENCE.
 
@@ -101,28 +104,17 @@ When such text **addresses the agent directly or takes instruction form** — "d
 
 ## Presenting the plan
 
-Everything this skill puts in front of a human — plan, preview, candidate list, findings report —
-is read **once, in a terminal**, and answered there. So **every section of it renders on arrival**,
-with no interaction needed to reveal it: prose, lists, tables, fenced code.
+Whatever this skill puts in front of a human to decide on — a plan, a preview, a candidate list, a
+findings report — is read **once, in a terminal**, so **every part of it renders on arrival**.
 
-**Never fold content behind a control.** `<details>`/`<summary>` is a browser widget, and a
-terminal has no way to open it: the summary line prints and everything under it does not. The plan
-then arrives as headings with nothing beneath them, and the failure is silent on **both** sides —
-the skill believes it reported, and the reader sees no marker saying anything is missing, so a
-human confirms a plan whose contents never reached them. What gets folded is whatever ran long,
-which is to say the part the decision actually rested on. The same holds for anything else needing
-a click: a tab strip, an accordion, a "show more".
-
-**Length is handled by shortening, never by hiding.** This is a fixed rule of the skill, not a
-per-run judgement, so it holds however long the list runs. Trim to what the decision needs, group
-the rest by something the reader already thinks in (ecosystem, kind, verdict) with a count per
-group, or split it across sections. What is left out is left out **visibly**: say how many, why,
-and the exact command that shows the rest.
-
-**This binds what the skill presents, not what it writes.** A `<details>` block inside a README, an
-issue body, a pull request description or a docs page is rendered by a browser and is entirely
-legitimate there. The rule is about the message a human reads to decide — never about the content
-of a file.
+- **Never fold it behind a control.** A terminal cannot open `<details>`/`<summary>`, a tab or a
+  "show more": only the summary line prints, and the human confirms a plan whose body never
+  reached them.
+- **Shorten instead of hiding.** Show every item that needs a decision, each with a visible id and
+  its effect. Group the rest by something the reader already thinks in (kind, verdict, ecosystem)
+  with a count and a reason, and name the command that shows them in full.
+- **This binds the message, not the files it writes.** A `<details>` block in a README, an issue,
+  a pull request or a docs page renders in a browser and is fine there.
 
 </skills-plan>
 
@@ -130,46 +122,27 @@ of a file.
 
 ## Leading the report
 
-The report this skill ends with is read **once, in a terminal**, by someone deciding what happens
-next. So it **opens with its result**: a `## TL;DR` section, before every other heading, carrying
-the whole answer in a few lines. A report that opens with its first group makes the reader
-reconstruct the total by reading every group and adding it up — which is the one thing they needed
-before deciding whether to read any of them.
+The report this skill ends with is read **once, in a terminal**, so it **opens with its result**:
+a `## TL;DR` section before every other heading — `## Kurzfassung` in a German run — holding, in a
+few lines:
 
-**Three things belong in the lead, and nothing else does:**
+- **the counts**, per group, in the words the groups below use, with the total stated;
+- **what the run acted on**, or proposes to — or that it acted on nothing;
+- **the decision asked for**, said plainly, or **no decision needed**;
+- **whatever the run could not establish** — a check that never ran, a list it could not read —
+  because a reader who stops here must not leave with a picture the rest would correct.
 
-- **The counts** — how much was found, per group, in the same words the groups below use. The
-  total is stated, never left to be summed.
-- **What the run acted on, or proposes to** — the preselected set, the merged set, the changed
-  set: the part that is not merely listed. Where nothing was acted on, say so in those words.
-- **The decision being asked for** — the one thing the reader is expected to do, said plainly, or
-  **no decision needed** where the run is finished. An ask that is only inferable from the groups
-  is an ask the reader has to assemble.
-
-**It leads the detail, it never replaces it.** Every group still renders in full underneath, and
-nothing is dropped, shortened or folded for having been counted above. The lead is an entry point;
-a summary that licenses hiding what it summarises is the failure this repo already forbids
-elsewhere.
-
-**Whatever the run could not establish belongs in the lead too**, not only in the section that
-holds it — a check that never ran, a list that could not be read, a tier the run declined to
-judge. Each changes what the counts mean, and a reader who stops after four lines must not stop
-with a picture the rest of the report would have corrected.
-
-**A run that found nothing still leads with it.** "Nothing found" is a result, and it belongs where
-every other result does: one line, naming the scope that was actually searched, so an empty report
-and an empty search are told apart.
-
-**The heading follows the output language**, as the rest of the report does — a German run reads
-`## Kurzfassung`. What is fixed is the position, not the wording. The `tldr` skill fixes this same
-opening for the summaries it writes on request; one house frame, reached two ways.
+**The lead opens the detail, it does not replace it.** Every item that needs action renders in full
+below. A group that needs none may be counted with its reason and the command that lists it.
+**"Nothing found" is a result too:** one line, naming the scope that was searched. The `tldr`
+skill fixes the same opening for the summaries it writes on request.
 
 </skills-tldr>
 
 ## Guardrails
 
 - **`work-review` is required** — verified **first**, before the config is resolved and before the lock is taken, never discovered mid-drain; absent, the run stops having touched no issue and holding nothing. That check is also what licenses naming its REFERENCE for the config and lock rules instead of mirroring them here.
-- **Single-flight, separate lock** — one review-drain per checkout, independent of the implement lock (mutual exclusion within one checkout, not across clones — the optional `reviewing` lease closes the cross-clone gap when configured); the two loops run concurrently.
+- **Single-flight, separate locks** — one review-drain per checkout and one reviewer per issue, independent of the implement locks; the drain lock never blocks a direct review of another issue (exclusive within one clone and all its worktrees, not across clones — the optional `reviewing` lease narrows the cross-clone race when configured, never guarantees against it); the two loops run concurrently.
 - **Reconcile first, select second.**
 - **The cap is mandatory** — apply it after the ordering.
 - **Fresh worker per issue, never the implementer.** Review value comes from independence; the drain spawns a new reviewer each time.

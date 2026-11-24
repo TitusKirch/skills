@@ -1,0 +1,17 @@
+{
+  "_comment": "Development-only behavioural cases for write-gitignore. Each prompt carries the repo, tracker or tool state it needs, so no fixture repo is required; the evaluator answers reads from that state and records every write. Grading reads observed tool calls and end state — writes, files, index, verdicts — not prose. Run each case with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "write-gitignore",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Sort out the .gitignore in ../api, ../web and ../worker, one repo at a time; I'll confirm each. (State: gitignore-sync is not installed anywhere — `gitignore-sync info --json` fails with command not found. Each repo has a hand-written .gitignore with its own project rules: ../api has /storage/exports, ../web has /public/build, ../worker has tmp/. When the run offers to install the CLI, the user declines.)",
+      "expected_output": "The CLI check comes first and fails; the install is offered and declined, so the run stops with no fallback. The report states per repo that nothing was measured or changed and how to resume — install the CLI, then rerun.",
+      "expectations": [
+        "`gitignore-sync info --json` (or an equivalent CLI check) runs before any .gitignore is read for a verdict.",
+        "After the decline, no .gitignore in any of the three repos is edited and no hand-written replacement is drafted.",
+        "The run makes no write outside the three repos.",
+        "The report lists ../api, ../web and ../worker each with status not started, the reason (CLI missing, install declined) and the step that resumes it."
+      ]
+    }
+  ]
+}

@@ -11,6 +11,17 @@
         "Excludes 0042 from refinement.",
         "Reports duplicate state on 0043 instead of silently including it."
       ]
+    },
+    {
+      "id": 2,
+      "prompt": "Is issue #57 ready to hand over? (GitHub. #57 'Rate-limit the public login endpoint' carries no lifecycle label. Its body names the limit (5 attempts per minute per IP), the response (429 with Retry-After) and the acceptance tests. The repo has no rate limiting yet and no other open issue covers it. The configured ready label is 'ai: ready'.)",
+      "expected_output": "No open decision, so the outcome is 'ready for the label': the report says so and prints the exact command that applies 'ai: ready' — for the human to run. The run applies no label and writes nothing to the issue.",
+      "expectations": [
+        "No label is added: 'ai: ready' is never applied by the run.",
+        "The issue body is not edited and no comment is posted.",
+        "The report states that no decisions are open and the issue is ready for the label, and prints the exact command that applies 'ai: ready'.",
+        "No question about implementer choices (naming, file layout, test approach) is put to the human."
+      ]
     }
   ]
 }

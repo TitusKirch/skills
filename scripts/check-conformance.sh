@@ -48,18 +48,21 @@ VALIDATOR_MODULE='skills_ref.cli'
 #
 # Claude Code's seventeen documented fields minus the three that are also standard
 # (`name`, `description`, `allowed-tools` — skills-ref allows all three, so none is ever
-# re-tiered) leaves fourteen; Cursor's legacy `globs` is the fifteenth.
+# re-tiered) leaves fourteen; Cursor's legacy `globs` and its Custom Mode badge, `icon` and
+# `color`, make seventeen.
 CLIENT_EXTENSIONS=(
   'agent=Claude Code'
   'argument-hint=Claude Code'
   'arguments=Claude Code'
   'background=Claude Code'
+  'color=Cursor'
   'context=Claude Code'
-  'disable-model-invocation=Claude Code, Cursor'
+  'disable-model-invocation=Claude Code, Cursor, OpenCode'
   'disallowed-tools=Claude Code'
   'effort=Claude Code'
   'globs=Cursor'
   'hooks=Claude Code'
+  'icon=Cursor'
   'model=Claude Code'
   'paths=Claude Code, Cursor'
   'shell=Claude Code'
@@ -104,10 +107,12 @@ done
 # --- discovery ---------------------------------------------------------------
 # What a skill *is* stays defined once, in gen-skills.ts; this reaches it through
 # --paths rather than globbing skills/*/*/ and inventing a second definition.
+# Captured first, so a failing generator stops the run instead of yielding a short list.
+listing="$(skills_md_paths "$REPO")" || { echo "conformance: skill discovery failed — refusing to report a pass" >&2; exit 2; }
 skill_dirs=()
 while IFS= read -r md; do
   [ -n "$md" ] && skill_dirs+=("$(dirname "$md")")
-done < <(skills_md_paths "$REPO")
+done <<<"$listing"
 
 if [ "${#skill_dirs[@]}" -eq 0 ]; then
   echo "conformance: no skills discovered — refusing to report a pass" >&2
@@ -242,6 +247,7 @@ judge() {
 }
 
 seen=0
+ended="$(mktemp)"
 while IFS= read -r line; do
   case "$line" in
     '##VALIDATOR '*)
@@ -255,6 +261,7 @@ while IFS= read -r line; do
     '##END '*)
       rest="${line#'##END '}"
       judge "${rest% *}" "${rest##* }"
+      printf '%s\n' "${rest% *}" >>"$ended"
       seen=$((seen + 1))
       current=''
       ;;
@@ -272,7 +279,22 @@ if [ "$seen" -ne "${#skill_dirs[@]}" ]; then
   exit 2
 fi
 
+# Every expected skill ended exactly once, and the container itself exited clean: a
+# container that died after its last verdict did not finish a check, it stopped one.
+if [ "$(sort "$ended")" != "$(printf '%s\n' "${skill_dirs[@]}" | sort)" ]; then
+  echo "conformance: the verdicts do not match the skills discovered, one each — refusing to report a pass" >&2
+  rm -f "$ended"
+  exit 2
+fi
+rm -f "$ended"
+
 printf '%d conformant (%d carrying a client extension), %d failed\n' \
   "$ok" "$extended" "$failed"
+
+if [ "$docker_rc" -ne 0 ]; then
+  echo "conformance: the container exited $docker_rc after its verdicts — treating the run as unreliable" >&2
+  cat "$err" >&2
+  exit 2
+fi
 
 [ "$failed" -eq 0 ] || exit 1

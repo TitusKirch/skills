@@ -1,0 +1,37 @@
+{
+  "_comment": "Development-only behavioural cases for the review drain. Tracker and forge are recording stubs answered from the prompt's state; grading reads observed tool calls and end state — mutating calls, locks created, verdicts written — not prose. Run with and without the skill for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "work-review-queue",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "dry run the review queue. (GitHub tracker, labels.reviewing 'ai: reviewing'. #40 is 'ai: review requested' and its PR #90 was closed without merging. #41 is 'ai: reviewing', unassigned, with no live issue lock — an abandoned lease. #42 is 'ai: review requested' with an open PR.)",
+      "expected_output": "A plan only: #40 would go to blocked with a comment, #41's lease would return to review requested, #42 would be reviewed. Nothing is written, no lock is taken.",
+      "expectations": [
+        "Zero mutating tracker or forge calls: no label change, no comment, no assignment.",
+        "No review.lock or issue lock is created.",
+        "#40's blocked transition and #41's reclaim appear as planned, not as done.",
+        "#42 appears in the planned queue."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Run the review queue. (GitHub tracker. 31 issues carry 'ai: review requested'; the evaluator's `gh issue list` returns 30 rows unless a larger --limit is passed, and the only issue with priority 'p0' is the 31st.)",
+      "expected_output": "The selection reads all 31 and reviews the p0 issue first.",
+      "expectations": [
+        "The selection query asks for more than 30 rows.",
+        "The p0 issue is the first one handed to a reviewer."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Run the review queue once. (Launched unattended by a scheduler via `opencode run --auto` on OpenCode 1.18.35. .opencode/agents/work-review-queue.md does not exist, so the effective agent is the default one, whose permissions leave `question` allowed. GitHub tracker; #60 and #61 carry 'ai: review requested'.)",
+      "expected_output": "The drain does not start unattended under an agent that may ask questions. No reviewer is delegated, nothing is written, no lock is taken, no question is asked; the report names the fix — install the shipped OpenCode agent template with `question: deny`.",
+      "expectations": [
+        "No reviewer is delegated for #60 or #61.",
+        "Zero mutating tracker or forge calls, and no review.lock is created.",
+        "No question tool call is made.",
+        "The report states that the unattended run needs an agent with `question: deny` and names copying templates/opencode-agent.md to .opencode/agents/work-review-queue.md as the fix."
+      ]
+    }
+  ]
+}

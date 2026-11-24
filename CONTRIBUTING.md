@@ -1,85 +1,47 @@
 # Contributing to skills
 
-Thanks for taking the time to contribute! 🛠️ This document covers what you need to get a PR landed.
-
-## Code of Conduct
-
-This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you agree to uphold it.
+Thanks for contributing! 🛠️ This covers what you need to get a PR landed. The project follows the [Contributor Covenant](CODE_OF_CONDUCT.md).
 
 ## Reporting issues
 
-- **Bugs**: open a [Bug report](https://github.com/TitusKirch/skills/issues/new?template=bug_report.yml).
-- **Feature requests / new skills**: open a [Feature request](https://github.com/TitusKirch/skills/issues/new?template=feature_request.yml).
-- **Questions & ideas, or something that might be a bug**: start in the [Discord forum](https://discord.kirch.dev/) — that's where the low-friction, unconfirmed stuff lives.
-- **Security vulnerabilities**: **do not** open a public issue. Follow [SECURITY.md](SECURITY.md).
+- **Bug** → [bug report](https://github.com/TitusKirch/skills/issues/new?template=bug_report.yml) · **feature or new skill** → [feature request](https://github.com/TitusKirch/skills/issues/new?template=feature_request.yml).
+- **Questions, ideas, maybe-bugs** → the [Discord forum](https://discord.kirch.dev/).
+- **Security** → never a public issue; follow [SECURITY.md](SECURITY.md).
 
-## Development setup
+## Setup
 
-Requirements:
-
-- Node **26+**
-- **pnpm 12** (the version pinned in `package.json`)
-
-Clone and install:
+Node **26+** and **pnpm 12** (pinned in `package.json`):
 
 ```bash
 git clone https://github.com/TitusKirch/skills.git
 cd skills
-pnpm install   # wires husky hooks
+pnpm install   # also wires the husky hooks
 ```
 
-## Adding a new skill
+**Agent instructions live in [`AGENTS.md`](AGENTS.md) alone** ([ADR-0049](docs/99.adr/0049-keep-one-instruction-file-agents-md.md)). Claude Code (v2.1.277+) reads it only while no `CLAUDE.md` or `CLAUDE.local.md` sits in the working directory or above, under its default _project instructions_ setting. If an agent ignores the conventions, check those first; `/memory` shows what Claude Code loaded.
 
-1. Pick a category — `repo/`, `work/`, `docs/` or `meta/` (see [`skills/README.md`](skills/README.md)) — and create `skills/<category>/<skill-name>/SKILL.md`: YAML frontmatter (`name`, `summary`, `description`, optional `allowed-tools`) followed by the skill body. Use an existing skill (e.g. [`skills/docs/write-readme/`](skills/docs/write-readme/)) as a reference.
-2. Keep any bundled resources (templates, scripts) inside the same folder.
-3. Run `pnpm skills:sync` — it regenerates the root [`README.md`](README.md) skills table, the category's `README.md`, [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) and [`skills.sh.json`](skills.sh.json)'s groupings from your frontmatter. **Don't hand-edit any of them** (CI runs `pnpm skills:check`).
-4. Run `pnpm skills:link` to try it locally, then `pnpm verify` before pushing.
-5. Commit as `feat(<skill-name>): add skill`.
+## Adding a skill
 
-## Running the suite
+1. Create `skills/<category>/<skill-name>/SKILL.md` — category `repo/`, `work/`, `docs/` or `meta/`; frontmatter contract in [`skills/README.md`](skills/README.md). Bundled templates and scripts stay in the same folder.
+2. Run `pnpm skills:sync` — it regenerates the README table, the category README, `.claude-plugin/plugin.json` and `skills.sh.json`. Never hand-edit them; `pnpm skills:check` fails on drift.
+3. Try it with `pnpm skills:link`, then run `pnpm verify`.
+4. Commit as `feat(<skill-name>): add skill`.
 
-| Command          | What it does                                                    |
-| :--------------- | :-------------------------------------------------------------- |
-| `pnpm verify`    | The full gate: `check` + `skills:check` + `typecheck` + `test`. |
-| `pnpm check`     | oxlint + oxfmt only — part of the gate, not all of it.          |
-| `pnpm check:fix` | Auto-fix the above.                                             |
-| `pnpm taze`      | Check dependency drift.                                         |
+## Checks
 
-CI runs the same commands, one step per command, so a single run reports every failure rather than stopping at the first. A test (`test/ci-gate.test.ts`) asserts CI's step list still matches what `verify` composes, so keeping `pnpm verify` green locally is keeping CI green.
+`pnpm verify` is the whole gate — `check` + `skills:check` + `typecheck` + `test` — and CI runs the same tasks, reporting every failure in one run. `pnpm check:fix` applies the linters' fixes.
 
-**Checks that need container tooling sit outside that gate.** `pnpm skills:conformance` validates every skill against the [Agent Skills specification](https://agentskills.io/specification) with the standard's own validator, pinned and run in a container — so it needs Docker, which is exactly why `pnpm verify` does not reach it and stays runnable with nothing but pnpm. A separate workflow runs it on any pull request that touches `skills/`. It re-tiers the Claude Code frontmatter extensions this repo deliberately uses ([ADR-0007](docs/99.adr/0007-permit-claude-code-frontmatter-extensions.md)) rather than failing on them, so a green run still reports them as non-portable.
+Outside the gate, because they need extra tooling:
 
-`pnpm containers:audit` needs Docker and Trivy. It scans the current Python image from the registry, builds the VHS template with refreshed system packages, and scans the resulting renderer. It prints finding counts and paths to JSON reports in a temporary directory; an optional directory argument keeps them where you choose. Exit 0 means no advisories, 1 means advisories were found, and 2 means a check could not run. These are image-package findings, independent of the skill-conformance verdict.
+- **`pnpm skills:conformance`** — the spec's own validator in Docker; its own workflow runs it on PRs touching `skills/`. It reports the deliberate Claude Code extensions as non-portable rather than failing on them ([ADR-0007](docs/99.adr/0007-permit-claude-code-frontmatter-extensions.md)).
+- **`pnpm containers:audit`** — Trivy scan of the validator image and the VHS renderer; exit 0 clean, 1 advisories, 2 could not run.
+- **CLI probes inside `pnpm test`** run only where the CLI is installed and say so when skipped: `codex` (policy parity), the `skills` installer, `claude` (plugin validation). To force the OpenCode probe, set `OPENCODE_REQUIRED=true` and `OPENCODE_BIN` to the version `scripts/toolchain-versions.json` pins.
 
-OpenCode's exact version lives in `scripts/toolchain-versions.json`; the workflow and integration test both read it. To require the real CLI probe locally, set `OPENCODE_REQUIRED=true` and point `OPENCODE_BIN` at that version's executable when running `pnpm verify`.
+## Branching, commits, releases
 
-## Branching & PRs
+- **Branch off `dev`, target `dev`.** `main` only takes the `dev → main` rollup PR.
+- **Conventional Commits**, scoped by skill (`fix(write-readme): …`); breaking changes as `feat!:` or a `BREAKING CHANGE:` footer. Husky runs commitlint and formats staged files — never `--no-verify`.
+- **One concern per PR.**
+- **release-please** turns `feat:`/`fix:` into the version bump and CHANGELOG once the rollup reaches `main` — nothing to do beyond the commit message.
 
-1. **Branch off `dev`, and target `dev`.** `dev` is the integration branch every PR goes into; `main` is the release branch and takes only the `dev → main` rollup PR that CI keeps open. Never push to either directly — a contribution reaches `dev` through a pull request.
-2. **Conventional Commits required.** Commitlint enforces this on every commit. Examples:
-   - `feat(skill-name): add new skill`
-   - `fix(skill-name): correct example prompt`
-   - `docs(readme): clarify install instructions`
-   - `chore(deps): bump oxlint`
-   - Breaking changes: `feat!: ...` or include `BREAKING CHANGE:` in the body.
-3. **One concern per PR.** Smaller PRs land faster.
-
-## Style & quality gates
-
-Husky runs the following on `git commit`:
-
-- **Markdown / JSON / YAML** → `oxfmt`
-- **JS** (if any) → `oxlint` + `oxfmt`
-
-If a hook fails, fix the issue and commit again. **Don't `--no-verify`** unless explicitly asked.
-
-> [!TIP]
-> Run `pnpm check:fix` before opening a PR — saves a CI cycle.
-
-## Releases
-
-Releases are automated via [release-please](https://github.com/googleapis/release-please). Your `feat:`/`fix:` commits land on `dev` first and reach `main` through the rollup PR; release-please then opens a PR with the next version bump and CHANGELOG entry. Nothing to do on your side beyond the commit message.
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+By contributing, you agree your contributions are licensed under the [MIT License](LICENSE).

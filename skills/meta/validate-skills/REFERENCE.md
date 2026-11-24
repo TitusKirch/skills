@@ -37,32 +37,34 @@ A skill is a **directory** whose only required member is `SKILL.md`. Optional, s
 
 <a id="the-extension-matrix"></a>
 
-| Field                      | Defined by          |
-| :------------------------- | :------------------ |
-| `agent`                    | Claude Code         |
-| `argument-hint`            | Claude Code         |
-| `arguments`                | Claude Code         |
-| `background`               | Claude Code         |
-| `context`                  | Claude Code         |
-| `disable-model-invocation` | Claude Code, Cursor |
-| `disallowed-tools`         | Claude Code         |
-| `effort`                   | Claude Code         |
-| `globs`                    | Cursor              |
-| `hooks`                    | Claude Code         |
-| `model`                    | Claude Code         |
-| `paths`                    | Claude Code, Cursor |
-| `shell`                    | Claude Code         |
-| `user-invocable`           | Claude Code         |
-| `when_to_use`              | Claude Code         |
+| Field                      | Defined by                    |
+| :------------------------- | :---------------------------- |
+| `agent`                    | Claude Code                   |
+| `argument-hint`            | Claude Code                   |
+| `arguments`                | Claude Code                   |
+| `background`               | Claude Code                   |
+| `color`                    | Cursor                        |
+| `context`                  | Claude Code                   |
+| `disable-model-invocation` | Claude Code, Cursor, OpenCode |
+| `disallowed-tools`         | Claude Code                   |
+| `effort`                   | Claude Code                   |
+| `globs`                    | Cursor                        |
+| `hooks`                    | Claude Code                   |
+| `icon`                     | Cursor                        |
+| `model`                    | Claude Code                   |
+| `paths`                    | Claude Code, Cursor           |
+| `shell`                    | Claude Code                   |
+| `user-invocable`           | Claude Code                   |
+| `when_to_use`              | Claude Code                   |
 
 This table is the **single** list of re-tiered keys; everything else that needs one — the re-tiering rule below, a consuming repo's unattended gate — reads it from here rather than keeping a second copy.
 
 Where the counts come from, because they are easy to state wrongly:
 
 - **Claude Code documents seventeen frontmatter fields** ([its reference](https://code.claude.com/docs/en/skills)). Three of them are **standard** — `name`, `description` and `allowed-tools`, the last flagged Experimental by the spec but on `skills-ref`'s allowlist all the same — which leaves the **fourteen** Claude Code rows above. A count of fifteen comes from filing `allowed-tools` as an extension; `skills-ref` accepts it, so it is never re-tiered.
-- **Cursor documents five** ([its reference](https://cursor.com/docs/skills)): `name`, `description` and `metadata` from the standard, plus `paths` and `disable-model-invocation` — its own fields, sharing Claude Code's names and semantics. `globs` is its **legacy** spelling of `paths`, still accepted for older skills and not for new ones. It documents no `license`, `compatibility` or `allowed-tools`.
+- **Cursor documents seven** ([its reference](https://cursor.com/docs/skills), read 2026-11-24): `name`, `description` and `metadata` from the standard, plus `paths` and `disable-model-invocation` — its own fields, sharing Claude Code's names and semantics — and `icon` and `color`, the badge of a skill used as a **Custom Mode** (an unrecognised value falls back to the default badge). `globs` is its **legacy** spelling of `paths`, still accepted for older skills and not for new ones. It documents no `license`, `compatibility` or `allowed-tools`.
 
-Fourteen plus `globs` is the fifteen rows above. A top-level key outside this table and the standard's six is genuinely unrecognised and stays a **spec violation**.
+Fourteen, plus Cursor's `icon`, `color` and `globs`, is the seventeen rows above. A top-level key outside this table and the standard's six is genuinely unrecognised and stays a **spec violation**.
 
 **House fields [house]** — a consuming repo's own keys, carried **inside** `metadata` so the standard's string-map contract is never broken. This repo's is `metadata.summary`; its absence is a [house-style](#the-house-style-tier) finding, never a spec breach.
 
@@ -90,7 +92,11 @@ The contrast is the useful part of the report: an author reaching for a Claude C
 
 ### OpenCode — the tolerance that makes non-portability a spectrum
 
-OpenCode adds **no** fields of its own and documents that **unknown frontmatter fields are ignored** ([its docs](https://opencode.ai/docs/skills)), so a Claude-extended skill still loads there. That one line is what turns "non-portable" from a verdict into a range, and the report should carry it:
+OpenCode keeps its own surface small ([its docs](https://opencode.ai/docs/skills), read 2026-11-24, which describe its "V2" skills): **all frontmatter is optional at runtime**, a skill's **id is its path** (`<source>/git-release/SKILL.md` is `git-release`; `name` is only a display label), `disable-model-invocation: true` keeps a skill off the model's list, and so does its one own key, **`metadata.opencode/autoinvoke: false`**, which wins where both are set. `license` and `compatibility` are accepted and not interpreted. The docs no longer state outright that unknown fields are ignored; what this repo **observes** is that the pinned OpenCode (`scripts/toolchain-versions.json`) loads every skill here, Claude Code extensions included (`test/opencode-compatibility.test.ts`). Report a claim about OpenCode with which of the two it rests on — the documented V2 behaviour, or the pinned version observed — never one standing in for the other.
+
+**`opencode/autoinvoke` is a boolean inside `metadata`, which the standard defines as a string map.** Written as `false` it is a non-string value — a spec finding under the map contract below — so name it as OpenCode's convention and say which tier it lands in rather than calling the skill broken.
+
+That tolerance is what turns "non-portable" from a verdict into a range, and the report should carry it:
 
 | A non-standard key is …                           | by                                                     |
 | :------------------------------------------------ | :----------------------------------------------------- |

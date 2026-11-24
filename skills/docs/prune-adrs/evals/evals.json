@@ -1,0 +1,91 @@
+{
+  "_comment": "Output-quality cases for prune-adrs' load-bearing behaviours: moving a feature spec out of the log, trimming a mixed record without losing its reason, choosing between two plausible target pages, re-pointing a citation whose sentence left, and keeping the migration protocol until sign-off. The measure throughout: after the migration a reader finds the rule and its original reason in the right place. Each prompt carries the repo state it needs, so no fixture repo is required. Run each case with and without the skill (Anthropic's skill-creator) for the baseline delta; results are workspace output, never committed.",
+  "skill_name": "prune-adrs",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Clean up our ADRs, starting with this one. docs/99.adr/0412-dragon-egg-claims.md (accepted, 2026-03-02): 'Context: players asked for a claimable dragon egg. Decision: a placed egg is open to anyone for six hours, then secured for the claim it stands in. Within 16 blocks of an open egg outsiders may build; the area is restored five minutes after they leave. The six hours were chosen over one hour because one hour let a single guild farm every egg on the map. Consequences: the territory plugin asks the core service on every player hit.' It is cited by src/territory/EggGuard.java ('// see ADR-0412') and by docs/2.concepts/smp/index.md. There is a docs page docs/2.concepts/smp/dragon-egg.md that so far only describes the egg item.",
+      "expected_output": "A batch plan that classifies 0412 as move (feature behaviour and parameters, not an architecture decision) to the existing dragon-egg concept page, with every sentence moved verbatim — including why six hours beat one hour — and a map row `0412<TAB>move<TAB>docs/2.concepts/smp/dragon-egg.md<TAB>the dragon egg page`. The citations are rewritten by the script, not by hand, and nothing is written before the plan is confirmed.",
+      "expectations": [
+        "0412 is classified move, with the reason that it is feature behaviour and parameters, not an architecture decision.",
+        "The target is docs/2.concepts/smp/dragon-egg.md, not a new page and not the log.",
+        "The six-hours-over-one-hour reason lands on the page in the author's words; no sentence is reworded.",
+        "The map row carries a label that reads in a sentence, so '// see ADR-0412' becomes '// see the dragon egg page'.",
+        "The plan says the script rewrites the two citations (dry run, then --apply) instead of editing them by hand.",
+        "Nothing is written before the human confirms the plan."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Trim docs/99.adr/0038-route-every-write-through-the-core.md onto write-adr's rules. Its body (about 1,300 words) holds: the decision that every player-state write goes through the Laravel core service, with the two rejected alternatives (row locks in each plugin; an append-only event log) and why each lost; an 'Amendments' section dated 2026-05 listing the 14 endpoints the core exposes, with their payload fields; and a paragraph restating the retry policy, which docs/3.guides/core-api.md#retries already states word for word.",
+      "expected_output": "A plan classifying 0038 as trim: the decision and both alternatives with their reasons stay; the endpoint list moves to an editable page; the retry paragraph is removed, not moved, because core-api.md already owns it, with one link to it. The draft is made in the batch directory, never in the working tree, and the plan shows measured before/after word counts from wc -w.",
+      "expectations": [
+        "0038 is trim, not move or drop — the decision stays in the log.",
+        "Both rejected alternatives and the reason each lost survive the trim.",
+        "The Amendments section leaves the record; the endpoint enumeration goes to a docs page, not to another ADR.",
+        "The retry paragraph is removed and linked once to docs/3.guides/core-api.md#retries, after checking that page states the same thing — no second copy is created.",
+        "Word counts in the plan are measured from a draft, not estimated, and the draft is not written into the working tree before confirmation.",
+        "No surviving sentence is reworded; the only added sentence is the link pointer."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Batch 3 includes docs/99.adr/0207-rate-limit-the-public-api.md, which is not an architecture decision: it lists per-route limits (120/min for reads, 20/min for writes) and explains that writes are tighter because a write fans out to three services. Two pages could take it: docs/3.guides/public-api.md (how to call the API, has a 'Limits' heading with one sentence) and docs/2.concepts/traffic-shaping.md (how traffic is shaped across all services, mentions rate limits once in passing). Plan it.",
+      "expected_output": "A move to docs/3.guides/public-api.md under its existing 'Limits' heading, because that page owns the per-route limits; the fan-out reason moves with the limits it explains. The plan names traffic-shaping.md as the borderline alternative with one line of why it lost, and leaves the final call to the human.",
+      "expectations": [
+        "0207 is classified move.",
+        "The target is docs/3.guides/public-api.md, the page that owns the subject, under its Limits heading.",
+        "The fan-out reason travels with the limits rather than being split onto the other page.",
+        "traffic-shaping.md is named as the borderline candidate, with the reason it lost.",
+        "The map row uses the link form the repo already uses for docs pages."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Batch 2 is applied: ADR-0040 was trimmed and its 'Stale locks' paragraph moved to skills/work/work-implement/REFERENCE.md#stale-locks. --check is clean. Now --cites lists, among others, this line: 'src/lock.ts:12: // a lock older than the window is reclaimed — see ADR-0040'. What next?",
+      "expected_output": "The run reads the citation against what ADR-0040 now says, finds that the cited sentence left, and proposes re-pointing the comment to the REFERENCE section that now holds it — applied only on confirmation, in the batch's diff. It does not treat the clean --check as proof the citation holds, and it does not reword the record.",
+      "expectations": [
+        "It recognises that --check being clean does not mean the citation still holds.",
+        "It checks whether ADR-0040 still states the cited sentence, and finds it does not.",
+        "It proposes re-pointing the comment to skills/work/work-implement/REFERENCE.md#stale-locks.",
+        "The change is proposed and applied only on confirmation, in the batch's diff.",
+        "ADR-0040 itself is not edited to put the sentence back."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "All twelve batches are applied and the closing --check over every map is clean. The renumbering ran too and docs/99.adr/migration.tsv lists every old id. One reviewer has signed off; the second is on holiday until next week. Delete the batch maps and the migration protocol so we can close this out.",
+      "expected_output": "The batch maps under the git common dir are deleted (they are not committed and the final check is clean), but the migration protocol stays: it may be deleted only once every reviewer has confirmed the migration complete and correct, as a commit of its own. The run explains what the protocol still serves — looking up old ids from commit messages, issues and other repositories — and does not commit or push.",
+      "expectations": [
+        "The batch maps are deleted, or their deletion is proposed for confirmation.",
+        "docs/99.adr/migration.tsv is not deleted while a reviewer has not signed off.",
+        "It names the condition for deleting the protocol: every reviewer's sign-off, then its own commit on explicit confirmation.",
+        "It explains that the protocol is the only lookup for old ids, since there are no redirects.",
+        "It neither commits nor pushes."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Continue the ADR migration. (State: batch 2's directory under the git common dir holds map.tsv and a state file naming base commit abc123. The previous session ran --apply and then crashed: the tree is dirty, docs/99.adr/migration.tsv already has batch-02's rows, two of the batch's three moved records are deleted and one is still present.)",
+      "expected_output": "The run reads the batch state instead of starting over, reruns the same map with --apply (accepted, since the missing records existed at HEAD), checks until clean, and does not reclassify or re-plan the batch. It reports what the crash left and leaves committing to the human.",
+      "expectations": [
+        "It reads batch-02's map and state rather than drafting a new batch.",
+        "It reruns --apply on the same map and then --check, and reports both results.",
+        "It does not delete or rewrite migration.tsv.",
+        "It neither commits nor pushes."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Batch 3 is applied and --check is clean: ADR-0051 was trimmed and its backoff paragraph moved to docs/3.guides/retries.md#backoff. ADR-0051 still records the decision to retry at the queue rather than per call, with its reason, but no longer states the backoff rule. --cites lists three lines: 'src/retry.ts:8: // backoff doubles per attempt — see ADR-0051', 'src/queue.ts:30: // Backoff verdoppelt sich pro Versuch, siehe ADR-0051' and 'docs/de-DE/3.guides/betrieb.md:14: Warum die Queue wiederholt und nicht jeder Aufruf, begründet ADR-0051.' What next?",
+      "expected_output": "Each citation is read against what ADR-0051 says now, the German ones included. The two backoff citations are proposed for re-pointing to the guide section that now holds the rule; the German docs line cites the queue decision, which the record still carries, and stays. Changes land only on confirmation, in the batch's diff, and the record is not edited.",
+      "expectations": [
+        "All three citations are judged individually; neither German line is skipped or treated as unreadable because of its language.",
+        "src/retry.ts:8 and src/queue.ts:30 are proposed for re-pointing to the page that now holds the backoff rule (docs/3.guides/retries.md#backoff, or its de-DE counterpart where one exists).",
+        "docs/de-DE/3.guides/betrieb.md:14 is left citing ADR-0051, since the record still states that decision and its reason.",
+        "A re-pointed German comment stays in German.",
+        "Nothing is changed before confirmation, and ADR-0051 itself is not edited to put the backoff rule back."
+      ]
+    }
+  ]
+}

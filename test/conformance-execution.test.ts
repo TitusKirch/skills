@@ -18,16 +18,25 @@ if [ "$SKILLS_DOCKER_FAIL" = true ]; then
   exit 17
 fi
 echo '##VALIDATOR 0.1.1'
+n=0
 for argument do
   case "$argument" in
-    skills/*/*) printf '##BEGIN %s\\n##END %s 0\\n' "$argument" "$argument" ;;
+    skills/*/*)
+      n=$((n + 1))
+      [ "$SKILLS_DOCKER_MODE" = short ] && [ "$n" -gt 1 ] && continue
+      printf '##BEGIN %s\\n##END %s 0\\n' "$argument" "$argument"
+      [ "$SKILLS_DOCKER_MODE" = twice ] && [ "$n" -eq 1 ] && printf '##BEGIN %s\\n##END %s 0\\n' "$argument" "$argument"
+      ;;
   esac
 done
+[ "$SKILLS_DOCKER_MODE" = late ] && exit 17
+[ "$SKILLS_DOCKER_MODE" = twice ] && exit 0
+exit 0
 `,
   { mode: 0o755 }
 );
 
-function run(fail = false) {
+function run(fail = false, mode = '') {
   return spawnSync('bash', [join(ROOT, 'scripts/check-conformance.sh')], {
     encoding: 'utf8',
     timeout: 30_000,
@@ -35,7 +44,8 @@ function run(fail = false) {
       PATH: `${scratch}:${process.env.PATH ?? ''}`,
       HOME: scratch,
       SKILLS_DOCKER_ARGS: join(scratch, 'args'),
-      SKILLS_DOCKER_FAIL: String(fail)
+      SKILLS_DOCKER_FAIL: String(fail),
+      SKILLS_DOCKER_MODE: mode
     }
   });
 }
@@ -63,4 +73,17 @@ test('a Docker failure cannot be reported as a conformant tree', () => {
     /validator produced no verdict \(docker exit 17\)/
   );
   assert.ok(!result.stdout.includes('conformant'));
+});
+
+test('a container that fails after its last verdict is an unreliable run, not a pass', () => {
+  const result = run(false, 'late');
+  assert.equal(result.status, 2, result.stdout + result.stderr);
+  assert.match(result.stderr, /container exited 17 after its verdicts/);
+});
+
+test('verdicts that do not pair one per skill are refused', () => {
+  const twice = run(false, 'twice');
+  assert.equal(twice.status, 2, twice.stdout + twice.stderr);
+  const short = run(false, 'short');
+  assert.equal(short.status, 2, short.stdout + short.stderr);
 });
