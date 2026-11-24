@@ -362,7 +362,7 @@ Two forges, one shape per step: **narrow the list, re-assert the author, read th
 **Select the queue** — author, never label or title:
 
 ```bash
-gh pr list --state open --search "author:app/dependabot" \
+gh pr list --state open --search "author:app/dependabot" --limit 1000 \
   --json number,title,headRefName,baseRefName,isDraft,mergeable,mergeStateStatus
 ```
 

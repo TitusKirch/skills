@@ -701,10 +701,13 @@ triage=$(printf '%s' "$resolved" | jq -er '.work.labels.needsTriage | select(. !
 [ "$triage" = 'false' ] && triage=
 
 # GitHub — implement-loop inputs (ready OR changes-requested); comma = OR within a search qualifier
-issues=$(gh issue list --state open \
+issues=$(gh issue list --state open --limit 1000 \
   --search "label:\"$ready\",\"$chreq\"" \
-  --json number,title,labels,createdAt)
+  --json number,title,labels,createdAt) || issues=unreadable
+[ "$issues" = unreadable ] || [ "$(printf '%s' "$issues" | jq length)" -lt 1000 ] || echo "selection may be truncated"
 ```
+
+**`--limit 1000`, and a full page is not a complete one.** `gh` stops at **30** rows by default, silently, so without the limit the 31st eligible issue — possibly the only workable or highest-priority one — is never seen and the drain reports an empty or partial queue as if it were whole. Even 1000 is a bigger page, not a guarantee: when the count comes back equal to the limit, say in the plan that the selection may be a prefix, and never report "nothing eligible" from it. A failed read is an unread queue, never an empty one.
 
 Both inputs empty means **no eligible query exists** — report that as a config problem, never as an empty queue. Skip a label that is `false` and build the search from the remaining one.
 
@@ -719,7 +722,7 @@ printf '%s' "$issues" | jq --arg t "$triage" \
 
 **Ready-gate off** (`labels.ready: false`): the query above can't filter by a ready label — list open issues and instead **exclude** the in-flight ones (`--search "-label:<working> -label:<blocked>"`), so "never already `working`/`blocked`" still holds without a gate to lean on.
 
-**GitLab**: `glab issue list --label '<one label>' --output json`, **once per input label**, unioned locally — `glab` ANDs a comma-separated `--label` where the `gh` search qualifier above ORs it, so comma-joining the two inputs selects only issues carrying both and drains an empty queue in exactly the silence this section is written to prevent. Partition the union on `$triage` with the same `jq` above.
+**GitLab**: `glab issue list --label '<one label>' --per-page 100 --output json`, **once per input label**, unioned locally — `glab` ANDs a comma-separated `--label` where the `gh` search qualifier above ORs it, so comma-joining the two inputs selects only issues carrying both and drains an empty queue in exactly the silence this section is written to prevent. Partition the union on `$triage` with the same `jq` above. **Page it to the end**: `glab` returns 30 rows unless told otherwise, so pass `--per-page 100` and repeat with `--page 2, 3, …` until a page comes back shorter than 100 — never `--all`, which widens the **state**, not the page. A page that fails to read leaves the queue unread, never empty.
 
 Linear: `list_issues` filtered by team + label(s) + states; order by the native priority field. The triage partition is the same rule on the labels `list_issues` already returns — Linear labels are team-scoped, so `labels.needsTriage` names a label of the configured team.
 
@@ -1022,7 +1025,7 @@ The queue branch itself stays `ai/queue-<hash>` — a **hyphen**, not a slash �
 
 ```sh
 # an open ai/queue-* PR into pr.base? then that branch is this PR's base
-q=$(gh pr list --state open --base "$base" --json number,headRefName \
+q=$(gh pr list --state open --base "$base" --limit 1000 --json number,headRefName \
   --jq '[.[] | select(.headRefName | startswith("ai/queue-"))] | .[0].headRefName // ""')
 [ -n "$q" ] && base="$q"
 ```

@@ -30,14 +30,16 @@ Work the **dependency-bot queue** — read the bot's open requests and the repo'
 
 ```bash
 # GitHub — the constant, named here and deliberately not a config key.
-gh pr list --state open --search "author:app/dependabot" \
+gh pr list --state open --search "author:app/dependabot" --limit 1000 \
   --json number,title,headRefName,baseRefName,isDraft,mergeable,mergeStateStatus
 
-# GitLab — narrow on the login for readability, prove on the id. Pages cap at 100.
+# GitLab — narrow on the login for readability, prove on the id. Pages cap at 100:
+# repeat with --page 2, 3, … until a page returns fewer than 100.
 # No --all: it widens to closed and merged, and this queue is open requests only.
 glab mr list --per-page 100 --output json --author "$bot_login"
 ```
 
+- **Read the whole queue.** `gh pr list` stops at 30 rows unless told otherwise, and a list that comes back exactly at `--limit` may be a prefix — say so in the report rather than presenting it as the whole queue.
 - **Re-assert the author per request** before touching it — `author.login` must equal `app/dependabot` on GitHub; `author.id` must equal `mergeDeps.gitlab.bot.id` on GitLab. The list narrows; this is what proves it. On GitLab the login the list was narrowed with is **not** the proof: a username is reusable after a rename, so a login that disagrees with its id is the rename signal — report it and leave the MR alone.
 - **No `mergeDeps.gitlab.bot` under `forge: gitlab` → stop**, saying the key is unset and that the queue cannot be identified without it. Never infer the author from a branch prefix, a label or a title, and never report an unidentifiable queue as an empty one — an empty queue reads as a healthy run.
 - **Never select by label, title or branch.** The `dependencies` label, a `build(deps)` title and a `renovate/*` branch are settable by anyone; authorship is not. A human's request wearing the `dependencies` label must come back from step 2 empty-handed.

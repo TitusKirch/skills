@@ -410,8 +410,12 @@ review=$(printf '%s' "$resolved" | jq -er '.work.labels.reviewRequested | select
 [ "$review" = 'false' ] && review=
 
 # GitHub — issues awaiting review
-test -n "$review" && gh issue list --state open --label "$review" --json number,title,labels,createdAt
+test -n "$review" && { issues=$(gh issue list --state open --label "$review" --limit 1000 \
+  --json number,title,labels,createdAt) || issues=unreadable; }
+[ "$issues" = unreadable ] || [ "$(printf '%s' "$issues" | jq length)" -lt 1000 ] || echo "selection may be truncated"
 ```
+
+**`--limit 1000`, and a full page is not a complete one.** `gh` stops at **30** rows by default, silently, so without the limit the 31st eligible issue — possibly the only workable or highest-priority one — is never seen and the drain reports an empty or partial queue as if it were whole. Even 1000 is a bigger page, not a guarantee: when the count comes back equal to the limit, say in the plan that the selection may be a prefix, and never report "nothing eligible" from it. A failed read is an unread queue, never an empty one.
 
 **Never pass `--label "$review"` unguarded.** With `labels.reviewRequested: false` the label mechanic is off and the PR's existence is the signal — select on that instead; do **not** fall through to a label query with an empty value.
 
