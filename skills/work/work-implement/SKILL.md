@@ -115,6 +115,6 @@ Inside a `work-implement-queue` drain nobody waits on this worker — return `re
 
 ## Reference
 
-Config schema, the lifecycle state machine, selection query, lease & race rules, the test discipline `tdd` carries and the branch strategies (`worktree` / `branch:<name>`, sequential & parallel) — everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md). Why it is shaped this way: [DESIGN.md](DESIGN.md).
+Config schema, the lifecycle state machine, selection query, lease & race rules, the test discipline `tdd` carries and the branch strategies (`worktree` / `branch:<name>`, sequential & parallel) — everything a run needs whatever its tracker: [REFERENCE.md](REFERENCE.md).
 
 **One file per tracker recipe, and a repo reads exactly one.** `work.tracker` (falling back to `issue.tracker`) is a single value, so step 1 settles the branch before any recipe is opened: [`trackers/github.md`](trackers/github.md), [`trackers/gitlab.md`](trackers/gitlab.md), [`trackers/linear.md`](trackers/linear.md), [`trackers/local.md`](trackers/local.md).
