@@ -199,3 +199,76 @@ describe('skills:link destinations', () => {
       );
   });
 });
+
+describe('skills:link ownership', () => {
+  test('a link of the same name from another checkout is a conflict, and nothing is written', () => {
+    const at = home();
+    const elsewhere = mkdtempSync(join(tmpdir(), 'tituskirch-skills-other-'));
+    homes.push(elsewhere);
+    const [first, second] = destsUnder(at) as [string, string];
+    const name = linkNames()[0] as string;
+    mkdirSync(first, { recursive: true });
+    symlinkSync(elsewhere, join(first, name));
+
+    const out = run('link-skills.sh', at);
+    assert.notEqual(out.code, 0, out.stdout);
+    assert.match(out.stderr, /another install of the same name/);
+    assert.equal(
+      readlinkSync(join(first, name)),
+      elsewhere,
+      'the foreign link was replaced'
+    );
+    assert.equal(readdirSync(first).length, 1, 'something else was linked');
+    assert.ok(!existsSync(second), 'the second destination was written to');
+  });
+
+  test('a link tree holding a foreign entry is a conflict', () => {
+    const at = home();
+    const elsewhere = mkdtempSync(join(tmpdir(), 'tituskirch-skills-other-'));
+    homes.push(elsewhere);
+    writeFileSync(join(elsewhere, 'SKILL.md'), '---\nname: x\n---\n');
+    const [first] = destsUnder(at) as [string];
+    const tree = join(first, skillWithEvals());
+    mkdirSync(tree, { recursive: true });
+    symlinkSync(join(elsewhere, 'SKILL.md'), join(tree, 'SKILL.md'));
+
+    const out = run('link-skills.sh', at);
+    assert.notEqual(out.code, 0, out.stdout);
+    assert.equal(
+      readlinkSync(join(tree, 'SKILL.md')),
+      join(elsewhere, 'SKILL.md')
+    );
+  });
+
+  test('a second run over its own links succeeds and changes nothing', () => {
+    const at = home();
+    assert.equal(run('link-skills.sh', at).code, 0);
+    const again = run('link-skills.sh', at);
+    assert.equal(again.code, 0, again.stderr);
+    for (const dest of destsUnder(at)) {
+      assert.deepEqual(readdirSync(dest).sort(), [...linkNames()].sort());
+    }
+  });
+
+  test('a failing discovery stops the run before any destination exists', () => {
+    const at = home();
+    const bin = mkdtempSync(join(tmpdir(), 'tituskirch-skills-bin-'));
+    homes.push(bin);
+    writeFileSync(
+      join(bin, 'node'),
+      '#!/bin/sh\necho "catalog unavailable" >&2\nexit 7\n',
+      { mode: 0o755 }
+    );
+    const result = spawnSync(
+      'bash',
+      [join(ROOT, 'scripts', 'link-skills.sh')],
+      {
+        encoding: 'utf8',
+        env: { PATH: `${bin}:${process.env.PATH ?? ''}`, HOME: at }
+      }
+    );
+    assert.notEqual(result.status, 0, result.stdout);
+    for (const dest of destsUnder(at))
+      assert.ok(!existsSync(dest), `${dest} was created`);
+  });
+});

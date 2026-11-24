@@ -33,51 +33,82 @@ for dest in "${SKILL_LINK_DESTS[@]}"; do
   esac
 done
 
-# A per-entry link tree we built holds only symlinks; a user's own skill dir holds
-# real files. That difference is how we tell a tree we may rebuild from a directory
-# we must not touch. An empty dir counts as ours.
-dir_is_link_tree() {
-  local dir="$1" strays
-  [ -d "$dir" ] || return 1
-  strays="$(find "$dir" -mindepth 1 -maxdepth 1 ! -type l)"
-  [ -z "$strays" ]
+# Ownership is proven, never assumed from a name. A whole-folder link is ours when it
+# resolves to exactly this skill's folder; a per-entry link tree is ours when every
+# entry in it is a symlink resolving into exactly this skill's folder. Anything else at
+# the target — a user's own skill, another clone's link, a mixed tree — is somebody
+# else's install, and replacing it would make the client load a different skill.
+resolves_to() { # <link> <dir>: the link resolves to <dir> or into it
+  local resolved
+  resolved="$(readlink -f "$1" 2>/dev/null || true)"
+  case "$resolved" in "$2" | "$2"/*) return 0 ;; *) return 1 ;; esac
+}
+is_our_tree() { # <dir> <src>: only symlinks, all into <src>; an empty dir counts as ours
+  local dir="$1" src="$2" entry
+  [ -d "$dir" ] && [ ! -L "$dir" ] || return 1
+  while IFS= read -r entry; do
+    [ -L "$entry" ] && resolves_to "$entry" "$src" || return 1
+  done < <(find "$dir" -mindepth 1 -maxdepth 1)
+  return 0
+}
+target_is_free_or_ours() { # <target> <src>
+  local target="$1" src="$2"
+  [ -e "$target" ] || [ -L "$target" ] || return 0      # nothing there yet
+  if [ -L "$target" ]; then resolves_to "$target" "$src"; return; fi
+  is_our_tree "$target" "$src"
 }
 
 # Link one skill: whole-folder when it has no dev artifacts, else entry by entry so
-# the artifact stays behind.
+# the artifact stays behind. Only called once the preflight proved the target ours.
 link_skill() {
   local src="$1" name="$2" target="$3" entry
 
   if ! skill_has_dev_artifacts "$src"; then
-    if [ -e "$target" ] && [ ! -L "$target" ]; then
-      echo "skip $name — $target exists and is not a symlink" >&2
-      return
-    fi
+    [ -d "$target" ] && [ ! -L "$target" ] && rm -r -- "$target" # our tree, now a whole link
     ln -sfn "$src" "$target"
     echo "linked $name -> $src"
     return
   fi
 
-  if [ -L "$target" ]; then
-    rm -f "$target" # replace a prior whole-folder symlink with the link tree
-  elif [ -e "$target" ] && ! dir_is_link_tree "$target"; then
-    echo "skip $name — $target exists and is not a link tree we created" >&2
-    return
-  fi
+  [ -L "$target" ] && rm -f "$target" # our whole-folder link, replaced by the link tree
   mkdir -p "$target"
+  # Drop our own entries the source no longer has, then (re)link every current one.
+  while IFS= read -r entry; do
+    [ -e "$src/$(basename "$entry")" ] || rm -f "$entry"
+  done < <(find "$target" -mindepth 1 -maxdepth 1 -type l)
   while IFS= read -r entry; do
     ln -sfn "$src/$entry" "$target/$entry"
   done < <(skill_install_entries "$src")
   echo "linked $name -> $src (dev artifacts excluded)"
 }
 
-# Read the skill list once, then replay it per destination — discovery shells out to
-# the generator, and every destination gets the same set. Collected with read rather
-# than mapfile, which bash 3.2 (still /bin/bash on macOS) does not have.
+# Read the skill list once, and only from a discovery that succeeded: a failing
+# generator must stop the run before any destination is created, not leave two empty
+# directories behind an exit 0. Collected with read rather than mapfile, which bash 3.2
+# (still /bin/bash on macOS) does not have.
+listing="$(skills_md_paths "$REPO")" || { echo "error: skill discovery failed — nothing linked" >&2; exit 1; }
+[ -n "$listing" ] || { echo "error: skill discovery found no skills — nothing linked" >&2; exit 1; }
 skill_mds=()
 while IFS= read -r skill_md; do
-  skill_mds+=("$skill_md")
-done < <(skills_md_paths "$REPO")
+  [ -n "$skill_md" ] && skill_mds+=("$skill_md")
+done <<<"$listing"
+
+# Preflight every destination before writing to any: one conflict anywhere leaves both
+# installations exactly as they were.
+conflicts=()
+for dest in "${SKILL_LINK_DESTS[@]}"; do
+  for skill_md in "${skill_mds[@]}"; do
+    src="$(dirname "$REPO/$skill_md")"
+    target="$dest/$(basename "$src")"
+    target_is_free_or_ours "$target" "$src" || conflicts+=("$target (wanted -> $src, has -> $(readlink -f "$target" 2>/dev/null || echo "$target"))")
+  done
+done
+if [ "${#conflicts[@]}" -gt 0 ]; then
+  echo "error: these targets hold another install of the same name; nothing was linked:" >&2
+  printf '  %s\n' "${conflicts[@]}" >&2
+  echo "Remove or rename them (or run skills:unlink from the checkout that owns them), then re-run." >&2
+  exit 1
+fi
 
 for dest in "${SKILL_LINK_DESTS[@]}"; do
   mkdir -p "$dest"
