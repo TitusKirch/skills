@@ -66,6 +66,7 @@ Drive the engine over the ordered list, **forcing the dialog form** on every que
 
 - **Every dialog can be escaped.** A decision the human declines, defers, or answers off-menu stays open and is reported as open. A picker with no way out turns a question into a trap.
 - **A batch of questions is not this skill.** Presenting the whole list at once loses the ordering that made it worth asking one at a time.
+- **No select widget in this client → one numbered text question per decision**, its options listed, the recommendation first, a free answer accepted — or stop and say the dialog form is unavailable. **A pre-selected option is never an answer**; only what the human chose is.
 
 ### 6. Write the answers where they belong, then report
 

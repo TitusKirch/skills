@@ -65,6 +65,7 @@ What each of those rests on — how a template is picked and what `blank_issues_
 
 - "Make X issues" / "split this into sub-issues" → draft **all** of them and present as **one** bundled plan.
 - Parent/child: Linear via `parentId`; GitHub via the sub-issues API. Mechanics: [`trackers/github.md`](trackers/github.md#sub-issues).
+- **A bulk run resumed after a partial failure reads before it writes.** Before retrying, search the tracker for each drafted title (or marker) and skip what already exists — **never create a duplicate**. A write whose outcome is unclear (a timeout, no id returned) is settled by reading, never by writing again.
 
 ### 6. Present the plan (always, before any write)
 

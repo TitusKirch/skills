@@ -48,6 +48,8 @@ Optional command shortcuts in clients that expose them: `write-contributing init
 
 **Plan-only triggers** — "just show me", "dry run", "plan only", "nur den Plan", "nicht schreiben": print the plan and the derivation table, write nothing.
 
+**A narrow request bounds the job.** "Change only the setup instructions" changes that section and nothing else; findings beyond it go in the result as **at most a short list**, never as edits.
+
 ## Structure — the house order
 
 | #   | Section               | Include when                                                             | Holds                                                                                |

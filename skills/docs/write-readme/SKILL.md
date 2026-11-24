@@ -15,7 +15,7 @@ allowed-tools:
 
 ## Quick start
 
-1. Ask the user for the **project name**, a **one-sentence tagline**, the **hero emoji** (🛡️ packages, 🏗️ infrastructure, 📚 docs, 🧰 tooling, etc.), and a **representative code snippet** (the "hook").
+1. **Read the repo first** — the manifest (`package.json`, `composer.json`, …) for the project name and description, and a working CLI/usage example for the hook. Then ask the user only for the editorial choices the repo cannot answer: the **one-sentence tagline** where no description fits, the **hero emoji** (🛡️ packages, 🏗️ infrastructure, 📚 docs, 🧰 tooling, etc.), and which **representative code snippet** (the "hook") leads when the repo offers several. Never ask for a name or description the repo already states.
 2. Copy `templates/README.template.md` and fill the placeholders.
 3. Add only the sections the project actually needs — but keep them in the canonical order and use the prescribed emoji.
 4. Show the draft and ask which optional sections to add/drop before writing the file.

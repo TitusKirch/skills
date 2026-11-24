@@ -317,6 +317,8 @@ The two forges reach that guarantee differently, and the difference is a fact ab
 | `"grouped"`         | Dependabot's grouped minor+patch PRs, plus everything `"patch"` allows.                       |
 | `"all"`             | Everything selected, majors included.                                                         |
 
+**`"grouped"` admits a request as a group only on evidence** — the bot's group name in its branch or body, and every listed update minor or patch. A single-update request without that evidence is held as **not a group request** under `"grouped"`, unless it is a patch the `"patch"` half admits on its own.
+
 **`false` is the default because merging is the consequential act.** Same reasoning as `release.promote`: the only mode that touches nothing is what a repo gets until it says otherwise. Reading the queue is free; merging is not. A repo that wants its queue merged rather than merely reported writes a `mergeDeps` block.
 
 **A mode is a ceiling, never a trigger.** `"all"` does not mean "merge everything" — it means nothing is excluded _by mode_. Every PR still has to clear [assessment](#assessment-checklist); whether it then merges on the standing opt-in or waits for an explicit yes is [`mergeDeps.confirm`](#confirmation)'s call, and a major always waits.
