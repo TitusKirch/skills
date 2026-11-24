@@ -11,7 +11,7 @@ wrote the load-bearing half out again anyway, in two wordings.
 It is mirrored into the two work-loop **units** (`work-implement`, `work-review`), not into
 the two queues. A queue cannot run without its worker — it names that worker and verifies it
 before any state change — so it **names** the worker's REFERENCE for this spec, which is a
-name and not a path, and keeps 9 KB out of a `SKILL.md` that has no `REFERENCE.md` to hold
+name and not a path, and keeps some 27 KB out of a `SKILL.md` that has no `REFERENCE.md` to hold
 it. A unit has no such sibling: `work-implement` is invoked directly as well as by a drain,
 so its copy is the one every reader ends up at.
 
