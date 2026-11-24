@@ -510,12 +510,14 @@ Thick edges are the path a healthy issue takes; everything thin is an exception.
 
 **When `labels.reviewing` is off (the default)** there is no `reviewRequested → reviewing` lease and no `reviewing → reviewRequested` reclaim: the review verdicts (`done` / `changes-requested` / `needs human` / `blocked`) come **straight off `reviewRequested`**, exactly as before this label existed. The transitions above then read with `reviewRequested` in `reviewing`'s place.
 
+<a id="terminal-done"></a>
+
 ### Terminal `done`, and what `reviewRequested` / `reviewing` mean now
 
 - **`reviewRequested` = awaiting AI review** by a **different** agent — not "awaiting a human". The `work-review` loop consumes it and writes the verdict. Its default label reads `ai: review requested`.
 - **`reviewing` = a reviewer holds the review lease** and is mid-judgment — the review loop's in-flight state, the counterpart of `working`. It exists only when `labels.reviewing` is configured; the reviewer flips `reviewRequested → reviewing` (and assigns) before reading the diff, and the verdict label move (`done` / `changes-requested` / `needs human` / `blocked`) clears it. A `reviewing` orphan is reclaimed to `reviewRequested` (below).
 - **`done` = AI-reviewed and accepted** (low-risk), or accepted by a human via `needs human`. It does **not** mean "merged": GitHub's `Closes #<n>` and Linear's integration fire only on a **default-branch** merge, which a non-default `pr.base` (e.g. `dev`) never triggers — so shipping is the rollup merge's business, not the queue's. On Linear this is why the accept verdict writes `states.accepted` and **not** `states.done` — [AI-accepted is not shipped](#ai-accepted-is-not-shipped).
-- **`review-after-land`** — under `branch:<name>` the commit lands on the branch **before** review; the issue is still not `done` until review passes, and a `changes-requested` verdict is fixed **forward** (more commits), never reverted. Details: `work-review`.
+- <a id="review-after-land"></a>**`review-after-land`** — under `branch:<name>` the commit lands on the branch **before** review; the issue is still not `done` until review passes, and a `changes-requested` verdict is fixed **forward** (more commits), never reverted. Details: `work-review`.
 
 ### Reconcile
 

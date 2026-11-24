@@ -84,7 +84,7 @@ Per skill, and never merging the tiers:
 
 - **It does not wire itself into CI.** Whether a repo runs this as a CI gate is a separate, later decision — out of scope here.
 - **It does not fix findings** — reports only.
-- **It is not `skill-creator`.** Anthropic's [`skill-creator`](https://github.com/anthropics/skills/tree/main/skills/skill-creator) covers **adjacent** ground — scaffolding, evals, grading, description optimisation, packaging — and is a Python **development** toolchain, not a spec conformance validator. Assess it alongside `skills-ref`, reach for it for **quality** work (does the skill trigger, does it beat its baseline), and reach for **this** skill for **conformance** (is it a valid skill at all). Where each fits: [REFERENCE.md](REFERENCE.md#skill-creator-adjacent-not-a-substitute).
+- **It is not `skill-creator`.** Anthropic's [`skill-creator`](https://github.com/anthropics/skills/tree/main/skills/skill-creator) covers **adjacent** ground — scaffolding, evals, grading, description optimisation, packaging — and is a Python **development** toolchain, not a spec conformance validator. Assess it alongside `skills-ref`, reach for it for **quality** work (does the skill trigger, does it beat its baseline), and reach for **this** skill for **conformance** (is it a valid skill at all). Where each fits: [REFERENCE.md](REFERENCE.md#skill-creator--adjacent-not-a-substitute).
 
 <skills-plan>
 
