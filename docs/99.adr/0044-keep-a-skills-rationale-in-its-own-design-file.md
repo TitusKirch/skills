@@ -7,13 +7,11 @@ date: '2026-11-23'
 
 # ADR-0044 — Keep a skill's rationale in its own design file
 
-Partly supersedes [ADR-0025](/adr/0025-keep-the-work-loops-reference-whole): the whole REFERENCE stands; its rejection of moving content out to shrink the file does not cover a skill's rationale, which now has a DESIGN.md of its own.
-
 Supersedes [ADR-0031](/adr/0031-keep-rationale-as-repo-memory).
 
 ## Context
 
-[ADR-0031](/adr/0031-keep-rationale-as-repo-memory) moved each skill's `## Decisions` section out of its `REFERENCE.md` and into this log, one record per skill, on the argument that rationale addresses a human and an installed copy does not need it. The genre argument held. The destination did not: [ADR-0041](/adr/0041-give-adrs-their-own-skill-and-a-size-budget) admits only decisions that shape the system, and a record of how one skill settled its own defaults shapes that skill alone. The seven relocated records were also the longest in the log, one past 3,000 words, and each kept growing with the skill it described, which is a living page wearing a record's id.
+[ADR-0031](/adr/0031-keep-rationale-as-repo-memory) moved each skill's `## Decisions` section out of its `REFERENCE.md` and into this log, one record per skill, on the argument that rationale addresses a human and an installed copy does not need it. The genre argument held. The destination did not: [ADR-0041](/adr/0041-give-adrs-their-own-skill-and-a-size-budget) admits only decisions that shape the system, and a record of how one skill settled its own defaults shapes that skill alone. The seven relocated records were also among the longest in the log, one past 3,000 words, and each kept growing with the skill it described, which is a living page wearing a record's id.
 
 ## Decision
 

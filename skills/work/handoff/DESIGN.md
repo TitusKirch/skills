@@ -1,6 +1,6 @@
 # handoff — Design
 
-**Commit a handoff into the repo it hands off.** The decision record behind `handoff`, settled on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
+**Commit a handoff into the repo it hands off.** The decision record behind `handoff`, recorded in the ADR log on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
 
 ## Context
 

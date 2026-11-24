@@ -1,6 +1,6 @@
 # prune-branches — Design
 
-**Classify a stale branch by why it is stale.** The decision record behind `prune-branches`, settled on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
+**Classify a stale branch by why it is stale.** The decision record behind `prune-branches`, recorded in the ADR log on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
 
 ## Context
 

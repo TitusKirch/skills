@@ -1,6 +1,6 @@
 # prune-comments — Design
 
-**Judge a comment against the code beneath it.** The decision record behind `prune-comments`, settled on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
+**Judge a comment against the code beneath it.** The decision record behind `prune-comments`, recorded in the ADR log on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
 
 ## Context
 

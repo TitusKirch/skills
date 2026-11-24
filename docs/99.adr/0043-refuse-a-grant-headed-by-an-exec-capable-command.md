@@ -13,7 +13,7 @@ date: '2026-11-23'
 
 ## Decision
 
-**A scoped rule must not be a blanket `Bash` spelled narrowly.** A rule headed by a command whose job is to run another command grants everything the blanket form grants while reading, in review, as a narrowing — the one outcome ADR-0017 exists to prevent. So the gate carries a second list: command heads that can execute, each with the mechanism named, and a small set of exact prefixes cleared despite an exec-capable head because that spelling cannot (`git diff`, `command -v`). Clearing costs a written reason, exactly as a blanket grant does.
+**A scoped rule must not be a blanket `Bash` spelled narrowly.** A rule headed by a command whose job is to run another command grants everything the blanket form grants while reading, in review, as a narrowing. So the gate carries a second list: command heads that can execute, each with the mechanism named, and a small set of exact prefixes cleared despite an exec-capable head because that spelling cannot (`git diff`, `command -v`). Clearing costs a written reason, exactly as a blanket grant does.
 
 **Some subcommands are exec routes their head does not explain.** `git push --receive-pack=<cmd>` and `git fetch --upload-pack=<cmd>` run their argument on the far side, which a filesystem remote makes this machine; `git config` writes the `core.pager`, `core.editor` and `alias.*` that the clears declare out of scope. These are not clearable at any narrowing, so the gate lists them separately and the skills that drive them let them ask. Clearing is otherwise by **token prefix**, because the reason a clear gives is a property of the subcommand.
 
@@ -23,6 +23,4 @@ The lists, each entry with its mechanism or its reason, live in [`test/allowed-t
 
 ## Consequences
 
-Refusing the exec primitives raises the cost of scoping on purpose: a skill that reached for `sh`, `find` or `sed` now prompts where a one-line grant would have silenced it. It also decides what a scoping is allowed to be — a skill whose real work runs through a shell or a container cannot be scoped honestly and belongs on ADR-0017's named-exception list, saying so, rather than carrying a `Bash(sh:*)` or a `Bash(docker:*)` that reads like progress.
-
-The list is maintained by hand and catches only what it names; a new exec route in a cleared binary is found by review, not by the gate.
+A skill that reached for `sh`, `find` or `sed` now prompts where a one-line grant would have silenced it. It also decided what a scoping was allowed to be — a skill whose real work runs through a shell or a container cannot be scoped honestly and belongs on the named-exception list, saying so, rather than carrying a `Bash(sh:*)` or a `Bash(docker:*)` that reads like progress.

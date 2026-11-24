@@ -1,6 +1,6 @@
 # release — Design
 
-**Bind the release skill to its release tool, not its forge.** The decision record behind `release`, settled on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
+**Bind the release skill to its release tool, not its forge.** The decision record behind `release`, recorded in the ADR log on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
 
 ## Context
 

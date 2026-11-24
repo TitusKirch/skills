@@ -1,6 +1,6 @@
 # merge-deps — Design
 
-**Select a dependency request by its author alone.** The decision record behind `merge-deps`, settled on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
+**Select a dependency request by its author alone.** The decision record behind `merge-deps`, recorded in the ADR log on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
 
 ## Context
 

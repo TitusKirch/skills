@@ -9,7 +9,7 @@ date: '2026-07-31'
 
 Partly supersedes [ADR-0003](/adr/0003-mirror-shared-content-into-each-skill): mirroring stands as the rule for shared content; a skill that declares and checks a required sibling may assume that sibling's REFERENCE instead — a narrowing, not a reversal.
 
-> **Partly superseded by** [ADR-0040](/adr/0040-lock-the-issue-and-the-tree-not-the-loop): the declared, checked sibling dependency stands; the single-flight lock being the queue's mechanic alone does not — every worker now takes its own issue and tree locks.
+> **Partly superseded by** [ADR-0040](/adr/0040-lock-the-issue-and-the-tree-not-the-loop): the declared, checked sibling dependency stands; the single-flight lock being the queue's mechanic alone does not — every implement worker now takes its own issue and tree locks, a review worker the issue lock alone.
 
 ## Context
 
@@ -21,7 +21,7 @@ Two skills have exactly that dependency, and say so in their own text. `work-imp
 
 The two claims are less a contradiction than a gap. ADR-0003 rejected a runtime dependency **introduced in order to avoid duplication** — a dependency minted to dedupe. The queue skills' dependency is functional and predates the question: they were never able to do the job themselves, and removing it would mean duplicating a worker skill wholesale. ADR-0003 simply does not describe a skill that installs fine and cannot **run** without a named sibling, so its rule reaches them by default.
 
-What that default costs is measurable. These are the two largest `SKILL.md` files in the repo and the only two of the nineteen with no `REFERENCE.md`, so their blocks sit in the **unconditional** load path where every other skill keeps its blocks in the conditional one.
+What that default costs is measurable. Each queue `SKILL.md` runs to roughly 24 KB, of which about 15.4 KB — 63% — is mirrored blocks. These are the two largest `SKILL.md` files in the repo and the only two of the nineteen with no `REFERENCE.md`, so their blocks sit in the **unconditional** load path where every other skill keeps its blocks in the conditional one.
 
 And the blocks buy nothing in the one case they exist for. Installed without its worker, a queue skill loads the config contract, the authority rule, the plan rule and the whole lock protocol — then stops before the lock, because the worker is missing.
 

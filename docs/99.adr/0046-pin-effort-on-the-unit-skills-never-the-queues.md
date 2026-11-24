@@ -1,11 +1,11 @@
 ---
-title: 'Pin effort on the unit skills, never the queues'
+title: 'Put any effort pin on the unit skills, never the queues'
 description: 'A frontmatter effort pin on a queue skill governs only the drain, while one on a unit skill reaches the worker that does the work — so any pin belongs on the units.'
 status: 'accepted'
 date: '2026-11-23'
 ---
 
-# ADR-0046 — Pin effort on the unit skills, never the queues
+# ADR-0046 — Put any effort pin on the unit skills, never the queues
 
 ## Context
 

@@ -45,4 +45,4 @@ A decision earns an ADR when it is architectural, constrains work that comes lat
 | [ADR-0043](/adr/0043-refuse-a-grant-headed-by-an-exec-capable-command)          | Refuse a grant headed by an exec-capable command            | accepted   | 2026-11-23 |
 | [ADR-0044](/adr/0044-keep-a-skills-rationale-in-its-own-design-file)            | Keep a skill's rationale in its own design file             | accepted   | 2026-11-23 |
 | [ADR-0045](/adr/0045-keep-the-local-tracker-in-one-tree-without-a-review-lease) | Keep the local tracker in one tree, without a review lease  | accepted   | 2026-11-23 |
-| [ADR-0046](/adr/0046-pin-effort-on-the-unit-skills-never-the-queues)            | Pin effort on the unit skills, never the queues             | accepted   | 2026-11-23 |
+| [ADR-0046](/adr/0046-pin-effort-on-the-unit-skills-never-the-queues)            | Put any effort pin on the unit skills, never the queues     | accepted   | 2026-11-23 |

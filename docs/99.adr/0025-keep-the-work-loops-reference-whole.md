@@ -7,8 +7,6 @@ date: '2026-08-02'
 
 # ADR-0025 — Keep the work loop's reference whole
 
-> **Partly superseded by** [ADR-0044](/adr/0044-keep-a-skills-rationale-in-its-own-design-file): the whole REFERENCE stands; its rejection of moving content out to shrink the file does not cover a skill's rationale, which now has a DESIGN.md of its own.
-
 ## Context
 
 `skills/work/work-implement/REFERENCE.md` is the largest single file any skill here can pull into context, and four skills name it: `work-implement`, `work-implement-queue`, `work-review` and `work-review-queue`. At 56,388 B it was proposed for a split — a `rules/` directory with `REFERENCE.md` reduced to an index, so a task loads the rules it needs and the entry point stays one named file.

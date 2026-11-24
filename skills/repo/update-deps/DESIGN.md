@@ -1,6 +1,6 @@
 # update-deps — Design
 
-**Bound update-deps by the repo's own tooling.** The decision record behind `update-deps`, settled on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
+**Bound update-deps by the repo's own tooling.** The decision record behind `update-deps`, recorded in the ADR log on 2026-08-26: the "why", kept for a human. [REFERENCE.md](REFERENCE.md) holds the "how", and nothing in the skill points here.
 
 ## Context
 
