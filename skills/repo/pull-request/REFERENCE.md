@@ -66,16 +66,20 @@ fi
 ```bash
 # GitHub
 me=$(gh api user --jq .login)
+# Only a PR whose head lives in THIS repo is this branch's PR: a fork can carry a branch of
+# the same name, and its PR is somebody else's work, not a duplicate of the one to open.
 gh pr list --head "$(git branch --show-current)" --state open \
-  --json number,author,isDraft,title --jq '.[0]'
+  --json number,author,isDraft,title,isCrossRepository \
+  --jq '[.[] | select(.isCrossRepository == false)] | .[0]'
 
 # GitLab — the head branch is the *source* branch, and `draft` is a title prefix, not a field
 me=$(glab api user --jq .username)
 glab mr list --source-branch "$(git branch --show-current)" --output json \
-  | jq '.[0] | {number: .iid, author: .author.username, draft, title}'
+  | jq '[.[] | select(.source_project_id == .target_project_id)] | .[0]
+        | {number: .iid, author: .author.username, draft, title}'
 ```
 
-- No result → **create**.
+- No result → **create**. A same-named branch's PR from a **fork** is not a result here: it is filtered out above, so it neither blocks this PR nor gets touched.
 - author == `$me` → offer to **update its body only**.
 - author != `$me` (a teammate, or a bot / automation such as a `dev → main` rollup) → **leave it untouched**; report number + author and stop.
 
