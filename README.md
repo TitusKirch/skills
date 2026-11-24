@@ -76,12 +76,12 @@ The two work queues need an agent that cannot ask questions while it runs unatte
 
 Four questions, answered separately, because a yes to one says nothing about the next: what was **shipped**, what the client **loaded**, which skill the model **chose**, and what it then **did**.
 
-| Client      | Shipped                                                | Loaded                                                                     | Chosen / did                |
-| :---------- | :----------------------------------------------------- | :------------------------------------------------------------------------- | :-------------------------- |
-| OpenCode    | `test/install.test.ts` (with the `skills` CLI on PATH) | `test/opencode-compatibility.test.ts`, at the pinned version, CI and local | not measured — see `evals/` |
-| Codex       | as above                                               | policy rules via `test/policy-parity.test.ts` (with `codex` on PATH)       | not measured — see `evals/` |
-| Claude Code | as above; `.claude-plugin/plugin.json` validates       | not automated                                                              | not measured — see `evals/` |
-| Cursor      | as above                                               | documented support only, not checked                                       | not measured                |
+| Client      | Shipped                                                | Loaded                                                                                                | Chosen / did                |
+| :---------- | :----------------------------------------------------- | :---------------------------------------------------------------------------------------------------- | :-------------------------- |
+| OpenCode    | `test/install.test.ts` (with the `skills` CLI on PATH) | `test/opencode-compatibility.test.ts`, at the pinned version, CI and local                            | not measured — see `evals/` |
+| Codex       | as above                                               | policy rules via `test/policy-parity.test.ts` (with `codex` on PATH)                                  | not measured — see `evals/` |
+| Claude Code | as above; `.claude-plugin/plugin.json` validates       | plugin manifest via `claude plugin validate` in `test/plugin-version.test.ts` (with `claude` on PATH) | not measured — see `evals/` |
+| Cursor      | as above                                               | documented support only, not checked                                                                  | not measured                |
 
 A probe that needs a CLI the machine does not have is **skipped and says so** — never counted as a pass. Model choice and behaviour are measured per skill by the `evals/` cases ([Evaluating a skill](skills/README.md#evaluating-a-skill)), not by any test here.
 

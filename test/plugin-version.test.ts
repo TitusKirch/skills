@@ -5,6 +5,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from './helpers.ts';
@@ -35,3 +36,19 @@ test('release-please bumps the plugin version with the package', () => {
     'release-please-config.json does not list .claude-plugin/plugin.json as an extra file'
   );
 });
+
+// Where Claude Code is installed, its own validator reads the manifest the way the client
+// will; CI does not install it, so there the test is skipped and says so.
+const claude = spawnSync('claude', ['--version'], { encoding: 'utf8' });
+test(
+  "Claude Code's own validator accepts the plugin",
+  { skip: claude.status !== 0 && 'claude is not installed' },
+  () => {
+    const out = spawnSync('claude', ['plugin', 'validate', ROOT, '--strict'], {
+      encoding: 'utf8',
+      timeout: 60_000
+    });
+    assert.equal(out.status, 0, out.stdout + out.stderr);
+    assert.match(out.stdout + out.stderr, /Validation passed/);
+  }
+);
