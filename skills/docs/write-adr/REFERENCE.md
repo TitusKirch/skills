@@ -19,10 +19,34 @@ ADRs live in **`docs/99.adr/`** — a numbered house section like any other, nev
 
 `NNNN-title.md` — 4-digit zero-padded id, **hyphen**, kebab title (`0007-drop-the-legacy-queue.md`). The H1 is `ADR-{NNNN} — {title}`.
 
-- The id is a **permanent decision identifier**, taken once from the next free value. It is what cross-references point at (`superseded by ADR-0007`), so it is **never reused, renumbered or gap-filled**.
+- The id is a **permanent decision identifier**, taken once by the [allocation rule](#allocating-an-id). It is what cross-references point at (`superseded by ADR-0007`), so it is **never reused, renumbered or gap-filled** — outside the one renumbering a `prune-adrs` migration ends with, which keeps a protocol of every old id until the migration is signed off.
 - **The title is a present-tense imperative verb phrase** — `0012-let-the-review-establish-green`, not `0012-review-green-policy`. A decision is something a project _did_, so the filename says what was done; a noun phrase names the topic instead and reads like a concept page. The H1 and the `title` frontmatter carry the same phrase, capitalized (`Let the review establish green`).
 - This is deliberately **not** the house `N.kebab.md` dot-schema: that prefix is reading order and may be renumbered by `write-docs`' reconciler — a decision id may not. The hyphen keeps the two schemas impossible to confuse.
 - **`index.md` is the decision log** — a table of every ADR (id, decision, status, date), in id order. Update it in the same change that adds an ADR. Template: [`templates/adr-index.md`](templates/adr-index.md).
+
+### Allocating an id
+
+**The next id is 1 + the highest id any record file in the log has ever carried** — in git history on every ref, plus the working tree. The live log alone is not enough: once a migration removed the highest records, the next run would hand their ids out again, and a cross-reference to the old record would silently point at the new one.
+
+- **Count only history since the log's latest renumbering**, when a migration protocol records one (`prune-adrs` renumbers as its last step and appends a `renumber` row per id to `migration.tsv`; the commit that added those rows is the renumbering, and git finds it after the protocol is deleted too). Before it, the ids were different ones. A branch forked before the renumbering still counts its old names — that leaves a gap, never a reuse.
+- **Parallel drafts reserve their ids up front, in one place** — the batch plan names every id before any draft is written; two drafts never each pick "the next one".
+- **Re-check before landing** that the id, the file and the index row are each unique — another branch may have landed the same id in the meantime. A collision is resolved on the unlanded side, by taking a fresh id.
+
+```sh
+log="$(git rev-parse --show-toplevel)/docs/99.adr"
+since=   # the latest commit that added `renumber` rows to the protocol; empty when there is none
+for c in $(git log --all --format=%H -G '^renumber' -- "$log/migration.tsv"); do
+  git show "$c" -- "$log/migration.tsv" | grep -q '^+renumber' && { since=$c; break; }
+done
+ids() { { git log --all --name-only --format= ${since:+"^$since"} -- "$log"; ls "$log"; } | sed -n 's|^.*/||; /^[0-9]\{4\}-.*\.md$/p'; }
+
+max=$(ids | sed 's/-.*//' | sort -n | tail -n 1)
+next=$(printf '%04d' "$(expr "${max:-0}" + 1)")
+
+# before landing: the first lists this record's own file name only, the second exactly one row
+ids | grep "^$next-" | sort -u
+grep "($next-" "$log/index.md"
+```
 
 ### Frontmatter
 
@@ -38,7 +62,7 @@ date: 2026-07-15
 ```
 
 - **`status`** — `proposed` · `accepted` · `rejected` · `deprecated` · `superseded`.
-- **`date`** — ISO `YYYY-MM-DD`; the day the status last changed.
+- **`date`** — ISO `YYYY-MM-DD`; the day the status last changed — it moves with a [status transition](#status-transitions) and with nothing else.
 - **Nothing else.** MADR's `decision-makers` / `consulted` / `informed` are a deliberate **no**: who decided is already recorded, timestamped and unforgeable, on the issue and pull request the ADR came out of, and a retyped list only goes stale beside it.
 
 ### Body
@@ -86,7 +110,7 @@ Two sections attract borrowed material in particular:
 
 ### Size
 
-**Aim for about 300 words of body; over 500 needs a reason, stated in the plan.** Frontmatter does not count. The three H2s are required as _headings_, not as a word budget: any of them may be one sentence, "the consequences are the obvious ones" is a complete `Consequences` section, and a whole record may be a single paragraph.
+**Aim for about 300 words of body; over 500 needs a reason, stated in the plan.** Frontmatter does not count. The three H2s are required as _headings_, not as a word budget: any of them may be one sentence, and a whole record may be a single paragraph. `Consequences` still names **at least one concrete consequence** — or says explicitly why none beyond the decision itself is known; "the consequences are the obvious ones" is not a section.
 
 **The number sits at the strict end of what the practice recommends.** Nygard, who introduced the format, wrote that "the whole document should be one or two pages long". Zimmermann asks for "the bare minimum of essential information" — sometimes a slide with a few sentences, up to a few pages for a complex decision — and names the overgrown forms as anti-patterns: the **Mega-ADR**, the **Novel**, the **Blueprint in disguise**. One page is about 500 words, so the ceiling is one page and the aim well under it.
 
@@ -102,15 +126,28 @@ What is left past 500 words is a decision with genuinely many forces, or several
 
 ### Lifecycle — append-only
 
-**A record is a draft until the change adding it lands on the integration branch** (`pr.base`, else the default branch). It carries `status: accepted` from the first draft — the merge is the acceptance, so nobody has to flip the status afterwards, and a change that never merges takes its draft with it. `proposed` is for a record deliberately put up for decision on its own, never for a draft waiting on its change. Before landing it is edited freely, and refining a decision means editing its draft, never opening a second record in the same change. Once it has landed it is **immutable**: the log records what was decided and when, so a superseded decision has to survive intact.
+**A record is a draft until the change adding it lands on the integration branch** (`pr.base`, else the default branch). It carries `status: accepted` from the first draft — the merge is the acceptance, so nobody has to flip the status afterwards, and a change that never merges takes its draft with it. `proposed` is for a record deliberately put up for decision on its own — or an import `prune-adrs` landed incomplete — never for a draft waiting on its change. Before landing it is edited freely, and refining a decision means editing its draft, never opening a second record in the same change. Once it has landed it is **immutable**: the log records what was decided and when, so a superseded decision has to survive intact.
 
 - **Overturning or materially revising a decision writes a new ADR.** The old one keeps its prose and only flips `status` to `superseded`, gains a `Superseded by ADR-NNNN` pointer under its H1, and updates `date`. The new ADR points back (`Supersedes ADR-NNNN`).
 - **Overturning part of a decision writes a new ADR too — a partial supersede.** Where one part of a record stops holding and the rest still stands, the new record opens with `Partly supersedes ADR-NNNN:` and one sentence naming what stands and what does not. The old record keeps its prose, its `status` and its `date` — it is still in force — and gains one pointer under its H1, `> **Partly superseded by** ADR-NNNN:` with the same sentence. Both in one change. A later record that only builds on an earlier one, overturning nothing, needs no pointer: a link in its Context is enough.
 - **No amendments.** An accepted record never grows: no `## Amendments` section, no dated addendum, no appended paragraph. An earlier version of this contract allowed a dated amendment where a decision held but a fact it priced had moved. Records then accumulated amendments until a single one ran to thousands of words, which is a living page wearing a record's id. What was learned while the decision still stands goes on the **concept page** that explains the subject today. If it changes the reasoning enough that the record now misleads, that is a supersede.
 - **A record that already carries amendments keeps them** — append-only binds them too, and the log simply gains no new ones. The one exception is a deliberate migration with `prune-adrs`, which may move them to the concept page as part of trimming the record.
-- **Never** rewrite a landed ADR's Context/Decision/Consequences, delete an ADR, or renumber one. Typo and link fixes are the only in-place edits.
+- **Never** rewrite a landed ADR's Context/Decision/Consequences, delete an ADR, or renumber one. Typo and link fixes are the only in-place edits besides the [status transitions](#status-transitions).
 - **A chain of supersedes inside a few days is a smell.** It means records landed while the decision was still being worked out. Say so in the plan, and prefer letting the next decision wait until it has settled.
 - The general page rules **do not apply**: no edit-in-place for a changed decision, no one-topic-per-page dedupe (several ADRs may touch the same topic — that is the log working, not duplication), and no prose reconcile.
+
+### Status transitions
+
+**The only changes a landed record takes**, besides typo and link fixes. A transition that changes `status` lands with its `index.md` row updated in the same change; `date` moves exactly where `status` does.
+
+| Transition                         | What may change                                                                                                                                                   |
+| :--------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `proposed` → `accepted`/`rejected` | `status`, `date`, the index row's status and date. While it is `proposed`, a landed record may also have its sections **completed** — never its decision reversed |
+| `accepted` → `superseded`          | `status`, `date`, the `> **Superseded by**` line under the H1, the index row                                                                                      |
+| `accepted` → `deprecated`          | `status`, `date`, the index row — the decision stopped applying, with no successor                                                                                |
+| partial supersede                  | the `> **Partly superseded by**` line only — `status`, `date` and the index row stay                                                                              |
+
+**Not yet landed is not landed.** A record still on an unmerged branch is a draft, and anything in it may be corrected, `status` included. `rejected`, `superseded` and `deprecated` are final.
 
 ## Index rules
 
@@ -151,7 +188,7 @@ lang=$(printf '%s' "$resolved" | jq -er '.docs.language // .language // empty' 2
 instructions=$(printf '%s' "$resolved" | jq -er '.docs.instructions // empty' 2>/dev/null) || instructions=
 ```
 
-This skill keeps **no cache** — its only input is the live `docs/99.adr/` tree.
+This skill keeps **no cache** — its only inputs are the live `docs/99.adr/` tree and that tree's git history, read for the [next id](#allocating-an-id).
 
 <skills-config>
 

@@ -12,6 +12,10 @@ allowed-tools:
   - Bash(jq:*)
   - Bash(grep:*)
   - Bash(git rev-parse:*)
+  - Bash(git log:*)
+  - Bash(ls:*)
+  - Bash(tail:*)
+  - Bash(expr:*)
 ---
 
 # write-adr
@@ -26,14 +30,16 @@ The TitusKirch **decision log** — `docs/99.adr/`, one architecture decision pe
 
 **All three must hold:** the decision is **architectural**, it **binds later work**, and its **reasoning would otherwise be lost**. Architectural means it shapes the system, not a feature of it — structure and boundaries, which part owns which state, interfaces and integration, dependencies with lock-in, non-functional characteristics, a cross-cutting convention, a deliberate deviation from the obvious path. The tells: it is **costly to reverse**, and it would still matter if the feature that prompted it were removed.
 
-| Not an ADR                                                                                | Goes to                                                        |
-| :---------------------------------------------------------------------------------------- | :------------------------------------------------------------- |
-| **Product behaviour and rules** — what a feature does, game or business rules, user flows | a concept or guide page, through `write-docs`                  |
-| **Parameters** — durations, limits, thresholds, prices, sizes                             | the page describing the feature, or the code that holds them   |
-| **Implementation detail** — endpoints, migrations, class and table names, data formats    | the code and its own reference output                          |
-| **Rollout mechanics of one change** — a staged switch, a two-release dance, a backfill    | the pull request; a `conventions` page if it is a general rule |
-| **A fix to how a decision was implemented**, the decision itself unchanged                | nothing — the commit says it                                   |
-| **Refining a decision that has not landed yet**                                           | an edit to its draft                                           |
+| Not an ADR                                                                                               | Goes to                                                        |
+| :------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------- |
+| **Product behaviour and rules** — what a feature does, game or business rules, user flows                | a concept or guide page, through `write-docs`                  |
+| **Parameters** — durations, limits, thresholds, prices, sizes                                            | the page describing the feature, or the code that holds them   |
+| **Implementation detail** — enumerating endpoints, fields and formats; migrations, class and table names | the code and its own reference output                          |
+| **Rollout mechanics of one change** — a staged switch, a two-release dance, a backfill                   | the pull request; a `conventions` page if it is a general rule |
+| **A fix to how a decision was implemented**, the decision itself unchanged                               | nothing — the commit says it                                   |
+| **Refining a decision that has not landed yet**                                                          | an edit to its draft                                           |
+
+**A public contract is the exception to that row.** Deciding a contract's compatibility or ownership — who owns a long-lived event format, what its consumers may rely on — is architecture and earns a record even when one feature triggered it; listing its fields does not.
 
 **Done is not a trigger.** A finished feature becomes pages, never an ADR by default. When one feature after another arrives with its own record, say so in the plan. **Borderline is the human's call** — name the row it may belong to and let them answer; never write "just in case", the direction with no way back. **Offer a record proactively** only when a change clearly clears the bar, and never write one unasked.
 
@@ -41,14 +47,14 @@ The TitusKirch **decision log** — `docs/99.adr/`, one architecture decision pe
 
 **Aim for about 300 words of body; over 500 needs a reason, stated in the plan.** Count before presenting and show the count. Over budget, move borrowed material to a page first — parameters, behaviour, detail — and never cut the reasoning, which is what the record is for. Past about 800 words it is almost always two decisions: propose two records. Full rule and its sources: [REFERENCE.md](REFERENCE.md#size).
 
-**A record is a draft until it lands on the integration branch**, and is edited freely until then. It is written as `status: accepted` from the start: the merge is the acceptance, and a change that never merges takes its draft with it. Once landed it is **immutable**: an overturned or materially revised decision gets a new record that **supersedes** it — **partly**, with a pointer both ways, where the rest still stands — and **nothing is ever appended** — no `## Amendments`, no addendum. What was learned while a decision stands goes on the concept page. Typo and link fixes are the only edits. [REFERENCE.md](REFERENCE.md#lifecycle--append-only).
+**A record is a draft until it lands on the integration branch**, and is edited freely until then. It is written as `status: accepted` from the start: the merge is the acceptance, and a change that never merges takes its draft with it. Once landed it is **immutable**: an overturned or materially revised decision gets a new record that **supersedes** it — **partly**, with a pointer both ways, where the rest still stands — and **nothing is ever appended** — no `## Amendments`, no addendum. What was learned while a decision stands goes on the concept page. Typo and link fixes and the [status transitions](REFERENCE.md#status-transitions) are the only edits. [REFERENCE.md](REFERENCE.md#lifecycle--append-only).
 
 ## Workflow
 
 1. **Resolve the config** (`docs.*`) and read `docs/99.adr/index.md` fresh.
 2. **Ask the threshold.** No → name where the material belongs, hand page writing to `write-docs` (absent → name the page and section), and write nothing here.
 3. **Find the record it touches** — `grep` the log. Overturning a landed record is a **supersede**; refining an unlanded draft is an edit to it, never a second record.
-4. **Draft** from [`templates/adr.md`](templates/adr.md): next free id, imperative title, required H2s, the [content test](REFERENCE.md#what-the-body-may-hold), the word count.
+4. **Draft** from [`templates/adr.md`](templates/adr.md): next id by the [allocation rule](REFERENCE.md#allocating-an-id) — never just the live log's highest plus one — imperative title, required H2s, the [content test](REFERENCE.md#what-the-body-may-hold), the word count.
 5. **Plan** — the record, its count, the `index.md` row, and on a supersede the old record's `status`, `date` and pointer — on a partial one, the pointer alone. **Confirm → apply**, in one change.
 6. **Locales** — the record lives in the default-locale tree; `write-docs`' locale sweep renders translations. Name that in the report.
 

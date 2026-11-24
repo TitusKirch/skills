@@ -36,7 +36,7 @@ date: '{YYYY-MM-DD}'
 
 ## Consequences
 
-{What follows — what becomes easier, what becomes harder, and the trade-offs now accepted. Include the ones that hurt. A line prescribing how future work is to be done is a convention, not a consequence: put it where it can be edited and link it.}
+{What follows — what becomes easier, what becomes harder, and the trade-offs now accepted. At least one concrete consequence, or an explicit reason none is known. Include the ones that hurt. A line prescribing how future work is to be done is a convention, not a consequence: put it where it can be edited and link it.}
 
 <!-- Optional fourth section. Keep it when there were real alternatives — that reasoning is
      what a later reader comes back for. Drop the whole H2 when there were none; it is never
